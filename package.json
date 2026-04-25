@@ -1,6 +1,6 @@
 {
   "name": "hkitty-mini-program",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "description": "企业级乐园 C 端 Taro 小程序",
   "packageManager": "yarn@1.22.22",

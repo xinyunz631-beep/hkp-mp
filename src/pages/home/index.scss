@@ -1,0 +1,56 @@
+.home-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.home-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 20px;
+  border-radius: 16px;
+  background: #eef7f4;
+}
+
+.home-metric__value {
+  font-size: 30px;
+  font-weight: 700;
+  color: #0f766e;
+}
+
+.home-metric__label {
+  font-size: 22px;
+  color: #5d6d68;
+}
+
+.home-services {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.home-service {
+  display: flex;
+  flex-direction: column;
+  min-height: 132px;
+  padding: 20px;
+  border-radius: 16px;
+  background: #f7faf9;
+  box-sizing: border-box;
+}
+
+.home-service__title {
+  font-size: 28px;
+  font-weight: 700;
+  color: #17211d;
+}
+
+.home-service__desc {
+  margin-top: 10px;
+  font-size: 22px;
+  line-height: 1.4;
+  color: #64736e;
+}

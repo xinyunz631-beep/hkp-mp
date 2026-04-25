@@ -21,3 +21,24 @@
 .page-shell__body {
   margin-top: 32px;
 }
+
+.page-shell__section {
+  margin-top: 24px;
+  padding: 28px;
+  border-radius: 20px;
+  background: #ffffff;
+  box-shadow: 0 12px 32px rgba(12, 32, 28, 0.06);
+}
+
+.page-shell__section-title {
+  font-size: 30px;
+  font-weight: 700;
+  color: #17211d;
+}
+
+.page-shell__muted {
+  margin-top: 8px;
+  font-size: 24px;
+  line-height: 1.5;
+  color: #687772;
+}

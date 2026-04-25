@@ -1,6 +1,7 @@
 import Taro from '@tarojs/taro';
 import { getRuntimeConfig } from '@/core/config/runtime';
 import { rootStore } from '@/core/store';
+import { hasMockHandler, mockRequest } from '@/core/mock/api';
 
 export interface RequestOptions<TData = unknown> {
   url: string;
@@ -38,20 +39,31 @@ export async function request<TResponse, TData = unknown>(
   options: RequestOptions<TData>,
 ): Promise<TResponse> {
   const config = getRuntimeConfig();
-  const response = await Taro.request<ApiResponse<TResponse>>({
-    url: `${config.apiBaseUrl}${options.url}`,
-    method: options.method ?? 'GET',
-    data: options.data,
-    header: buildHeaders(options.header),
-  });
+  const method = options.method ?? 'GET';
+  rootStore.ui.showLoading();
 
-  if (response.statusCode < 200 || response.statusCode >= 300) {
-    throw new Error(`请求失败：${response.statusCode}`);
+  try {
+    if (config.env === 'development' && hasMockHandler(method, options.url)) {
+      return await mockRequest<TResponse, TData>({ ...options, method });
+    }
+
+    const response = await Taro.request<ApiResponse<TResponse>>({
+      url: `${config.apiBaseUrl}${options.url}`,
+      method,
+      data: options.data,
+      header: buildHeaders(options.header),
+    });
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw new Error(`请求失败：${response.statusCode}`);
+    }
+
+    if (response.data.code !== 0) {
+      throw new Error(response.data.message || '业务请求失败');
+    }
+
+    return response.data.data;
+  } finally {
+    rootStore.ui.hideLoading();
   }
-
-  if (response.data.code !== 0) {
-    throw new Error(response.data.message || '业务请求失败');
-  }
-
-  return response.data.data;
 }

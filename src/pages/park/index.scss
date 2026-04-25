@@ -1,0 +1,18 @@
+.park-entry {
+  display: flex;
+  flex-direction: column;
+  padding: 24px 0;
+  border-bottom: 1px solid #eef2f0;
+}
+
+.park-entry__title {
+  font-size: 28px;
+  font-weight: 700;
+  color: #17211d;
+}
+
+.park-entry__desc {
+  margin-top: 8px;
+  font-size: 24px;
+  color: #687772;
+}
