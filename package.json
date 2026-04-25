@@ -13,7 +13,8 @@
     "build:weapp": "taro build --type weapp",
     "inspect:weapp": "taro build --type weapp --preview",
     "typecheck": "tsc --noEmit",
-    "check:main-package": "node scripts/check-main-package-size.mjs"
+    "check:main-package": "node scripts/check-main-package-size.mjs",
+    "check:package-boundary": "node scripts/check-package-boundary.mjs"
   },
   "dependencies": {
     "@babel/runtime": "7.28.4",

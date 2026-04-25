@@ -11,6 +11,7 @@
 - MP-007：实现函数、store action、service 方法必须有中文注释。
 - MP-008：Git 提交信息必须使用中文。
 - MP-009：主包页面和 `tabBar` 页面必须放在 `src/pages`。
+- MP-010：提交前必须通过 `yarn check:package-boundary`。
 
 ## 禁止
 

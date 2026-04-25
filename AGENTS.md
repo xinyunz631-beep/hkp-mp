@@ -26,6 +26,8 @@ nvm use
 yarn install
 yarn dev:weapp
 yarn build:weapp
+yarn check:package-boundary
+yarn check:main-package
 ```
 
 ## 修改规则

@@ -29,6 +29,8 @@
 
 当前主包估算体积：`0.36MB`。
 
+已新增 `yarn check:package-boundary`，提交前检查主包页面目录、分包 root、`preloadRule` 和主包 import 链。
+
 ## 风险
 
 后续扩展业务页面时，必须持续检查主包引用链，避免分包业务代码或大依赖进入主包。
