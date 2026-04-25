@@ -68,7 +68,7 @@ export async function mockRequest<TResponse, TData = unknown>(
   const handler = handlers[key];
 
   if (!handler) {
-    throw new Error(`缺少 mock 接口：${key}`);
+    throw new Error(`缺少接口处理器：${key}`);
   }
 
   return handler() as TResponse;
