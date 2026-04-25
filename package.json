@@ -1,0 +1,51 @@
+{
+  "name": "hkitty-mini-program",
+  "version": "0.2.0",
+  "private": true,
+  "description": "企业级乐园 C 端 Taro 小程序",
+  "packageManager": "yarn@1.22.22",
+  "engines": {
+    "node": ">=22 <23",
+    "yarn": "1.22.22"
+  },
+  "scripts": {
+    "dev:weapp": "taro build --type weapp --watch",
+    "build:weapp": "taro build --type weapp",
+    "inspect:weapp": "taro build --type weapp --preview",
+    "typecheck": "tsc --noEmit",
+    "check:main-package": "node scripts/check-main-package-size.mjs"
+  },
+  "dependencies": {
+    "@babel/runtime": "7.28.4",
+    "@nutui/nutui-react-taro": "2.7.14",
+    "@tarojs/components": "4.2.0",
+    "@tarojs/helper": "4.2.0",
+    "@tarojs/plugin-framework-react": "4.2.0",
+    "@tarojs/plugin-platform-weapp": "4.2.0",
+    "@tarojs/react": "4.2.0",
+    "@tarojs/runtime": "4.2.0",
+    "@tarojs/shared": "4.2.0",
+    "@tarojs/taro": "4.2.0",
+    "axios": "1.15.2",
+    "dayjs": "1.11.20",
+    "mobx": "6.15.0",
+    "mobx-react": "9.2.1",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "devDependencies": {
+    "@tarojs/cli": "4.2.0",
+    "@tarojs/service": "4.2.0",
+    "@tarojs/webpack5-runner": "4.2.0",
+    "@babel/core": "7.29.0",
+    "@babel/preset-react": "7.28.5",
+    "@types/node": "25.6.0",
+    "@types/react": "18.3.28",
+    "@types/react-dom": "18.3.7",
+    "babel-preset-taro": "4.2.0",
+    "postcss": "8.5.10",
+    "sass": "1.99.0",
+    "typescript": "6.0.3",
+    "webpack": "5.91.0"
+  }
+}

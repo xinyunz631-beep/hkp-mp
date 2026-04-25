@@ -3,7 +3,7 @@
 ## 当前阶段
 
 - 项目类型：C 端乐园 Taro 小程序。
-- 当前状态：独立 Git 仓库已建立，待初始化 Taro 工程。
+- 当前状态：Taro 工程骨架已初始化，分包目录已切为 `src/pkg-*`，构建与主包体积检查已通过。
 
 ## 技术基线
 
@@ -17,10 +17,16 @@
 
 首批独立分包：`mall`、`member`、`hotel`、`ticket`、`dining`、`order`。
 
+分包源码目录采用 `src/pkg-*` 格式，例如 `src/pkg-member`、`src/pkg-mall`，减少无意义层级。
+
+当前分包目录：`src/pkg-mall`、`src/pkg-member`、`src/pkg-hotel`、`src/pkg-ticket`、`src/pkg-dining`、`src/pkg-order`。
+
 ## 主包
 
 主包允许全局 MobX、`request` 封装、轻量工具和极小基础能力；非必要业务代码不进入主包。
 
+当前主包估算体积：`0.36MB`。
+
 ## 风险
 
-后续初始化工程时，必须先建立主包引用边界和体积分析命令，再扩展业务页面。
+后续扩展业务页面时，必须持续检查主包引用链，避免分包业务代码或大依赖进入主包。
