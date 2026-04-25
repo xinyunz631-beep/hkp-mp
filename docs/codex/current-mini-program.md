@@ -3,7 +3,7 @@
 ## 当前阶段
 
 - 项目类型：C 端乐园 Taro 小程序。
-- 当前状态：Taro 工程骨架已初始化，分包目录已切为 `src/pkg-*`，构建与主包体积检查已通过。
+- 当前状态：Taro 工程骨架已初始化，主包页面已收敛到 `src/pages`，分包目录已切为 `src/pkg-*`，构建与主包体积检查已通过。
 
 ## 技术基线
 
@@ -22,6 +22,8 @@
 当前分包目录：`src/pkg-mall`、`src/pkg-member`、`src/pkg-hotel`、`src/pkg-ticket`、`src/pkg-dining`、`src/pkg-order`。
 
 ## 主包
+
+主包页面和 `tabBar` 页面固定放在 `src/pages`。
 
 主包允许全局 MobX、`request` 封装、轻量工具和极小基础能力；非必要业务代码不进入主包。
 

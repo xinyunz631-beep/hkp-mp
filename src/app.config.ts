@@ -1,9 +1,9 @@
 export default defineAppConfig({
   pages: [
-    'pages-tab/home/index',
-    'pages-tab/park/index',
-    'pages-tab/member/index',
-    'pages-tab/profile/index',
+    'pages/home/index',
+    'pages/park/index',
+    'pages/member/index',
+    'pages/profile/index',
   ],
   window: {
     backgroundTextStyle: 'light',
@@ -18,19 +18,19 @@ export default defineAppConfig({
     borderStyle: 'black',
     list: [
       {
-        pagePath: 'pages-tab/home/index',
+        pagePath: 'pages/home/index',
         text: '首页',
       },
       {
-        pagePath: 'pages-tab/park/index',
+        pagePath: 'pages/park/index',
         text: '乐园',
       },
       {
-        pagePath: 'pages-tab/member/index',
+        pagePath: 'pages/member/index',
         text: '会员',
       },
       {
-        pagePath: 'pages-tab/profile/index',
+        pagePath: 'pages/profile/index',
         text: '我的',
       },
     ],

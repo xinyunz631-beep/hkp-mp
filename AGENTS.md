@@ -14,7 +14,7 @@
 ## 目录职责
 
 - `src/app`：应用启动壳与全局配置。
-- `src/pages-tab`：主包 `tabBar` 占位页。
+- `src/pages`：主包页面，`tabBar` 页面必须直接放在这里。
 - `src/core`：允许进入主包的核心轻量能力。
 - `src/pkg-*`：业务独立分包，例如 `src/pkg-member`、`src/pkg-mall`。
 - `src/styles`：全局基础样式和设计变量。
