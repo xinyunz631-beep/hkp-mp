@@ -12,6 +12,7 @@
 - MobX：`6.15.0`
 - mobx-react：`9.2.1`
 - NutUI Taro React：`2.7.14`
+- Taro H5 开发端口：`18210`
 
 ## 分包
 
@@ -32,6 +33,8 @@
 当前主包估算体积：`0.38MB`。
 
 已新增 `yarn check:package-boundary`，提交前检查主包页面目录、分包 root、`preloadRule` 和主包 import 链。
+
+`yarn dev:weapp` 不占用 Web 端口；`yarn dev:h5` 固定运行在 `http://localhost:18210`。
 
 ## 风险
 

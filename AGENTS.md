@@ -25,6 +25,7 @@
 nvm use
 yarn install
 yarn dev:weapp
+yarn dev:h5 # http://localhost:18210
 yarn build:weapp
 yarn check:package-boundary
 yarn check:main-package

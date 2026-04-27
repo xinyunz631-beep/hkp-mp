@@ -10,7 +10,9 @@
   },
   "scripts": {
     "dev:weapp": "taro build --type weapp --watch",
+    "dev:h5": "taro build --type h5 --watch --port 18210",
     "build:weapp": "taro build --type weapp",
+    "build:h5": "taro build --type h5",
     "inspect:weapp": "taro build --type weapp --preview",
     "typecheck": "tsc --noEmit",
     "check:main-package": "node scripts/check-main-package-size.mjs",
