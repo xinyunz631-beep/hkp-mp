@@ -37,16 +37,19 @@
     "react-dom": "18.3.1"
   },
   "devDependencies": {
-    "@tarojs/cli": "4.2.0",
-    "@tarojs/service": "4.2.0",
-    "@tarojs/webpack5-runner": "4.2.0",
     "@babel/core": "7.29.0",
     "@babel/preset-react": "7.28.5",
+    "@pmmmwh/react-refresh-webpack-plugin": "0.6.2",
+    "@tarojs/cli": "4.2.0",
+    "@tarojs/plugin-platform-h5": "4.2.0",
+    "@tarojs/service": "4.2.0",
+    "@tarojs/webpack5-runner": "4.2.0",
     "@types/node": "25.6.0",
     "@types/react": "18.3.28",
     "@types/react-dom": "18.3.7",
     "babel-preset-taro": "4.2.0",
     "postcss": "8.5.10",
+    "react-refresh": "0.18.0",
     "sass": "1.99.0",
     "typescript": "6.0.3",
     "webpack": "5.91.0"
