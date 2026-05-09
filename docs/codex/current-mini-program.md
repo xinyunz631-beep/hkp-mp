@@ -12,7 +12,8 @@
 - MobX：`6.15.0`
 - mobx-react：`9.2.1`
 - NutUI Taro React：`2.7.14`
-- Taro H5 开发端口：`18210`
+- 当前验收端：微信小程序 `weapp`
+- 兼容策略：优先兼容微信小程序，不为了 H5 或其他端牺牲微信小程序实现习惯。
 
 ## 分包
 
@@ -28,13 +29,19 @@
 
 主包允许全局 MobX、`request` 封装、登录弹窗、鉴权动作容器、全局 loading、轻量工具和极小基础能力；非必要业务代码不进入主包。
 
-登录、请求封装、登录弹窗、全局 loading、基础格式化工具属于核心全局能力，固定放在 `src/core` 主包层。
+登录、请求封装、登录弹窗、登录守卫、微信授权薄封装、全局 loading、基础格式化工具属于核心全局能力，固定放在 `src/core` 主包层。
+
+`src/core/wechat/auth.ts` 收敛 `Taro.login`、`Taro.checkSession`、`Taro.getUserProfile` 和微信手机号授权结果解析；页面和业务 service 不直接散写微信授权细节。
+
+`src/core/services/auth.ts` 提供静默登录、手机号授权登录、资料授权登录、`requireLogin` 和 `withLoginGuard`，登录成功后可自动续执行原页面动作。
+
+`src/core/components/LoginPopup` 是主包全局登录弹窗，优先使用微信手机号快捷登录，资料授权登录作为兜底；`src/core/components/AuthAction` 用于页面按钮点击前触发登录守卫。
 
 当前主包估算体积：`0.38MB`。
 
 已新增 `yarn check:package-boundary`，提交前检查主包页面目录、分包 root、`preloadRule` 和主包 import 链。
 
-`yarn dev:weapp` 不占用 Web 端口；`yarn dev:h5` 固定运行在 `http://localhost:18210`。
+当前只按微信小程序 `weapp` 目标实现和验收，暂不维护 H5 开发入口。
 
 ## 风险
 

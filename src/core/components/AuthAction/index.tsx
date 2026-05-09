@@ -12,8 +12,10 @@ interface AuthActionProps extends PropsWithChildren {
 export function AuthAction({ reason, className, onAuthed, children }: AuthActionProps) {
   // 处理点击动作，已登录则继续执行业务回调。
   function handleClick() {
-    if (!requireLogin(reason)) return;
-    onAuthed();
+    requireLogin({
+      reason,
+      onSuccess: onAuthed,
+    });
   }
 
   return (

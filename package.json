@@ -10,9 +10,7 @@
   },
   "scripts": {
     "dev:weapp": "taro build --type weapp --watch",
-    "dev:h5": "taro build --type h5 --watch --port 18210",
     "build:weapp": "taro build --type weapp",
-    "build:h5": "taro build --type h5",
     "inspect:weapp": "taro build --type weapp --preview",
     "typecheck": "tsc --noEmit",
     "check:main-package": "node scripts/check-main-package-size.mjs",
@@ -41,7 +39,6 @@
     "@babel/preset-react": "7.28.5",
     "@pmmmwh/react-refresh-webpack-plugin": "0.6.2",
     "@tarojs/cli": "4.2.0",
-    "@tarojs/plugin-platform-h5": "4.2.0",
     "@tarojs/service": "4.2.0",
     "@tarojs/webpack5-runner": "4.2.0",
     "@types/node": "25.6.0",

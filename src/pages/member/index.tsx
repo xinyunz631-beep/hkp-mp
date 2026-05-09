@@ -3,13 +3,14 @@ import { Text, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
 import { AuthAction } from '@/core/components/AuthAction';
 import { PageShell } from '@/core/components/PageShell';
+import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { rootStore } from '@/core/store';
 
 // 渲染会员 tab 页面，仅展示全局会员态和分包入口。
 const MemberTabPage = observer(function MemberTabPage() {
   // 跳转会员分包，主包不 import 会员业务实现。
   function openMemberCenter() {
-    Taro.navigateTo({ url: '/pkg-member/pages/index/index' });
+    Taro.navigateTo({ url: MINI_PACKAGE_ROUTES.memberHome });
   }
 
   return (

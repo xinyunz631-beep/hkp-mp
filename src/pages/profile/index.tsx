@@ -3,6 +3,7 @@ import { Text, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
 import { AuthAction } from '@/core/components/AuthAction';
 import { PageShell } from '@/core/components/PageShell';
+import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { logout } from '@/core/services/auth';
 import { rootStore } from '@/core/store';
 
@@ -10,7 +11,7 @@ import { rootStore } from '@/core/store';
 const ProfilePage = observer(function ProfilePage() {
   // 跳转订单分包，主包不 import 订单业务实现。
   function openOrders() {
-    Taro.navigateTo({ url: '/pkg-order/pages/index/index' });
+    Taro.navigateTo({ url: MINI_PACKAGE_ROUTES.orderHome });
   }
 
   // 退出登录并保留当前页面。

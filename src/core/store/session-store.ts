@@ -1,8 +1,7 @@
 import { makeAutoObservable } from 'mobx';
+import { MINI_STORAGE_KEYS } from '@/core/constants/storage';
 import { getCache, removeCache, setCache } from '@/core/utils/cache';
 import type { LoginUserProfile } from '@/core/types/auth';
-
-const SESSION_CACHE_KEY = 'hkitty-mini-session';
 
 export interface SessionSnapshot {
   token: string;
@@ -28,19 +27,19 @@ export class SessionStore {
   setSession(token: string, user: LoginUserProfile) {
     this.token = token;
     this.user = user;
-    setCache<SessionSnapshot>(SESSION_CACHE_KEY, { token, user });
+    setCache<SessionSnapshot>(MINI_STORAGE_KEYS.session, { token, user });
   }
 
   // 清空登录态，用于退出登录或鉴权失效后的全局状态回收。
   clearSession() {
     this.token = '';
     this.user = undefined;
-    removeCache(SESSION_CACHE_KEY);
+    removeCache(MINI_STORAGE_KEYS.session);
   }
 
   // 从本地缓存恢复登录态，避免每次进入小程序都重复登录。
   restoreSession() {
-    const snapshot = getCache<SessionSnapshot>(SESSION_CACHE_KEY);
+    const snapshot = getCache<SessionSnapshot>(MINI_STORAGE_KEYS.session);
     if (!snapshot?.token || !snapshot.user) return;
 
     this.token = snapshot.token;

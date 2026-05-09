@@ -1,17 +1,18 @@
 import Taro from '@tarojs/taro';
 import { Text, View } from '@tarojs/components';
 import { PageShell } from '@/core/components/PageShell';
+import { MINI_PACKAGE_ROUTES, type MiniPackageRoute } from '@/core/constants/routes';
 
-const parkEntries = [
-  { title: '票务核验', desc: '查看门票、套餐和入园说明', path: '/pkg-ticket/pages/index/index' },
-  { title: '酒店服务', desc: '乐园酒店、行李和入住服务', path: '/pkg-hotel/pages/index/index' },
-  { title: '餐饮点单', desc: '园内餐厅、取餐和排队', path: '/pkg-dining/pages/index/index' },
+const parkEntries: Array<{ title: string; desc: string; path: MiniPackageRoute }> = [
+  { title: '票务核验', desc: '查看门票、套餐和入园说明', path: MINI_PACKAGE_ROUTES.ticketHome },
+  { title: '酒店服务', desc: '乐园酒店、行李和入住服务', path: MINI_PACKAGE_ROUTES.hotelHome },
+  { title: '餐饮点单', desc: '园内餐厅、取餐和排队', path: MINI_PACKAGE_ROUTES.diningHome },
 ];
 
 // 渲染乐园入口页，承载轻量导航和园区基础信息。
 function ParkPage() {
   // 跳转对应业务分包，主包仅持有路径。
-  function navigateTo(path: string) {
+  function navigateTo(path: MiniPackageRoute) {
     Taro.navigateTo({ url: path });
   }
 

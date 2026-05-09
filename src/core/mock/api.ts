@@ -1,3 +1,4 @@
+import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import type { LoginResult } from '@/core/types/auth';
 import type { HomeSummary } from '@/core/types/home';
 import { formatCurrency } from '@/core/utils/money';
@@ -31,18 +32,20 @@ const homeSummary: HomeSummary = {
     { label: '排队项目', value: '18', unit: '项' },
   ],
   services: [
-    { key: 'ticket', title: '门票预订', description: '日场、夜场、套票统一入口', path: '/pkg-ticket/pages/index/index' },
-    { key: 'hotel', title: '酒店度假', description: '乐园酒店、亲子房和套餐', path: '/pkg-hotel/pages/index/index' },
-    { key: 'mall', title: '乐园商城', description: '纪念品、雨具、亲子周边', path: '/pkg-mall/pages/index/index' },
-    { key: 'dining', title: '园内点餐', description: '餐厅排队、套餐和自提', path: '/pkg-dining/pages/index/index' },
-    { key: 'order', title: '我的订单', description: '票务、酒店、点餐订单', path: '/pkg-order/pages/index/index', requireLogin: true },
-    { key: 'member', title: '会员中心', description: '积分、等级、权益和卡券', path: '/pkg-member/pages/index/index', requireLogin: true },
+    { key: 'ticket', title: '门票预订', description: '日场、夜场、套票统一入口', path: MINI_PACKAGE_ROUTES.ticketHome },
+    { key: 'hotel', title: '酒店度假', description: '乐园酒店、亲子房和套餐', path: MINI_PACKAGE_ROUTES.hotelHome },
+    { key: 'mall', title: '乐园商城', description: '纪念品、雨具、亲子周边', path: MINI_PACKAGE_ROUTES.mallHome },
+    { key: 'dining', title: '园内点餐', description: '餐厅排队、套餐和自提', path: MINI_PACKAGE_ROUTES.diningHome },
+    { key: 'order', title: '我的订单', description: '票务、酒店、点餐订单', path: MINI_PACKAGE_ROUTES.orderHome, requireLogin: true },
+    { key: 'member', title: '会员中心', description: '积分、等级、权益和卡券', path: MINI_PACKAGE_ROUTES.memberHome, requireLogin: true },
   ],
 };
 
-const handlers: Record<string, () => unknown> = {
+const handlers: Record<string, (options: MockRequestOptions) => unknown> = {
   // 模拟静默登录接口，供 App 启动阶段建立会话。
   'POST /auth/silent-login': () => mockUser,
+  // 模拟微信手机号授权登录接口，供全局登录弹窗优先使用。
+  'POST /auth/phone-login': () => mockUser,
   // 模拟主动授权登录接口，供全局登录弹窗使用。
   'POST /auth/profile-login': () => mockUser,
   // 模拟首页聚合接口，保持主包只消费轻量数据。
@@ -71,5 +74,5 @@ export async function mockRequest<TResponse, TData = unknown>(
     throw new Error(`缺少接口处理器：${key}`);
   }
 
-  return handler() as TResponse;
+  return handler(options) as TResponse;
 }

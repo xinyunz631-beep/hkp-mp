@@ -6,6 +6,7 @@ import { AuthAction } from '@/core/components/AuthAction';
 import { PageShell } from '@/core/components/PageShell';
 import { fetchCurrentPark, fetchHomeSummary } from '@/core/services/home';
 import { rootStore } from '@/core/store';
+import type { MiniPackageRoute } from '@/core/constants/routes';
 import type { HomeSummary } from '@/core/types/home';
 
 // 渲染主包首页，展示轻量聚合数据和分包业务入口。
@@ -24,7 +25,7 @@ const HomePage = observer(function HomePage() {
   }, []);
 
   // 跳转到独立分包页面，主包只持有路径字符串不 import 业务代码。
-  function navigateToSubPackage(path: string) {
+  function navigateToSubPackage(path: MiniPackageRoute) {
     Taro.navigateTo({ url: path });
   }
 

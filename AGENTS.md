@@ -25,7 +25,6 @@
 nvm use
 yarn install
 yarn dev:weapp
-yarn dev:h5 # http://localhost:18210
 yarn build:weapp
 yarn check:package-boundary
 yarn check:main-package
@@ -35,5 +34,6 @@ yarn check:main-package
 
 - 主包只放启动壳、占位页、全局 MobX、`request`、轻量工具和极小基础能力。
 - 商城、会员、酒店、票务、点餐、订单业务代码默认放对应独立分包。
+- 优先兼容微信小程序 `weapp`，不为了 H5 或其他端做陌生抽象。
 - 所有实现函数、store action、service 方法必须写中文注释。
 - Git 提交信息必须使用中文。
