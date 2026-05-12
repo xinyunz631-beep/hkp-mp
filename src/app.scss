@@ -1,5 +1,22 @@
 @use './styles/tokens.scss' as *;
 
+page,
+view,
+text,
+button,
+scroll-view,
+image,
+input,
+textarea,
+picker,
+swiper,
+swiper-item,
+label,
+checkbox,
+radio {
+  box-sizing: border-box;
+}
+
 page {
   min-height: 100%;
   background: $color-page-bg;

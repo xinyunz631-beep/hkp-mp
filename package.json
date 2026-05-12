@@ -14,6 +14,7 @@
     "inspect:weapp": "taro build --type weapp --preview",
     "typecheck": "tsc --noEmit",
     "check:main-package": "node scripts/check-main-package-size.mjs",
+    "check:main-package:build": "node scripts/check-main-package-isolated.mjs",
     "check:package-boundary": "node scripts/check-package-boundary.mjs"
   },
   "dependencies": {
@@ -28,6 +29,7 @@
     "@tarojs/shared": "4.2.0",
     "@tarojs/taro": "4.2.0",
     "axios": "1.15.2",
+    "classnames": "2.5.1",
     "dayjs": "1.11.20",
     "mobx": "6.15.0",
     "mobx-react": "9.2.1",
