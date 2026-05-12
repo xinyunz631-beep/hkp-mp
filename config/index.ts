@@ -3,6 +3,9 @@ import path from 'node:path';
 import devConfig from './dev';
 import prodConfig from './prod';
 
+const styleTokensPath = path.resolve(__dirname, '..', 'src/styles/tokens.scss').replace(/\\/g, '/');
+const outputRoot = process.env.HKITTY_MP_OUTPUT_ROOT || 'dist';
+
 const baseConfig: UserConfigExport<'webpack5'> = {
   projectName: 'hkitty-mini-program',
   date: '2026-04-24',
@@ -13,7 +16,7 @@ const baseConfig: UserConfigExport<'webpack5'> = {
     828: 1.81 / 2,
   },
   sourceRoot: 'src',
-  outputRoot: 'dist',
+  outputRoot,
   framework: 'react',
   compiler: {
     type: 'webpack5',
@@ -24,6 +27,9 @@ const baseConfig: UserConfigExport<'webpack5'> = {
   mini: {
     optimizeMainPackage: {
       enable: true,
+    },
+    sassLoaderOption: {
+      additionalData: `@use "${styleTokensPath}" as *;`,
     },
     postcss: {
       pxtransform: {

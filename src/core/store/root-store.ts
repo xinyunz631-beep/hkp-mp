@@ -1,11 +1,11 @@
+import { AppStore } from './app-store';
+import { MemberStore } from './member-store';
 import { ParkStore } from './park-store';
-import { SessionStore } from './session-store';
-import { UiStore } from './ui-store';
 
 export class RootStore {
-  session = new SessionStore();
+  app = new AppStore();
+  member = new MemberStore();
   park = new ParkStore();
-  ui = new UiStore();
 }
 
 export const rootStore = new RootStore();

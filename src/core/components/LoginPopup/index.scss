@@ -4,6 +4,10 @@
   z-index: 999;
 }
 
+.login-popup--hidden {
+  display: none;
+}
+
 .login-popup__mask {
   position: absolute;
   inset: 0;
@@ -47,7 +51,7 @@
 .login-popup__primary {
   height: 88px;
   border-radius: 16px;
-  background: #0f766e;
+  background: $color-primary;
   color: #ffffff;
   font-size: 28px;
   font-weight: 700;
@@ -57,10 +61,10 @@
 .login-popup__secondary {
   height: 80px;
   margin-top: 12px;
-  border: 1px solid #cdded9;
+  border: 1px solid $color-border;
   border-radius: 16px;
   background: #f7fbfa;
-  color: #0f766e;
+  color: $color-primary;
   font-size: 26px;
   font-weight: 600;
   line-height: 80px;

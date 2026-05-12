@@ -21,3 +21,13 @@ export interface HomeSummary {
   metrics: HomeMetric[];
   services: HomeServiceEntry[];
 }
+
+export type CouponUsedCountResponse =
+  | undefined
+  | null
+  | number
+  | {
+      count?: number;
+      usedCount?: number;
+      total?: number;
+    };

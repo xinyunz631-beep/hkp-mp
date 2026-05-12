@@ -26,6 +26,7 @@ nvm use
 yarn install
 yarn dev:weapp
 yarn build:weapp
+yarn check:main-package:build
 yarn check:package-boundary
 yarn check:main-package
 ```
@@ -37,3 +38,4 @@ yarn check:main-package
 - 优先兼容微信小程序 `weapp`，不为了 H5 或其他端做陌生抽象。
 - 所有实现函数、store action、service 方法必须写中文注释。
 - Git 提交信息必须使用中文。
+- Codex 检测主包体积默认使用 `yarn check:main-package:build`，避免覆盖微信开发工具热更新使用的 `dist/`。

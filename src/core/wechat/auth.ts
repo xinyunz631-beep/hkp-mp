@@ -16,6 +16,15 @@ export interface WechatUserProfileCredential {
   userInfo?: Taro.UserInfo;
 }
 
+// 获取当前微信小程序 appId，异常时回落到项目配置里的默认 appId。
+export function getCurrentMiniProgramAppId(fallbackAppId: string) {
+  try {
+    return Taro.getAccountInfoSync().miniProgram.appId || fallbackAppId;
+  } catch {
+    return fallbackAppId;
+  }
+}
+
 // 检查微信登录态是否仍有效，用于决定是否复用本地会话。
 export async function checkWechatSessionValid() {
   try {

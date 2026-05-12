@@ -1,4 +1,4 @@
-.global-loading {
+.page-loading {
   position: fixed;
   inset: 0;
   z-index: 1000;
@@ -9,22 +9,26 @@
   background: rgba(255, 255, 255, 0.72);
 }
 
-.global-loading__spinner {
-  width: 52px;
-  height: 52px;
-  border: 6px solid rgba(15, 118, 110, 0.18);
-  border-top-color: #0f766e;
-  border-radius: 50%;
-  animation: global-loading-spin 0.8s linear infinite;
+.page-loading--hidden {
+  display: none;
 }
 
-.global-loading__text {
+.page-loading__spinner {
+  width: 52px;
+  height: 52px;
+  border: 6px solid $color-primary-alpha-soft;
+  border-top-color: $color-primary;
+  border-radius: 50%;
+  animation: page-loading-spin 0.8s linear infinite;
+}
+
+.page-loading__text {
   margin-top: 18px;
   font-size: 24px;
   color: #29423d;
 }
 
-@keyframes global-loading-spin {
+@keyframes page-loading-spin {
   from {
     transform: rotate(0deg);
   }

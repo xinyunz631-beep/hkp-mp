@@ -2,7 +2,7 @@
   "miniprogramRoot": "dist/",
   "projectname": "hkitty-mini-program",
   "description": "企业级乐园 C 端小程序",
-  "appid": "touristappid",
+  "appid": "wx00261f550fdbc7ea",
   "setting": {
     "urlCheck": true,
     "es6": true,

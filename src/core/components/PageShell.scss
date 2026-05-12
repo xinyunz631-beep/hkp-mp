@@ -1,32 +1,24 @@
 .page-shell {
-  min-height: 100vh;
-  padding: 40px 32px;
+  min-height: 100%;
+  // padding: 32px 32px 40px;
   box-sizing: border-box;
-  background: #f6f8f7;
-}
-
-.page-shell__title {
-  font-size: 40px;
-  font-weight: 700;
-  color: #16201d;
 }
 
 .page-shell__desc {
-  margin-top: 16px;
   font-size: 26px;
   line-height: 1.6;
   color: #5f6d68;
 }
 
 .page-shell__body {
-  margin-top: 32px;
+  // margin-top: 32px;
 }
 
 .page-shell__section {
   margin-top: 24px;
   padding: 28px;
   border-radius: 20px;
-  background: #ffffff;
+  background: $color-surface;
   box-shadow: 0 12px 32px rgba(12, 32, 28, 0.06);
 }
 

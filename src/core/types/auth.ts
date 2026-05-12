@@ -1,18 +1,16 @@
 export interface LoginUserProfile {
   id: string;
   nickname: string;
+  avatarUrl?: string;
   mobile: string;
   levelName: string;
   points: number;
 }
 
 export interface LoginResult {
-  token: string;
+  token?: string;
+  csession?: string;
   user: LoginUserProfile;
-}
-
-export interface SilentLoginPayload {
-  loginCode: string;
 }
 
 export interface PhoneLoginPayload {

@@ -1,6 +1,24 @@
-$color-page-bg: #f6f8f7;
+$color-primary: #db2777;
+$color-primary-stop-1: #f472b6;
+$color-primary-stop-2: $color-primary;
+$color-primary-pressed: #be185d;
+$color-primary-disabled: #f9a8d4;
+$color-primary-light: #fce7f3;
+$color-primary-light-pressed: #fbcfe8;
+$color-primary-text: #ffffff;
+$color-primary-alpha-soft: rgba($color-primary, 0.18);
+
+$color-page-bg: #fff7fb;
 $color-surface: #ffffff;
-$color-text-primary: #16201d;
-$color-text-secondary: #5f6d68;
-$color-brand: #0f766e;
-$color-border: #dbe4df;
+$color-surface-soft: #fff0f7;
+$color-text-primary: #24151d;
+$color-text-secondary: #765568;
+$color-border: #f3c6dc;
+
+$color-brand: $color-primary;
+$color-brand-light: $color-primary-light;
+$color-brand-pressed: $color-primary-pressed;
+$color-brand-disabled: $color-primary-disabled;
+
+$tabbar-height: 112px;
+$safe-bottom-spacer-height: 20Px;
