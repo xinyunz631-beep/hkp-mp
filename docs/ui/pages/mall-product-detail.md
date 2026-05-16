@@ -12,8 +12,8 @@
 - Figma nodeId：-
 - Pencil file：/Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
 - Pencil nodeId：mall-product-detail
-- 当前版本：v0.1
-- 页面状态：implementing
+- 当前版本：v0.2
+- 页面状态：implemented
 - 更新时间：2026-05-16
 - 实现文件：
   - src/pkg-mall/pages/product-detail/index.tsx
@@ -23,7 +23,7 @@
 
 ## 设计意图
 
-商品详情页面先按代码优先方式创建基础实现，后续根据截图、设计稿或业务规则持续更新。
+商品详情首版按截图实现轮播图、价格信息、优惠券、规格选择、评论、推荐和购买底栏。
 
 ## 页面结构
 
@@ -31,7 +31,8 @@
 - 页面容器：`PageShell`
 - 页面运行时：`usePageRuntime`
 - 页面状态订阅：`observer`
-- 内容区域：按本次业务需求实现
+- 内容区域：商品图集、价格标题、优惠券、规格参数、评论、推荐、详情图文。
+- 固定底部：首页/客服/购物车快捷入口与加入购物车、立即购买按钮。
 
 ## 动态与静态边界
 
@@ -57,7 +58,10 @@
 
 ## 交互与跳转
 
-- 按页面业务需求补充。
+- 加入购物车、立即购买统一通过 `SkuPopup` 选择规格和数量。
+- 立即购买跳转 `order-checkout` 骨架页。
+- 购物车入口进入 `mall-cart`。
+- 推荐商品进入 `mall-products` 或同类商品流程。
 
 ## 实现映射
 
@@ -67,6 +71,10 @@
 - `src/pkg-mall/services/product-detail.ts`：页面 service。
 
 ## 变更记录
+
+### v0.2
+
+- 按详情长页截图补齐图集、优惠、评论和购买底栏。
 
 ### v0.1
 

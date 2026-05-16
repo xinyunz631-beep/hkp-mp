@@ -12,8 +12,8 @@
 - Figma nodeId：-
 - Pencil file：/Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
 - Pencil nodeId：mall-cart
-- 当前版本：v0.1
-- 页面状态：implementing
+- 当前版本：v0.2
+- 页面状态：implemented
 - 更新时间：2026-05-16
 - 实现文件：
   - src/pkg-mall/pages/cart/index.tsx
@@ -23,7 +23,7 @@
 
 ## 设计意图
 
-购物车页面先按代码优先方式创建基础实现，后续根据截图、设计稿或业务规则持续更新。
+购物车首版按截图实现商户分组、勾选状态、数量步进器、猜你喜欢和底部结算栏。
 
 ## 页面结构
 
@@ -31,7 +31,8 @@
 - 页面容器：`PageShell`
 - 页面运行时：`usePageRuntime`
 - 页面状态订阅：`observer`
-- 内容区域：按本次业务需求实现
+- 内容区域：商户分组商品、活动标签、猜你喜欢双列卡片。
+- 固定底部：全选、金额汇总、结算/删除按钮。
 
 ## 动态与静态边界
 
@@ -57,7 +58,10 @@
 
 ## 交互与跳转
 
-- 按页面业务需求补充。
+- 右上角编辑可切换删除模式。
+- 商品勾选和数量修改实时更新底部金额。
+- 结算按钮进入 `order-checkout` 骨架页。
+- 猜你喜欢商品进入 `mall-product-detail`。
 
 ## 实现映射
 
@@ -67,6 +71,10 @@
 - `src/pkg-mall/services/cart.ts`：页面 service。
 
 ## 变更记录
+
+### v0.2
+
+- 按购物车截图补齐商户分组、数量修改和底部结算栏。
 
 ### v0.1
 

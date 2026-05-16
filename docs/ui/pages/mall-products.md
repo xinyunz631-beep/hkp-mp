@@ -12,8 +12,8 @@
 - Figma nodeId：-
 - Pencil file：/Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
 - Pencil nodeId：mall-products
-- 当前版本：v0.1
-- 页面状态：implementing
+- 当前版本：v0.2
+- 页面状态：implemented
 - 更新时间：2026-05-16
 - 实现文件：
   - src/pkg-mall/pages/products/index.tsx
@@ -23,7 +23,7 @@
 
 ## 设计意图
 
-商品列表页面先按代码优先方式创建基础实现，后续根据截图、设计稿或业务规则持续更新。
+商品列表首版按截图实现自定义搜索头、排序条、优惠提示条、商品列表和底部金额栏。
 
 ## 页面结构
 
@@ -31,7 +31,9 @@
 - 页面容器：`PageShell`
 - 页面运行时：`usePageRuntime`
 - 页面状态订阅：`observer`
-- 内容区域：按本次业务需求实现
+- 固定顶部：搜索头和四项筛选条。
+- 内容区域：优惠提示条和商品列表。
+- 固定底部：金额汇总和去购物车按钮。
 
 ## 动态与静态边界
 
@@ -57,7 +59,11 @@
 
 ## 交互与跳转
 
-- 按页面业务需求补充。
+- 返回按钮使用统一 `navigateBackOrHome()`。
+- 搜索框进入 `mall-search`。
+- 商品项进入 `mall-product-detail`。
+- 购物车按钮累加本地预览金额。
+- 底部按钮进入 `mall-cart`。
 
 ## 实现映射
 
@@ -67,6 +73,10 @@
 - `src/pkg-mall/services/products.ts`：页面 service。
 
 ## 变更记录
+
+### v0.2
+
+- 按列表截图补齐搜索头、商品列表和底部金额栏。
 
 ### v0.1
 

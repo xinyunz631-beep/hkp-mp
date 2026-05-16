@@ -3,8 +3,8 @@
 ## 当前状态
 
 - 更新时间：`2026-05-16`
-- 当前阶段：`Phase 2 - 通用组件和基础 mock service`
-- 当前分支：`feature/hkp-mini-phase-2-shared-components`
+- 当前阶段：`Phase 3 - 商城闭环`
+- 当前分支：`feature/hkp-mini-phase-3-mall-flow`
 - 基线提交：`36b7517 chore: 保存小程序当前开发基线`
 - 最近阶段提交：`92d810d feat: 建立 HKP 小程序页面骨架`
 - 总控 Skill：`/Users/kite/.codex/skills/hkp-mini-build/SKILL.md`
@@ -33,12 +33,16 @@
 - 已新增 `src/core/components/commerce` 交易通用组件，包含商品卡、订单卡、优惠券卡、地址卡、固定提交栏、数量选择、筛选 Tab、SKU 弹层和日期选择。
 - 已为商城、票务、酒店、餐饮、订单、会员分包补齐 `services/mock-data.ts` 和基础页面 service 返回值。
 - Phase 2 门禁已通过：`yarn typecheck`、`yarn check:page-convention`、`yarn check:package-boundary`、`yarn check:ui-contract`。
+- 已进入 `feature/hkp-mini-phase-3-mall-flow` 分支。
+- 已完成商城首页、商品列表、商品详情、购物车四个核心页面的首版 UI、mock 数据和跳转闭环。
+- 已补齐商城首页 service、商城页面所需 NutUI 图标外层封装，并保持 `AppImage` 空地址失败态占位策略。
+- Phase 3 当前轮轻量门禁已通过：`yarn typecheck`、`yarn check:page-convention`、`yarn check:package-boundary`、`yarn check:ui-contract`。
 
 ## 下一步
 
-1. 提交 Phase 2 成果。
-2. 创建 `feature/hkp-mini-phase-3-mall-flow` 分支。
-3. Phase 3 按 `$mpcode-page` 约束实现商城完整购买流。
+1. 提交商城核心购买链路首版成果。
+2. 继续补齐商城剩余辅助页面：搜索、分类、收藏、赠品、推荐。
+3. 收口 Phase 3 后进入票务、酒店、餐饮闭环。
 
 ## 恢复方式
 

@@ -1,10 +1,33 @@
 import { Image } from '@tarojs/components';
-import { ImageError, Share } from '@nutui/icons-react-taro';
+import {
+  ArrowLeft,
+  Cart,
+  CartAdd,
+  Filter,
+  Heart,
+  Home,
+  ImageError,
+  Orderlist,
+  Search,
+  Service,
+  Share,
+} from '@nutui/icons-react-taro';
 import classNames from 'classnames';
 import type { CSSProperties, ComponentType } from 'react';
 import './index.scss';
 
-export type AppIconName = 'imageError' | 'share';
+export type AppIconName =
+  | 'back'
+  | 'cart'
+  | 'cartAdd'
+  | 'filter'
+  | 'heart'
+  | 'home'
+  | 'imageError'
+  | 'order'
+  | 'search'
+  | 'service'
+  | 'share';
 
 interface AppIconProps {
   name: AppIconName;
@@ -21,7 +44,16 @@ type NutIconComponent = ComponentType<{
 }>;
 
 const nutIconMap: Record<AppIconName, NutIconComponent | undefined> = {
+  back: ArrowLeft,
+  cart: Cart,
+  cartAdd: CartAdd,
+  filter: Filter,
+  heart: Heart,
+  home: Home,
   imageError: ImageError,
+  order: Orderlist,
+  search: Search,
+  service: Service,
   share: Share,
 };
 
