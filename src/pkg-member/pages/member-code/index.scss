@@ -1,0 +1,116 @@
+._pg {
+  position: relative;
+  min-height: 100vh;
+  padding: 24px 28px 48px;
+  overflow: hidden;
+  box-sizing: border-box;
+  background: linear-gradient(180deg, #fff8fc 0%, #ffffff 34%, #f7fbff 100%);
+
+  &::before,
+  &::after {
+    position: absolute;
+    border-radius: 50%;
+    content: '';
+    pointer-events: none;
+    filter: blur(8px);
+  }
+
+  &::before {
+    top: -120px;
+    left: -96px;
+    width: 340px;
+    height: 340px;
+    background: radial-gradient(circle, rgba(255, 208, 229, 0.48) 0%, rgba(255, 208, 229, 0) 70%);
+  }
+
+  &::after {
+    right: -92px;
+    bottom: 72px;
+    width: 300px;
+    height: 300px;
+    background: radial-gradient(circle, rgba(202, 231, 255, 0.42) 0%, rgba(202, 231, 255, 0) 72%);
+  }
+
+  .page-shell,
+  .page-shell__body {
+    min-height: 100%;
+  }
+}
+
+._pg-shell {
+  min-height: 100%;
+}
+
+._pg-scene {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: calc(100vh - 72px);
+  padding-top: 54px;
+  box-sizing: border-box;
+}
+
+._pg-card {
+  position: relative;
+  width: 100%;
+  max-width: 694px;
+  padding: 30px 24px 28px;
+  overflow: hidden;
+  border: 1px solid rgba(246, 196, 222, 0.72);
+  border-radius: 36px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 18px 46px rgba(15, 23, 42, 0.12);
+  box-sizing: border-box;
+
+  &_halo {
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+
+    &--left {
+      top: 18px;
+      left: -44px;
+      width: 140px;
+      height: 140px;
+      background: radial-gradient(circle, rgba(255, 220, 235, 0.48) 0%, rgba(255, 220, 235, 0) 74%);
+    }
+
+    &--right {
+      top: 32px;
+      right: -36px;
+      width: 120px;
+      height: 120px;
+      background: radial-gradient(circle, rgba(215, 235, 255, 0.48) 0%, rgba(215, 235, 255, 0) 74%);
+    }
+  }
+}
+
+._pg-qrcode {
+  &_shell {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 420px;
+    border-radius: 28px;
+    background: linear-gradient(180deg, #ffffff 0%, #fff7fb 100%);
+    box-shadow: inset 0 0 0 1px rgba(247, 214, 231, 0.56);
+    box-sizing: border-box;
+  }
+
+  &_canvas {
+    width: 300px;
+    height: 300px;
+  }
+}
+
+._pg-hint {
+  margin-top: 28px;
+  color: #4e5667;
+  font-size: 24px;
+  line-height: 1.6;
+  text-align: center;
+}

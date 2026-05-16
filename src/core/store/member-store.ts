@@ -38,6 +38,12 @@ export class MemberStore {
     this.persistMember();
   }
 
+  // 仅清空后端请求凭证，不替页面决定手机号登录态。
+  clearCsession() {
+    this.csession = '';
+    this.persistMember();
+  }
+
   // 同步 V2 返回的会员资料，只有存在手机号时才视为真实登录资料。
   setProfileFromAuth(payload: Partial<LoginUserProfile> = {}) {
     const profile = buildLoginUserProfile(payload);
@@ -64,7 +70,7 @@ export class MemberStore {
     this.persistMember();
   }
 
-  // 清空会员登录态，用于退出登录或鉴权失效后的全局状态回收。
+  // 清空会员登录态，用于用户主动退出登录后的全局状态回收。
   clearMember() {
     this.csession = '';
     this.profile = undefined;
@@ -74,7 +80,7 @@ export class MemberStore {
   // 从本地缓存恢复会员状态，减少重复授权。
   restoreMember() {
     const snapshot = getCache<MemberSnapshot>(MINI_STORAGE_KEYS.member);
-    if (!snapshot?.csession) return;
+    if (!snapshot) return;
 
     this.csession = snapshot.csession;
     this.profile = snapshot.profile;

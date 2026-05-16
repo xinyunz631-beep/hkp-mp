@@ -1,139 +1,359 @@
-import { useEffect, useState } from 'react';
+import { CSSProperties, useState } from 'react';
 import Taro from '@tarojs/taro';
-import { Text, View } from '@tarojs/components';
+import { ScrollView, Swiper, SwiperItem, Text, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
-import { AuthAction } from '@/core/components/AuthAction';
+import { AppImage } from '@/core/components/AppImage';
 import { PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
-import { ensureLogin, logout, runAfterLogin, withLoginGuard } from '@/core/services/auth';
+import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import { fetchCouponUsedCount } from '@/core/services/home';
 import { rootStore } from '@/core/store';
+import { resolvePageChromeMetrics } from '@/core/utils/style';
 import type { MiniPackageRoute } from '@/core/constants/routes';
-import type { CouponUsedCountResponse, HomeServiceEntry } from '@/core/types/home';
+import './index.scss';
 
-const homeServices: HomeServiceEntry[] = [
-  { key: 'ticket', title: '门票预订', description: '日场、夜场、套票统一入口', path: MINI_PACKAGE_ROUTES.ticketHome },
-  { key: 'hotel', title: '酒店度假', description: '乐园酒店、亲子房和套餐', path: MINI_PACKAGE_ROUTES.hotelHome },
-  { key: 'mall', title: '乐园商城', description: '纪念品、雨具、亲子周边', path: MINI_PACKAGE_ROUTES.mallHome },
-  { key: 'dining', title: '园内点餐', description: '餐厅排队、套餐和自提', path: MINI_PACKAGE_ROUTES.diningHome },
-  { key: 'order', title: '我的订单', description: '票务、酒店、点餐订单', path: MINI_PACKAGE_ROUTES.orderHome, requireLogin: true },
-  { key: 'member', title: '会员中心', description: '积分、等级、权益和卡券', path: MINI_PACKAGE_ROUTES.memberHome, requireLogin: true },
-];
-
-// 归一化优惠券数量接口返回，兼容数字和对象两种轻量结构。
-function resolveCouponCount(response: CouponUsedCountResponse) {
-  if (!response) return 0;
-  if (typeof response === 'number') return response;
-  return response.count ?? response.usedCount ?? response.total ?? 0;
+interface HomeShortcutEntry {
+  key: string;
+  title: string;
+  path?: MiniPackageRoute;
+  requireLogin?: boolean;
+  toastTitle?: string;
 }
 
-// 渲染主包首页，展示轻量聚合数据和分包业务入口。
+interface HomeSectionCard {
+  key: string;
+  title: string;
+  description: string;
+  tag?: string;
+  rank?: string;
+}
+
+interface HomePlayCategory {
+  key: string;
+  title: string;
+}
+
+const shortcutEntries: HomeShortcutEntry[] = [
+  { key: 'exchange', title: '兑换专区', path: MINI_PACKAGE_ROUTES.memberHome, requireLogin: true },
+  { key: 'coupon', title: '领券中心', requireLogin: true, toastTitle: '登录后可查看卡券' },
+  { key: 'service', title: '服务专区', path: MINI_PACKAGE_ROUTES.ticketHome },
+  { key: 'mall', title: '官方商城', path: MINI_PACKAGE_ROUTES.mallHome },
+  { key: 'contact', title: '联系客服', toastTitle: '客服服务即将开放' },
+  { key: 'share', title: '分享收益', requireLogin: true, toastTitle: '登录后可查看收益' },
+  { key: 'guide', title: '导航至乐园', toastTitle: '导航服务即将开放' },
+  { key: 'map', title: '园内地图', toastTitle: '园内地图即将开放' },
+];
+
+const hotCards: HomeSectionCard[] = [
+  { key: 'wheel', title: '缤纷摩天轮', description: '日间游览人气路线', rank: 'top1' },
+  { key: 'river', title: '欢乐漂流', description: '亲子轻刺激项目', rank: 'top2' },
+];
+
+const activityCards: HomeSectionCard[] = [
+  { key: 'event', title: '限定主题活动', description: '活动时间、地点与预约状态实时更新', tag: '进行中' },
+];
+
+const recommendCards: HomeSectionCard[] = [
+  { key: 'traffic', title: '交通动线', description: '入园、停车与接驳指引', tag: '快速查看' },
+  { key: 'queue', title: '项目排队', description: '热门项目开放与等待', tag: '实时提醒' },
+];
+
+const playCategories: HomePlayCategory[] = [
+  { key: 'eat', title: '吃' },
+  { key: 'stay', title: '住' },
+  { key: 'go', title: '行' },
+  { key: 'play', title: '游' },
+  { key: 'shop', title: '购' },
+  { key: 'fun', title: '娱' },
+  { key: 'biz', title: '商' },
+  { key: 'learn', title: '学' },
+  { key: 'news', title: '情' },
+];
+
+const heroBannerEntries = [
+  { key: 'main' },
+  { key: 'event' },
+  { key: 'member' },
+];
+
+function renderHomeImage(className: string, src: string) {
+  return <AppImage className={className} src={src} mode="aspectFill" emptyState="error" />;
+}
+
+// 渲染主包首页，按当前 Pencil 750px 开发稿实现首页结构和接口图占位。
 const HomePage = observer(function HomePage() {
   const [couponCount, setCouponCount] = useState<number>();
+  const [chromeMetrics] = useState(resolvePageChromeMetrics);
+  const pageRuntime = usePageRuntime({
+    initPage: async () => {
+      const nextCouponCount = await fetchCouponUsedCount();
+      setCouponCount(nextCouponCount);
+    },
+  });
   const memberProfile = rootStore.member.profile;
-  const guardedMemberNavigate = withLoginGuard(
-    () => navigateToSubPackage(MINI_PACKAGE_ROUTES.memberHome),
-    '登录后可进入会员中心',
-  );
-
-  useEffect(() => {
-    // 加载真实优惠券数量，用于验证 CSESSION 授权后的业务接口链路。
-    async function loadCouponCount() {
-      const response = await fetchCouponUsedCount();
-      setCouponCount(resolveCouponCount(response));
-    }
-
-    loadCouponCount();
-  }, []);
+  const memberName = memberProfile?.nickname || '微信用户';
+  const memberLevel = memberProfile?.levelName || '初级会员';
+  const memberPoints = memberProfile?.points ?? 1280;
+  const couponBadgeText = typeof couponCount === 'number' ? `优惠券 ${couponCount}张` : '优惠券 8张';
+  const heroBannerImageSrc = '';
+  const shortcutImageSrc = '';
+  const openTimeImageSrc = '';
+  const rankImageSrc = '';
+  const activityImageSrc = '';
+  const recommendImageSrc = '';
+  const memberBenefitImageSrc = '';
+  const playCategoryImageSrc = '';
+  const fixedNavStyle: CSSProperties = {
+    paddingTop: `${chromeMetrics.statusBarHeight + chromeMetrics.headerContentTopGap}px`,
+    paddingRight: `${chromeMetrics.menuRightReserve + 18}px`,
+  };
 
   // 跳转到独立分包页面，主包只持有路径字符串不 import 业务代码。
   function navigateToSubPackage(path: MiniPackageRoute) {
     Taro.navigateTo({ url: path });
   }
 
-  // 打开当前页面登录弹窗，用于验证任意事件都能触发登录。
-  function handleOpenLogin() {
-    rootStore.app.openLogin('登录后可继续使用会员服务');
-  }
-
-  // 在页面方法内先等待登录，登录成功后继续原业务动作。
-  async function handleMethodGuard() {
-    const authed = await ensureLogin('登录后可继续完成当前操作');
-    if (!authed) return;
-
+  // 展示轻量业务提示，用于当前尚未接入真实页面的入口。
+  function showBusinessToast(title: string) {
     Taro.showToast({
-      title: '操作已继续',
-      icon: 'success',
-    });
-  }
-
-  // 使用通用续执行封装验证登录后的自动回调。
-  async function handleAutoContinue() {
-    await runAfterLogin(async () => {
-      Taro.showToast({
-        title: '已继续处理',
-        icon: 'success',
-      });
-    }, '登录后可继续处理');
-  }
-
-  // 退出当前会员态，用于反复验证未登录和已登录流程。
-  function handleLogout() {
-    logout();
-    Taro.showToast({
-      title: '已退出',
+      title,
       icon: 'none',
     });
   }
 
-  return (
-    <PageShell title="乐园首页" description="票务、会员、商城和园区服务入口。">
-      <View className="page-shell__section">
-        <View className="page-shell__section-title">今日概览</View>
-        <View className="home-metrics">
-          <View className="home-metric">
-            <Text className="home-metric__value">{couponCount ?? '-'}</Text>
-            <Text className="home-metric__label">已用优惠券</Text>
-          </View>
-        </View>
-      </View>
+  // 登录后执行业务动作，避免页面散写登录字段判断。
+  async function runAfterLogin(reason: string, handler: () => void) {
+    const authed = await pageRuntime.ensureLogin(reason);
+    if (!authed) return;
 
-      <View className="page-shell__section">
-        <View className="page-shell__section-title">登录能力验证</View>
-        <View className="home-auth-panel">
-          <View className="home-auth-panel__row">
-            <Text className="home-auth-panel__label">会员状态</Text>
-            <Text className="home-auth-panel__value">{rootStore.member.isLoggedIn ? '已登录' : '未登录'}</Text>
+    handler();
+  }
+
+  // 点击快捷入口时根据配置选择分包跳转、登录守卫或业务提示。
+  async function handleShortcutPress(entry: HomeShortcutEntry) {
+    const action = () => {
+      if (entry.path) {
+        navigateToSubPackage(entry.path);
+        return;
+      }
+
+      showBusinessToast(entry.toastTitle || `${entry.title}即将开放`);
+    };
+
+    if (entry.requireLogin) {
+      await runAfterLogin(entry.toastTitle || `登录后可使用${entry.title}`, action);
+      return;
+    }
+
+    action();
+  }
+
+  // 点击签到按钮，未登录时先拉起登录弹窗。
+  async function handleSignIn() {
+    await runAfterLogin('登录后可完成签到', () => {
+      Taro.showToast({
+        title: '签到成功',
+        icon: 'success',
+      });
+    });
+  }
+
+  // 打开搜索入口，等待真实搜索服务接入。
+  function handleSearch() {
+    showBusinessToast('搜索服务即将开放');
+  }
+
+  // 扫码入口暂未接入真实能力，先用业务提示占位。
+  function handleScan() {
+    showBusinessToast('扫码服务即将开放');
+  }
+
+  // 会员福利入口保留登录守卫。
+  async function handleMemberBenefitPress() {
+    await runAfterLogin('登录后可查看会员专享福利', () => {
+      navigateToSubPackage(MINI_PACKAGE_ROUTES.memberHome);
+    });
+  }
+
+  // 当前首页仅保留开园时间卡，不再展示交通指南 / 乐园导览双按钮。
+  function handleSchedulePress() {
+    showBusinessToast('详情日程即将开放');
+  }
+
+  return pageRuntime.renderPage(() => (
+    <View className="_pg">
+      <PageShell title="首页" navbar={false} className="_pg-shell" scrollViewProps={{}}>
+        <View className="_pg-page">
+          <View className="_pg-nav" style={fixedNavStyle}>
+            <View className="_pg-nav_scan" onClick={handleScan}>
+              <View className="_pg-nav_scan-icon" />
+            </View>
+            <View className="_pg-nav_search" onClick={handleSearch}>
+              <View className="_pg-nav_search-icon" />
+              <Text className="_pg-nav_search-placeholder">搜索项目 / 演出 / 餐饮</Text>
+            </View>
           </View>
-          <View className="home-auth-panel__row">
-            <Text className="home-auth-panel__label">会员手机</Text>
-            <Text className="home-auth-panel__value">{memberProfile?.mobile || '登录后展示'}</Text>
+
+          <View className="_pg-hero">
+            <Swiper className="_pg-hero_banner" autoplay circular interval={4500}>
+              {heroBannerEntries.map((entry) => (
+                <SwiperItem key={entry.key}>
+                  <View className="_pg-hero_banner-slide">
+                    {renderHomeImage('_pg-hero_banner-image', heroBannerImageSrc)}
+                  </View>
+                </SwiperItem>
+              ))}
+            </Swiper>
+            <View className="_pg-hero_fade" />
           </View>
-          <View className="home-auth-panel__row">
-            <Text className="home-auth-panel__label">服务状态</Text>
-            <Text className="home-auth-panel__value">{rootStore.member.hasCsession ? '已就绪' : '准备中'}</Text>
-          </View>
-          <View className="home-auth-actions">
-            <View className="home-auth-action" onClick={handleOpenLogin}>
-              <Text>打开登录</Text>
+
+          <View className="_pg-content">
+            <View className="_pg-member-card">
+              <View className="_pg-member-card_header">
+                <View>
+                  <Text className="_pg-member-card_hello">{memberName}，您好！</Text>
+                  <Text className="_pg-member-card_level">1 {memberLevel}</Text>
+                </View>
+                <View className="_pg-member-card_right">
+                  <Text className="_pg-member-card_coupon">{couponBadgeText}</Text>
+                  <Text className="_pg-member-card_points">乐园积分 {memberPoints}</Text>
+                </View>
+              </View>
+
+              <View className="_pg-shortcuts">
+                {shortcutEntries.map((entry) => (
+                  <View className="_pg-shortcut" key={entry.key} onClick={() => handleShortcutPress(entry)}>
+                    {renderHomeImage('_pg-shortcut_art', shortcutImageSrc)}
+                  </View>
+                ))}
+              </View>
             </View>
-            <View className="home-auth-action" onClick={handleMethodGuard}>
-              <Text>操作前登录</Text>
+
+            <View className="_pg-open-card" onClick={handleSchedulePress}>
+              {renderHomeImage('_pg-open-card_image', openTimeImageSrc)}
+              <View className="_pg-open-card_content">
+                <View className="_pg-open-card_line">
+                  <Text className="_pg-open-card_title">今日开园时间：</Text>
+                  <Text className="_pg-open-card_time">10:00~17:00</Text>
+                  <Text className="_pg-open-card_phone">（详情请咨询4009778899）</Text>
+                </View>
+                <Text className="_pg-open-card_desc">详细节目单，欢迎戳一戳~</Text>
+              </View>
             </View>
-            <View className="home-auth-action" onClick={handleAutoContinue}>
-              <Text>登录后继续</Text>
+
+            <View className="_pg-section _pg-section--rank">
+              <View className="_pg-section_header">
+                <View className="_pg-section_title-wrap">
+                  <Text className="_pg-section_mark">♡</Text>
+                  <Text className="_pg-section_title">热玩榜单</Text>
+                </View>
+                <View className="_pg-section_more">
+                  <Text>查看全部</Text>
+                  <Text className="_pg-section_arrow">›</Text>
+                </View>
+              </View>
+              <ScrollView className="_pg-rank_scroll" scrollX enhanced showScrollbar={false}>
+                <View className="_pg-rank_track">
+                  {hotCards.map((card, index) => (
+                    <View
+                      className={`_pg-rank-card ${index === 0 ? '_pg-rank-card--primary' : '_pg-rank-card--peek'}`}
+                      key={card.key}
+                    >
+                      {renderHomeImage('_pg-rank-card_image', rankImageSrc)}
+                      {card.rank ? (
+                        <View className="_pg-rank-card_rank">
+                          <Text>{card.rank}</Text>
+                        </View>
+                      ) : null}
+                      <View className="_pg-rank-card_body">
+                        <Text className="_pg-rank-card_title">{card.title}</Text>
+                        <Text className="_pg-rank-card_desc">{card.description}</Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              </ScrollView>
             </View>
-            <View className="home-auth-action" onClick={guardedMemberNavigate}>
-              <Text>守卫入口</Text>
+
+            <View className="_pg-section">
+              <View className="_pg-section_header">
+                <View className="_pg-section_title-wrap">
+                  <Text className="_pg-section_mark">✦</Text>
+                  <Text className="_pg-section_title">精选活动</Text>
+                </View>
+                <View className="_pg-section_more">
+                  <Text>查看全部</Text>
+                  <Text className="_pg-section_arrow">›</Text>
+                </View>
+              </View>
+              {activityCards.map((card) => (
+                <View className="_pg-feature-card" key={card.key}>
+                  {renderHomeImage('_pg-feature-card_image', activityImageSrc)}
+                  <View className="_pg-feature-card_body">
+                    <View>
+                      <Text className="_pg-feature-card_title">{card.title}</Text>
+                      <Text className="_pg-feature-card_desc">{card.description}</Text>
+                    </View>
+                    {card.tag ? <Text className="_pg-feature-card_tag">{card.tag}</Text> : null}
+                  </View>
+                </View>
+              ))}
             </View>
-            <View className="home-auth-action home-auth-action--ghost" onClick={handleLogout}>
-              <Text>退出登录</Text>
+
+            <View className="_pg-section">
+              <View className="_pg-section_header">
+                <View className="_pg-section_title-wrap">
+                  <Text className="_pg-section_mark">✦</Text>
+                  <Text className="_pg-section_title">精彩推荐</Text>
+                </View>
+                <View className="_pg-section_more">
+                  <Text>查看全部</Text>
+                  <Text className="_pg-section_arrow">›</Text>
+                </View>
+              </View>
+              <View className="_pg-card-grid">
+                {recommendCards.map((card) => (
+                  <View className="_pg-guide-card" key={card.key}>
+                    {renderHomeImage('_pg-guide-card_image', recommendImageSrc)}
+                    <View className="_pg-guide-card_body">
+                      <Text className="_pg-guide-card_title">{card.title}</Text>
+                      <Text className="_pg-guide-card_desc">{card.description}</Text>
+                      {card.tag ? <Text className="_pg-guide-card_tag">{card.tag}</Text> : null}
+                    </View>
+                  </View>
+                ))}
+              </View>
+            </View>
+
+            <View className="_pg-benefit-card" onClick={handleMemberBenefitPress}>
+              {renderHomeImage('_pg-benefit-card_image', memberBenefitImageSrc)}
+            </View>
+
+            <View className="_pg-section _pg-section--last">
+              <View className="_pg-section_header">
+                <View className="_pg-section_title-wrap">
+                  <Text className="_pg-section_mark">▱</Text>
+                  <Text className="_pg-section_title">玩转乐园</Text>
+                </View>
+                <View className="_pg-section_more">
+                  <Text>查看全部</Text>
+                  <Text className="_pg-section_arrow">›</Text>
+                </View>
+              </View>
+              <View className="_pg-play_grid">
+                {playCategories.map((category) => (
+                  <View className="_pg-play-card" key={category.key}>
+                    {renderHomeImage('_pg-play-card_image', playCategoryImageSrc)}
+                    <Text className="_pg-play-card_title">{category.title}</Text>
+                  </View>
+                ))}
+              </View>
             </View>
           </View>
         </View>
-      </View>
-    </PageShell>
-  );
+      </PageShell>
+    </View>
+  ));
 });
 
 export default HomePage;

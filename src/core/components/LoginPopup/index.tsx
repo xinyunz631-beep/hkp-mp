@@ -2,6 +2,7 @@ import Taro from '@tarojs/taro';
 import { Button, View, type BaseEventOrig, type ButtonProps } from '@tarojs/components';
 import { observer } from 'mobx-react';
 import { useEffect } from 'react';
+import { AppPopup } from '@/core/components/AppPopup';
 import { loginWithPhoneNumber, loginWithProfile } from '@/core/services/auth';
 import { rootStore } from '@/core/store';
 import { parseWechatPhoneCredential } from '@/core/wechat/auth';
@@ -11,7 +12,7 @@ import './index.scss';
 export const LoginPopup = observer(function LoginPopup() {
   const isLoggedIn = rootStore.member.isLoggedIn;
   const loginVisible = rootStore.app.loginVisible;
-  const hidden = !loginVisible || isLoggedIn;
+  const visible = loginVisible && !isLoggedIn;
 
   useEffect(() => {
     if (loginVisible && isLoggedIn) {
@@ -44,8 +45,7 @@ export const LoginPopup = observer(function LoginPopup() {
   }
 
   return (
-    <View className={hidden ? 'login-popup login-popup--hidden' : 'login-popup'} aria-hidden={hidden}>
-      <View className="login-popup__mask" onClick={handleCancel} />
+    <AppPopup visible={visible} className="login-popup" contentClassName="login-popup__content" onClose={handleCancel}>
       <View className="login-popup__panel">
         <View className="login-popup__title">登录乐园会员</View>
         <View className="login-popup__desc">{rootStore.app.loginReason}</View>
@@ -64,6 +64,6 @@ export const LoginPopup = observer(function LoginPopup() {
           暂不登录
         </Button>
       </View>
-    </View>
+    </AppPopup>
   );
 });

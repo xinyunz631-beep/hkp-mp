@@ -16,6 +16,7 @@ interface PageShellProps extends PropsWithChildren {
   footer?: ReactNode;
   bottom?: ReactNode;
   share?: ReactNode;
+  runtimeNode?: ReactNode;
   reserveTabBarSpace?: boolean;
   scrollViewProps?: PageLayoutProps['scrollViewProps'];
 }
@@ -137,6 +138,7 @@ export function PageShell({
   footer,
   bottom,
   share,
+  runtimeNode,
   reserveTabBarSpace = true,
   scrollViewProps,
   children,
@@ -153,10 +155,10 @@ export function PageShell({
       footer={layoutFooter}
       share={layoutShare}
       tabBar={reserveTabBarSpace ? <AppTabBar /> : undefined}
+      runtimeNode={runtimeNode}
       scrollViewProps={scrollViewProps}
     >
       <View className="page-shell">
-        {description ? <View className="page-shell__desc">{description}</View> : null}
         {slots.content.length > 0 ? <View className="page-shell__body">{slots.content}</View> : null}
       </View>
     </PageLayout>

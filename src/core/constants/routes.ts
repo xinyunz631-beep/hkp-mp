@@ -8,8 +8,10 @@ export const MINI_MAIN_ROUTES = {
 export const MINI_PACKAGE_ROUTES = {
   mallHome: '/pkg-mall/pages/index/index',
   memberHome: '/pkg-member/pages/index/index',
+  memberCode: '/pkg-member/pages/member-code/index',
   hotelHome: '/pkg-hotel/pages/index/index',
   ticketHome: '/pkg-ticket/pages/index/index',
+  ticketBooking: '/pkg-ticket/pages/ticket-booking/index',
   diningHome: '/pkg-dining/pages/index/index',
   orderHome: '/pkg-order/pages/index/index',
 } as const;

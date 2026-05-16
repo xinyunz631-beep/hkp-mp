@@ -1,0 +1,79 @@
+.base-exception {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 28px;
+  box-sizing: border-box;
+  text-align: center;
+}
+
+.base-exception--fullscreen {
+  min-height: 100vh;
+  background: $color-page-bg;
+}
+
+.base-exception__mark {
+  width: 112px;
+  height: 112px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 56px;
+  background: $color-primary-light;
+}
+
+.base-exception__mark--server {
+  background: #fff2e8;
+}
+
+.base-exception__mark--empty {
+  background: $color-surface-soft;
+}
+
+.base-exception__mark-text {
+  color: $color-primary;
+  font-size: 56px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.base-exception__title {
+  margin-top: 28px;
+  color: $color-text-primary;
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.base-exception__description {
+  max-width: 520px;
+  margin-top: 12px;
+  color: $color-text-secondary;
+  font-size: 24px;
+  line-height: 1.5;
+}
+
+.base-exception__action {
+  min-width: 176px;
+  min-height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 32px;
+  padding: 0 28px;
+  border-radius: 36px;
+  background: $color-primary;
+  box-sizing: border-box;
+}
+
+.base-exception__action--disabled {
+  opacity: 0.5;
+}
+
+.base-exception__action-text {
+  color: #ffffff;
+  font-size: 26px;
+  font-weight: 700;
+}

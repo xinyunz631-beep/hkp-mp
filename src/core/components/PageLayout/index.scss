@@ -56,8 +56,11 @@
   z-index: 10;
   // padding: 20px 32px;
   box-sizing: border-box;
-  // background: $color-surface;
   // border-top: 1px solid rgba(243, 198, 220, 0.72);
+}
+
+.page-layout__footer--content {
+  background: $color-surface;
 }
 
 .page-layout--with-tabbar .page-layout__footer {

@@ -1,12 +1,13 @@
 .page-navbar {
   width: 100%;
-  padding-left: 12px;
+  padding-left: 12Px;
   box-sizing: border-box;
   background: $color-surface;
   border-bottom: 1px solid rgba(243, 198, 220, 0.72);
 }
 
 .page-navbar__content {
+  position: relative;
   display: flex;
   align-items: center;
   min-width: 0;
@@ -16,17 +17,54 @@
 .page-navbar__left,
 .page-navbar__right {
   flex: none;
+  height: 100%;
+}
+
+.page-navbar__left {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 96px;
+}
+
+.page-navbar__back {
+  display: flex;
+  align-items: center;
+  // justify-content: center;
+  height: 100%;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.page-navbar__back-icon {
+  display: block;
+  flex: none;
+}
+
+.page-navbar__back-hitbox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 22px;
 }
 
 .page-navbar__title {
-  min-width: 0;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  max-width: calc(100% - 192px);
   overflow: hidden;
+  transform: translate(-50%, -50%);
   color: $color-text-primary;
   font-size: 32px;
   font-weight: 700;
   line-height: 1.2;
   text-overflow: ellipsis;
   white-space: nowrap;
+  text-align: center;
+  pointer-events: none;
 }
 
 .page-navbar__right {

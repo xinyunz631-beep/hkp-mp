@@ -1,0 +1,21 @@
+.page-runtime-host {
+  height: 0;
+  overflow: visible;
+}
+
+.page-runtime-host__login,
+.page-runtime-host__loading {
+  height: 0;
+  overflow: visible;
+}
+
+.page-runtime-host__loading {
+  visibility: visible;
+  opacity: 1;
+}
+
+.page-runtime-host__loading--hidden {
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+}

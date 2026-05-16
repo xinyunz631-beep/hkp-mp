@@ -1,0 +1,71 @@
+.base-skeleton {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  --nutui-skeleton-background: #edf1f5;
+  --nutui-skeleton-line-height: 22px;
+  --nutui-skeleton-line-border-radius: 12px;
+}
+
+.base-skeleton__item {
+  width: 100%;
+}
+
+.base-skeleton--block,
+.base-skeleton--circle {
+  gap: 0;
+}
+
+.base-skeleton .nut-skeleton {
+  position: relative;
+  overflow: hidden;
+}
+
+.base-skeleton .nut-skeleton-animation {
+  left: -64%;
+  width: 64%;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0));
+  animation: base-skeleton-shimmer 1.35s ease-in-out infinite;
+  transform: translateX(0);
+}
+
+.base-skeleton .nut-skeleton-content {
+  width: 100%;
+}
+
+.base-skeleton .nut-skeleton-content-line {
+  gap: 12px;
+}
+
+.base-skeleton .nut-skeleton-content .nut-skeleton-block {
+  margin-top: 0;
+}
+
+.base-skeleton .nut-skeleton-title {
+  border-radius: 12px;
+}
+
+.base-skeleton--circle .nut-skeleton-content {
+  align-items: center;
+  justify-content: center;
+}
+
+.base-skeleton--circle .nut-skeleton-content-line {
+  display: none;
+}
+
+.base-skeleton--circle .nut-avatar {
+  margin-right: 0 !important;
+  background: var(--nutui-skeleton-background, #edf1f5) !important;
+}
+
+@keyframes base-skeleton-shimmer {
+  0% {
+    transform: translateX(0);
+  }
+
+  100% {
+    transform: translateX(310%);
+  }
+}

@@ -3,7 +3,6 @@ import classNames from 'classnames';
 import Taro, { useDidHide, useDidShow, useResize } from '@tarojs/taro';
 import { ScrollView, View } from '@tarojs/components';
 import type { ScrollViewProps } from '@tarojs/components';
-import { PageRuntimeHost } from '@/core/components/PageRuntimeHost';
 import {
   resolveRectHeight,
   resolveWindowHeight,
@@ -22,6 +21,7 @@ export interface PageLayoutProps extends PropsWithChildren {
   bottom?: ReactNode;
   share?: ReactNode;
   tabBar?: ReactNode;
+  runtimeNode?: ReactNode;
   scrollViewProps?: PageLayoutScrollViewProps;
 }
 
@@ -40,6 +40,7 @@ export function PageLayout({
   bottom,
   share,
   tabBar,
+  runtimeNode,
   scrollViewProps,
   className,
   children,
@@ -54,6 +55,7 @@ export function PageLayout({
   const footerId = `${layoutId}-footer`;
   const hasScrollView = Boolean(scrollViewProps);
   const footerNode = footer ?? bottom;
+  const hasFooterContent = Boolean(footerNode);
 
   // 重新测量顶部和底部固定区域高度，供中间占位和滚动容器使用。
   const measureLayoutChrome = useCallback(() => {
@@ -123,36 +125,22 @@ export function PageLayout({
   );
 
   return (
-    <PageRuntimeHost>
-      <View className={layoutClassName}>
-        {header ? (
-          <View className="page-layout__header" id={headerId}>
-            {header}
-          </View>
-        ) : null}
-        {hasScrollView ? (
-          <ScrollView
-            {...scrollViewProps}
-            className="page-layout__scroll"
-            style={scrollViewStyle}
-            scrollY
-            enableFlex={scrollViewProps?.enableFlex ?? true}
-            enhanced={scrollViewProps?.enhanced ?? true}
-            showScrollbar={scrollViewProps?.showScrollbar ?? false}
-          >
-            <View className="page-layout__content">
-              {headerHeight > 0 ? (
-                <View className="page-layout__content-spacer page-layout__content-spacer--header" style={{ height: `${headerHeight}px` }} />
-              ) : null}
-              {children}
-              {footerHeight > 0 ? (
-                <View className="page-layout__content-spacer page-layout__content-spacer--footer" style={{ height: `${footerHeight}px` }} />
-              ) : null}
-              {tabBar ? <View className="page-layout__content-spacer page-layout__content-spacer--tabbar" /> : null}
-              {bottomSafeAreaNeeded ? <View className="page-layout__content-spacer page-layout__content-spacer--safe-bottom" /> : null}
-            </View>
-          </ScrollView>
-        ) : (
+    <View className={layoutClassName}>
+      {header ? (
+        <View className="page-layout__header" id={headerId}>
+          {header}
+        </View>
+      ) : null}
+      {hasScrollView ? (
+        <ScrollView
+          {...scrollViewProps}
+          className="page-layout__scroll"
+          style={scrollViewStyle}
+          scrollY
+          enableFlex={scrollViewProps?.enableFlex ?? true}
+          enhanced={scrollViewProps?.enhanced ?? true}
+          showScrollbar={scrollViewProps?.showScrollbar ?? false}
+        >
           <View className="page-layout__content">
             {headerHeight > 0 ? (
               <View className="page-layout__content-spacer page-layout__content-spacer--header" style={{ height: `${headerHeight}px` }} />
@@ -164,16 +152,29 @@ export function PageLayout({
             {tabBar ? <View className="page-layout__content-spacer page-layout__content-spacer--tabbar" /> : null}
             {bottomSafeAreaNeeded ? <View className="page-layout__content-spacer page-layout__content-spacer--safe-bottom" /> : null}
           </View>
-        )}
-        {footerNode ? (
-          <View className="page-layout__footer" id={footerId}>
-            {footerNode}
-            {bottomSafeAreaNeeded && !tabBar ? <View className="page-layout__footer-safe-bottom-spacer" /> : null}
-          </View>
-        ) : null}
-        {share ? <View className="page-layout__share">{share}</View> : null}
-        {tabBar ? <View className="page-layout__tabbar">{tabBar}</View> : null}
-      </View>
-    </PageRuntimeHost>
+        </ScrollView>
+      ) : (
+        <View className="page-layout__content">
+          {headerHeight > 0 ? (
+            <View className="page-layout__content-spacer page-layout__content-spacer--header" style={{ height: `${headerHeight}px` }} />
+          ) : null}
+          {children}
+          {footerHeight > 0 ? (
+            <View className="page-layout__content-spacer page-layout__content-spacer--footer" style={{ height: `${footerHeight}px` }} />
+          ) : null}
+          {tabBar ? <View className="page-layout__content-spacer page-layout__content-spacer--tabbar" /> : null}
+          {bottomSafeAreaNeeded ? <View className="page-layout__content-spacer page-layout__content-spacer--safe-bottom" /> : null}
+        </View>
+      )}
+      {hasFooterContent ? (
+        <View className={classNames('page-layout__footer', hasFooterContent && 'page-layout__footer--content')} id={footerId}>
+          {footerNode}
+          {bottomSafeAreaNeeded && !tabBar ? <View className="page-layout__footer-safe-bottom-spacer" /> : null}
+        </View>
+      ) : null}
+      {share ? <View className="page-layout__share">{share}</View> : null}
+      {tabBar ? <View className="page-layout__tabbar">{tabBar}</View> : null}
+      {runtimeNode}
+    </View>
   );
 }

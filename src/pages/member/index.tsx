@@ -4,10 +4,12 @@ import { observer } from 'mobx-react';
 import { AuthAction } from '@/core/components/AuthAction';
 import { PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
+import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import { rootStore } from '@/core/store';
 
 // 渲染会员 tab 页面，仅展示全局会员态和分包入口。
 const MemberTabPage = observer(function MemberTabPage() {
+  const pageRuntime = usePageRuntime();
   const memberProfile = rootStore.member.profile;
 
   // 跳转会员分包，主包不 import 会员业务实现。
@@ -15,7 +17,7 @@ const MemberTabPage = observer(function MemberTabPage() {
     Taro.navigateTo({ url: MINI_PACKAGE_ROUTES.memberHome });
   }
 
-  return (
+  return pageRuntime.renderPage(() => (
     <PageShell title="会员" description="会员等级、积分和权益入口。">
       <View className="page-shell__section">
         <View className="page-shell__section-title">{memberProfile?.nickname || '游客'}</View>
@@ -29,7 +31,7 @@ const MemberTabPage = observer(function MemberTabPage() {
         </AuthAction>
       </View>
     </PageShell>
-  );
+  ));
 });
 
 export default MemberTabPage;

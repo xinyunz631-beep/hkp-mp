@@ -105,8 +105,8 @@ export function withLoginGuard<TArgs extends unknown[]>(
   return (...args: TArgs) => {
     requireLogin({
       reason,
-      onSuccess: () => {
-        void handler(...args);
+      onSuccess: async () => {
+        await handler(...args);
       },
     });
   };

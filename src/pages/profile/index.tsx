@@ -4,11 +4,13 @@ import { observer } from 'mobx-react';
 import { AuthAction } from '@/core/components/AuthAction';
 import { PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
+import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import { logout } from '@/core/services/auth';
 import { rootStore } from '@/core/store';
 
 // 渲染个人中心主包页，承载账户入口和轻量设置能力。
 const ProfilePage = observer(function ProfilePage() {
+  const pageRuntime = usePageRuntime();
   const memberProfile = rootStore.member.profile;
 
   // 跳转订单分包，主包不 import 订单业务实现。
@@ -21,7 +23,7 @@ const ProfilePage = observer(function ProfilePage() {
     logout();
   }
 
-  return (
+  return pageRuntime.renderPage(() => (
     <PageShell title="我的" description="账户、订单和会员服务入口。">
       <View className="page-shell__section">
         <View className="page-shell__section-title">{memberProfile?.nickname || '未登录'}</View>
@@ -44,7 +46,7 @@ const ProfilePage = observer(function ProfilePage() {
         ) : null}
       </View>
     </PageShell>
-  );
+  ));
 });
 
 export default ProfilePage;

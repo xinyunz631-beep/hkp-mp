@@ -1,0 +1,93 @@
+version: 1
+updatedAt: "2026-05-15"
+pages:
+  home:
+    title: 首页
+    route: src/pages/home
+    status: implementing
+    spec: docs/ui/pages/home.md
+    design:
+      currentTool: pencil
+      approval: homepage-spec-draft
+      figma:
+        url: https://www.figma.com/design/LCJbfpQmHoCR5RdKTYcf0O/hkp-team?node-id=7-110
+        fileKey: LCJbfpQmHoCR5RdKTYcf0O
+        nodeId: "7:110"
+        name: 页面-首页/750开发稿
+        width: 750
+        note: 首页开发稿使用独立页面看板；同文件全局设计规范看板 nodeId=7:6，当前仅作参考来源。首页当前已按最新版本进入实现阶段。
+      pencil:
+        file: /Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
+        nodeId: CJZyH
+        name: 首页 750px 可开发稿
+        width: 750
+        role: active-source
+        note: 首页首屏继续按最新参考图收紧中，当前关注透明顶部导航、图标化快捷入口、上图下文开园时间卡和无文案会员码。
+    implementation:
+      files:
+        - src/pages/home/index.tsx
+        - src/pages/home/index.scss
+      verification:
+        - yarn typecheck
+        - yarn check:page-convention
+        - yarn check:package-boundary
+        - yarn check:ui-contract
+        - yarn build:weapp
+  member-code:
+    title: 会员码
+    route: src/pkg-member/pages/member-code
+    status: implemented
+    spec: docs/ui/pages/member-code.md
+    design:
+      currentTool: pencil
+      approval: member-code-spec-draft
+      pencil:
+        file: /Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
+        nodeId: member-code-page
+        name: 会员码 750px 开发稿
+        width: 750
+        role: active-source
+        note: 会员码页面先按代码优先方式落地，后续如补画板再同步更新这里。
+    implementation:
+      files:
+        - src/pkg-member/pages/member-code/index.tsx
+        - src/pkg-member/pages/member-code/index.scss
+        - src/pkg-member/pages/member-code/index.config.ts
+        - src/pkg-member/services/member-code.ts
+        - src/core/constants/routes.ts
+        - src/core/components/AppTabBar/index.tsx
+        - src/app.config.ts
+      verification:
+        - yarn typecheck
+        - yarn check:page-convention
+        - yarn check:package-boundary
+        - yarn check:ui-contract
+  ticket-booking:
+    title: 门票预定
+    route: src/pkg-ticket/pages/ticket-booking
+    status: implemented
+    spec: docs/ui/pages/ticket-booking.md
+    design:
+      currentTool: pencil
+      approval: screenshot-implementation-draft
+      pencil:
+        file: /Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
+        nodeId: ticket-booking
+        name: 门票预定 750px 开发稿
+        width: 750
+        role: active-source
+        note: 本版按用户提供截图在代码侧完成首版还原；顶部自定义栏、景区图、开园信息、游玩日期、年卡商品和固定提交栏已落地。
+    implementation:
+      files:
+        - src/pkg-ticket/pages/ticket-booking/index.tsx
+        - src/pkg-ticket/pages/ticket-booking/index.scss
+        - src/pkg-ticket/pages/ticket-booking/index.config.ts
+        - src/pkg-ticket/services/ticket-booking.ts
+        - src/core/constants/routes.ts
+        - src/core/components/AppTabBar/index.tsx
+        - src/app.config.ts
+      verification:
+        - yarn typecheck
+        - yarn check:page-convention
+        - yarn check:package-boundary
+        - yarn check:ui-contract

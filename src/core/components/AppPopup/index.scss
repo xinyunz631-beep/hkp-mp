@@ -1,0 +1,214 @@
+.nut-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(8, 18, 15, 0.45);
+  z-index: var(--nutui-overlay-zIndex, 999);
+}
+
+.nut-overlay-slide-enter-active,
+.nut-overlay-slide-appear-active {
+  animation: app-popup-fade-in var(--app-popup-duration, 0.3s) both;
+}
+
+.nut-overlay-slide-exit-active {
+  animation: app-popup-fade-out var(--app-popup-duration, 0.3s) both;
+}
+
+.nut-popup {
+  position: fixed;
+  max-height: 100%;
+  overflow-y: auto;
+  color: $color-text-primary;
+  font-size: 28px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.nut-popup-bottom,
+.nut-popup-top {
+  max-height: 83%;
+}
+
+.nut-popup-bottom {
+  bottom: 0;
+  left: 0;
+  width: 100%;
+}
+
+.nut-popup-center {
+  top: 50%;
+  left: 50%;
+  min-height: 0;
+  transform: translate3d(-50%, -50%, 0);
+}
+
+.nut-popup-top {
+  top: 0;
+  left: 0;
+  width: 100%;
+}
+
+.nut-popup-left {
+  top: 0;
+  left: 0;
+}
+
+.nut-popup-right {
+  top: 0;
+  right: 0;
+}
+
+.nut-popup-slide-bottom-enter-active,
+.nut-popup-slide-bottom-appear-active {
+  transform: translate3d(0, 0, 0);
+  animation: app-popup-slide-bottom-in var(--app-popup-duration, 0.3s) both;
+}
+
+.nut-popup-slide-bottom-exit,
+.nut-popup-slide-bottom-exit-active {
+  animation: app-popup-slide-bottom-out var(--app-popup-duration, 0.3s) both;
+}
+
+.nut-popup-slide-top-enter-active,
+.nut-popup-slide-top-appear-active {
+  transform: translate3d(0, 0, 0);
+  animation: app-popup-slide-top-in var(--app-popup-duration, 0.3s) both;
+}
+
+.nut-popup-slide-top-exit-active {
+  animation: app-popup-slide-top-out var(--app-popup-duration, 0.3s) both;
+}
+
+.nut-popup-slide-left-enter-active,
+.nut-popup-slide-left-appear-active {
+  transform: translate3d(0, 0, 0);
+  animation: app-popup-slide-left-in var(--app-popup-duration, 0.3s) both;
+}
+
+.nut-popup-slide-left-exit-active,
+.nut-popup-slide-left-exit-done {
+  animation: app-popup-slide-left-out var(--app-popup-duration, 0.3s) both;
+}
+
+.nut-popup-slide-right-enter-active,
+.nut-popup-slide-right-appear-active {
+  transform: translate3d(0, 0, 0);
+  animation: app-popup-slide-right-in var(--app-popup-duration, 0.3s) both;
+}
+
+.nut-popup-slide-right-exit,
+.nut-popup-slide-right-exit-active {
+  animation: app-popup-slide-right-out var(--app-popup-duration, 0.3s) both;
+}
+
+.nut-popup-slide-center-enter-active,
+.nut-popup-slide-center-appear-active {
+  animation: app-popup-fade-in var(--app-popup-duration, 0.3s) both;
+}
+
+.nut-popup-slide-center-exit-active {
+  animation: app-popup-fade-out var(--app-popup-duration, 0.3s) both;
+}
+
+.nut-popup-slide-center-exit-done.nut-popup,
+.nut-popup-slide-left-exit-done.nut-popup,
+.nut-popup-slide-right-exit-done.nut-popup,
+.nut-popup-slide-top-exit-done.nut-popup,
+.nut-popup-slide-bottom-exit-done.nut-popup {
+  display: none;
+}
+
+.app-popup {
+  min-height: 0;
+  background: transparent;
+}
+
+.app-popup__content {
+  width: 100%;
+}
+
+@keyframes app-popup-fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes app-popup-fade-out {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes app-popup-slide-bottom-in {
+  from {
+    transform: translate3d(0, 100%, 0);
+  }
+
+  to {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes app-popup-slide-bottom-out {
+  to {
+    transform: translate3d(0, 100%, 0);
+  }
+}
+
+@keyframes app-popup-slide-top-in {
+  from {
+    transform: translate3d(0, -100%, 0);
+  }
+
+  to {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes app-popup-slide-top-out {
+  to {
+    transform: translate3d(0, -100%, 0);
+  }
+}
+
+@keyframes app-popup-slide-left-in {
+  from {
+    transform: translate3d(-100%, 0, 0);
+  }
+
+  to {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes app-popup-slide-left-out {
+  to {
+    transform: translate3d(-100%, 0, 0);
+  }
+}
+
+@keyframes app-popup-slide-right-in {
+  from {
+    transform: translate3d(100%, 0, 0);
+  }
+
+  to {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes app-popup-slide-right-out {
+  to {
+    transform: translate3d(100%, 0, 0);
+  }
+}

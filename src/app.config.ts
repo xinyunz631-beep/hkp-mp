@@ -47,7 +47,7 @@ export default defineAppConfig({
       root: 'pkg-member',
       name: 'member',
       independent: true,
-      pages: ['pages/index/index'],
+      pages: ['pages/index/index', 'pages/member-code/index'],
     },
     {
       root: 'pkg-hotel',
@@ -59,7 +59,7 @@ export default defineAppConfig({
       root: 'pkg-ticket',
       name: 'ticket',
       independent: true,
-      pages: ['pages/index/index'],
+      pages: ['pages/index/index', 'pages/ticket-booking/index'],
     },
     {
       root: 'pkg-dining',
