@@ -12,8 +12,8 @@
 - Figma nodeId：-
 - Pencil file：/Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
 - Pencil nodeId：order-review-create
-- 当前版本：v0.1
-- 页面状态：implementing
+- 当前版本：v0.2
+- 页面状态：implemented
 - 更新时间：2026-05-16
 - 实现文件：
   - src/pkg-order/pages/review-create/index.tsx
@@ -23,7 +23,7 @@
 
 ## 设计意图
 
-创建评价页面先按代码优先方式创建基础实现，后续根据截图、设计稿或业务规则持续更新。
+创建评价页面按 `review-create.png` 完成商品头图、标签切换、评价输入区、图片上传占位、匿名评价和底部提交按钮，先打通订单评价入口。
 
 ## 页面结构
 
@@ -31,7 +31,7 @@
 - 页面容器：`PageShell`
 - 页面运行时：`usePageRuntime`
 - 页面状态订阅：`observer`
-- 内容区域：按本次业务需求实现
+- 内容区域：商品信息、评价标签、输入区、图片上传区、匿名评价、底部提交按钮。
 
 ## 动态与静态边界
 
@@ -53,11 +53,14 @@
 
 | 模块 | service | 失败策略 | 是否阻断页面 |
 |---|---|---|---|
-| 页面数据 | `fetchReviewCreateData()` | service 内归一和兜底 | 按业务决定 |
+| 页面数据 | `fetchReviewCreateData()` | service 内归一和兜底 | 是 |
 
 ## 交互与跳转
 
-- 按页面业务需求补充。
+- 标签支持本地切换高亮态。
+- 文本输入支持本地字数统计。
+- 图片上传、删除和评价提交当前先保留交互位并提示能力即将开放。
+- 订单首页里的“去评价”已串到当前页。
 
 ## 实现映射
 
@@ -68,10 +71,19 @@
 
 ## 变更记录
 
+### v0.2
+
+- 按 `review-create.png` 完成评价晒单首版 UI。
+- 补齐评价标签、图片占位、匿名开关和底部提交按钮。
+- 已接入订单首页的去评价跳转。
+
 ### v0.1
 
 - 初始化页面基础实现。
 
 ## 验证记录
 
-- 待验证。
+- `yarn typecheck`
+- `yarn check:page-convention`
+- `yarn check:package-boundary`
+- `yarn check:ui-contract`

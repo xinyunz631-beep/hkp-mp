@@ -39,6 +39,7 @@
 - `PageLayout` 的 footer 只有存在真实 footer/bottom 内容时才渲染固定区域，并默认给整个 footer 区域白色背景，确保底部操作栏和安全区占位视觉连续。
 - 页面涉及底部固定栏、footer、弹层底部操作区时，不要再在页面或组件里追加 `env(safe-area-inset-bottom)`；安全区由 `PageLayout / layout` 统一承接，页面只写业务需要的常规 padding。
 - 全局 loading、popup、runtime host、toast bridge、页面级 overlay 等全局状态组件，最外层 host 节点必须常驻渲染；显示隐藏只控制下一层真实节点或 class，避免 `PageLayout` / `ScrollView` 周边节点增删导致滚动回到顶部。
+- 分包默认不要开启 `independent: true`；独立分包不会继承主包 `app.scss -> app.wxss/app-origin.wxss` 的全局样式，只有明确需要独立启动能力时才单独评估开启。
 
 ## 页面样式规则
 

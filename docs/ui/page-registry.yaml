@@ -572,7 +572,7 @@ pages:
   order-address:
     title: 地址管理
     route: src/pkg-order/pages/address
-    status: implementing
+    status: implemented
     spec: docs/ui/pages/order-address.md
     design:
       currentTool: pencil
@@ -583,7 +583,7 @@ pages:
         name: 地址管理 750px 开发稿
         width: 750
         role: active-source
-        note: 代码优先创建页面，后续按截图或设计稿继续同步。
+        note: 已按 address-list.png 完成地址卡、默认地址切换、编辑删除占位和底部新增按钮首版。
     implementation:
       files:
         - src/pkg-order/pages/address/index.tsx
@@ -728,7 +728,7 @@ pages:
   order-logistics:
     title: 物流详情
     route: src/pkg-order/pages/logistics
-    status: implementing
+    status: implemented
     spec: docs/ui/pages/order-logistics.md
     design:
       currentTool: pencil
@@ -739,7 +739,7 @@ pages:
         name: 物流详情 750px 开发稿
         width: 750
         role: active-source
-        note: 代码优先创建页面，后续按截图或设计稿继续同步。
+        note: 已按 logistics-detail.png 完成物流信息卡、金额汇总、确认收货按钮和时间线首版。
     implementation:
       files:
         - src/pkg-order/pages/logistics/index.tsx
@@ -754,7 +754,7 @@ pages:
   order-review-create:
     title: 创建评价
     route: src/pkg-order/pages/review-create
-    status: implementing
+    status: implemented
     spec: docs/ui/pages/order-review-create.md
     design:
       currentTool: pencil
@@ -765,7 +765,7 @@ pages:
         name: 创建评价 750px 开发稿
         width: 750
         role: active-source
-        note: 代码优先创建页面，后续按截图或设计稿继续同步。
+        note: 已按 review-create.png 完成评价晒单首版，包含标签、输入区、图片上传占位和匿名评价。
     implementation:
       files:
         - src/pkg-order/pages/review-create/index.tsx
@@ -780,7 +780,7 @@ pages:
   order-review-list:
     title: 评价列表
     route: src/pkg-order/pages/review-list
-    status: implementing
+    status: implemented
     spec: docs/ui/pages/order-review-list.md
     design:
       currentTool: pencil
@@ -791,7 +791,7 @@ pages:
         name: 评价列表 750px 开发稿
         width: 750
         role: active-source
-        note: 代码优先创建页面，后续按截图或设计稿继续同步。
+        note: 已按 review-list.png 完成评价列表首版，包含筛选标签、评论内容和图片宫格。
     implementation:
       files:
         - src/pkg-order/pages/review-list/index.tsx

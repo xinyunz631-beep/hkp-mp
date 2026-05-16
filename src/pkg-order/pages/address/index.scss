@@ -10,11 +10,120 @@
 ._pg-shell {
   min-height: 100vh;
   box-sizing: border-box;
-  background: $color-page-bg;
+  background: #f7f7f9;
 }
 
 ._pg-content {
-  min-height: 240px;
-  padding: 32px;
+  min-height: 100%;
+  padding: 28px 32px 40px;
   box-sizing: border-box;
+  background: #f7f7f9;
+}
+
+._pg-card {
+  padding: 34px 20px 0 20px;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 12px 28px rgba(17, 24, 39, 0.04);
+
+  & + & {
+    margin-top: 24px;
+  }
+
+  &_header {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+  }
+
+  &_name,
+  &_mobile {
+    color: #23262f;
+    font-size: 32px;
+    line-height: 1.4;
+  }
+
+  &_name {
+    font-weight: 600;
+  }
+
+  &_detail {
+    display: block;
+    margin-top: 22px;
+    padding-bottom: 28px;
+    border-bottom: 1px solid #edf0f4;
+    color: #9ca3af;
+    font-size: 24px;
+    line-height: 1.5;
+  }
+
+  &_footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 100px;
+  }
+
+  &_default {
+    display: inline-flex;
+    align-items: center;
+  }
+
+  &_check {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border: 2px solid #d94a88;
+    border-radius: 50%;
+    box-sizing: border-box;
+
+    &--active {
+      background: #d94a88;
+    }
+  }
+
+  &_default-text {
+    margin-left: 14px;
+    color: #9ca3af;
+    font-size: 24px;
+    line-height: 1.4;
+
+    &--active {
+      color: #8b909a;
+    }
+  }
+
+  &_actions {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+  }
+
+  &_action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+  }
+}
+
+._pg-footer {
+  padding: 22px 64px 28px;
+  background: #ffffff;
+
+  &_button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 84px;
+    border-radius: 999px;
+    background: #d94a88;
+    color: #ffffff;
+    font-size: 30px;
+    font-weight: 600;
+    line-height: 1;
+  }
 }

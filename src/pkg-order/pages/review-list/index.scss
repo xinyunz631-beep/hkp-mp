@@ -10,11 +10,100 @@
 ._pg-shell {
   min-height: 100vh;
   box-sizing: border-box;
-  background: $color-page-bg;
+  background: #f6f7f9;
 }
 
 ._pg-content {
-  min-height: 240px;
-  padding: 32px;
+  min-height: 100%;
   box-sizing: border-box;
+  background: #f6f7f9;
+}
+
+._pg-filters {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 24px 32px 28px;
+  border-bottom: 1px solid #edf0f4;
+  background: #ffffff;
+
+  &_item {
+    min-width: 156px;
+    height: 48px;
+    padding: 0 18px;
+    border: 1px solid #3a414c;
+    border-radius: 999px;
+    box-sizing: border-box;
+    color: #6b7280;
+    font-size: 22px;
+    line-height: 46px;
+    text-align: center;
+
+    &--active {
+      border-color: #f7adbf;
+      background: #f7adbf;
+      color: #ffffff;
+    }
+  }
+}
+
+._pg-list {
+  padding-bottom: 24px;
+}
+
+._pg-review {
+  margin-top: 18px;
+  padding: 34px 32px 36px;
+  background: #ffffff;
+
+  &_header {
+    display: flex;
+    align-items: center;
+  }
+
+  &_avatar {
+    flex: none;
+    width: 54px;
+    height: 54px;
+    border-radius: 50%;
+    overflow: hidden;
+  }
+
+  &_name {
+    margin-left: 18px;
+    color: #23262f;
+    font-size: 30px;
+    line-height: 1.4;
+  }
+
+  &_time {
+    display: block;
+    margin-top: 24px;
+    color: #9ca3af;
+    font-size: 22px;
+    line-height: 1.4;
+  }
+
+  &_content {
+    display: block;
+    margin-top: 18px;
+    color: #3d4451;
+    font-size: 24px;
+    line-height: 1.65;
+  }
+
+  &_images {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px;
+    margin-top: 24px;
+  }
+
+  &_image {
+    flex: none;
+    width: 158px;
+    height: 158px;
+    border-radius: 12px;
+    overflow: hidden;
+  }
 }

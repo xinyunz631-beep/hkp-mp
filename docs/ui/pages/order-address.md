@@ -12,8 +12,8 @@
 - Figma nodeId：-
 - Pencil file：/Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
 - Pencil nodeId：order-address
-- 当前版本：v0.1
-- 页面状态：implementing
+- 当前版本：v0.2
+- 页面状态：implemented
 - 更新时间：2026-05-16
 - 实现文件：
   - src/pkg-order/pages/address/index.tsx
@@ -23,7 +23,7 @@
 
 ## 设计意图
 
-地址管理页面先按代码优先方式创建基础实现，后续根据截图、设计稿或业务规则持续更新。
+地址管理页面按 `address-list.png` 完成首版地址卡、默认地址切换、编辑/删除图标位和底部新增按钮，先满足订单确认页的地址跳转闭环。
 
 ## 页面结构
 
@@ -31,7 +31,7 @@
 - 页面容器：`PageShell`
 - 页面运行时：`usePageRuntime`
 - 页面状态订阅：`observer`
-- 内容区域：按本次业务需求实现
+- 内容区域：地址卡列表、默认地址切换区、编辑删除入口、底部新增按钮。
 
 ## 动态与静态边界
 
@@ -53,11 +53,13 @@
 
 | 模块 | service | 失败策略 | 是否阻断页面 |
 |---|---|---|---|
-| 页面数据 | `fetchAddressData()` | service 内归一和兜底 | 按业务决定 |
+| 页面数据 | `fetchAddressData()` | service 内归一和兜底 | 是 |
 
 ## 交互与跳转
 
-- 按页面业务需求补充。
+- 点击默认地址可切换当前选中项。
+- 编辑、删除和新增地址当前先保留交互位并提示能力即将开放。
+- 该页作为 `order-checkout` 的地址管理入口，后续真实接口只替换 service。
 
 ## 实现映射
 
@@ -68,10 +70,19 @@
 
 ## 变更记录
 
+### v0.2
+
+- 按 `address-list.png` 完成地址管理首版 UI。
+- 补齐两条 mock 地址，并支持本地默认地址切换。
+- 底部新增按钮已接入固定 footer 区域，安全区继续由 `PageLayout` 统一承接。
+
 ### v0.1
 
 - 初始化页面基础实现。
 
 ## 验证记录
 
-- 待验证。
+- `yarn typecheck`
+- `yarn check:page-convention`
+- `yarn check:package-boundary`
+- `yarn check:ui-contract`

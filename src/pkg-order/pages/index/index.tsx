@@ -13,6 +13,12 @@ function showComingSoon(title: string) {
   Taro.showToast({ title, icon: 'none' });
 }
 
+function resolveOrderActionRoute(actionText: string) {
+  if (actionText === '去评价') return MINI_PACKAGE_ROUTES.orderReviewCreate;
+  if (actionText === '查看物流') return MINI_PACKAGE_ROUTES.orderLogistics;
+  return '';
+}
+
 const OrderIndexPage = observer(function OrderIndexPage() {
   const [pageData, setPageData] = useState<OrderHomeData>();
   const [activeTabKey, setActiveTabKey] = useState('all');
@@ -75,6 +81,13 @@ const OrderIndexPage = observer(function OrderIndexPage() {
                         className="_pg-order-item_button"
                         onClick={(event) => {
                           event.stopPropagation();
+                          const nextRoute = resolveOrderActionRoute(item.actionText);
+
+                          if (nextRoute) {
+                            Taro.navigateTo({ url: nextRoute });
+                            return;
+                          }
+
                           showComingSoon(`${item.actionText}即将开放`);
                         }}
                       >

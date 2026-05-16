@@ -305,7 +305,7 @@
   display: flex;
   align-items: center;
   gap: 24px;
-  padding: 18px 24px calc(18px + env(safe-area-inset-bottom));
+  padding: 18px 24px;
   box-sizing: border-box;
   background: #ffffff;
   box-shadow: 0 -12px 28px rgba(22, 32, 29, 0.08);
@@ -429,7 +429,7 @@
 }
 
 .hkp-sku-popup {
-  padding: 28px 28px calc(28px + env(safe-area-inset-bottom));
+  padding: 28px 28px 28px;
   border-radius: 28px 28px 0 0;
   background: #ffffff;
 

@@ -1,14 +1,20 @@
 import { Image } from '@tarojs/components';
 import {
   ArrowLeft,
+  ArrowRight,
   Cart,
   CartAdd,
+  Check,
+  Close,
+  Del,
+  Edit,
   List,
   Filter,
   Heart,
   Home,
   ImageError,
   Orderlist,
+  Photograph,
   Search,
   Service,
   Share,
@@ -18,15 +24,21 @@ import type { CSSProperties, ComponentType } from 'react';
 import './index.scss';
 
 export type AppIconName =
+  | 'arrowRight'
   | 'back'
   | 'cart'
   | 'cartAdd'
+  | 'check'
+  | 'close'
+  | 'delete'
+  | 'edit'
   | 'filter'
   | 'heart'
   | 'home'
   | 'imageError'
   | 'list'
   | 'order'
+  | 'photograph'
   | 'search'
   | 'service'
   | 'share';
@@ -46,15 +58,21 @@ type NutIconComponent = ComponentType<{
 }>;
 
 const nutIconMap: Record<AppIconName, NutIconComponent | undefined> = {
+  arrowRight: ArrowRight,
   back: ArrowLeft,
   cart: Cart,
   cartAdd: CartAdd,
+  check: Check,
+  close: Close,
+  delete: Del,
+  edit: Edit,
   filter: Filter,
   heart: Heart,
   home: Home,
   imageError: ImageError,
   list: List,
   order: Orderlist,
+  photograph: Photograph,
   search: Search,
   service: Service,
   share: Share,

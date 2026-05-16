@@ -12,8 +12,8 @@
 - Figma nodeId：-
 - Pencil file：/Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
 - Pencil nodeId：order-logistics
-- 当前版本：v0.1
-- 页面状态：implementing
+- 当前版本：v0.2
+- 页面状态：implemented
 - 更新时间：2026-05-16
 - 实现文件：
   - src/pkg-order/pages/logistics/index.tsx
@@ -23,7 +23,7 @@
 
 ## 设计意图
 
-物流详情页面先按代码优先方式创建基础实现，后续根据截图、设计稿或业务规则持续更新。
+物流详情页面按 `logistics-detail.png` 完成首版物流信息卡、金额汇总、确认收货按钮和纵向物流轨迹，用于订单列表里的发货订单跳转。
 
 ## 页面结构
 
@@ -31,7 +31,7 @@
 - 页面容器：`PageShell`
 - 页面运行时：`usePageRuntime`
 - 页面状态订阅：`observer`
-- 内容区域：按本次业务需求实现
+- 内容区域：物流信息卡、订单金额汇总、确认收货按钮、物流时间线。
 
 ## 动态与静态边界
 
@@ -53,11 +53,13 @@
 
 | 模块 | service | 失败策略 | 是否阻断页面 |
 |---|---|---|---|
-| 页面数据 | `fetchLogisticsData()` | service 内归一和兜底 | 按业务决定 |
+| 页面数据 | `fetchLogisticsData()` | service 内归一和兜底 | 是 |
 
 ## 交互与跳转
 
-- 按页面业务需求补充。
+- “确认收货”当前先提示能力即将开放。
+- 物流轨迹首条高亮，后续接真实物流接口时只替换 service 返回。
+- 订单首页里的“查看物流”已串到当前页。
 
 ## 实现映射
 
@@ -68,10 +70,19 @@
 
 ## 变更记录
 
+### v0.2
+
+- 按 `logistics-detail.png` 完成物流详情首版 UI。
+- 补齐物流公司、快递单号、客服电话、金额和轨迹 mock 字段。
+- 已接入订单首页的查看物流跳转。
+
 ### v0.1
 
 - 初始化页面基础实现。
 
 ## 验证记录
 
-- 待验证。
+- `yarn typecheck`
+- `yarn check:page-convention`
+- `yarn check:package-boundary`
+- `yarn check:ui-contract`

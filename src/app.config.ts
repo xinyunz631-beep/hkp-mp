@@ -40,7 +40,6 @@ export default defineAppConfig({
     {
       root: 'pkg-mall',
       name: 'mall',
-      independent: true,
       pages: [
         'pages/index/index',
         'pages/category/index',
@@ -57,7 +56,6 @@ export default defineAppConfig({
     {
       root: 'pkg-member',
       name: 'member',
-      independent: true,
       pages: [
         'pages/index/index',
         'pages/member-code/index',
@@ -73,7 +71,6 @@ export default defineAppConfig({
     {
       root: 'pkg-hotel',
       name: 'hotel',
-      independent: true,
       pages: [
         'pages/index/index',
         'pages/checkout/index',
@@ -83,7 +80,6 @@ export default defineAppConfig({
     {
       root: 'pkg-ticket',
       name: 'ticket',
-      independent: true,
       pages: [
         'pages/index/index',
         'pages/ticket-booking/index',
@@ -95,7 +91,6 @@ export default defineAppConfig({
     {
       root: 'pkg-dining',
       name: 'dining',
-      independent: true,
       pages: [
         'pages/index/index',
         'pages/merchant-detail/index',
@@ -105,7 +100,6 @@ export default defineAppConfig({
     {
       root: 'pkg-order',
       name: 'order',
-      independent: true,
       pages: [
         'pages/index/index',
         'pages/detail/index',

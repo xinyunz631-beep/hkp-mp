@@ -9,6 +9,14 @@ export const orderAddresses: HkpAddressSummary[] = [
     detail: '张江镇张江路368号开文大厦22号楼',
     isDefault: true,
   },
+  {
+    id: 'addr-company',
+    name: 'Chris J',
+    mobile: '133****5697',
+    region: '上海市浦东新区',
+    detail: '张江镇金苏路200号D栋4楼',
+    isDefault: false,
+  },
 ];
 
 export interface OrderHomeTabData {
@@ -79,6 +87,65 @@ export interface OrderCheckoutData {
   amountFields: OrderDetailFieldData[];
   totalAmount: number;
   discountAmount: number;
+}
+
+export interface OrderAddressData {
+  addresses: HkpAddressSummary[];
+}
+
+export interface OrderLogisticsTraceItem {
+  id: string;
+  timeText: string;
+  detailText: string;
+}
+
+export interface OrderLogisticsData {
+  productImageSrc: string;
+  statusText: string;
+  companyText: string;
+  trackingNumberText: string;
+  hotlineText: string;
+  quantityText: string;
+  totalAmountText: string;
+  confirmButtonText: string;
+  traces: OrderLogisticsTraceItem[];
+}
+
+export interface OrderReviewCreateTagData {
+  key: string;
+  text: string;
+}
+
+export interface OrderReviewCreateImageData {
+  id: string;
+  src: string;
+}
+
+export interface OrderReviewCreateData {
+  productImageSrc: string;
+  productTitle: string;
+  hintText: string;
+  tags: OrderReviewCreateTagData[];
+  defaultTagKey: string;
+  placeholderText: string;
+  maxLength: number;
+  images: OrderReviewCreateImageData[];
+  anonymousText: string;
+  submitButtonText: string;
+}
+
+export interface OrderReviewItemData {
+  id: string;
+  userName: string;
+  avatarSrc: string;
+  timeText: string;
+  content: string;
+  imageSrcs: string[];
+}
+
+export interface OrderReviewListData {
+  filters: OrderReviewCreateTagData[];
+  reviews: OrderReviewItemData[];
 }
 
 export const orderList: HkpOrderSummary[] = [
@@ -283,15 +350,86 @@ export const aftersaleData = {
   ],
 };
 
-export const logisticsData = {
-  order: orderList[1],
+export const addressData: OrderAddressData = {
+  addresses: orderAddresses,
+};
+
+export const logisticsData: OrderLogisticsData = {
+  productImageSrc: '',
+  statusText: '派件中',
+  companyText: '顺丰快递',
+  trackingNumberText: '31074314436',
+  hotlineText: '95338',
+  quantityText: '共计1件商品',
+  totalAmountText: '¥329.9',
+  confirmButtonText: '确认收货',
   traces: [
-    { title: '包裹已出库', time: '2026-05-16 15:20' },
-    { title: '商家已发货', time: '2026-05-16 16:10' },
+    {
+      id: 'trace-1',
+      timeText: '2018.06.17 10:45:32',
+      detailText: '正在派送途中，请您准备签收(派件人：张辛庄\n联系电话：18032755148)',
+    },
+    {
+      id: 'trace-2',
+      timeText: '2018.06.16 17:20:52',
+      detailText: '快件已到达南京市',
+    },
+    {
+      id: 'trace-3',
+      timeText: '2018.06.15 08:30:26',
+      detailText: '快件离开杭州中转部',
+    },
   ],
 };
 
-export const reviewData = {
-  order: orderList[0],
-  tags: ['适合亲子', '拍照好看', '服务热情'],
+export const reviewCreateData: OrderReviewCreateData = {
+  productImageSrc: '',
+  productTitle: 'Hello Kitty凯蒂猫情人节生日礼物毛绒玩玩公仔玩偶毛绒玩具',
+  hintText: '分享你的使用体验吧',
+  tags: [
+    { key: 'quality', text: '质量好' },
+    { key: 'pretty', text: '漂亮精致' },
+    { key: 'price', text: '性价比高' },
+  ],
+  defaultTagKey: 'quality',
+  placeholderText: '分享购买心得',
+  maxLength: 200,
+  images: [
+    { id: 'review-image-1', src: '' },
+  ],
+  anonymousText: '匿名评价',
+  submitButtonText: '发表评论',
+};
+
+export const reviewListData: OrderReviewListData = {
+  filters: [
+    { key: 'quality', text: '质量好(820)' },
+    { key: 'crowd', text: '适合人群(89)' },
+  ],
+  reviews: [
+    {
+      id: 'review-1',
+      userName: 'HERO',
+      avatarSrc: '',
+      timeText: '2019.11.10 16:40',
+      content: '跟在实体店看到的一样，女儿喜欢、',
+      imageSrcs: ['', '', ''],
+    },
+    {
+      id: 'review-2',
+      userName: 'GATA',
+      avatarSrc: '',
+      timeText: '2019.10.29 12:20',
+      content: '非常好！很精致！和卖家图片一样，不过英伦猫咋没礼盒呢？',
+      imageSrcs: ['', ''],
+    },
+    {
+      id: 'review-3',
+      userName: 'LUNA',
+      avatarSrc: '',
+      timeText: '2019.10.25 11:46',
+      content: '总体来说还是不错呢，质量也很好，宝宝很喜欢！',
+      imageSrcs: [],
+    },
+  ],
 };

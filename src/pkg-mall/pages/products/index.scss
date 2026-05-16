@@ -159,7 +159,7 @@
   &_summary {
     min-width: 0;
     flex: 1;
-    padding: 20px 24px calc(20px + env(safe-area-inset-bottom));
+    padding: 20px 24px;
     background: #ffffff;
   }
 
@@ -194,7 +194,6 @@
     justify-content: center;
     min-width: 340px;
     min-height: 112px;
-    padding-bottom: env(safe-area-inset-bottom);
     background: $color-primary;
     color: #ffffff;
     font-size: 30px;

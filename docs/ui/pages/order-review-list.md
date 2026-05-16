@@ -12,8 +12,8 @@
 - Figma nodeId：-
 - Pencil file：/Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
 - Pencil nodeId：order-review-list
-- 当前版本：v0.1
-- 页面状态：implementing
+- 当前版本：v0.2
+- 页面状态：implemented
 - 更新时间：2026-05-16
 - 实现文件：
   - src/pkg-order/pages/review-list/index.tsx
@@ -23,7 +23,7 @@
 
 ## 设计意图
 
-评价列表页面先按代码优先方式创建基础实现，后续根据截图、设计稿或业务规则持续更新。
+评价列表页面按 `review-list.png` 完成标签筛选、评论头像区、文案和图片宫格，作为商品和订单评价查看页的首版承载。
 
 ## 页面结构
 
@@ -31,7 +31,7 @@
 - 页面容器：`PageShell`
 - 页面运行时：`usePageRuntime`
 - 页面状态订阅：`observer`
-- 内容区域：按本次业务需求实现
+- 内容区域：顶部筛选标签、评论列表、图片宫格。
 
 ## 动态与静态边界
 
@@ -53,11 +53,13 @@
 
 | 模块 | service | 失败策略 | 是否阻断页面 |
 |---|---|---|---|
-| 页面数据 | `fetchReviewListData()` | service 内归一和兜底 | 按业务决定 |
+| 页面数据 | `fetchReviewListData()` | service 内归一和兜底 | 是 |
 
 ## 交互与跳转
 
-- 按页面业务需求补充。
+- 顶部标签支持本地切换，先用不同列表切片模拟筛选结果。
+- 评论图片统一使用 `AppImage` 承接空地址失败态。
+- 后续接真实评价列表接口时，只替换 service。
 
 ## 实现映射
 
@@ -68,10 +70,19 @@
 
 ## 变更记录
 
+### v0.2
+
+- 按 `review-list.png` 完成评价列表首版 UI。
+- 补齐评论筛选、用户头像、时间、文案和图片列表 mock 结构。
+- 当前筛选先在本地切换不同评论集合，后续再接真实过滤参数。
+
 ### v0.1
 
 - 初始化页面基础实现。
 
 ## 验证记录
 
-- 待验证。
+- `yarn typecheck`
+- `yarn check:page-convention`
+- `yarn check:package-boundary`
+- `yarn check:ui-contract`
