@@ -12,8 +12,8 @@
 - Figma nodeId：-
 - Pencil file：/Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
 - Pencil nodeId：order-aftersale-progress
-- 当前版本：v0.1
-- 页面状态：implementing
+- 当前版本：v0.2
+- 页面状态：implemented
 - 更新时间：2026-05-16
 - 实现文件：
   - src/pkg-order/pages/aftersale-progress/index.tsx
@@ -23,7 +23,7 @@
 
 ## 设计意图
 
-售后进度页面先按代码优先方式创建基础实现，后续根据截图、设计稿或业务规则持续更新。
+售后进度页面负责展示售后单状态和处理轨迹，当前已补齐状态头图、订单摘要、售后信息、时间线和列表返回动作。
 
 ## 页面结构
 
@@ -31,7 +31,12 @@
 - 页面容器：`PageShell`
 - 页面运行时：`usePageRuntime`
 - 页面状态订阅：`observer`
-- 内容区域：按本次业务需求实现
+- 状态头图：展示售后处理状态和说明。
+- 订单摘要：复用 `OrderCard` 展示当前售后商品。
+- 售后信息：展示单号、类型、退款金额和原因。
+- 处理进度：纵向时间线展示售后节点。
+- 补充信息：展示申请时间、退款方式、联系人等字段。
+- 固定底部：跳回售后列表按钮。
 
 ## 动态与静态边界
 
@@ -57,7 +62,8 @@
 
 ## 交互与跳转
 
-- 按页面业务需求补充。
+- 从售后申请提交后进入本页，也可从售后列表点击记录进入。
+- 点击底部按钮跳转到售后列表。
 
 ## 实现映射
 
@@ -68,10 +74,18 @@
 
 ## 变更记录
 
+### v0.2
+
+- 回补售后进度首版 UI 和时间线展示。
+- 接通售后申请页与售后列表页的双向跳转。
+
 ### v0.1
 
 - 初始化页面基础实现。
 
 ## 验证记录
 
-- 待验证。
+- `yarn typecheck`
+- `yarn check:page-convention`
+- `yarn check:package-boundary`
+- `yarn check:ui-contract`

@@ -16,6 +16,8 @@ function showComingSoon(title: string) {
 function resolveOrderActionRoute(actionText: string) {
   if (actionText === '去评价') return MINI_PACKAGE_ROUTES.orderReviewCreate;
   if (actionText === '查看物流') return MINI_PACKAGE_ROUTES.orderLogistics;
+  if (actionText === '申请售后') return MINI_PACKAGE_ROUTES.orderAftersaleType;
+  if (actionText === '取消订单') return MINI_PACKAGE_ROUTES.orderCancel;
   return '';
 }
 
@@ -33,7 +35,7 @@ const OrderIndexPage = observer(function OrderIndexPage() {
   const visibleSections = useMemo(() => {
     if (!pageData) return [];
     if (activeTabKey === 'all') return pageData.sections;
-    return pageData.sections.slice(0, 1);
+    return pageData.sections.filter((section) => section.tabKey === activeTabKey);
   }, [activeTabKey, pageData]);
 
   return pageRuntime.renderPage(() => {

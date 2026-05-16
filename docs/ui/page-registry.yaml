@@ -598,7 +598,7 @@ pages:
   order-cancel:
     title: 取消订单
     route: src/pkg-order/pages/cancel
-    status: implementing
+    status: implemented
     spec: docs/ui/pages/order-cancel.md
     design:
       currentTool: pencil
@@ -609,7 +609,7 @@ pages:
         name: 取消订单 750px 开发稿
         width: 750
         role: active-source
-        note: 代码优先创建页面，后续按截图或设计稿继续同步。
+        note: 已完成订单摘要、取消原因、补充说明和提交按钮首版，当前可从订单列表取消动作进入。
     implementation:
       files:
         - src/pkg-order/pages/cancel/index.tsx
@@ -624,7 +624,7 @@ pages:
   order-aftersale-apply:
     title: 售后申请
     route: src/pkg-order/pages/aftersale-apply
-    status: implementing
+    status: implemented
     spec: docs/ui/pages/order-aftersale-apply.md
     design:
       currentTool: pencil
@@ -635,7 +635,7 @@ pages:
         name: 售后申请 750px 开发稿
         width: 750
         role: active-source
-        note: 代码优先创建页面，后续按截图或设计稿继续同步。
+        note: 已完成售后申请首版表单，包含类型信息、原因、说明、上传占位和联系人，并可跳转售后进度。
     implementation:
       files:
         - src/pkg-order/pages/aftersale-apply/index.tsx
@@ -650,7 +650,7 @@ pages:
   order-aftersale-type:
     title: 售后类型
     route: src/pkg-order/pages/aftersale-type
-    status: implementing
+    status: implemented
     spec: docs/ui/pages/order-aftersale-type.md
     design:
       currentTool: pencil
@@ -661,7 +661,7 @@ pages:
         name: 售后类型 750px 开发稿
         width: 750
         role: active-source
-        note: 代码优先创建页面，后续按截图或设计稿继续同步。
+        note: 已完成售后类型首版卡片列表，当前可从订单详情和订单列表进入并分发到售后申请页。
     implementation:
       files:
         - src/pkg-order/pages/aftersale-type/index.tsx
@@ -676,7 +676,7 @@ pages:
   order-aftersale-list:
     title: 售后列表
     route: src/pkg-order/pages/aftersale-list
-    status: implementing
+    status: implemented
     spec: docs/ui/pages/order-aftersale-list.md
     design:
       currentTool: pencil
@@ -687,7 +687,7 @@ pages:
         name: 售后列表 750px 开发稿
         width: 750
         role: active-source
-        note: 代码优先创建页面，后续按截图或设计稿继续同步。
+        note: 已完成售后列表首版，包含 tabs 筛选、记录卡片和查看进度动作。
     implementation:
       files:
         - src/pkg-order/pages/aftersale-list/index.tsx
@@ -702,7 +702,7 @@ pages:
   order-aftersale-progress:
     title: 售后进度
     route: src/pkg-order/pages/aftersale-progress
-    status: implementing
+    status: implemented
     spec: docs/ui/pages/order-aftersale-progress.md
     design:
       currentTool: pencil
@@ -713,7 +713,7 @@ pages:
         name: 售后进度 750px 开发稿
         width: 750
         role: active-source
-        note: 代码优先创建页面，后续按截图或设计稿继续同步。
+        note: 已完成售后进度首版，包含状态头图、售后信息、处理时间线和返回列表动作。
     implementation:
       files:
         - src/pkg-order/pages/aftersale-progress/index.tsx

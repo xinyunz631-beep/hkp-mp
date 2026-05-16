@@ -2,6 +2,7 @@ import Taro from '@tarojs/taro';
 import { Text, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
 import { PageShell } from '@/core/components/PageShell';
+import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import { useState } from 'react';
 import { fetchDetailData, type OrderDetailData } from '@/pkg-order/services/detail';
@@ -79,7 +80,10 @@ const DetailPage = observer(function DetailPage() {
                   <Text className="_pg-order-meta_value">{item.value}</Text>
                 </View>
               ))}
-              <View className="_pg-footer-action" onClick={() => Taro.showToast({ title: '退款能力即将开放', icon: 'none' })}>
+              <View
+                className="_pg-footer-action"
+                onClick={() => Taro.navigateTo({ url: MINI_PACKAGE_ROUTES.orderAftersaleType })}
+              >
                 {detailData.refundButtonText}
               </View>
             </View>

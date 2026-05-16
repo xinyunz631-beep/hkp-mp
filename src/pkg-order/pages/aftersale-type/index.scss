@@ -14,7 +14,82 @@
 }
 
 ._pg-content {
-  min-height: 240px;
-  padding: 32px;
+  min-height: 100%;
+  padding: 24px;
   box-sizing: border-box;
+}
+
+._pg-order-card {
+  margin-bottom: 20px;
+}
+
+._pg-tip {
+  padding: 22px 24px;
+  border-radius: 20px;
+  color: #9d174d;
+  font-size: 24px;
+  line-height: 1.6;
+  background: #fdf2f8;
+}
+
+._pg-types {
+  margin-top: 20px;
+
+  &_item {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 28px 24px;
+    border-radius: 24px;
+    background: #ffffff;
+    box-shadow: 0 8px 28px rgba(31, 41, 55, 0.06);
+
+    & + & {
+      margin-top: 20px;
+    }
+  }
+
+  &_main {
+    flex: 1;
+    min-width: 0;
+  }
+
+  &_title-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  &_title {
+    color: #1f2937;
+    font-size: 30px;
+    font-weight: 700;
+    line-height: 1.4;
+  }
+
+  &_tag {
+    padding: 6px 14px;
+    border-radius: 999px;
+    color: #db2777;
+    font-size: 20px;
+    line-height: 1;
+    background: #fdf2f8;
+  }
+
+  &_desc {
+    display: block;
+    margin-top: 12px;
+    color: #6b7280;
+    font-size: 24px;
+    line-height: 1.6;
+  }
+
+  &_amount {
+    display: block;
+    margin-top: 16px;
+    color: #db2777;
+    font-size: 24px;
+    font-weight: 700;
+    line-height: 1.4;
+  }
 }

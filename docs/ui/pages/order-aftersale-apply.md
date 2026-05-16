@@ -12,8 +12,8 @@
 - Figma nodeId：-
 - Pencil file：/Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
 - Pencil nodeId：order-aftersale-apply
-- 当前版本：v0.1
-- 页面状态：implementing
+- 当前版本：v0.2
+- 页面状态：implemented
 - 更新时间：2026-05-16
 - 实现文件：
   - src/pkg-order/pages/aftersale-apply/index.tsx
@@ -23,7 +23,7 @@
 
 ## 设计意图
 
-售后申请页面先按代码优先方式创建基础实现，后续根据截图、设计稿或业务规则持续更新。
+售后申请页面承接售后类型选择后的表单提交场景，当前已补齐订单摘要、售后类型、原因、补充说明、凭证上传占位和联系人信息。
 
 ## 页面结构
 
@@ -31,7 +31,12 @@
 - 页面容器：`PageShell`
 - 页面运行时：`usePageRuntime`
 - 页面状态订阅：`observer`
-- 内容区域：按本次业务需求实现
+- 订单摘要：复用 `OrderCard` 展示当前售后商品。
+- 类型信息：展示所选售后类型和预计退款金额。
+- 原因表单：原因胶囊 + 文本域补充说明。
+- 凭证区域：保留图片上传入口占位，后续可接 `Uploader` 外层封装。
+- 联系信息：展示联系人与电话，便于售后沟通。
+- 固定底部：提交售后申请按钮。
 
 ## 动态与静态边界
 
@@ -57,7 +62,9 @@
 
 ## 交互与跳转
 
-- 按页面业务需求补充。
+- 从售后类型页点击类型卡片进入本页，并通过路由参数带入所选类型。
+- 选择原因后可提交；未选原因时给出 toast 提示。
+- 提交后跳转到售后进度页。
 
 ## 实现映射
 
@@ -68,10 +75,18 @@
 
 ## 变更记录
 
+### v0.2
+
+- 回补售后申请首版表单 UI 和提交跳转，形成“售后类型 -> 售后申请 -> 售后进度”闭环。
+- 页面通过 service DTO 承接售后类型、联系人、退款金额等字段。
+
 ### v0.1
 
 - 初始化页面基础实现。
 
 ## 验证记录
 
-- 待验证。
+- `yarn typecheck`
+- `yarn check:page-convention`
+- `yarn check:package-boundary`
+- `yarn check:ui-contract`

@@ -6,7 +6,7 @@
 - 路由：src/pkg-order/pages/index
 - 当前设计工具（以 `page-registry.currentTool` 为准）：pencil
 - UI 图：docs/ui/source/hkp-mini-page/order-list-all.png
-- 当前版本：v0.2
+- 当前版本：v0.3
 - 页面状态：implemented
 - 更新时间：2026-05-16
 - 实现文件：
@@ -17,7 +17,7 @@
 
 ## 设计意图
 
-订单分包首页按 `order-list-all.png` 先完成订单 Tab、订单分组、订单商品列表和评价按钮，作为 Phase 5 订单主链路的入口页。
+订单分包首页按 `order-list-all.png` 先完成订单 Tab、订单分组、订单商品列表和动作按钮，当前已补齐取消订单与申请售后入口，作为 Phase 5 订单主链路入口页。
 
 ## 页面结构
 
@@ -49,8 +49,11 @@
 ## 交互与跳转
 
 - 点击订单商品项进入 `order-detail`。
-- 点击“去评价”当前先提示能力即将开放。
-- Tab 切换先保留结构和局部筛选，后续接真实订单状态时继续细化。
+- 点击“去评价”进入评价晒单页。
+- 点击“查看物流”进入物流详情页。
+- 点击“申请售后”进入售后类型页。
+- 点击“取消订单”进入取消订单页。
+- Tab 现在按 `pendingPay / pendingShip / pendingReview` 做本地过滤，后续接真实订单状态时继续细化。
 
 ## 实现映射
 
@@ -59,6 +62,11 @@
 - `src/pkg-order/pages/index/index.config.ts`：页面骨架相关文件。
 
 ## 变更记录
+
+### v0.3
+
+- 订单首页补齐取消订单、申请售后、查看物流和去评价动作路由。
+- Tab 过滤从占位逻辑改为按订单状态键值过滤。
 
 ### v0.2
 

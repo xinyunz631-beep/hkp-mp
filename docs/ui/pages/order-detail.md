@@ -12,7 +12,7 @@
 - Figma nodeId：-
 - Pencil file：/Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
 - Pencil nodeId：order-detail
-- 当前版本：v0.2
+- 当前版本：v0.3
 - 页面状态：implemented
 - 更新时间：2026-05-16
 - 实现文件：
@@ -57,7 +57,7 @@
 
 ## 交互与跳转
 
-- 底部“申请退款”当前先提示能力即将开放。
+- 底部“申请退款”当前已跳转到售后类型页，作为售后链路入口。
 - 后续接真实订单详情接口时，只替换 service 层字段映射。
 
 ## 实现映射
@@ -68,6 +68,10 @@
 - `src/pkg-order/services/detail.ts`：页面 service。
 
 ## 变更记录
+
+### v0.3
+
+- 订单详情底部退款动作已接入售后类型页，订单详情不再停留在 toast 占位。
 
 ### v0.2
 

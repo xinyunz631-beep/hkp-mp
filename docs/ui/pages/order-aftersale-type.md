@@ -12,8 +12,8 @@
 - Figma nodeId：-
 - Pencil file：/Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
 - Pencil nodeId：order-aftersale-type
-- 当前版本：v0.1
-- 页面状态：implementing
+- 当前版本：v0.2
+- 页面状态：implemented
 - 更新时间：2026-05-16
 - 实现文件：
   - src/pkg-order/pages/aftersale-type/index.tsx
@@ -23,7 +23,7 @@
 
 ## 设计意图
 
-售后类型页面先按代码优先方式创建基础实现，后续根据截图、设计稿或业务规则持续更新。
+售后类型页面负责承接订单详情或订单列表的售后入口，当前已补齐订单摘要、类型卡片和金额说明，用来分发到不同售后申请路径。
 
 ## 页面结构
 
@@ -31,7 +31,9 @@
 - 页面容器：`PageShell`
 - 页面运行时：`usePageRuntime`
 - 页面状态订阅：`observer`
-- 内容区域：按本次业务需求实现
+- 订单摘要：复用 `OrderCard` 展示申请售后的商品。
+- 售后说明：顶部提示发货前后可用的售后策略。
+- 类型卡片：展示“仅退款 / 退货退款 / 换货”等能力、金额说明和推荐标签。
 
 ## 动态与静态边界
 
@@ -57,7 +59,8 @@
 
 ## 交互与跳转
 
-- 按页面业务需求补充。
+- 从订单详情“申请退款”或订单列表“申请售后”动作进入本页。
+- 点击任一售后类型后跳转到售后申请页，并通过路由参数传递当前类型。
 
 ## 实现映射
 
@@ -68,10 +71,18 @@
 
 ## 变更记录
 
+### v0.2
+
+- 回补售后类型首版卡片列表，并接通到售后申请页。
+- 页面通过 service DTO 管理售后说明和类型配置。
+
 ### v0.1
 
 - 初始化页面基础实现。
 
 ## 验证记录
 
-- 待验证。
+- `yarn typecheck`
+- `yarn check:page-convention`
+- `yarn check:package-boundary`
+- `yarn check:ui-contract`

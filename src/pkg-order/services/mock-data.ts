@@ -1,4 +1,4 @@
-import type { HkpAddressSummary, HkpOrderSummary } from '@/core/types/hkp';
+import type { HkpAddressSummary, HkpFilterTab, HkpOrderSummary } from '@/core/types/hkp';
 
 export const orderAddresses: HkpAddressSummary[] = [
   {
@@ -37,6 +37,7 @@ export interface OrderHomeItemData {
 
 export interface OrderHomeSectionData {
   id: string;
+  tabKey: string;
   dateText: string;
   statusText: string;
   totalText: string;
@@ -148,7 +149,103 @@ export interface OrderReviewListData {
   reviews: OrderReviewItemData[];
 }
 
+export interface OrderCancelData {
+  order: HkpOrderSummary;
+  reasons: string[];
+  tips: string[];
+  submitButtonText: string;
+}
+
+export interface OrderAftersaleTypeOptionData {
+  key: string;
+  title: string;
+  desc: string;
+  amountText: string;
+  tagText?: string;
+}
+
+export interface OrderAftersaleTypeData {
+  order: HkpOrderSummary;
+  tipText: string;
+  types: OrderAftersaleTypeOptionData[];
+}
+
+export interface OrderAftersaleApplyData {
+  order: HkpOrderSummary;
+  selectedTypeText: string;
+  reasons: string[];
+  defaultReason: string;
+  refundAmountText: string;
+  contactName: string;
+  contactMobile: string;
+  placeholderText: string;
+  uploadHintText: string;
+  serviceTipText: string;
+  submitButtonText: string;
+}
+
+export interface OrderAftersaleRecordData {
+  id: string;
+  tabKey: string;
+  serviceNo: string;
+  typeText: string;
+  statusText: string;
+  statusDesc: string;
+  amountText: string;
+  createdAt: string;
+  buttonText: string;
+  order: HkpOrderSummary;
+}
+
+export interface OrderAftersaleListData {
+  tabs: HkpFilterTab[];
+  records: OrderAftersaleRecordData[];
+}
+
+export interface OrderAftersaleProgressStepData {
+  id: string;
+  title: string;
+  timeText: string;
+  detailText?: string;
+}
+
+export interface OrderAftersaleFieldData {
+  label: string;
+  value: string;
+}
+
+export interface OrderAftersaleProgressData {
+  order: HkpOrderSummary;
+  serviceNo: string;
+  typeText: string;
+  statusText: string;
+  statusDesc: string;
+  refundAmountText: string;
+  reasonText: string;
+  fields: OrderAftersaleFieldData[];
+  progress: OrderAftersaleProgressStepData[];
+  primaryButtonText: string;
+}
+
 export const orderList: HkpOrderSummary[] = [
+  {
+    id: 'order-pending-001',
+    merchantName: '乐园商城',
+    statusText: '待付款',
+    products: [
+      {
+        id: 'pending-plush',
+        title: 'Hello Kitty 毛绒公仔',
+        image: { src: '' },
+        skuText: '粉色限定款',
+        price: 199,
+        quantity: 1,
+      },
+    ],
+    totalAmount: 199,
+    countText: '共1件',
+    primaryActionText: '取消订单',
+  },
   {
     id: 'order-ticket-001',
     merchantName: 'Hello Kitty Park',
@@ -200,6 +297,7 @@ export const orderHomeData: OrderHomeData = {
   sections: [
     {
       id: 'order-group-20190829',
+      tabKey: 'pendingReview',
       dateText: '2019-08-29',
       statusText: '订单完成',
       totalText: '共3件商品 合计:¥238',
@@ -236,6 +334,7 @@ export const orderHomeData: OrderHomeData = {
     },
     {
       id: 'order-group-20191109',
+      tabKey: 'pendingReview',
       dateText: '2019-11-09',
       statusText: '订单完成',
       totalText: '',
@@ -253,6 +352,7 @@ export const orderHomeData: OrderHomeData = {
     },
     {
       id: 'order-group-20191111',
+      tabKey: 'pendingReview',
       dateText: '2019-11-11',
       statusText: '订单完成',
       totalText: '',
@@ -266,6 +366,43 @@ export const orderHomeData: OrderHomeData = {
           quantity: 1,
           priceText: '¥ 299.9',
           actionText: '去评价',
+        },
+      ],
+    },
+    {
+      id: 'order-group-20260516-pending-pay',
+      tabKey: 'pendingPay',
+      dateText: '2026-05-16',
+      statusText: '待付款',
+      totalText: '共1件商品 合计:¥199',
+      items: [
+        {
+          id: 'order-home-item-6',
+          title: 'Hello Kitty 毛绒公仔',
+          subtitle: '粉色限定款',
+          imageSrc: '',
+          quantity: 1,
+          priceText: '¥ 199',
+          actionText: '取消订单',
+        },
+      ],
+    },
+    {
+      id: 'order-group-20260515-pending-ship',
+      tabKey: 'pendingShip',
+      dateText: '2026-05-15',
+      statusText: '待发货',
+      totalText: '共2件商品 合计:¥118',
+      items: [
+        {
+          id: 'order-home-item-7',
+          title: '新国风冰箱贴盲盒',
+          subtitle: 'Hello Kitty / Melody',
+          extraText: '未拆封可申请退款，发货后支持退货退款',
+          imageSrc: '',
+          quantity: 2,
+          priceText: '¥ 118',
+          actionText: '申请售后',
         },
       ],
     },
@@ -341,13 +478,138 @@ export const orderCheckoutData: OrderCheckoutData = {
   discountAmount: 50,
 };
 
-export const aftersaleData = {
-  order: orderList[1],
-  reasons: ['不想要了', '拍错规格', '商品破损', '其他原因'],
-  progress: [
-    { title: '提交申请', time: '2026-05-16 10:00' },
-    { title: '平台审核', time: '2026-05-16 10:03' },
+export const cancelData: OrderCancelData = {
+  order: orderList[0],
+  reasons: ['行程变化', '重复购买', '信息填写错误', '其他原因'],
+  tips: [
+    '订单取消后，商品库存将自动释放。',
+    '如已支付成功，请前往售后链路申请退款。',
   ],
+  submitButtonText: '提交取消申请',
+};
+
+export const aftersaleTypeData: OrderAftersaleTypeData = {
+  order: orderList[2],
+  tipText: '发货前支持仅退款，发货后可选择退货退款。',
+  types: [
+    {
+      key: 'refund-only',
+      title: '仅退款',
+      desc: '商品未拆封或待发货时优先使用',
+      amountText: '预计退款 ¥118.00',
+      tagText: '推荐',
+    },
+    {
+      key: 'return-refund',
+      title: '退货退款',
+      desc: '收到商品后需要寄回时使用',
+      amountText: '待商家收货后原路退款',
+    },
+    {
+      key: 'exchange',
+      title: '换货',
+      desc: '拍错规格或商品破损时可申请换货',
+      amountText: '免费换货',
+    },
+  ],
+};
+
+export const aftersaleApplyData: OrderAftersaleApplyData = {
+  order: orderList[2],
+  selectedTypeText: '仅退款',
+  reasons: ['不想要了', '拍错规格', '商品破损', '其他原因'],
+  defaultReason: '不想要了',
+  refundAmountText: '¥118.00',
+  contactName: 'Chris J',
+  contactMobile: '133****5697',
+  placeholderText: '请补充售后说明，帮助商家更快处理',
+  uploadHintText: '上传凭证（最多 3 张）',
+  serviceTipText: '提交后平台会在 1-2 个工作日内完成审核。',
+  submitButtonText: '提交售后申请',
+};
+
+export const aftersaleListData: OrderAftersaleListData = {
+  tabs: [
+    { key: 'all', text: '全部' },
+    { key: 'processing', text: '处理中' },
+    { key: 'refund', text: '退款成功' },
+  ],
+  records: [
+    {
+      id: 'aftersale-001',
+      tabKey: 'processing',
+      serviceNo: 'SH20260516001',
+      typeText: '仅退款',
+      statusText: '平台审核中',
+      statusDesc: '预计 1 个工作日内处理完成',
+      amountText: '¥118.00',
+      createdAt: '2026-05-16 10:03',
+      buttonText: '查看进度',
+      order: orderList[2],
+    },
+    {
+      id: 'aftersale-002',
+      tabKey: 'refund',
+      serviceNo: 'SH20260510008',
+      typeText: '退货退款',
+      statusText: '退款成功',
+      statusDesc: '退款已原路退回，请注意查收',
+      amountText: '¥59.00',
+      createdAt: '2026-05-10 18:26',
+      buttonText: '查看详情',
+      order: {
+        ...orderList[2],
+        id: 'order-mall-002',
+        statusText: '已退款',
+        totalAmount: 59,
+        products: [
+          {
+            ...orderList[2].products[0],
+            title: '库洛米挂件盲盒',
+            price: 59,
+            quantity: 1,
+          },
+        ],
+        countText: '共1件',
+      },
+    },
+  ],
+};
+
+export const aftersaleProgressData: OrderAftersaleProgressData = {
+  order: orderList[2],
+  serviceNo: 'SH20260516001',
+  typeText: '仅退款',
+  statusText: '平台审核中',
+  statusDesc: '商家将在 24 小时内确认退款处理结果',
+  refundAmountText: '¥118.00',
+  reasonText: '不想要了',
+  fields: [
+    { label: '申请时间', value: '2026-05-16 10:03' },
+    { label: '退款方式', value: '原路退回' },
+    { label: '联系人', value: 'Chris J 133****5697' },
+  ],
+  progress: [
+    {
+      id: 'progress-1',
+      title: '提交售后申请',
+      timeText: '2026-05-16 10:03',
+      detailText: '用户已提交仅退款申请，等待平台审核。',
+    },
+    {
+      id: 'progress-2',
+      title: '平台审核中',
+      timeText: '2026-05-16 10:08',
+      detailText: '审核通过后将按原支付路径退款。',
+    },
+    {
+      id: 'progress-3',
+      title: '退款完成',
+      timeText: '待更新',
+      detailText: '审核通过后自动流转。',
+    },
+  ],
+  primaryButtonText: '查看售后列表',
 };
 
 export const addressData: OrderAddressData = {

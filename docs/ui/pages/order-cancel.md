@@ -12,8 +12,8 @@
 - Figma nodeId：-
 - Pencil file：/Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
 - Pencil nodeId：order-cancel
-- 当前版本：v0.1
-- 页面状态：implementing
+- 当前版本：v0.2
+- 页面状态：implemented
 - 更新时间：2026-05-16
 - 实现文件：
   - src/pkg-order/pages/cancel/index.tsx
@@ -23,7 +23,7 @@
 
 ## 设计意图
 
-取消订单页面先按代码优先方式创建基础实现，后续根据截图、设计稿或业务规则持续更新。
+取消订单页面用于待付款订单的主动撤销场景，当前已补齐订单摘要、取消原因、补充说明和提交按钮，优先保证订单侧闭环可走通。
 
 ## 页面结构
 
@@ -31,7 +31,11 @@
 - 页面容器：`PageShell`
 - 页面运行时：`usePageRuntime`
 - 页面状态订阅：`observer`
-- 内容区域：按本次业务需求实现
+- 订单摘要：复用 `OrderCard` 展示待取消订单。
+- 取消原因：胶囊选项形式，单选提交。
+- 补充说明：文本域补充取消背景。
+- 说明区域：展示取消后的库存和退款提示。
+- 固定底部：提交取消申请按钮。
 
 ## 动态与静态边界
 
@@ -57,7 +61,9 @@
 
 ## 交互与跳转
 
-- 按页面业务需求补充。
+- 从订单列表中“取消订单”动作进入本页。
+- 选择取消原因后可提交；未选原因时给出 toast 提示。
+- 提交后返回上一页，保留订单主链路闭环。
 
 ## 实现映射
 
@@ -68,10 +74,18 @@
 
 ## 变更记录
 
+### v0.2
+
+- 回补取消订单首版 UI 和交互，包含订单摘要、原因选择、说明输入和提交动作。
+- 页面改为消费 `fetchCancelData()` 的结构化 DTO，不再停留在空骨架。
+
 ### v0.1
 
 - 初始化页面基础实现。
 
 ## 验证记录
 
-- 待验证。
+- `yarn typecheck`
+- `yarn check:page-convention`
+- `yarn check:package-boundary`
+- `yarn check:ui-contract`

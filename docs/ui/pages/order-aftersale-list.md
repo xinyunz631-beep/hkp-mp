@@ -12,8 +12,8 @@
 - Figma nodeId：-
 - Pencil file：/Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
 - Pencil nodeId：order-aftersale-list
-- 当前版本：v0.1
-- 页面状态：implementing
+- 当前版本：v0.2
+- 页面状态：implemented
 - 更新时间：2026-05-16
 - 实现文件：
   - src/pkg-order/pages/aftersale-list/index.tsx
@@ -23,7 +23,7 @@
 
 ## 设计意图
 
-售后列表页面先按代码优先方式创建基础实现，后续根据截图、设计稿或业务规则持续更新。
+售后列表页面承接用户查看历史售后记录的场景，当前已补齐 tabs 筛选、记录卡片和查看进度动作。
 
 ## 页面结构
 
@@ -31,7 +31,9 @@
 - 页面容器：`PageShell`
 - 页面运行时：`usePageRuntime`
 - 页面状态订阅：`observer`
-- 内容区域：按本次业务需求实现
+- 顶部筛选：复用 `FilterTabs` 做“全部 / 处理中 / 退款成功”切换。
+- 售后记录：白底卡片展示售后单号、状态、商品摘要、退款金额和申请时间。
+- 详情动作：点击卡片或按钮进入售后进度页。
 
 ## 动态与静态边界
 
@@ -57,7 +59,8 @@
 
 ## 交互与跳转
 
-- 按页面业务需求补充。
+- 通过 tabs 切换记录分类。
+- 点击“查看进度 / 查看详情”进入售后进度页。
 
 ## 实现映射
 
@@ -68,10 +71,18 @@
 
 ## 变更记录
 
+### v0.2
+
+- 回补售后列表首版 UI 和 tabs 筛选。
+- 页面开始消费售后记录 DTO，不再停留在空骨架。
+
 ### v0.1
 
 - 初始化页面基础实现。
 
 ## 验证记录
 
-- 待验证。
+- `yarn typecheck`
+- `yarn check:page-convention`
+- `yarn check:package-boundary`
+- `yarn check:ui-contract`

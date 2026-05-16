@@ -1,25 +1,101 @@
-import { View } from '@tarojs/components';
+import { useState } from 'react';
+import Taro from '@tarojs/taro';
+import { Text, Textarea, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
+import { OrderCard } from '@/core/components/commerce';
 import { PageShell } from '@/core/components/PageShell';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
-import { fetchCancelData } from '@/pkg-order/services/cancel';
+import { fetchCancelData, type OrderCancelData } from '@/pkg-order/services/cancel';
 import './index.scss';
 
-// 渲染取消订单页面，具体业务内容按页面需求继续扩展。
 const CancelPage = observer(function CancelPage() {
+  const [pageData, setPageData] = useState<OrderCancelData>();
+  const [selectedReason, setSelectedReason] = useState('');
+  const [remarkText, setRemarkText] = useState('');
   const pageRuntime = usePageRuntime({
     initPage: async () => {
-      await fetchCancelData();
+      const nextData = await fetchCancelData();
+      setPageData(nextData);
     },
   });
 
-  return pageRuntime.renderPage(() => (
-    <View className="_pg">
-      <PageShell title="取消订单" className="_pg-shell">
-        <View className="_pg-content" />
-      </PageShell>
-    </View>
-  ));
+  function handleSubmit() {
+    if (!selectedReason) {
+      Taro.showToast({ title: '请选择取消原因', icon: 'none' });
+      return;
+    }
+
+    Taro.showToast({ title: '取消申请已提交', icon: 'none' });
+    setTimeout(() => {
+      Taro.navigateBack({ delta: 1 });
+    }, 300);
+  }
+
+  return pageRuntime.renderPage(() => {
+    if (!pageData) return null;
+
+    return (
+      <View className="_pg">
+        <PageShell
+          title="取消订单"
+          className="_pg-shell"
+          reserveTabBarSpace={false}
+          footer={(
+            <View className="_pg-footer">
+              <View
+                className={`_pg-footer_button ${selectedReason ? '_pg-footer_button--active' : ''}`}
+                onClick={handleSubmit}
+              >
+                {pageData.submitButtonText}
+              </View>
+            </View>
+          )}
+        >
+          <View className="_pg-content">
+            <OrderCard order={pageData.order} className="_pg-order-card" />
+
+            <View className="_pg-card">
+              <Text className="_pg-card_title">取消原因</Text>
+              <View className="_pg-reasons">
+                {pageData.reasons.map((reason) => (
+                  <View
+                    className={`_pg-reasons_item ${reason === selectedReason ? '_pg-reasons_item--active' : ''}`}
+                    key={reason}
+                    onClick={() => setSelectedReason(reason)}
+                  >
+                    <Text>{reason}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+
+            <View className="_pg-card">
+              <Text className="_pg-card_title">补充说明</Text>
+              <Textarea
+                className="_pg-editor"
+                value={remarkText}
+                maxlength={120}
+                placeholder="可补充取消订单的具体情况，方便后续处理"
+                onInput={(event) => setRemarkText((event.detail.value || '').slice(0, 120))}
+              />
+              <Text className="_pg-editor_count">{remarkText.length}/120</Text>
+            </View>
+
+            <View className="_pg-card">
+              <Text className="_pg-card_title">取消说明</Text>
+              <View className="_pg-tips">
+                {pageData.tips.map((tip) => (
+                  <Text className="_pg-tips_item" key={tip}>
+                    {tip}
+                  </Text>
+                ))}
+              </View>
+            </View>
+          </View>
+        </PageShell>
+      </View>
+    );
+  });
 });
 
 export default CancelPage;
