@@ -1,0 +1,359 @@
+{
+  "version": 1,
+  "sourceDir": "/Users/kite/Desktop/hkp/mini-page",
+  "targetDir": "docs/ui/source/hkp-mini-page",
+  "width": 750,
+  "count": 70,
+  "items": [
+    {
+      "index": 1,
+      "sourceFile": "/Users/kite/Desktop/hkp/mini-page/001-web929d6a03-79cf-40d9-93c6-60e5a341b05d.png",
+      "file": "docs/ui/source/hkp-mini-page/order-list-refund.png"
+    },
+    {
+      "index": 2,
+      "sourceFile": "/Users/kite/Desktop/hkp/mini-page/002-web5a61e248-2c45-4c01-bb87-640fefcbd1b2.png",
+      "file": "docs/ui/source/hkp-mini-page/mall-home.png"
+    },
+    {
+      "index": 3,
+      "sourceFile": "/Users/kite/Desktop/hkp/mini-page/003-web45cdf052-f4f2-4f86-aae4-281f6c7e476e.png",
+      "file": "docs/ui/source/hkp-mini-page/aftersale-apply-product.png"
+    },
+    {
+      "index": 4,
+      "sourceFile": "/Users/kite/Desktop/hkp/mini-page/004-web4e2adc47-6427-466e-b191-9aeabf7322dd.png",
+      "file": "docs/ui/source/hkp-mini-page/hotel-guest-selector-modal.png"
+    },
+    {
+      "index": 5,
+      "sourceFile": "/Users/kite/Desktop/hkp/mini-page/005-web17ecce52-7e3b-47a4-b0e4-a0397de59f27.png",
+      "file": "docs/ui/source/hkp-mini-page/aftersale-progress-product-form.png"
+    },
+    {
+      "index": 6,
+      "sourceFile": "/Users/kite/Desktop/hkp/mini-page/006-web91919939-a43b-459b-a940-fe04e3eda7d4.png",
+      "file": "docs/ui/source/hkp-mini-page/cart-edit.png"
+    },
+    {
+      "index": 7,
+      "sourceFile": "/Users/kite/Desktop/hkp/mini-page/007-webe2e3a180-fd04-4ca5-8e3e-97eb773875c7.png",
+      "file": "docs/ui/source/hkp-mini-page/mall-product-list.png"
+    },
+    {
+      "index": 8,
+      "sourceFile": "/Users/kite/Desktop/hkp/mini-page/008-web44eebb3b-2448-49bd-a07d-d098f44c4929.png",
+      "file": "docs/ui/source/hkp-mini-page/mall-favorites.png"
+    },
+    {
+      "index": 9,
+      "sourceFile": "/Users/kite/Desktop/hkp/mini-page/009-webb47491f1-ab42-48e5-a078-c22a16b983dc.png",
+      "file": "docs/ui/source/hkp-mini-page/aftersale-list.png"
+    },
+    {
+      "index": 10,
+      "sourceFile": "/Users/kite/Desktop/hkp/mini-page/010-webc155d71a-d225-4925-95b9-a2a8eb02e003.png",
+      "file": "docs/ui/source/hkp-mini-page/order-detail-paid.png"
+    },
+    {
+      "index": 11,
+      "sourceFile": "/Users/kite/Desktop/hkp/mini-page/011-weba735f54b-d2aa-44a1-8a8a-82dd1399b63f.png",
+      "file": "docs/ui/source/hkp-mini-page/review-create.png"
+    },
+    {
+      "index": 12,
+      "sourceFile": "/Users/kite/Desktop/hkp/mini-page/012-web2190a9b0-d913-4de6-bf42-21369640b558.png",
+      "file": "docs/ui/source/hkp-mini-page/mall-recommend-grid.png"
+    },
+    {
+      "index": 13,
+      "sourceFile": "/Users/kite/Desktop/hkp/mini-page/013-web4c468381-88f8-4a07-96e3-2a3f2141fba0.png",
+      "file": "docs/ui/source/hkp-mini-page/hotel-checkout.png"
+    },
+    {
+      "index": 14,
+      "sourceFile": "/Users/kite/Desktop/hkp/mini-page/014-web0a31ee1f-5173-4c2f-ba0f-a28db519233e.png",
+      "file": "docs/ui/source/hkp-mini-page/product-detail-props-modal.png"
+    },
+    {
+      "index": 15,
+      "sourceFile": "/Users/kite/Desktop/hkp/mini-page/015-webb2fbd997-11c7-4d72-a15a-57f42f5c3e62.png",
+      "file": "docs/ui/source/hkp-mini-page/product-detail-sku-modal.png"
+    },
+    {
+      "index": 16,
+      "sourceFile": "/Users/kite/Desktop/hkp/mini-page/016-web42912a47-c665-42bb-a604-6a8c7c0209e6.png",
+      "file": "docs/ui/source/hkp-mini-page/aftersale-type-product.png"
+    },
+    {
+      "index": 17,
+      "sourceFile": "/Users/kite/Desktop/hkp/mini-page/017-web3b4bc197-303d-43a5-9c86-f08c22f54115.png",
+      "file": "docs/ui/source/hkp-mini-page/aftersale-type-food.png"
+    },
+    {
+      "index": 18,
+      "sourceFile": "/Users/kite/Desktop/hkp/mini-page/018-webae8fa363-2daa-4e14-bcd5-3fe9bcb3064d.png",
+      "file": "docs/ui/source/hkp-mini-page/ticket-checkout.png"
+    },
+    {
+      "index": 19,
+      "sourceFile": "/Users/kite/Desktop/hkp/mini-page/019-web7b8e811d-db63-4535-8de0-83f64b0c0e6b.png",
+      "file": "docs/ui/source/hkp-mini-page/park-detail-intro.png"
+    },
+    {
+      "index": 20,
+      "sourceFile": "/Users/kite/Desktop/hkp/mini-page/020-webdfc8fa00-d9fb-4900-adb0-e77c40944726.png",
+      "file": "docs/ui/source/hkp-mini-page/aftersale-progress-refund-detail.png"
+    },
+    {
+      "index": 21,
+      "sourceFile": "/Users/kite/Desktop/hkp/mini-page/021-web9e975be4-b2da-4f01-8c3f-f1d4a5ab0be0.png",
+      "file": "docs/ui/source/hkp-mini-page/address-list.png"
+    },
+    {
+      "index": 22,
+      "sourceFile": "/Users/kite/Desktop/hkp/mini-page/022-web4ce6be23-8f28-40a4-b33d-43250a79dfd5.png",
+      "file": "docs/ui/source/hkp-mini-page/hotel-detail.png"
+    },
+    {
+      "index": 23,
+      "sourceFile": "/Users/kite/Desktop/hkp/mini-page/023-webc3e3e3b3-4c95-4afe-add0-e344cfcdfb31.png",
+      "file": "docs/ui/source/hkp-mini-page/cart-checkout.png"
+    },
+    {
+      "index": 24,
+      "sourceFile": "/Users/kite/Desktop/hkp/mini-page/024-web621fbd9e-f871-457a-a488-5a2b4e7daf77.png",
+      "file": "docs/ui/source/hkp-mini-page/mall-search-keyboard.png"
+    },
+    {
+      "index": 25,
+      "sourceFile": "/Users/kite/Desktop/hkp/mini-page/025-web645db641-1940-425c-9595-75c8825f0187.png",
+      "file": "docs/ui/source/hkp-mini-page/address-select-list.png"
+    },
+    {
+      "index": 26,
+      "sourceFile": "/Users/kite/Desktop/hkp/mini-page/026-webc2029a38-2991-4ff4-aa71-7c02f18af8c4.png",
+      "file": "docs/ui/source/hkp-mini-page/order-cancel-apply.png"
+    },
+    {
+      "index": 27,
+      "sourceFile": "/Users/kite/Desktop/hkp/mini-page/027-web3658b70b-3427-4467-afe3-b2e40879856b.png",
+      "file": "docs/ui/source/hkp-mini-page/withdraw-records.png"
+    },
+    {
+      "index": 28,
+      "sourceFile": "/Users/kite/Desktop/hkp/mini-page/028-web379c6d30-d592-40d6-93f6-33af8a155418.png",
+      "file": "docs/ui/source/hkp-mini-page/coupon-list-used.png"
+    },
+    {
+      "index": 29,
+      "sourceFile": "/Users/kite/Desktop/hkp/mini-page/029-web1fd18aff-af5e-445e-b1a9-84cccaff7eb2.png",
+      "file": "docs/ui/source/hkp-mini-page/mall-product-list-sort.png"
+    },
+    {
+      "index": 30,
+      "sourceFile": "/Users/kite/Desktop/hkp/mini-page/030-web30defaff-78fe-405f-a915-13d4eb4ac58e.png",
+      "file": "docs/ui/source/hkp-mini-page/aftersale-progress-detail-product.png"
+    },
+    {
+      "index": 31,
+      "sourceFile": "/Users/kite/Desktop/hkp/mini-page/031-webbecaeb74-3598-465d-8a78-c06c285a2f79.png",
+      "file": "docs/ui/source/hkp-mini-page/aftersale-progress-detail-reason.png"
+    },
+    {
+      "index": 32,
+      "sourceFile": "/Users/kite/Desktop/hkp/mini-page/032-web3260c1e7-0730-4e2b-b6d8-491bcdfbb353.png",
+      "file": "docs/ui/source/hkp-mini-page/review-list.png"
+    },
+    {
+      "index": 33,
+      "sourceFile": "/Users/kite/Desktop/hkp/mini-page/033-webf5c16d6b-8a5d-4cdc-abfa-e0416a1d8444.png",
+      "file": "docs/ui/source/hkp-mini-page/dining-home.png"
+    },
+    {
+      "index": 34,
+      "sourceFile": "/Users/kite/Desktop/hkp/mini-page/034-webbb549813-20cc-47e8-93bf-569c3d773916.png",
+      "file": "docs/ui/source/hkp-mini-page/hotel-guest-count.png"
+    },
+    {
+      "index": 35,
+      "sourceFile": "/Users/kite/Desktop/hkp/mini-page/035-web37a33017-9b0c-4733-8dc5-cdf40d8b0fcd.png",
+      "file": "docs/ui/source/hkp-mini-page/ticket-date-picker.png"
+    },
+    {
+      "index": 36,
+      "sourceFile": "/Users/kite/Desktop/hkp/mini-page/036-web56c505b1-252c-42a6-8fe9-ccf78817d18c.png",
+      "file": "docs/ui/source/hkp-mini-page/ticket-booking-form.png"
+    },
+    {
+      "index": 37,
+      "sourceFile": "/Users/kite/Desktop/hkp/mini-page/037-web48c87276-b021-4dd7-b513-e00bc4a5bc6f.png",
+      "file": "docs/ui/source/hkp-mini-page/mall-category-home.png"
+    },
+    {
+      "index": 38,
+      "sourceFile": "/Users/kite/Desktop/hkp/mini-page/038-webf22a1731-490c-4a04-994f-005225b8dfbb.png",
+      "file": "docs/ui/source/hkp-mini-page/coupon-list-expired.png"
+    },
+    {
+      "index": 39,
+      "sourceFile": "/Users/kite/Desktop/hkp/mini-page/039-webaaa555d8-c971-4fab-a0ec-06be608794ff.png",
+      "file": "docs/ui/source/hkp-mini-page/order-list-all.png"
+    },
+    {
+      "index": 40,
+      "sourceFile": "/Users/kite/Desktop/hkp/mini-page/040-webada7bd82-e567-4134-a570-08274e345de6.png",
+      "file": "docs/ui/source/hkp-mini-page/aftersale-submit-logistics.png"
+    },
+    {
+      "index": 41,
+      "sourceFile": "/Users/kite/Desktop/hkp/mini-page/041-web0e63aa16-9340-464c-93b5-5c0a3a70058d.png",
+      "file": "docs/ui/source/hkp-mini-page/cart-settlement-edit.png"
+    },
+    {
+      "index": 42,
+      "sourceFile": "/Users/kite/Desktop/hkp/mini-page/042-web295e5b67-0fc6-40dd-875e-819f1cc6b5ca.png",
+      "file": "docs/ui/source/hkp-mini-page/coupon-list-expired-alt.png"
+    },
+    {
+      "index": 43,
+      "sourceFile": "/Users/kite/Desktop/hkp/mini-page/043-web8a499bb1-9aac-4409-865c-2566dc2b5786.png",
+      "file": "docs/ui/source/hkp-mini-page/logistics-detail.png"
+    },
+    {
+      "index": 44,
+      "sourceFile": "/Users/kite/Desktop/hkp/mini-page/044-web7618e93b-e468-4166-90a2-99e2eb1747a3.png",
+      "file": "docs/ui/source/hkp-mini-page/share-rule.png"
+    },
+    {
+      "index": 45,
+      "sourceFile": "/Users/kite/Desktop/hkp/mini-page/045-web41034df3-7cc4-4fa4-b3a5-5989a93dc060.png",
+      "file": "docs/ui/source/hkp-mini-page/ticket-coupon-modal.png"
+    },
+    {
+      "index": 46,
+      "sourceFile": "/Users/kite/Desktop/hkp/mini-page/046-webe09dee66-ae47-44c9-b139-0aea34002a1a.png",
+      "file": "docs/ui/source/hkp-mini-page/order-list-completed.png"
+    },
+    {
+      "index": 47,
+      "sourceFile": "/Users/kite/Desktop/hkp/mini-page/047-web83ad4cdf-cafe-4db1-9d9a-9b76a2349fa3.png",
+      "file": "docs/ui/source/hkp-mini-page/order-detail-completed.png"
+    },
+    {
+      "index": 48,
+      "sourceFile": "/Users/kite/Desktop/hkp/mini-page/048-webb1b774e7-0b42-4b17-8be3-8ce2da82a617.png",
+      "file": "docs/ui/source/hkp-mini-page/dining-checkout.png"
+    },
+    {
+      "index": 49,
+      "sourceFile": "/Users/kite/Desktop/hkp/mini-page/049-web05a5d434-79ef-4525-8c4c-1dafa464a7ff.png",
+      "file": "docs/ui/source/hkp-mini-page/ticket-booking-long.png"
+    },
+    {
+      "index": 50,
+      "sourceFile": "/Users/kite/Desktop/hkp/mini-page/050-webcfd4f7dc-3722-4da2-b3f6-0b2c47ee1c14.png",
+      "file": "docs/ui/source/hkp-mini-page/mall-product-grid.png"
+    },
+    {
+      "index": 51,
+      "sourceFile": "/Users/kite/Desktop/hkp/mini-page/051-web3566a9e1-f974-4cbc-a1d6-b67a1f5fe7e4.png",
+      "file": "docs/ui/source/hkp-mini-page/ticket-booking-compact.png"
+    },
+    {
+      "index": 52,
+      "sourceFile": "/Users/kite/Desktop/hkp/mini-page/052-webbf873ebd-b109-4bcc-814d-b483a8e27b6f.png",
+      "file": "docs/ui/source/hkp-mini-page/product-detail-long.png"
+    },
+    {
+      "index": 53,
+      "sourceFile": "/Users/kite/Desktop/hkp/mini-page/053-web6445ce77-8f25-4b96-8cd8-3fc46e159d49.png",
+      "file": "docs/ui/source/hkp-mini-page/share-home-empty.png"
+    },
+    {
+      "index": 54,
+      "sourceFile": "/Users/kite/Desktop/hkp/mini-page/054-webaa5bacec-6ab1-48b8-b99e-6abbdab58dbf.png",
+      "file": "docs/ui/source/hkp-mini-page/share-home-stats.png"
+    },
+    {
+      "index": 55,
+      "sourceFile": "/Users/kite/Desktop/hkp/mini-page/055-web037de457-a739-4e83-9fed-b535cc8647c3.png",
+      "file": "docs/ui/source/hkp-mini-page/share-income-detail.png"
+    },
+    {
+      "index": 56,
+      "sourceFile": "/Users/kite/Desktop/hkp/mini-page/056-web3b487b4d-8d52-4e92-8bb9-75a18bc06dcc.png",
+      "file": "docs/ui/source/hkp-mini-page/share-invite-list.png"
+    },
+    {
+      "index": 57,
+      "sourceFile": "/Users/kite/Desktop/hkp/mini-page/057-webd15765bd-e2ac-4d40-b376-5ac371a7d2ec.png",
+      "file": "docs/ui/source/hkp-mini-page/order-list-refund-state.png"
+    },
+    {
+      "index": 58,
+      "sourceFile": "/Users/kite/Desktop/hkp/mini-page/058-webef7687c8-0cd8-4f26-86c4-92fd1c73152d.png",
+      "file": "docs/ui/source/hkp-mini-page/order-checkout-address.png"
+    },
+    {
+      "index": 59,
+      "sourceFile": "/Users/kite/Desktop/hkp/mini-page/059-webd2426e91-1dfe-4538-965d-2c58eda6f08d.png",
+      "file": "docs/ui/source/hkp-mini-page/aftersale-list-records.png"
+    },
+    {
+      "index": 60,
+      "sourceFile": "/Users/kite/Desktop/hkp/mini-page/060-web897e3d5f-24d0-4f7a-844a-ae6b8d527433.png",
+      "file": "docs/ui/source/hkp-mini-page/product-detail-coupon-modal.png"
+    },
+    {
+      "index": 61,
+      "sourceFile": "/Users/kite/Desktop/hkp/mini-page/061-webe17ac2ff-c3ef-44c4-a019-8edf89b8c135.png",
+      "file": "docs/ui/source/hkp-mini-page/withdraw-apply.png"
+    },
+    {
+      "index": 62,
+      "sourceFile": "/Users/kite/Desktop/hkp/mini-page/062-webccaa1ee8-b212-4fea-b552-865da5008db1.png",
+      "file": "docs/ui/source/hkp-mini-page/dining-merchant-detail.png"
+    },
+    {
+      "index": 63,
+      "sourceFile": "/Users/kite/Desktop/hkp/mini-page/063-web0c444e9b-05a4-437d-bc49-b0ba5b773a07.png",
+      "file": "docs/ui/source/hkp-mini-page/order-list-pending-pay.png"
+    },
+    {
+      "index": 64,
+      "sourceFile": "/Users/kite/Desktop/hkp/mini-page/064-web947dd507-a8c9-4e6e-b473-b6aa2f8e4935.png",
+      "file": "docs/ui/source/hkp-mini-page/order-list-pending-ship.png"
+    },
+    {
+      "index": 65,
+      "sourceFile": "/Users/kite/Desktop/hkp/mini-page/065-web9c81fbf8-a5f0-4339-b9e5-26a50ff323fa.png",
+      "file": "docs/ui/source/hkp-mini-page/dining-merchant-sku-checkout.png"
+    },
+    {
+      "index": 66,
+      "sourceFile": "/Users/kite/Desktop/hkp/mini-page/066-webadc62e6c-0ede-4b28-b029-cb3b285a072b.png",
+      "file": "docs/ui/source/hkp-mini-page/dining-submit-order.png"
+    },
+    {
+      "index": 67,
+      "sourceFile": "/Users/kite/Desktop/hkp/mini-page/067-web8608c190-627e-4cb9-8d28-0d720e305b9c.png",
+      "file": "docs/ui/source/hkp-mini-page/hotel-room-detail.png"
+    },
+    {
+      "index": 68,
+      "sourceFile": "/Users/kite/Desktop/hkp/mini-page/068-web9ed18a96-1f99-415d-97f7-3b31a128a225.png",
+      "file": "docs/ui/source/hkp-mini-page/mall-category-list.png"
+    },
+    {
+      "index": 69,
+      "sourceFile": "/Users/kite/Desktop/hkp/mini-page/069-web0d67fc76-f38d-434c-9f57-4a7f79c5c47b.png",
+      "file": "docs/ui/source/hkp-mini-page/gift-select.png"
+    },
+    {
+      "index": 70,
+      "sourceFile": "/Users/kite/Desktop/hkp/mini-page/070-web8b067b49-3665-4bae-a4ac-eb05ea55666b.png",
+      "file": "docs/ui/source/hkp-mini-page/park-guide-detail-map.png"
+    }
+  ]
+}

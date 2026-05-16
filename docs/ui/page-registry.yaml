@@ -1,5 +1,15 @@
 version: 1
-updatedAt: "2026-05-15"
+updatedAt: "2026-05-16"
+hkpMiniBuild:
+  phase: phase-0-prd-assets
+  branch: feature/hkp-mini-phase-0-prd-assets
+  baselineCommit: "36b7517"
+  prd: docs/ui/pages/hkp-mini-prd.md
+  checkpoint: docs/codex/current-hkp-mini-page.md
+  sourceDir: docs/ui/source/hkp-mini-page
+  sourceManifest: docs/ui/source/hkp-mini-page/manifest.json
+  resumeSkill: /Users/kite/.codex/skills/hkp-mini-build/SKILL.md
+  note: HKP 全页面工程的页面清单先登记在 PRD；Phase 1 生成页面骨架后再逐页写入 pages 区块，避免 UI Contract 因计划态路由不存在而失败。
 pages:
   home:
     title: 首页
