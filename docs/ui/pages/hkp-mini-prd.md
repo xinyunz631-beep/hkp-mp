@@ -3,8 +3,8 @@
 ## 基本信息
 
 - 项目：HKP C 端乐园小程序全页面工程
-- 当前阶段：Phase 1 - 路由和页面骨架
-- 当前 Git 分支：`feature/hkp-mini-phase-1-routes-shells`
+- 当前阶段：Phase 2 - 通用组件和基础 mock service
+- 当前 Git 分支：`feature/hkp-mini-phase-2-shared-components`
 - 基线提交：`36b7517 chore: 保存小程序当前开发基线`
 - UI 事实源：`docs/ui/source/hkp-mini-page/*.png`
 - UI 宽度：`750px`
@@ -166,9 +166,11 @@
 
 - `2026-05-16`：建立 HKP 全页面工程 PRD，登记 70 张 750px UI 图、分包边界、路由规划和 service 替换策略。
 - `2026-05-16`：Phase 1 批量补齐主包入口、分包首页和业务子页面骨架，更新路由常量、分包配置、页面 registry 和页面说明文档。
+- `2026-05-16`：Phase 2 建立交易通用组件、HKP 通用 DTO、本地数据 helper，并为商城、票务、酒店、餐饮、订单、会员分包补齐基础 service 数据。
 
 ## 验证记录
 
 - Phase 0 基线前已通过：`yarn typecheck`、`yarn check:page-convention`、`yarn check:package-boundary`、`yarn check:ui-contract`。
 - Phase 1 轻量门禁已通过：`yarn typecheck`、`yarn check:page-convention`、`yarn check:package-boundary`、`yarn check:ui-contract`。
 - Phase 1 完整构建：`yarn build:weapp` 已尝试，因本地 Taro 构建长时间无输出并伴随 `system-configuration` panic 日志被终止，后续需单独复验。
+- Phase 2 门禁已通过：`yarn typecheck`、`yarn check:page-convention`、`yarn check:package-boundary`、`yarn check:ui-contract`。

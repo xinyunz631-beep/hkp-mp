@@ -59,6 +59,7 @@
 ## 组件决策顺序
 
 - 先查项目内封装：`src/core/components`、当前分包组件、已有同类页面。
+- 交易类通用 UI 优先查 `src/core/components/commerce`，当前包含商品卡、订单卡、优惠券卡、地址卡、提交栏、数量选择、筛选 Tab、SKU 弹层和日期选择。
 - 再查已安装 UI 库：当前优先 NutUI Taro；命中后也先封装一层项目组件，再给页面或业务代码使用。
 - 命中基础状态能力时优先使用项目封装：`BaseSkeleton`、`BaseEmpty`、`BaseException`、`src/core/components/loading`。
 - 会被多个页面复用的能力再沉淀到 `src/core/components` 或分包 components。
@@ -70,6 +71,9 @@
 - 业务分包页面：`src/pkg-{package}/pages/{page}/index.*`
 - 主包 service：`src/core/services/{page}.ts`
 - 分包 service：`src/pkg-{package}/services/{page}.ts`
+- 分包基础数据：`src/pkg-{package}/services/mock-data.ts`
+- 本地数据工具：`src/core/services/mock.ts`
+- HKP 通用 DTO：`src/core/types/hkp.ts`
 - 项目级图片组件：`src/core/components/AppImage`
 - 项目级图标组件：`src/core/components/AppIcon`
 - 路由常量：`src/core/constants/routes.ts`

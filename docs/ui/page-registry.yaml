@@ -1,15 +1,15 @@
 version: 1
 updatedAt: "2026-05-16"
 hkpMiniBuild:
-  phase: phase-1-routes-shells
-  branch: feature/hkp-mini-phase-1-routes-shells
+  phase: phase-2-shared-components
+  branch: feature/hkp-mini-phase-2-shared-components
   baselineCommit: "36b7517"
   prd: docs/ui/pages/hkp-mini-prd.md
   checkpoint: docs/codex/current-hkp-mini-page.md
   sourceDir: docs/ui/source/hkp-mini-page
   sourceManifest: docs/ui/source/hkp-mini-page/manifest.json
   resumeSkill: /Users/kite/.codex/skills/hkp-mini-build/SKILL.md
-  note: Phase 1 已进入路由和页面骨架阶段；当前 pages 区块逐页登记真实存在的页面路径，避免 UI Contract 因计划态路由不存在而失败。
+  note: Phase 2 已进入通用组件和基础 mock service 阶段；页面骨架已登记，后续页面流按截图实现时优先复用 commerce 组件和各分包 service DTO。
 pages:
   home:
     title: 首页

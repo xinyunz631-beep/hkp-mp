@@ -9,6 +9,9 @@
 - service 不是薄转发，要处理当前接口的默认值、轻量字段归一和失败兜底。
 - 单接口轻量处理直接写在方法内部，不为每个 API 抽一堆 helper。
 - request 负责通用网络、授权、header、业务成功码等基础能力。
+- 长任务 UI 开发阶段可用 `src/core/services/mock.ts` 的 `resolveMockData()` 返回本地数据；真实接口文档到来后只替换 service 内部 request 和 mapper。
+- 各业务分包的基础数据放在本分包 `services/mock-data.ts`，页面只 import 当前页面 service，不直接 import mock-data。
+- 页面 DTO 优先复用 `src/core/types/hkp.ts`，分包差异字段可以在各自 service 内扩展。
 
 ## 可降级接口
 

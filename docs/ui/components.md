@@ -20,6 +20,20 @@
 - 通用弹层：`AppPopup`
 - 登录动作拦截：`AuthAction` 或 `usePageRuntime().ensureLogin`
 
+## 交易通用组件
+
+- 统一入口：`src/core/components/commerce`
+- 商品卡片：`ProductCard`，用于商城列表、推荐、收藏、赠品、餐饮套餐和房型轻量卡片。
+- 订单卡片：`OrderCard`，用于订单列表、售后关联订单、评价和物流入口。
+- 优惠券卡片：`CouponCard`，用于会员优惠券、商品/门票优惠券弹层。
+- 地址卡片：`AddressCard`，用于确认订单、地址管理和地址选择。
+- 固定提交栏：`FixedSubmitBar`，用于确认订单、预定页、购物车和弹层底部提交。
+- 数量选择：`QuantityStepper`，用于 SKU、购物车、门票/套餐数量选择。
+- 筛选与状态 Tab：`FilterTabs`、`StatusListTabs`，用于商品列表、订单列表、售后列表和优惠券列表。
+- SKU 弹层：`SkuPopup`，基于 `AppPopup`，用于商品、餐饮套餐和可规格化商品。
+- 日期选择：`DateRangePanel`，用于门票日期、酒店入住日期和可滑动日期选择。
+- 这些组件只承接通用 UI 结构和轻交互，具体下单、接口提交、业务状态仍放在页面和 service。
+
 ## 首页规范组件
 
 - 固定顶部搜索栏：左侧双功能按钮 + 中间搜索输入区 + 右侧微信胶囊预留，作为 `固定导航` 独立层处理。

@@ -3,10 +3,10 @@
 ## 当前状态
 
 - 更新时间：`2026-05-16`
-- 当前阶段：`Phase 1 - 路由和页面骨架`
-- 当前分支：`feature/hkp-mini-phase-1-routes-shells`
+- 当前阶段：`Phase 2 - 通用组件和基础 mock service`
+- 当前分支：`feature/hkp-mini-phase-2-shared-components`
 - 基线提交：`36b7517 chore: 保存小程序当前开发基线`
-- 最近阶段提交：`9fa7265 chore: 建立 HKP 小程序全页面工程基线`
+- 最近阶段提交：`92d810d feat: 建立 HKP 小程序页面骨架`
 - 总控 Skill：`/Users/kite/.codex/skills/hkp-mini-build/SKILL.md`
 - 主执行 Skill：`$mpcode-page`
 
@@ -27,12 +27,18 @@
 - 已登记页面说明文档和 `docs/ui/page-registry.yaml` 页面索引。
 - Phase 1 轻量门禁已通过：`yarn typecheck`、`yarn check:page-convention`、`yarn check:package-boundary`、`yarn check:ui-contract`。
 - `yarn build:weapp` 已尝试执行，Taro 构建在本地长时间无新增输出并出现 `system-configuration` 运行时 panic 日志，已手动终止，后续需单独复验完整产物。
+- 已进入 `feature/hkp-mini-phase-2-shared-components` 分支。
+- 已新增 `src/core/types/hkp.ts` 作为商品、订单、优惠券、地址、SKU、日期等基础 DTO。
+- 已新增 `src/core/services/mock.ts` 作为本地数据返回和失败兜底工具。
+- 已新增 `src/core/components/commerce` 交易通用组件，包含商品卡、订单卡、优惠券卡、地址卡、固定提交栏、数量选择、筛选 Tab、SKU 弹层和日期选择。
+- 已为商城、票务、酒店、餐饮、订单、会员分包补齐 `services/mock-data.ts` 和基础页面 service 返回值。
+- Phase 2 门禁已通过：`yarn typecheck`、`yarn check:page-convention`、`yarn check:package-boundary`、`yarn check:ui-contract`。
 
 ## 下一步
 
-1. 提交 Phase 1 成果。
-2. 创建 `feature/hkp-mini-phase-2-shared-components` 分支。
-3. Phase 2 按 `$mpcode-page` 约束实现通用组件和基础 mock service。
+1. 提交 Phase 2 成果。
+2. 创建 `feature/hkp-mini-phase-3-mall-flow` 分支。
+3. Phase 3 按 `$mpcode-page` 约束实现商城完整购买流。
 
 ## 恢复方式
 
