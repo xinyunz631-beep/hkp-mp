@@ -72,4 +72,7 @@
 
 ## 验证记录
 
-- 待验证。
+- `2026-05-16`：`yarn typecheck`
+- `2026-05-16`：`yarn check:page-convention`
+- `2026-05-16`：`yarn check:package-boundary`
+- `2026-05-16`：`yarn check:ui-contract`

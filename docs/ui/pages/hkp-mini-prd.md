@@ -175,3 +175,4 @@
 - Phase 1 轻量门禁已通过：`yarn typecheck`、`yarn check:page-convention`、`yarn check:package-boundary`、`yarn check:ui-contract`。
 - Phase 1 完整构建：`yarn build:weapp` 已尝试，因本地 Taro 构建长时间无输出并伴随 `system-configuration` panic 日志被终止，后续需单独复验。
 - Phase 2 门禁已通过：`yarn typecheck`、`yarn check:page-convention`、`yarn check:package-boundary`、`yarn check:ui-contract`。
+- Phase 3 当前轮门禁已通过：`yarn typecheck`、`yarn check:page-convention`、`yarn check:package-boundary`、`yarn check:ui-contract`。
