@@ -338,7 +338,7 @@ pages:
   ticket-park-detail:
     title: 乐园详情
     route: src/pkg-ticket/pages/park-detail
-    status: implementing
+    status: implemented
     spec: docs/ui/pages/ticket-park-detail.md
     design:
       currentTool: pencil
@@ -349,7 +349,7 @@ pages:
         name: 乐园详情 750px 开发稿
         width: 750
         role: active-source
-        note: 代码优先创建页面，后续按截图或设计稿继续同步。
+        note: 已按 park-detail-intro.png 完成介绍、开放时间、优惠政策和其他信息四块信息卡，并补在线购票入口。
     implementation:
       files:
         - src/pkg-ticket/pages/park-detail/index.tsx
@@ -390,7 +390,7 @@ pages:
   ticket-checkout:
     title: 门票确认订单
     route: src/pkg-ticket/pages/checkout
-    status: implementing
+    status: implemented
     spec: docs/ui/pages/ticket-checkout.md
     design:
       currentTool: pencil
@@ -401,7 +401,7 @@ pages:
         name: 门票确认订单 750px 开发稿
         width: 750
         role: active-source
-        note: 代码优先创建页面，后续按截图或设计稿继续同步。
+        note: 已按 ticket-checkout.png 完成订单卡、数量步进、联系人表单、折扣/优惠券和固定支付栏首版。
     implementation:
       files:
         - src/pkg-ticket/pages/checkout/index.tsx

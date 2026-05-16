@@ -5,6 +5,7 @@ import { observer } from 'mobx-react';
 import { AppIcon } from '@/core/components/AppIcon';
 import { AppImage } from '@/core/components/AppImage';
 import { PageShell } from '@/core/components/PageShell';
+import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import {
   fetchTicketBookingData,
@@ -192,7 +193,7 @@ const TicketBookingPage = observer(function TicketBookingPage() {
       return;
     }
 
-    showComingSoon('提交订单能力即将开放');
+    Taro.navigateTo({ url: MINI_PACKAGE_ROUTES.ticketCheckout });
   }
 
   const heroImageSrc = '';

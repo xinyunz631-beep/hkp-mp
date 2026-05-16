@@ -12,8 +12,8 @@
 - Figma nodeId：-
 - Pencil file：/Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
 - Pencil nodeId：ticket-park-detail
-- 当前版本：v0.1
-- 页面状态：implementing
+- 当前版本：v0.2
+- 页面状态：implemented
 - 更新时间：2026-05-16
 - 实现文件：
   - src/pkg-ticket/pages/park-detail/index.tsx
@@ -23,7 +23,7 @@
 
 ## 设计意图
 
-乐园详情页面先按代码优先方式创建基础实现，后续根据截图、设计稿或业务规则持续更新。
+乐园详情页面按 `park-detail-intro.png` 首版还原信息说明结构，优先完成介绍、开放时间、优惠政策和其他信息四个信息卡，并补一条进入门票预定页的在线购票入口。
 
 ## 页面结构
 
@@ -31,7 +31,7 @@
 - 页面容器：`PageShell`
 - 页面运行时：`usePageRuntime`
 - 页面状态订阅：`observer`
-- 内容区域：按本次业务需求实现
+- 内容区域：白底圆角信息卡片，依次展示介绍、开放时间、优惠政策和其他信息。
 
 ## 动态与静态边界
 
@@ -53,11 +53,12 @@
 
 | 模块 | service | 失败策略 | 是否阻断页面 |
 |---|---|---|---|
-| 页面数据 | `fetchParkDetailData()` | service 内归一和兜底 | 按业务决定 |
+| 页面数据 | `fetchParkDetailData()` | service 内归一和兜底 | 否 |
 
 ## 交互与跳转
 
-- 按页面业务需求补充。
+- 在线购票：点击“前往预定”跳到 `ticket-booking`。
+- 其他信息：当前展示热线、地址和节目单说明，后续接真实接口时只替换 service 数据。
 
 ## 实现映射
 
@@ -68,10 +69,19 @@
 
 ## 变更记录
 
+### v0.2
+
+- 按 `park-detail-intro.png` 完成介绍、开放时间、优惠政策和其他信息首版 UI。
+- 在其他信息区补充在线购票入口，串到门票预定页。
+- 扩展 `ticketParkData` mock 数据结构，补齐介绍、分时段开放时间和优惠政策字段。
+
 ### v0.1
 
 - 初始化页面基础实现。
 
 ## 验证记录
 
-- 待验证。
+- `yarn typecheck`
+- `yarn check:page-convention`
+- `yarn check:package-boundary`
+- `yarn check:ui-contract`
