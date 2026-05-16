@@ -12,8 +12,8 @@
 - Figma nodeId：-
 - Pencil file：/Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
 - Pencil nodeId：mall-favorites
-- 当前版本：v0.1
-- 页面状态：implementing
+- 当前版本：v0.2
+- 页面状态：implemented
 - 更新时间：2026-05-16
 - 实现文件：
   - src/pkg-mall/pages/favorites/index.tsx
@@ -23,7 +23,7 @@
 
 ## 设计意图
 
-我的收藏页面先按代码优先方式创建基础实现，后续根据截图、设计稿或业务规则持续更新。
+我的收藏页首版按截图实现筛选、编辑态遮罩和收藏列表。
 
 ## 页面结构
 
@@ -31,7 +31,7 @@
 - 页面容器：`PageShell`
 - 页面运行时：`usePageRuntime`
 - 页面状态订阅：`observer`
-- 内容区域：按本次业务需求实现
+- 内容区域：筛选条、收藏列表、编辑态遮罩按钮。
 
 ## 动态与静态边界
 
@@ -57,7 +57,9 @@
 
 ## 交互与跳转
 
-- 按页面业务需求补充。
+- 右上角编辑按钮可切换编辑态。
+- 编辑态可选择条目并触发加入购物车、分享、删除占位动作。
+- 非编辑态点击商品进入 `mall-product-detail`。
 
 ## 实现映射
 
@@ -68,10 +70,17 @@
 
 ## 变更记录
 
+### v0.2
+
+- 按收藏截图补齐筛选、编辑态和收藏列表首版。
+
 ### v0.1
 
 - 初始化页面基础实现。
 
 ## 验证记录
 
-- 待验证。
+- `2026-05-16`：`yarn typecheck`
+- `2026-05-16`：`yarn check:page-convention`
+- `2026-05-16`：`yarn check:package-boundary`
+- `2026-05-16`：`yarn check:ui-contract`

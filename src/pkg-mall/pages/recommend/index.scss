@@ -1,20 +1,146 @@
 ._pg {
   min-height: 100vh;
-  background: $color-page-bg;
-
-  .page-shell__body {
-    min-height: 100%;
-  }
+  background: #ffffff;
 }
 
 ._pg-shell {
   min-height: 100vh;
-  box-sizing: border-box;
-  background: $color-page-bg;
+  background: #ffffff;
 }
 
-._pg-content {
-  min-height: 240px;
-  padding: 32px;
-  box-sizing: border-box;
+._pg-header {
+  background: #ffffff;
+  border-bottom: 1px solid #f0f1f4;
+
+  &_search-row {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 18px 24px 16px;
+  }
+
+  &_search {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex: 1;
+    height: 64px;
+    padding: 0 24px;
+    border-radius: 999px;
+    background: #f5f6f9;
+  }
+
+  &_search-placeholder {
+    color: #b9bec6;
+    font-size: 22px;
+  }
+
+  &_switch {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+  }
+
+  &_tabs {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    align-items: center;
+    height: 74px;
+  }
+
+  &_tab {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 74px;
+    color: #9ea4ad;
+    font-size: 22px;
+
+    &--active {
+      color: #2a2d34;
+      font-weight: 700;
+    }
+  }
+
+  &_tab-indicator {
+    font-size: 18px;
+  }
+}
+
+._pg-page {
+  min-height: 100%;
+  background: #ffffff;
+}
+
+._pg-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+._pg-item {
+  padding: 0 0 28px;
+  border-right: 1px solid #f0f1f4;
+  border-bottom: 1px solid #f0f1f4;
+
+  &:nth-child(2n) {
+    border-right: 0;
+  }
+
+  &_image {
+    width: 100%;
+    height: 320px;
+    background: #f7f8fb;
+  }
+
+  &_title {
+    display: block;
+    min-height: 122px;
+    margin-top: 18px;
+    padding: 0 24px;
+    color: #30343b;
+    font-size: 22px;
+    line-height: 1.55;
+  }
+
+  &_labels {
+    display: flex;
+    gap: 14px;
+    min-height: 42px;
+    margin-top: 18px;
+    padding: 0 24px;
+  }
+
+  &_label {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 42px;
+    padding: 0 18px;
+    border: 1px solid #f08ab2;
+    border-radius: 999px;
+    color: $color-primary;
+    font-size: 18px;
+  }
+
+  &_footer {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-top: 18px;
+    padding: 0 24px;
+  }
+
+  &_price {
+    color: $color-primary;
+    font-size: 24px;
+    font-weight: 700;
+  }
+
+  &_sales {
+    color: #9ea4ad;
+    font-size: 18px;
+  }
 }

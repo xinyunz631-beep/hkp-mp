@@ -12,8 +12,8 @@
 - Figma nodeId：-
 - Pencil file：/Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
 - Pencil nodeId：mall-search
-- 当前版本：v0.1
-- 页面状态：implementing
+- 当前版本：v0.2
+- 页面状态：implemented
 - 更新时间：2026-05-16
 - 实现文件：
   - src/pkg-mall/pages/search/index.tsx
@@ -23,7 +23,7 @@
 
 ## 设计意图
 
-商品搜索页面先按代码优先方式创建基础实现，后续根据截图、设计稿或业务规则持续更新。
+商品搜索页首版按截图实现搜索头和热门搜索关键词，不在页面内模拟系统键盘本体。
 
 ## 页面结构
 
@@ -31,7 +31,7 @@
 - 页面容器：`PageShell`
 - 页面运行时：`usePageRuntime`
 - 页面状态订阅：`observer`
-- 内容区域：按本次业务需求实现
+- 内容区域：搜索头、取消按钮、热门搜索关键词区。
 
 ## 动态与静态边界
 
@@ -57,7 +57,8 @@
 
 ## 交互与跳转
 
-- 按页面业务需求补充。
+- 取消按钮统一走 `navigateBackOrHome()`。
+- 搜索头和热门关键词进入 `mall-products`。
 
 ## 实现映射
 
@@ -68,10 +69,17 @@
 
 ## 变更记录
 
+### v0.2
+
+- 按搜索截图补齐搜索头和热门搜索首版。
+
 ### v0.1
 
 - 初始化页面基础实现。
 
 ## 验证记录
 
-- 待验证。
+- `2026-05-16`：`yarn typecheck`
+- `2026-05-16`：`yarn check:page-convention`
+- `2026-05-16`：`yarn check:package-boundary`
+- `2026-05-16`：`yarn check:ui-contract`

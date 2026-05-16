@@ -3,6 +3,7 @@ import {
   ArrowLeft,
   Cart,
   CartAdd,
+  List,
   Filter,
   Heart,
   Home,
@@ -24,6 +25,7 @@ export type AppIconName =
   | 'heart'
   | 'home'
   | 'imageError'
+  | 'list'
   | 'order'
   | 'search'
   | 'service'
@@ -51,6 +53,7 @@ const nutIconMap: Record<AppIconName, NutIconComponent | undefined> = {
   heart: Heart,
   home: Home,
   imageError: ImageError,
+  list: List,
   order: Orderlist,
   search: Search,
   service: Service,

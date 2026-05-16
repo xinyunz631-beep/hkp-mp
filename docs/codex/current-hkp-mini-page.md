@@ -38,11 +38,19 @@
 - 已补齐商城首页 service、商城页面所需 NutUI 图标外层封装，并保持 `AppImage` 空地址失败态占位策略。
 - Phase 3 当前轮轻量门禁已通过：`yarn typecheck`、`yarn check:page-convention`、`yarn check:package-boundary`、`yarn check:ui-contract`。
 
+## 当前约束
+
+- `pkg-dining` 餐饮板块当前只保留页面基础框架和 service/mock 入口，不进入 UI 实现。
+- `pkg-member` 下分销链路 `share-rule/share/share-income/share-invite/withdraw/withdraw-records` 当前只保留基础框架，不进入 UI 实现。
+- 只有用户明确点名后，才允许继续完善以上两个板块的 UI。
+- 用户中途发来的问题、提醒、补充条件默认只更新约束，不中断当前主线阶段；只有明确说“停”或改主任务时才切线。
+
 ## 下一步
 
 1. 继续补齐商城剩余辅助页面：搜索、分类、收藏、赠品、推荐。
 2. 收口 Phase 3 商城闭环并确认页面间跳转体验。
-3. 进入票务、酒店、餐饮闭环。
+3. 进入票务和酒店闭环；餐饮只保留基础框架，不做 UI。
+4. 后续进入订单与会员基础页；分销链路只保留基础框架，不做 UI。
 
 ## 恢复方式
 
@@ -60,7 +68,7 @@ Codex 应读取本文件、`docs/ui/pages/hkp-mini-prd.md`、`docs/ui/page-regis
 - `feature/hkp-mini-phase-1-routes-shells`：路由和页面骨架。
 - `feature/hkp-mini-phase-2-shared-components`：通用组件和基础 mock service。
 - `feature/hkp-mini-phase-3-mall-flow`：商城闭环。
-- `feature/hkp-mini-phase-4-booking-flows`：票务、酒店、餐饮闭环。
+- `feature/hkp-mini-phase-4-booking-flows`：票务、酒店闭环；餐饮保持骨架。
 - `feature/hkp-mini-phase-5-order-aftersale`：订单、售后、地址、评价、物流。
-- `feature/hkp-mini-phase-6-member-growth`：会员优惠券、分享、提现。
+- `feature/hkp-mini-phase-6-member-growth`：会员基础页与优惠券；分销链路保持骨架。
 - `feature/hkp-mini-phase-7-polish-verify`：状态补齐和整体验收。

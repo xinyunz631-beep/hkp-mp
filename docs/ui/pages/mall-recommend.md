@@ -12,8 +12,8 @@
 - Figma nodeId：-
 - Pencil file：/Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
 - Pencil nodeId：mall-recommend
-- 当前版本：v0.1
-- 页面状态：implementing
+- 当前版本：v0.2
+- 页面状态：implemented
 - 更新时间：2026-05-16
 - 实现文件：
   - src/pkg-mall/pages/recommend/index.tsx
@@ -23,7 +23,7 @@
 
 ## 设计意图
 
-推荐商品页面先按代码优先方式创建基础实现，后续根据截图、设计稿或业务规则持续更新。
+热销推荐页首版按截图实现搜索条、筛选条和双列推荐商品宫格。
 
 ## 页面结构
 
@@ -31,7 +31,8 @@
 - 页面容器：`PageShell`
 - 页面运行时：`usePageRuntime`
 - 页面状态订阅：`observer`
-- 内容区域：按本次业务需求实现
+- 固定顶部：搜索条、列表切换按钮和筛选条。
+- 内容区域：双列推荐商品卡片。
 
 ## 动态与静态边界
 
@@ -57,7 +58,10 @@
 
 ## 交互与跳转
 
-- 按页面业务需求补充。
+- 搜索条进入 `mall-search`。
+- 列表按钮进入 `mall-products`。
+- 商品卡进入 `mall-product-detail`。
+- 综合 / 销量 / 价格切换当前排序。
 
 ## 实现映射
 
@@ -68,10 +72,17 @@
 
 ## 变更记录
 
+### v0.2
+
+- 按推荐商品截图补齐搜索条、筛选条和双列商品宫格。
+
 ### v0.1
 
 - 初始化页面基础实现。
 
 ## 验证记录
 
-- 待验证。
+- `2026-05-16`：`yarn typecheck`
+- `2026-05-16`：`yarn check:page-convention`
+- `2026-05-16`：`yarn check:package-boundary`
+- `2026-05-16`：`yarn check:ui-contract`

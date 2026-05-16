@@ -1,20 +1,130 @@
 ._pg {
   min-height: 100vh;
-  background: $color-page-bg;
-
-  .page-shell__body {
-    min-height: 100%;
-  }
+  background: #ffffff;
 }
 
 ._pg-shell {
   min-height: 100vh;
-  box-sizing: border-box;
-  background: $color-page-bg;
+  background: #ffffff;
 }
 
-._pg-content {
-  min-height: 240px;
-  padding: 32px;
-  box-sizing: border-box;
+._pg-navbar_action {
+  color: #2f333a;
+  font-size: 24px;
+  font-weight: 600;
+}
+
+._pg-page {
+  min-height: 100%;
+  background: #ffffff;
+}
+
+._pg-filter {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 24px 32px 22px;
+  border-bottom: 1px solid #f0f1f4;
+
+  &_item {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 144px;
+    height: 56px;
+    padding: 0 26px;
+    border-radius: 999px;
+    color: #444954;
+    font-size: 22px;
+
+    &--active {
+      border: 1px solid #f08ab2;
+      color: $color-primary;
+    }
+  }
+}
+
+._pg-list {
+  background: #ffffff;
+}
+
+._pg-item {
+  position: relative;
+  display: flex;
+  gap: 20px;
+  padding: 30px 32px;
+  border-bottom: 1px solid #f0f1f4;
+
+  &_image {
+    flex: none;
+    width: 160px;
+    height: 160px;
+    border-radius: 16px;
+    background: #f7f8fb;
+  }
+
+  &_body {
+    min-width: 0;
+    flex: 1;
+  }
+
+  &_title,
+  &_price,
+  &_status {
+    display: block;
+  }
+
+  &_title {
+    color: #2f333a;
+    font-size: 24px;
+    line-height: 1.5;
+  }
+
+  &_price {
+    margin-top: 28px;
+    color: $color-primary;
+    font-size: 30px;
+    font-weight: 700;
+  }
+
+  &_status {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 88px;
+    height: 48px;
+    margin-top: 28px;
+    padding: 0 18px;
+    border-radius: 999px;
+    background: #d1d5db;
+    color: #ffffff;
+    font-size: 20px;
+  }
+
+  &_overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(20, 20, 22, 0.56);
+  }
+
+  &_actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 22px;
+    height: 100%;
+  }
+
+  &_action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 164px;
+    height: 60px;
+    padding: 0 24px;
+    border: 1px solid rgba(255, 255, 255, 0.88);
+    border-radius: 999px;
+    color: #ffffff;
+    font-size: 22px;
+  }
 }

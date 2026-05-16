@@ -12,8 +12,8 @@
 - Figma nodeId：-
 - Pencil file：/Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
 - Pencil nodeId：mall-category
-- 当前版本：v0.1
-- 页面状态：implementing
+- 当前版本：v0.2
+- 页面状态：implemented
 - 更新时间：2026-05-16
 - 实现文件：
   - src/pkg-mall/pages/category/index.tsx
@@ -23,7 +23,7 @@
 
 ## 设计意图
 
-商城分类页面先按代码优先方式创建基础实现，后续根据截图、设计稿或业务规则持续更新。
+商城分类首页首版按截图实现左侧类目、推荐 Banner、快捷入口和底部商城导航。
 
 ## 页面结构
 
@@ -31,7 +31,8 @@
 - 页面容器：`PageShell`
 - 页面运行时：`usePageRuntime`
 - 页面状态订阅：`observer`
-- 内容区域：按本次业务需求实现
+- 内容区域：左侧类目导航、推荐 Banner、快捷入口卡片。
+- 固定底部：商城首页 / 购物车 / 我的订单。
 
 ## 动态与静态边界
 
@@ -57,7 +58,9 @@
 
 ## 交互与跳转
 
-- 按页面业务需求补充。
+- 顶部搜索框进入 `mall-search`。
+- 数码家居类目进入 `mall-category-list`。
+- 快捷入口进入 `mall-products`、`mall-recommend` 等商城页面。
 
 ## 实现映射
 
@@ -68,10 +71,17 @@
 
 ## 变更记录
 
+### v0.2
+
+- 按分类首页截图补齐类目、Banner、快捷入口和底部导航。
+
 ### v0.1
 
 - 初始化页面基础实现。
 
 ## 验证记录
 
-- 待验证。
+- `2026-05-16`：`yarn typecheck`
+- `2026-05-16`：`yarn check:page-convention`
+- `2026-05-16`：`yarn check:package-boundary`
+- `2026-05-16`：`yarn check:ui-contract`

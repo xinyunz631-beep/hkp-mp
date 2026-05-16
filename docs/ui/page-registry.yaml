@@ -9,7 +9,7 @@ hkpMiniBuild:
   sourceDir: docs/ui/source/hkp-mini-page
   sourceManifest: docs/ui/source/hkp-mini-page/manifest.json
   resumeSkill: /Users/kite/.codex/skills/hkp-mini-build/SKILL.md
-  note: 当前已进入 Phase 3 商城闭环；商城首页、商品列表、商品详情、购物车已完成首版 UI 与跳转闭环，后续继续补商城剩余辅助页面并推进下个业务阶段。
+  note: 当前已进入 Phase 3 商城闭环；中途问话默认只视为补充约束，不中断主线计划。餐饮 pkg-dining 和分销链路（share/share-income/share-invite/share-rule/withdraw/withdraw-records）默认只保留页面基础框架，除非用户明确点名，否则不进入 UI 实现。
 pages:
   home:
     title: 首页
@@ -104,7 +104,7 @@ pages:
   mall-category:
     title: 商城分类
     route: src/pkg-mall/pages/category
-    status: implementing
+    status: implemented
     spec: docs/ui/pages/mall-category.md
     design:
       currentTool: pencil
@@ -115,7 +115,7 @@ pages:
         name: 商城分类 750px 开发稿
         width: 750
         role: active-source
-        note: 代码优先创建页面，后续按截图或设计稿继续同步。
+        note: 已按 mall-category-home.png 完成左侧类目、推荐 Banner、快捷入口和底部商城导航首版。
     implementation:
       files:
         - src/pkg-mall/pages/category/index.tsx
@@ -130,7 +130,7 @@ pages:
   mall-category-list:
     title: 分类商品
     route: src/pkg-mall/pages/category-list
-    status: implementing
+    status: implemented
     spec: docs/ui/pages/mall-category-list.md
     design:
       currentTool: pencil
@@ -141,7 +141,7 @@ pages:
         name: 分类商品 750px 开发稿
         width: 750
         role: active-source
-        note: 代码优先创建页面，后续按截图或设计稿继续同步。
+        note: 已按 mall-category-list.png 完成左侧类目、品牌区和查看更多入口首版。
     implementation:
       files:
         - src/pkg-mall/pages/category-list/index.tsx
@@ -156,7 +156,7 @@ pages:
   mall-search:
     title: 商品搜索
     route: src/pkg-mall/pages/search
-    status: implementing
+    status: implemented
     spec: docs/ui/pages/mall-search.md
     design:
       currentTool: pencil
@@ -167,7 +167,7 @@ pages:
         name: 商品搜索 750px 开发稿
         width: 750
         role: active-source
-        note: 代码优先创建页面，后续按截图或设计稿继续同步。
+        note: 已按 mall-search-keyboard.png 完成搜索头和热门搜索首版；系统键盘不做页面内模拟。
     implementation:
       files:
         - src/pkg-mall/pages/search/index.tsx
@@ -208,7 +208,7 @@ pages:
   mall-recommend:
     title: 推荐商品
     route: src/pkg-mall/pages/recommend
-    status: implementing
+    status: implemented
     spec: docs/ui/pages/mall-recommend.md
     design:
       currentTool: pencil
@@ -219,7 +219,7 @@ pages:
         name: 推荐商品 750px 开发稿
         width: 750
         role: active-source
-        note: 代码优先创建页面，后续按截图或设计稿继续同步。
+        note: 已按 mall-recommend-grid.png 完成搜索条、筛选条和双列推荐商品首版。
     implementation:
       files:
         - src/pkg-mall/pages/recommend/index.tsx
@@ -286,7 +286,7 @@ pages:
   mall-favorites:
     title: 我的收藏
     route: src/pkg-mall/pages/favorites
-    status: implementing
+    status: implemented
     spec: docs/ui/pages/mall-favorites.md
     design:
       currentTool: pencil
@@ -297,7 +297,7 @@ pages:
         name: 我的收藏 750px 开发稿
         width: 750
         role: active-source
-        note: 代码优先创建页面，后续按截图或设计稿继续同步。
+        note: 已按 mall-favorites.png 完成筛选、编辑遮罩和收藏列表首版。
     implementation:
       files:
         - src/pkg-mall/pages/favorites/index.tsx
@@ -312,7 +312,7 @@ pages:
   mall-gift-select:
     title: 赠品选择
     route: src/pkg-mall/pages/gift-select
-    status: implementing
+    status: implemented
     spec: docs/ui/pages/mall-gift-select.md
     design:
       currentTool: pencil
@@ -323,7 +323,7 @@ pages:
         name: 赠品选择 750px 开发稿
         width: 750
         role: active-source
-        note: 代码优先创建页面，后续按截图或设计稿继续同步。
+        note: 已按 gift-select.png 完成双列赠品宫格和更换按钮首版。
     implementation:
       files:
         - src/pkg-mall/pages/gift-select/index.tsx

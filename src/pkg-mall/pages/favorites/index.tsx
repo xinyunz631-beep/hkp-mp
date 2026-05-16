@@ -1,22 +1,120 @@
-import { View } from '@tarojs/components';
+import { useMemo, useState } from 'react';
+import Taro from '@tarojs/taro';
+import { Text, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
+import { AppImage } from '@/core/components/AppImage';
 import { PageShell } from '@/core/components/PageShell';
+import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import { fetchFavoritesData } from '@/pkg-mall/services/favorites';
 import './index.scss';
 
-// 渲染我的收藏页面，具体业务内容按页面需求继续扩展。
+// 我的收藏页按截图补齐筛选、编辑态遮罩和快捷操作。
 const FavoritesPage = observer(function FavoritesPage() {
+  const [favoritesData, setFavoritesData] = useState<Awaited<ReturnType<typeof fetchFavoritesData>>>();
+  const [activeFilter, setActiveFilter] = useState('');
+  const [editMode, setEditMode] = useState(false);
+  const [selectedItemId, setSelectedItemId] = useState('');
   const pageRuntime = usePageRuntime({
     initPage: async () => {
-      await fetchFavoritesData();
+      const nextData = await fetchFavoritesData();
+      setFavoritesData(nextData);
+      setActiveFilter(nextData.activeFilter);
+      setSelectedItemId(nextData.items[0]?.id || '');
     },
   });
 
+  const filters = favoritesData?.filters ?? [];
+  const items = favoritesData?.items ?? [];
+
+  const visibleItems = useMemo(() => {
+    if (activeFilter === '仅看有货') {
+      return items.filter((item) => !item.invalid);
+    }
+
+    return items;
+  }, [activeFilter, items]);
+
+  function handleCardPress(itemId: string) {
+    if (editMode) {
+      setSelectedItemId(itemId);
+      return;
+    }
+
+    Taro.navigateTo({
+      url: `${MINI_PACKAGE_ROUTES.mallProductDetail}?productId=${itemId}`,
+    });
+  }
+
+  function handleEditAction(title: string) {
+    Taro.showToast({
+      title,
+      icon: 'none',
+    });
+  }
+
   return pageRuntime.renderPage(() => (
     <View className="_pg">
-      <PageShell title="我的收藏" className="_pg-shell">
-        <View className="_pg-content" />
+      <PageShell
+        title="我的收藏"
+        className="_pg-shell"
+        reserveTabBarSpace={false}
+        scrollViewProps={{}}
+        navbarRight={(
+          <Text className="_pg-navbar_action" onClick={() => setEditMode((currentValue) => !currentValue)}>
+            {editMode ? '完成' : '编辑'}
+          </Text>
+        )}
+      >
+        <View className="_pg-page">
+          <View className="_pg-filter">
+            {filters.map((filter) => (
+              <View
+                className={`_pg-filter_item ${activeFilter === filter ? '_pg-filter_item--active' : ''}`}
+                key={filter}
+                onClick={() => setActiveFilter(filter)}
+              >
+                <Text>{filter}</Text>
+              </View>
+            ))}
+          </View>
+
+          <View className="_pg-list">
+            {visibleItems.map((item) => {
+              const selected = editMode && selectedItemId === item.id;
+
+              return (
+                <View className="_pg-item" key={item.id} onClick={() => handleCardPress(item.id)}>
+                  <AppImage className="_pg-item_image" src={item.image.src} mode="aspectFit" emptyState="error" />
+                  <View className="_pg-item_body">
+                    <Text className="_pg-item_title">{item.title}</Text>
+                    {item.invalid ? (
+                      <Text className="_pg-item_status">失效</Text>
+                    ) : (
+                      <Text className="_pg-item_price">¥ {item.price}</Text>
+                    )}
+                  </View>
+
+                  {selected ? (
+                    <View className="_pg-item_overlay">
+                      <View className="_pg-item_actions">
+                        <View className="_pg-item_action" onClick={() => handleEditAction('已加入购物车')}>
+                          <Text>加入购物车</Text>
+                        </View>
+                        <View className="_pg-item_action" onClick={() => handleEditAction('分享能力稍后接入')}>
+                          <Text>请分享</Text>
+                        </View>
+                        <View className="_pg-item_action" onClick={() => handleEditAction('已删除收藏')}>
+                          <Text>删除</Text>
+                        </View>
+                      </View>
+                    </View>
+                  ) : null}
+                </View>
+              );
+            })}
+          </View>
+        </View>
       </PageShell>
     </View>
   ));
