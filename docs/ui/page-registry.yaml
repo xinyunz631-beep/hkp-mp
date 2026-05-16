@@ -416,7 +416,7 @@ pages:
   hotel-checkout:
     title: 酒店确认订单
     route: src/pkg-hotel/pages/checkout
-    status: implementing
+    status: implemented
     spec: docs/ui/pages/hotel-checkout.md
     design:
       currentTool: pencil
@@ -427,7 +427,7 @@ pages:
         name: 酒店确认订单 750px 开发稿
         width: 750
         role: active-source
-        note: 代码优先创建页面，后续按截图或设计稿继续同步。
+        note: 已按 hotel-checkout.png 完成房型摘要、入住信息、优惠券/折扣、发票和底部支付栏首版。
     implementation:
       files:
         - src/pkg-hotel/pages/checkout/index.tsx
@@ -442,7 +442,7 @@ pages:
   hotel-room-detail:
     title: 房间详情
     route: src/pkg-hotel/pages/room-detail
-    status: implementing
+    status: implemented
     spec: docs/ui/pages/hotel-room-detail.md
     design:
       currentTool: pencil
@@ -453,7 +453,7 @@ pages:
         name: 房间详情 750px 开发稿
         width: 750
         role: active-source
-        note: 代码优先创建页面，后续按截图或设计稿继续同步。
+        note: 已按 hotel-room-detail.png 完成房间主图、标题摘要、床型和更多详情首版。
     implementation:
       files:
         - src/pkg-hotel/pages/room-detail/index.tsx
@@ -1114,7 +1114,7 @@ pages:
   hotel-home:
     title: 酒店首页
     route: src/pkg-hotel/pages/index
-    status: implementing
+    status: implemented
     spec: docs/ui/pages/hotel-home.md
     design:
       currentTool: pencil
@@ -1125,12 +1125,13 @@ pages:
         name: 酒店首页 750px 开发稿
         width: 750
         role: active-source
-        note: 酒店分包首页，后续承接酒店详情、房型和确认订单。 UI 参考 docs/ui/source/hkp-mini-page/hotel-detail.png。
+        note: 已按 hotel-detail.png 完成酒店切换、主图、入住信息、房型列表和套餐推荐首版。
     implementation:
       files:
         - src/pkg-hotel/pages/index/index.tsx
         - src/pkg-hotel/pages/index/index.scss
         - src/pkg-hotel/pages/index/index.config.ts
+        - src/pkg-hotel/services/index.ts
       verification:
         - yarn typecheck
         - yarn check:page-convention

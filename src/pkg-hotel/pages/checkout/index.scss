@@ -10,11 +10,206 @@
 ._pg-shell {
   min-height: 100vh;
   box-sizing: border-box;
-  background: $color-page-bg;
+  background: #f6f7fb;
 }
 
 ._pg-content {
-  min-height: 240px;
-  padding: 32px;
+  min-height: 100%;
+  padding: 32px 32px 24px;
   box-sizing: border-box;
+  background: #f6f7fb;
+}
+
+._pg-card {
+  margin-bottom: 24px;
+  padding: 28px 32px;
+  border-radius: 28px;
+  background: #ffffff;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+
+  &--compact {
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+}
+
+._pg-room {
+  &_header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+  }
+
+  &_title {
+    flex: 1;
+    color: #23262f;
+    font-size: 30px;
+    font-weight: 700;
+    line-height: 1.45;
+  }
+
+  &_link {
+    flex: none;
+    margin-left: 24px;
+    color: #6b7280;
+    font-size: 28px;
+    line-height: 1.45;
+  }
+
+  &_tags {
+    display: block;
+    margin-top: 22px;
+    color: #9ca3af;
+    font-size: 28px;
+    line-height: 1.45;
+  }
+
+  &_dates {
+    display: block;
+    margin-top: 28px;
+    color: #23262f;
+    font-size: 30px;
+    line-height: 1.45;
+  }
+}
+
+._pg-form {
+  &_title {
+    display: block;
+    margin-bottom: 22px;
+    color: #23262f;
+    font-size: 34px;
+    font-weight: 700;
+    line-height: 1.45;
+  }
+
+  &_row {
+    display: flex;
+    align-items: center;
+    min-height: 108px;
+    border-top: 1px solid #edf0f4;
+
+    &--link {
+      justify-content: space-between;
+    }
+
+    &--multi {
+      align-items: flex-start;
+      padding: 28px 0;
+    }
+  }
+
+  &_label {
+    flex: none;
+    width: 120px;
+    color: #23262f;
+    font-size: 30px;
+    line-height: 1.5;
+  }
+
+  &_value {
+    display: flex;
+    align-items: center;
+    color: #23262f;
+    font-size: 28px;
+  }
+
+  &_chevron {
+    margin-left: 10px;
+    color: #c0c5cf;
+    font-size: 36px;
+    line-height: 1;
+  }
+
+  &_column {
+    flex: 1;
+  }
+
+  &_input {
+    flex: 1;
+    color: #9ca3af;
+    font-size: 28px;
+    line-height: 1.5;
+    text-align: right;
+  }
+}
+
+._pg-guest {
+  & + & {
+    margin-top: 28px;
+    padding-top: 24px;
+    border-top: 1px solid #edf0f4;
+  }
+
+  &_name {
+    display: block;
+    color: #6b7280;
+    font-size: 28px;
+    line-height: 1.45;
+  }
+
+  &_input {
+    margin-top: 10px;
+    color: #9ca3af;
+    font-size: 28px;
+    line-height: 1.45;
+  }
+}
+
+._pg-line-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 108px;
+
+  &_label,
+  &_value {
+    color: #23262f;
+    font-size: 30px;
+    line-height: 1.5;
+  }
+
+  &_value-wrap {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+  }
+
+  &_coupon {
+    min-width: 176px;
+    height: 46px;
+    padding: 0 16px;
+    border: 1px solid #d94a88;
+    border-radius: 12px;
+    box-sizing: border-box;
+    color: #d94a88;
+    font-size: 26px;
+    line-height: 44px;
+    text-align: center;
+  }
+
+  &_chevron {
+    margin-left: 10px;
+    color: #c0c5cf;
+    font-size: 36px;
+    line-height: 1;
+  }
+}
+
+._pg-submit_label {
+  color: #23262f;
+  font-size: 28px;
+  font-weight: 700;
+}
+
+._pg-submit_amount {
+  color: #d94a88;
+  font-size: 56px;
+  font-weight: 700;
+}
+
+._pg-submit_extra {
+  color: #8b909a;
+  font-size: 26px;
+  line-height: 1.4;
 }

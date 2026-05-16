@@ -64,7 +64,7 @@ const nutIconMap: Record<AppIconName, NutIconComponent | undefined> = {
 export function AppIcon({
   name,
   className,
-  size = 24,
+  size = 16,
   color = '#667085',
   imageSrc = '',
 }: AppIconProps) {

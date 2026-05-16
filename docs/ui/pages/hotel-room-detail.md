@@ -12,8 +12,8 @@
 - Figma nodeId：-
 - Pencil file：/Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
 - Pencil nodeId：hotel-room-detail
-- 当前版本：v0.1
-- 页面状态：implementing
+- 当前版本：v0.2
+- 页面状态：implemented
 - 更新时间：2026-05-16
 - 实现文件：
   - src/pkg-hotel/pages/room-detail/index.tsx
@@ -23,7 +23,7 @@
 
 ## 设计意图
 
-房间详情页面先按代码优先方式创建基础实现，后续根据截图、设计稿或业务规则持续更新。
+房间详情页面按 `hotel-room-detail.png` 先完成主图、标题标签、规格摘要、床型和更多详情内容，作为酒店首页房型卡的详情页承接。
 
 ## 页面结构
 
@@ -31,7 +31,7 @@
 - 页面容器：`PageShell`
 - 页面运行时：`usePageRuntime`
 - 页面状态订阅：`observer`
-- 内容区域：按本次业务需求实现
+- 内容区域：房间主图、标题摘要、床型行、更多详情段落。
 
 ## 动态与静态边界
 
@@ -53,11 +53,11 @@
 
 | 模块 | service | 失败策略 | 是否阻断页面 |
 |---|---|---|---|
-| 页面数据 | `fetchRoomDetailData()` | service 内归一和兜底 | 按业务决定 |
+| 页面数据 | `fetchRoomDetailData()` | service 内归一和兜底 | 否 |
 
 ## 交互与跳转
 
-- 按页面业务需求补充。
+- 页面根据 `roomId` 查询参数加载对应房型详情；未命中时兜底第一条房型。
 
 ## 实现映射
 
@@ -68,10 +68,18 @@
 
 ## 变更记录
 
+### v0.2
+
+- 按 `hotel-room-detail.png` 完成房间详情首版 UI。
+- `fetchRoomDetailData()` 支持按 `roomId` 读取不同房型详情。
+
 ### v0.1
 
 - 初始化页面基础实现。
 
 ## 验证记录
 
-- 待验证。
+- `yarn typecheck`
+- `yarn check:page-convention`
+- `yarn check:package-boundary`
+- `yarn check:ui-contract`

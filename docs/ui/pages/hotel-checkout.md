@@ -12,8 +12,8 @@
 - Figma nodeId：-
 - Pencil file：/Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
 - Pencil nodeId：hotel-checkout
-- 当前版本：v0.1
-- 页面状态：implementing
+- 当前版本：v0.2
+- 页面状态：implemented
 - 更新时间：2026-05-16
 - 实现文件：
   - src/pkg-hotel/pages/checkout/index.tsx
@@ -23,7 +23,7 @@
 
 ## 设计意图
 
-酒店确认订单页面先按代码优先方式创建基础实现，后续根据截图、设计稿或业务规则持续更新。
+酒店确认订单页面按 `hotel-checkout.png` 先完成房型摘要卡、入住信息卡、优惠券/折扣/发票卡和底部支付栏，和酒店首页一起组成酒店预订首版闭环。
 
 ## 页面结构
 
@@ -31,7 +31,7 @@
 - 页面容器：`PageShell`
 - 页面运行时：`usePageRuntime`
 - 页面状态订阅：`observer`
-- 内容区域：按本次业务需求实现
+- 内容区域：房型摘要卡、入住信息表单、优惠券卡、折扣信息卡、发票卡。
 
 ## 动态与静态边界
 
@@ -53,11 +53,14 @@
 
 | 模块 | service | 失败策略 | 是否阻断页面 |
 |---|---|---|---|
-| 页面数据 | `fetchCheckoutData()` | service 内归一和兜底 | 按业务决定 |
+| 页面数据 | `fetchCheckoutData()` | service 内归一和兜底 | 是 |
 
 ## 交互与跳转
 
-- 按页面业务需求补充。
+- 通过 `roomId` 查询参数带入不同房型。
+- 房型详情：点击摘要卡右上角“房型详情”跳到 `hotel-room-detail`。
+- 去支付：当前校验入住人和手机号后提示“支付能力即将开放”。
+- 房间数、优惠券、折扣信息：当前先保留结构并提示能力即将开放。
 
 ## 实现映射
 
@@ -68,10 +71,19 @@
 
 ## 变更记录
 
+### v0.2
+
+- 按 `hotel-checkout.png` 完成确认订单首版 UI。
+- 复用 `FixedSubmitBar` 作为底部支付栏，并通过页面自有 `_pg-submit_*` 文案节点控制金额样式。
+- `fetchCheckoutData()` 支持按 `roomId` 注入房型信息。
+
 ### v0.1
 
 - 初始化页面基础实现。
 
 ## 验证记录
 
-- 待验证。
+- `yarn typecheck`
+- `yarn check:page-convention`
+- `yarn check:package-boundary`
+- `yarn check:ui-contract`

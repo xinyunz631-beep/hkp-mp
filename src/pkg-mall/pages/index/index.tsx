@@ -101,7 +101,7 @@ const MallIndexPage = observer(function MallIndexPage() {
                   <AppIcon
                     name={item.icon}
                     className="_pg-footer_icon"
-                    size={28}
+                    size={18}
                     color={active ? '#db2777' : '#222222'}
                   />
                   <Text className="_pg-footer_text">{item.title}</Text>
@@ -203,7 +203,7 @@ const MallIndexPage = observer(function MallIndexPage() {
                           handleAddToCart();
                         }}
                       >
-                        <AppIcon name="cartAdd" size={22} color="#ffffff" />
+                        <AppIcon name="cartAdd" size={14} color="#ffffff" />
                       </View>
                     </View>
                   </View>
