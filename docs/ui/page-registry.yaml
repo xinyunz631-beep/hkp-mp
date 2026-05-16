@@ -1,15 +1,15 @@
 version: 1
 updatedAt: "2026-05-16"
 hkpMiniBuild:
-  phase: phase-3-mall-flow
-  branch: feature/hkp-mini-phase-3-mall-flow
+  phase: phase-4-booking-flows
+  branch: feature/hkp-mini-phase-4-booking-flows
   baselineCommit: "36b7517"
   prd: docs/ui/pages/hkp-mini-prd.md
   checkpoint: docs/codex/current-hkp-mini-page.md
   sourceDir: docs/ui/source/hkp-mini-page
   sourceManifest: docs/ui/source/hkp-mini-page/manifest.json
   resumeSkill: /Users/kite/.codex/skills/hkp-mini-build/SKILL.md
-  note: 当前已进入 Phase 3 商城闭环；中途问话默认只视为补充约束，不中断主线计划。餐饮 pkg-dining 和分销链路（share/share-income/share-invite/share-rule/withdraw/withdraw-records）默认只保留页面基础框架，除非用户明确点名，否则不进入 UI 实现。
+  note: 当前已进入 Phase 4 票务/酒店闭环；中途问话默认只视为补充约束，不中断主线计划。餐饮 pkg-dining 和分销链路（share/share-income/share-invite/share-rule/withdraw/withdraw-records）默认只保留页面基础框架，除非用户明确点名，否则不进入 UI 实现。
 pages:
   home:
     title: 首页

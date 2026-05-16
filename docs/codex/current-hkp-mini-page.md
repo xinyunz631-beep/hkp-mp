@@ -3,10 +3,10 @@
 ## 当前状态
 
 - 更新时间：`2026-05-16`
-- 当前阶段：`Phase 3 - 商城闭环`
-- 当前分支：`feature/hkp-mini-phase-3-mall-flow`
+- 当前阶段：`Phase 4 - 票务/酒店闭环`
+- 当前分支：`feature/hkp-mini-phase-4-booking-flows`
 - 基线提交：`36b7517 chore: 保存小程序当前开发基线`
-- 最近阶段提交：`62501f1 feat: 实现商城核心购买链路首版`
+- 最近阶段提交：`a4f4dfd feat: 补齐商城辅助页面首版`
 - 总控 Skill：`/Users/kite/.codex/skills/hkp-mini-build/SKILL.md`
 - 主执行 Skill：`$mpcode-page`
 
@@ -36,7 +36,9 @@
 - 已进入 `feature/hkp-mini-phase-3-mall-flow` 分支。
 - 已完成商城首页、商品列表、商品详情、购物车四个核心页面的首版 UI、mock 数据和跳转闭环。
 - 已补齐商城首页 service、商城页面所需 NutUI 图标外层封装，并保持 `AppImage` 空地址失败态占位策略。
+- 已完成商城搜索、分类、收藏、赠品、推荐等辅助页面首版，商城分包页面流已完整可串。
 - Phase 3 当前轮轻量门禁已通过：`yarn typecheck`、`yarn check:page-convention`、`yarn check:package-boundary`、`yarn check:ui-contract`。
+- 已进入 `feature/hkp-mini-phase-4-booking-flows` 分支，开始推进票务与酒店闭环；餐饮继续保留基础框架。
 
 ## 当前约束
 
@@ -47,10 +49,10 @@
 
 ## 下一步
 
-1. 继续补齐商城剩余辅助页面：搜索、分类、收藏、赠品、推荐。
-2. 收口 Phase 3 商城闭环并确认页面间跳转体验。
-3. 进入票务和酒店闭环；餐饮只保留基础框架，不做 UI。
-4. 后续进入订单与会员基础页；分销链路只保留基础框架，不做 UI。
+1. 先完成票务链路首版：乐园详情、门票预定、门票确认订单，打通页面跳转和 mock service。
+2. 再完成酒店链路首版：酒店详情、房型详情、酒店确认订单，保持与订单中心的路由衔接。
+3. 餐饮 `pkg-dining` 继续只保留基础框架和 service/mock 入口，不进入 UI 实现。
+4. Phase 4 收口后进入订单/售后阶段；会员分销链路继续只保留基础框架。
 
 ## 恢复方式
 
