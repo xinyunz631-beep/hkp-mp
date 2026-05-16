@@ -1,4 +1,40 @@
-.member-entry {
+._pg {
+  min-height: 100vh;
+  background: $color-page-bg;
+
+  .page-shell__body {
+    min-height: 100%;
+  }
+}
+
+._pg-shell {
+  min-height: 100vh;
+  box-sizing: border-box;
+  background: $color-page-bg;
+}
+
+._pg-section {
+  margin: 32px;
+  padding: 32px;
+  border-radius: 28px;
+  background: #ffffff;
+  box-shadow: 0 12px 36px rgba(22, 32, 29, 0.08);
+
+  &_title {
+    font-size: 36px;
+    font-weight: 700;
+    color: #17211d;
+  }
+
+  &_desc {
+    margin-top: 12px;
+    font-size: 24px;
+    line-height: 1.5;
+    color: #687772;
+  }
+}
+
+._pg-member-entry {
   display: flex;
   align-items: center;
   justify-content: center;

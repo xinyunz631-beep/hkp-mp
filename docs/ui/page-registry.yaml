@@ -1,15 +1,15 @@
 version: 1
 updatedAt: "2026-05-16"
 hkpMiniBuild:
-  phase: phase-0-prd-assets
-  branch: feature/hkp-mini-phase-0-prd-assets
+  phase: phase-1-routes-shells
+  branch: feature/hkp-mini-phase-1-routes-shells
   baselineCommit: "36b7517"
   prd: docs/ui/pages/hkp-mini-prd.md
   checkpoint: docs/codex/current-hkp-mini-page.md
   sourceDir: docs/ui/source/hkp-mini-page
   sourceManifest: docs/ui/source/hkp-mini-page/manifest.json
   resumeSkill: /Users/kite/.codex/skills/hkp-mini-build/SKILL.md
-  note: HKP 全页面工程的页面清单先登记在 PRD；Phase 1 生成页面骨架后再逐页写入 pages 区块，避免 UI Contract 因计划态路由不存在而失败。
+  note: Phase 1 已进入路由和页面骨架阶段；当前 pages 区块逐页登记真实存在的页面路径，避免 UI Contract 因计划态路由不存在而失败。
 pages:
   home:
     title: 首页
@@ -96,6 +96,1115 @@ pages:
         - src/core/constants/routes.ts
         - src/core/components/AppTabBar/index.tsx
         - src/app.config.ts
+      verification:
+        - yarn typecheck
+        - yarn check:page-convention
+        - yarn check:package-boundary
+        - yarn check:ui-contract
+  mall-category:
+    title: 商城分类
+    route: src/pkg-mall/pages/category
+    status: implementing
+    spec: docs/ui/pages/mall-category.md
+    design:
+      currentTool: pencil
+      approval: code-first-draft
+      pencil:
+        file: /Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
+        nodeId: mall-category
+        name: 商城分类 750px 开发稿
+        width: 750
+        role: active-source
+        note: 代码优先创建页面，后续按截图或设计稿继续同步。
+    implementation:
+      files:
+        - src/pkg-mall/pages/category/index.tsx
+        - src/pkg-mall/pages/category/index.scss
+        - src/pkg-mall/pages/category/index.config.ts
+        - src/pkg-mall/services/category.ts
+      verification:
+        - yarn typecheck
+        - yarn check:page-convention
+        - yarn check:package-boundary
+        - yarn check:ui-contract
+  mall-category-list:
+    title: 分类商品
+    route: src/pkg-mall/pages/category-list
+    status: implementing
+    spec: docs/ui/pages/mall-category-list.md
+    design:
+      currentTool: pencil
+      approval: code-first-draft
+      pencil:
+        file: /Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
+        nodeId: mall-category-list
+        name: 分类商品 750px 开发稿
+        width: 750
+        role: active-source
+        note: 代码优先创建页面，后续按截图或设计稿继续同步。
+    implementation:
+      files:
+        - src/pkg-mall/pages/category-list/index.tsx
+        - src/pkg-mall/pages/category-list/index.scss
+        - src/pkg-mall/pages/category-list/index.config.ts
+        - src/pkg-mall/services/category-list.ts
+      verification:
+        - yarn typecheck
+        - yarn check:page-convention
+        - yarn check:package-boundary
+        - yarn check:ui-contract
+  mall-search:
+    title: 商品搜索
+    route: src/pkg-mall/pages/search
+    status: implementing
+    spec: docs/ui/pages/mall-search.md
+    design:
+      currentTool: pencil
+      approval: code-first-draft
+      pencil:
+        file: /Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
+        nodeId: mall-search
+        name: 商品搜索 750px 开发稿
+        width: 750
+        role: active-source
+        note: 代码优先创建页面，后续按截图或设计稿继续同步。
+    implementation:
+      files:
+        - src/pkg-mall/pages/search/index.tsx
+        - src/pkg-mall/pages/search/index.scss
+        - src/pkg-mall/pages/search/index.config.ts
+        - src/pkg-mall/services/search.ts
+      verification:
+        - yarn typecheck
+        - yarn check:page-convention
+        - yarn check:package-boundary
+        - yarn check:ui-contract
+  mall-products:
+    title: 商品列表
+    route: src/pkg-mall/pages/products
+    status: implementing
+    spec: docs/ui/pages/mall-products.md
+    design:
+      currentTool: pencil
+      approval: code-first-draft
+      pencil:
+        file: /Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
+        nodeId: mall-products
+        name: 商品列表 750px 开发稿
+        width: 750
+        role: active-source
+        note: 代码优先创建页面，后续按截图或设计稿继续同步。
+    implementation:
+      files:
+        - src/pkg-mall/pages/products/index.tsx
+        - src/pkg-mall/pages/products/index.scss
+        - src/pkg-mall/pages/products/index.config.ts
+        - src/pkg-mall/services/products.ts
+      verification:
+        - yarn typecheck
+        - yarn check:page-convention
+        - yarn check:package-boundary
+        - yarn check:ui-contract
+  mall-recommend:
+    title: 推荐商品
+    route: src/pkg-mall/pages/recommend
+    status: implementing
+    spec: docs/ui/pages/mall-recommend.md
+    design:
+      currentTool: pencil
+      approval: code-first-draft
+      pencil:
+        file: /Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
+        nodeId: mall-recommend
+        name: 推荐商品 750px 开发稿
+        width: 750
+        role: active-source
+        note: 代码优先创建页面，后续按截图或设计稿继续同步。
+    implementation:
+      files:
+        - src/pkg-mall/pages/recommend/index.tsx
+        - src/pkg-mall/pages/recommend/index.scss
+        - src/pkg-mall/pages/recommend/index.config.ts
+        - src/pkg-mall/services/recommend.ts
+      verification:
+        - yarn typecheck
+        - yarn check:page-convention
+        - yarn check:package-boundary
+        - yarn check:ui-contract
+  mall-product-detail:
+    title: 商品详情
+    route: src/pkg-mall/pages/product-detail
+    status: implementing
+    spec: docs/ui/pages/mall-product-detail.md
+    design:
+      currentTool: pencil
+      approval: code-first-draft
+      pencil:
+        file: /Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
+        nodeId: mall-product-detail
+        name: 商品详情 750px 开发稿
+        width: 750
+        role: active-source
+        note: 代码优先创建页面，后续按截图或设计稿继续同步。
+    implementation:
+      files:
+        - src/pkg-mall/pages/product-detail/index.tsx
+        - src/pkg-mall/pages/product-detail/index.scss
+        - src/pkg-mall/pages/product-detail/index.config.ts
+        - src/pkg-mall/services/product-detail.ts
+      verification:
+        - yarn typecheck
+        - yarn check:page-convention
+        - yarn check:package-boundary
+        - yarn check:ui-contract
+  mall-cart:
+    title: 购物车
+    route: src/pkg-mall/pages/cart
+    status: implementing
+    spec: docs/ui/pages/mall-cart.md
+    design:
+      currentTool: pencil
+      approval: code-first-draft
+      pencil:
+        file: /Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
+        nodeId: mall-cart
+        name: 购物车 750px 开发稿
+        width: 750
+        role: active-source
+        note: 代码优先创建页面，后续按截图或设计稿继续同步。
+    implementation:
+      files:
+        - src/pkg-mall/pages/cart/index.tsx
+        - src/pkg-mall/pages/cart/index.scss
+        - src/pkg-mall/pages/cart/index.config.ts
+        - src/pkg-mall/services/cart.ts
+      verification:
+        - yarn typecheck
+        - yarn check:page-convention
+        - yarn check:package-boundary
+        - yarn check:ui-contract
+  mall-favorites:
+    title: 我的收藏
+    route: src/pkg-mall/pages/favorites
+    status: implementing
+    spec: docs/ui/pages/mall-favorites.md
+    design:
+      currentTool: pencil
+      approval: code-first-draft
+      pencil:
+        file: /Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
+        nodeId: mall-favorites
+        name: 我的收藏 750px 开发稿
+        width: 750
+        role: active-source
+        note: 代码优先创建页面，后续按截图或设计稿继续同步。
+    implementation:
+      files:
+        - src/pkg-mall/pages/favorites/index.tsx
+        - src/pkg-mall/pages/favorites/index.scss
+        - src/pkg-mall/pages/favorites/index.config.ts
+        - src/pkg-mall/services/favorites.ts
+      verification:
+        - yarn typecheck
+        - yarn check:page-convention
+        - yarn check:package-boundary
+        - yarn check:ui-contract
+  mall-gift-select:
+    title: 赠品选择
+    route: src/pkg-mall/pages/gift-select
+    status: implementing
+    spec: docs/ui/pages/mall-gift-select.md
+    design:
+      currentTool: pencil
+      approval: code-first-draft
+      pencil:
+        file: /Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
+        nodeId: mall-gift-select
+        name: 赠品选择 750px 开发稿
+        width: 750
+        role: active-source
+        note: 代码优先创建页面，后续按截图或设计稿继续同步。
+    implementation:
+      files:
+        - src/pkg-mall/pages/gift-select/index.tsx
+        - src/pkg-mall/pages/gift-select/index.scss
+        - src/pkg-mall/pages/gift-select/index.config.ts
+        - src/pkg-mall/services/gift-select.ts
+      verification:
+        - yarn typecheck
+        - yarn check:page-convention
+        - yarn check:package-boundary
+        - yarn check:ui-contract
+  ticket-park-detail:
+    title: 乐园详情
+    route: src/pkg-ticket/pages/park-detail
+    status: implementing
+    spec: docs/ui/pages/ticket-park-detail.md
+    design:
+      currentTool: pencil
+      approval: code-first-draft
+      pencil:
+        file: /Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
+        nodeId: ticket-park-detail
+        name: 乐园详情 750px 开发稿
+        width: 750
+        role: active-source
+        note: 代码优先创建页面，后续按截图或设计稿继续同步。
+    implementation:
+      files:
+        - src/pkg-ticket/pages/park-detail/index.tsx
+        - src/pkg-ticket/pages/park-detail/index.scss
+        - src/pkg-ticket/pages/park-detail/index.config.ts
+        - src/pkg-ticket/services/park-detail.ts
+      verification:
+        - yarn typecheck
+        - yarn check:page-convention
+        - yarn check:package-boundary
+        - yarn check:ui-contract
+  ticket-park-guide:
+    title: 乐园导览
+    route: src/pkg-ticket/pages/park-guide
+    status: implementing
+    spec: docs/ui/pages/ticket-park-guide.md
+    design:
+      currentTool: pencil
+      approval: code-first-draft
+      pencil:
+        file: /Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
+        nodeId: ticket-park-guide
+        name: 乐园导览 750px 开发稿
+        width: 750
+        role: active-source
+        note: 代码优先创建页面，后续按截图或设计稿继续同步。
+    implementation:
+      files:
+        - src/pkg-ticket/pages/park-guide/index.tsx
+        - src/pkg-ticket/pages/park-guide/index.scss
+        - src/pkg-ticket/pages/park-guide/index.config.ts
+        - src/pkg-ticket/services/park-guide.ts
+      verification:
+        - yarn typecheck
+        - yarn check:page-convention
+        - yarn check:package-boundary
+        - yarn check:ui-contract
+  ticket-checkout:
+    title: 门票确认订单
+    route: src/pkg-ticket/pages/checkout
+    status: implementing
+    spec: docs/ui/pages/ticket-checkout.md
+    design:
+      currentTool: pencil
+      approval: code-first-draft
+      pencil:
+        file: /Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
+        nodeId: ticket-checkout
+        name: 门票确认订单 750px 开发稿
+        width: 750
+        role: active-source
+        note: 代码优先创建页面，后续按截图或设计稿继续同步。
+    implementation:
+      files:
+        - src/pkg-ticket/pages/checkout/index.tsx
+        - src/pkg-ticket/pages/checkout/index.scss
+        - src/pkg-ticket/pages/checkout/index.config.ts
+        - src/pkg-ticket/services/checkout.ts
+      verification:
+        - yarn typecheck
+        - yarn check:page-convention
+        - yarn check:package-boundary
+        - yarn check:ui-contract
+  hotel-checkout:
+    title: 酒店确认订单
+    route: src/pkg-hotel/pages/checkout
+    status: implementing
+    spec: docs/ui/pages/hotel-checkout.md
+    design:
+      currentTool: pencil
+      approval: code-first-draft
+      pencil:
+        file: /Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
+        nodeId: hotel-checkout
+        name: 酒店确认订单 750px 开发稿
+        width: 750
+        role: active-source
+        note: 代码优先创建页面，后续按截图或设计稿继续同步。
+    implementation:
+      files:
+        - src/pkg-hotel/pages/checkout/index.tsx
+        - src/pkg-hotel/pages/checkout/index.scss
+        - src/pkg-hotel/pages/checkout/index.config.ts
+        - src/pkg-hotel/services/checkout.ts
+      verification:
+        - yarn typecheck
+        - yarn check:page-convention
+        - yarn check:package-boundary
+        - yarn check:ui-contract
+  hotel-room-detail:
+    title: 房间详情
+    route: src/pkg-hotel/pages/room-detail
+    status: implementing
+    spec: docs/ui/pages/hotel-room-detail.md
+    design:
+      currentTool: pencil
+      approval: code-first-draft
+      pencil:
+        file: /Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
+        nodeId: hotel-room-detail
+        name: 房间详情 750px 开发稿
+        width: 750
+        role: active-source
+        note: 代码优先创建页面，后续按截图或设计稿继续同步。
+    implementation:
+      files:
+        - src/pkg-hotel/pages/room-detail/index.tsx
+        - src/pkg-hotel/pages/room-detail/index.scss
+        - src/pkg-hotel/pages/room-detail/index.config.ts
+        - src/pkg-hotel/services/room-detail.ts
+      verification:
+        - yarn typecheck
+        - yarn check:page-convention
+        - yarn check:package-boundary
+        - yarn check:ui-contract
+  dining-merchant-detail:
+    title: 商家详情
+    route: src/pkg-dining/pages/merchant-detail
+    status: implementing
+    spec: docs/ui/pages/dining-merchant-detail.md
+    design:
+      currentTool: pencil
+      approval: code-first-draft
+      pencil:
+        file: /Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
+        nodeId: dining-merchant-detail
+        name: 商家详情 750px 开发稿
+        width: 750
+        role: active-source
+        note: 代码优先创建页面，后续按截图或设计稿继续同步。
+    implementation:
+      files:
+        - src/pkg-dining/pages/merchant-detail/index.tsx
+        - src/pkg-dining/pages/merchant-detail/index.scss
+        - src/pkg-dining/pages/merchant-detail/index.config.ts
+        - src/pkg-dining/services/merchant-detail.ts
+      verification:
+        - yarn typecheck
+        - yarn check:page-convention
+        - yarn check:package-boundary
+        - yarn check:ui-contract
+  dining-checkout:
+    title: 餐饮确认订单
+    route: src/pkg-dining/pages/checkout
+    status: implementing
+    spec: docs/ui/pages/dining-checkout.md
+    design:
+      currentTool: pencil
+      approval: code-first-draft
+      pencil:
+        file: /Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
+        nodeId: dining-checkout
+        name: 餐饮确认订单 750px 开发稿
+        width: 750
+        role: active-source
+        note: 代码优先创建页面，后续按截图或设计稿继续同步。
+    implementation:
+      files:
+        - src/pkg-dining/pages/checkout/index.tsx
+        - src/pkg-dining/pages/checkout/index.scss
+        - src/pkg-dining/pages/checkout/index.config.ts
+        - src/pkg-dining/services/checkout.ts
+      verification:
+        - yarn typecheck
+        - yarn check:page-convention
+        - yarn check:package-boundary
+        - yarn check:ui-contract
+  order-detail:
+    title: 订单详情
+    route: src/pkg-order/pages/detail
+    status: implementing
+    spec: docs/ui/pages/order-detail.md
+    design:
+      currentTool: pencil
+      approval: code-first-draft
+      pencil:
+        file: /Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
+        nodeId: order-detail
+        name: 订单详情 750px 开发稿
+        width: 750
+        role: active-source
+        note: 代码优先创建页面，后续按截图或设计稿继续同步。
+    implementation:
+      files:
+        - src/pkg-order/pages/detail/index.tsx
+        - src/pkg-order/pages/detail/index.scss
+        - src/pkg-order/pages/detail/index.config.ts
+        - src/pkg-order/services/detail.ts
+      verification:
+        - yarn typecheck
+        - yarn check:page-convention
+        - yarn check:package-boundary
+        - yarn check:ui-contract
+  order-checkout:
+    title: 确认订单
+    route: src/pkg-order/pages/checkout
+    status: implementing
+    spec: docs/ui/pages/order-checkout.md
+    design:
+      currentTool: pencil
+      approval: code-first-draft
+      pencil:
+        file: /Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
+        nodeId: order-checkout
+        name: 确认订单 750px 开发稿
+        width: 750
+        role: active-source
+        note: 代码优先创建页面，后续按截图或设计稿继续同步。
+    implementation:
+      files:
+        - src/pkg-order/pages/checkout/index.tsx
+        - src/pkg-order/pages/checkout/index.scss
+        - src/pkg-order/pages/checkout/index.config.ts
+        - src/pkg-order/services/checkout.ts
+      verification:
+        - yarn typecheck
+        - yarn check:page-convention
+        - yarn check:package-boundary
+        - yarn check:ui-contract
+  order-address:
+    title: 地址管理
+    route: src/pkg-order/pages/address
+    status: implementing
+    spec: docs/ui/pages/order-address.md
+    design:
+      currentTool: pencil
+      approval: code-first-draft
+      pencil:
+        file: /Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
+        nodeId: order-address
+        name: 地址管理 750px 开发稿
+        width: 750
+        role: active-source
+        note: 代码优先创建页面，后续按截图或设计稿继续同步。
+    implementation:
+      files:
+        - src/pkg-order/pages/address/index.tsx
+        - src/pkg-order/pages/address/index.scss
+        - src/pkg-order/pages/address/index.config.ts
+        - src/pkg-order/services/address.ts
+      verification:
+        - yarn typecheck
+        - yarn check:page-convention
+        - yarn check:package-boundary
+        - yarn check:ui-contract
+  order-cancel:
+    title: 取消订单
+    route: src/pkg-order/pages/cancel
+    status: implementing
+    spec: docs/ui/pages/order-cancel.md
+    design:
+      currentTool: pencil
+      approval: code-first-draft
+      pencil:
+        file: /Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
+        nodeId: order-cancel
+        name: 取消订单 750px 开发稿
+        width: 750
+        role: active-source
+        note: 代码优先创建页面，后续按截图或设计稿继续同步。
+    implementation:
+      files:
+        - src/pkg-order/pages/cancel/index.tsx
+        - src/pkg-order/pages/cancel/index.scss
+        - src/pkg-order/pages/cancel/index.config.ts
+        - src/pkg-order/services/cancel.ts
+      verification:
+        - yarn typecheck
+        - yarn check:page-convention
+        - yarn check:package-boundary
+        - yarn check:ui-contract
+  order-aftersale-apply:
+    title: 售后申请
+    route: src/pkg-order/pages/aftersale-apply
+    status: implementing
+    spec: docs/ui/pages/order-aftersale-apply.md
+    design:
+      currentTool: pencil
+      approval: code-first-draft
+      pencil:
+        file: /Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
+        nodeId: order-aftersale-apply
+        name: 售后申请 750px 开发稿
+        width: 750
+        role: active-source
+        note: 代码优先创建页面，后续按截图或设计稿继续同步。
+    implementation:
+      files:
+        - src/pkg-order/pages/aftersale-apply/index.tsx
+        - src/pkg-order/pages/aftersale-apply/index.scss
+        - src/pkg-order/pages/aftersale-apply/index.config.ts
+        - src/pkg-order/services/aftersale-apply.ts
+      verification:
+        - yarn typecheck
+        - yarn check:page-convention
+        - yarn check:package-boundary
+        - yarn check:ui-contract
+  order-aftersale-type:
+    title: 售后类型
+    route: src/pkg-order/pages/aftersale-type
+    status: implementing
+    spec: docs/ui/pages/order-aftersale-type.md
+    design:
+      currentTool: pencil
+      approval: code-first-draft
+      pencil:
+        file: /Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
+        nodeId: order-aftersale-type
+        name: 售后类型 750px 开发稿
+        width: 750
+        role: active-source
+        note: 代码优先创建页面，后续按截图或设计稿继续同步。
+    implementation:
+      files:
+        - src/pkg-order/pages/aftersale-type/index.tsx
+        - src/pkg-order/pages/aftersale-type/index.scss
+        - src/pkg-order/pages/aftersale-type/index.config.ts
+        - src/pkg-order/services/aftersale-type.ts
+      verification:
+        - yarn typecheck
+        - yarn check:page-convention
+        - yarn check:package-boundary
+        - yarn check:ui-contract
+  order-aftersale-list:
+    title: 售后列表
+    route: src/pkg-order/pages/aftersale-list
+    status: implementing
+    spec: docs/ui/pages/order-aftersale-list.md
+    design:
+      currentTool: pencil
+      approval: code-first-draft
+      pencil:
+        file: /Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
+        nodeId: order-aftersale-list
+        name: 售后列表 750px 开发稿
+        width: 750
+        role: active-source
+        note: 代码优先创建页面，后续按截图或设计稿继续同步。
+    implementation:
+      files:
+        - src/pkg-order/pages/aftersale-list/index.tsx
+        - src/pkg-order/pages/aftersale-list/index.scss
+        - src/pkg-order/pages/aftersale-list/index.config.ts
+        - src/pkg-order/services/aftersale-list.ts
+      verification:
+        - yarn typecheck
+        - yarn check:page-convention
+        - yarn check:package-boundary
+        - yarn check:ui-contract
+  order-aftersale-progress:
+    title: 售后进度
+    route: src/pkg-order/pages/aftersale-progress
+    status: implementing
+    spec: docs/ui/pages/order-aftersale-progress.md
+    design:
+      currentTool: pencil
+      approval: code-first-draft
+      pencil:
+        file: /Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
+        nodeId: order-aftersale-progress
+        name: 售后进度 750px 开发稿
+        width: 750
+        role: active-source
+        note: 代码优先创建页面，后续按截图或设计稿继续同步。
+    implementation:
+      files:
+        - src/pkg-order/pages/aftersale-progress/index.tsx
+        - src/pkg-order/pages/aftersale-progress/index.scss
+        - src/pkg-order/pages/aftersale-progress/index.config.ts
+        - src/pkg-order/services/aftersale-progress.ts
+      verification:
+        - yarn typecheck
+        - yarn check:page-convention
+        - yarn check:package-boundary
+        - yarn check:ui-contract
+  order-logistics:
+    title: 物流详情
+    route: src/pkg-order/pages/logistics
+    status: implementing
+    spec: docs/ui/pages/order-logistics.md
+    design:
+      currentTool: pencil
+      approval: code-first-draft
+      pencil:
+        file: /Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
+        nodeId: order-logistics
+        name: 物流详情 750px 开发稿
+        width: 750
+        role: active-source
+        note: 代码优先创建页面，后续按截图或设计稿继续同步。
+    implementation:
+      files:
+        - src/pkg-order/pages/logistics/index.tsx
+        - src/pkg-order/pages/logistics/index.scss
+        - src/pkg-order/pages/logistics/index.config.ts
+        - src/pkg-order/services/logistics.ts
+      verification:
+        - yarn typecheck
+        - yarn check:page-convention
+        - yarn check:package-boundary
+        - yarn check:ui-contract
+  order-review-create:
+    title: 创建评价
+    route: src/pkg-order/pages/review-create
+    status: implementing
+    spec: docs/ui/pages/order-review-create.md
+    design:
+      currentTool: pencil
+      approval: code-first-draft
+      pencil:
+        file: /Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
+        nodeId: order-review-create
+        name: 创建评价 750px 开发稿
+        width: 750
+        role: active-source
+        note: 代码优先创建页面，后续按截图或设计稿继续同步。
+    implementation:
+      files:
+        - src/pkg-order/pages/review-create/index.tsx
+        - src/pkg-order/pages/review-create/index.scss
+        - src/pkg-order/pages/review-create/index.config.ts
+        - src/pkg-order/services/review-create.ts
+      verification:
+        - yarn typecheck
+        - yarn check:page-convention
+        - yarn check:package-boundary
+        - yarn check:ui-contract
+  order-review-list:
+    title: 评价列表
+    route: src/pkg-order/pages/review-list
+    status: implementing
+    spec: docs/ui/pages/order-review-list.md
+    design:
+      currentTool: pencil
+      approval: code-first-draft
+      pencil:
+        file: /Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
+        nodeId: order-review-list
+        name: 评价列表 750px 开发稿
+        width: 750
+        role: active-source
+        note: 代码优先创建页面，后续按截图或设计稿继续同步。
+    implementation:
+      files:
+        - src/pkg-order/pages/review-list/index.tsx
+        - src/pkg-order/pages/review-list/index.scss
+        - src/pkg-order/pages/review-list/index.config.ts
+        - src/pkg-order/services/review-list.ts
+      verification:
+        - yarn typecheck
+        - yarn check:page-convention
+        - yarn check:package-boundary
+        - yarn check:ui-contract
+  member-coupons:
+    title: 优惠券
+    route: src/pkg-member/pages/coupons
+    status: implementing
+    spec: docs/ui/pages/member-coupons.md
+    design:
+      currentTool: pencil
+      approval: code-first-draft
+      pencil:
+        file: /Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
+        nodeId: member-coupons
+        name: 优惠券 750px 开发稿
+        width: 750
+        role: active-source
+        note: 代码优先创建页面，后续按截图或设计稿继续同步。
+    implementation:
+      files:
+        - src/pkg-member/pages/coupons/index.tsx
+        - src/pkg-member/pages/coupons/index.scss
+        - src/pkg-member/pages/coupons/index.config.ts
+        - src/pkg-member/services/coupons.ts
+      verification:
+        - yarn typecheck
+        - yarn check:page-convention
+        - yarn check:package-boundary
+        - yarn check:ui-contract
+  member-share-rule:
+    title: 分享规则
+    route: src/pkg-member/pages/share-rule
+    status: implementing
+    spec: docs/ui/pages/member-share-rule.md
+    design:
+      currentTool: pencil
+      approval: code-first-draft
+      pencil:
+        file: /Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
+        nodeId: member-share-rule
+        name: 分享规则 750px 开发稿
+        width: 750
+        role: active-source
+        note: 代码优先创建页面，后续按截图或设计稿继续同步。
+    implementation:
+      files:
+        - src/pkg-member/pages/share-rule/index.tsx
+        - src/pkg-member/pages/share-rule/index.scss
+        - src/pkg-member/pages/share-rule/index.config.ts
+        - src/pkg-member/services/share-rule.ts
+      verification:
+        - yarn typecheck
+        - yarn check:page-convention
+        - yarn check:package-boundary
+        - yarn check:ui-contract
+  member-share:
+    title: 分享收益
+    route: src/pkg-member/pages/share
+    status: implementing
+    spec: docs/ui/pages/member-share.md
+    design:
+      currentTool: pencil
+      approval: code-first-draft
+      pencil:
+        file: /Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
+        nodeId: member-share
+        name: 分享收益 750px 开发稿
+        width: 750
+        role: active-source
+        note: 代码优先创建页面，后续按截图或设计稿继续同步。
+    implementation:
+      files:
+        - src/pkg-member/pages/share/index.tsx
+        - src/pkg-member/pages/share/index.scss
+        - src/pkg-member/pages/share/index.config.ts
+        - src/pkg-member/services/share.ts
+      verification:
+        - yarn typecheck
+        - yarn check:page-convention
+        - yarn check:package-boundary
+        - yarn check:ui-contract
+  member-share-income:
+    title: 收益明细
+    route: src/pkg-member/pages/share-income
+    status: implementing
+    spec: docs/ui/pages/member-share-income.md
+    design:
+      currentTool: pencil
+      approval: code-first-draft
+      pencil:
+        file: /Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
+        nodeId: member-share-income
+        name: 收益明细 750px 开发稿
+        width: 750
+        role: active-source
+        note: 代码优先创建页面，后续按截图或设计稿继续同步。
+    implementation:
+      files:
+        - src/pkg-member/pages/share-income/index.tsx
+        - src/pkg-member/pages/share-income/index.scss
+        - src/pkg-member/pages/share-income/index.config.ts
+        - src/pkg-member/services/share-income.ts
+      verification:
+        - yarn typecheck
+        - yarn check:page-convention
+        - yarn check:package-boundary
+        - yarn check:ui-contract
+  member-share-invite:
+    title: 邀请明细
+    route: src/pkg-member/pages/share-invite
+    status: implementing
+    spec: docs/ui/pages/member-share-invite.md
+    design:
+      currentTool: pencil
+      approval: code-first-draft
+      pencil:
+        file: /Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
+        nodeId: member-share-invite
+        name: 邀请明细 750px 开发稿
+        width: 750
+        role: active-source
+        note: 代码优先创建页面，后续按截图或设计稿继续同步。
+    implementation:
+      files:
+        - src/pkg-member/pages/share-invite/index.tsx
+        - src/pkg-member/pages/share-invite/index.scss
+        - src/pkg-member/pages/share-invite/index.config.ts
+        - src/pkg-member/services/share-invite.ts
+      verification:
+        - yarn typecheck
+        - yarn check:page-convention
+        - yarn check:package-boundary
+        - yarn check:ui-contract
+  member-withdraw-records:
+    title: 提现记录
+    route: src/pkg-member/pages/withdraw-records
+    status: implementing
+    spec: docs/ui/pages/member-withdraw-records.md
+    design:
+      currentTool: pencil
+      approval: code-first-draft
+      pencil:
+        file: /Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
+        nodeId: member-withdraw-records
+        name: 提现记录 750px 开发稿
+        width: 750
+        role: active-source
+        note: 代码优先创建页面，后续按截图或设计稿继续同步。
+    implementation:
+      files:
+        - src/pkg-member/pages/withdraw-records/index.tsx
+        - src/pkg-member/pages/withdraw-records/index.scss
+        - src/pkg-member/pages/withdraw-records/index.config.ts
+        - src/pkg-member/services/withdraw-records.ts
+      verification:
+        - yarn typecheck
+        - yarn check:page-convention
+        - yarn check:package-boundary
+        - yarn check:ui-contract
+  member-withdraw:
+    title: 申请提现
+    route: src/pkg-member/pages/withdraw
+    status: implementing
+    spec: docs/ui/pages/member-withdraw.md
+    design:
+      currentTool: pencil
+      approval: code-first-draft
+      pencil:
+        file: /Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
+        nodeId: member-withdraw
+        name: 申请提现 750px 开发稿
+        width: 750
+        role: active-source
+        note: 代码优先创建页面，后续按截图或设计稿继续同步。
+    implementation:
+      files:
+        - src/pkg-member/pages/withdraw/index.tsx
+        - src/pkg-member/pages/withdraw/index.scss
+        - src/pkg-member/pages/withdraw/index.config.ts
+        - src/pkg-member/services/withdraw.ts
+      verification:
+        - yarn typecheck
+        - yarn check:page-convention
+        - yarn check:package-boundary
+        - yarn check:ui-contract
+  park:
+    title: 乐园
+    route: src/pages/park
+    status: implementing
+    spec: docs/ui/pages/park.md
+    design:
+      currentTool: pencil
+      approval: phase-1-shell-draft
+      pencil:
+        file: /Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
+        nodeId: park
+        name: 乐园 750px 开发稿
+        width: 750
+        role: active-source
+        note: 主包乐园聚合入口，串联票务、酒店和餐饮分包。
+    implementation:
+      files:
+        - src/pages/park/index.tsx
+        - src/pages/park/index.scss
+        - src/pages/park/index.config.ts
+      verification:
+        - yarn typecheck
+        - yarn check:page-convention
+        - yarn check:package-boundary
+        - yarn check:ui-contract
+  member:
+    title: 会员
+    route: src/pages/member
+    status: implementing
+    spec: docs/ui/pages/member.md
+    design:
+      currentTool: pencil
+      approval: phase-1-shell-draft
+      pencil:
+        file: /Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
+        nodeId: member
+        name: 会员 750px 开发稿
+        width: 750
+        role: active-source
+        note: 主包会员聚合入口，串联会员中心和权益能力。
+    implementation:
+      files:
+        - src/pages/member/index.tsx
+        - src/pages/member/index.scss
+        - src/pages/member/index.config.ts
+      verification:
+        - yarn typecheck
+        - yarn check:page-convention
+        - yarn check:package-boundary
+        - yarn check:ui-contract
+  profile:
+    title: 我的
+    route: src/pages/profile
+    status: implementing
+    spec: docs/ui/pages/profile.md
+    design:
+      currentTool: pencil
+      approval: phase-1-shell-draft
+      pencil:
+        file: /Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
+        nodeId: profile
+        name: 我的 750px 开发稿
+        width: 750
+        role: active-source
+        note: 主包我的入口，串联订单、地址和账户能力。
+    implementation:
+      files:
+        - src/pages/profile/index.tsx
+        - src/pages/profile/index.scss
+        - src/pages/profile/index.config.ts
+      verification:
+        - yarn typecheck
+        - yarn check:page-convention
+        - yarn check:package-boundary
+        - yarn check:ui-contract
+  mall-home:
+    title: 商城首页
+    route: src/pkg-mall/pages/index
+    status: implementing
+    spec: docs/ui/pages/mall-home.md
+    design:
+      currentTool: pencil
+      approval: phase-1-shell-draft
+      pencil:
+        file: /Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
+        nodeId: mall-home
+        name: 商城首页 750px 开发稿
+        width: 750
+        role: active-source
+        note: 商城分包首页，后续承接商品、分类、搜索和推荐入口。 UI 参考 docs/ui/source/hkp-mini-page/mall-home.png。
+    implementation:
+      files:
+        - src/pkg-mall/pages/index/index.tsx
+        - src/pkg-mall/pages/index/index.scss
+        - src/pkg-mall/pages/index/index.config.ts
+      verification:
+        - yarn typecheck
+        - yarn check:page-convention
+        - yarn check:package-boundary
+        - yarn check:ui-contract
+  ticket-home:
+    title: 票务首页
+    route: src/pkg-ticket/pages/index
+    status: implementing
+    spec: docs/ui/pages/ticket-home.md
+    design:
+      currentTool: pencil
+      approval: phase-1-shell-draft
+      pencil:
+        file: /Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
+        nodeId: ticket-home
+        name: 票务首页 750px 开发稿
+        width: 750
+        role: active-source
+        note: 票务分包首页，后续承接乐园详情和门票预定入口。
+    implementation:
+      files:
+        - src/pkg-ticket/pages/index/index.tsx
+        - src/pkg-ticket/pages/index/index.scss
+        - src/pkg-ticket/pages/index/index.config.ts
+      verification:
+        - yarn typecheck
+        - yarn check:page-convention
+        - yarn check:package-boundary
+        - yarn check:ui-contract
+  hotel-home:
+    title: 酒店首页
+    route: src/pkg-hotel/pages/index
+    status: implementing
+    spec: docs/ui/pages/hotel-home.md
+    design:
+      currentTool: pencil
+      approval: phase-1-shell-draft
+      pencil:
+        file: /Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
+        nodeId: hotel-home
+        name: 酒店首页 750px 开发稿
+        width: 750
+        role: active-source
+        note: 酒店分包首页，后续承接酒店详情、房型和确认订单。 UI 参考 docs/ui/source/hkp-mini-page/hotel-detail.png。
+    implementation:
+      files:
+        - src/pkg-hotel/pages/index/index.tsx
+        - src/pkg-hotel/pages/index/index.scss
+        - src/pkg-hotel/pages/index/index.config.ts
+      verification:
+        - yarn typecheck
+        - yarn check:page-convention
+        - yarn check:package-boundary
+        - yarn check:ui-contract
+  dining-home:
+    title: 餐饮首页
+    route: src/pkg-dining/pages/index
+    status: implementing
+    spec: docs/ui/pages/dining-home.md
+    design:
+      currentTool: pencil
+      approval: phase-1-shell-draft
+      pencil:
+        file: /Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
+        nodeId: dining-home
+        name: 餐饮首页 750px 开发稿
+        width: 750
+        role: active-source
+        note: 餐饮分包首页，后续承接商家详情和套餐选择。 UI 参考 docs/ui/source/hkp-mini-page/dining-home.png。
+    implementation:
+      files:
+        - src/pkg-dining/pages/index/index.tsx
+        - src/pkg-dining/pages/index/index.scss
+        - src/pkg-dining/pages/index/index.config.ts
+      verification:
+        - yarn typecheck
+        - yarn check:page-convention
+        - yarn check:package-boundary
+        - yarn check:ui-contract
+  order-home:
+    title: 订单首页
+    route: src/pkg-order/pages/index
+    status: implementing
+    spec: docs/ui/pages/order-home.md
+    design:
+      currentTool: pencil
+      approval: phase-1-shell-draft
+      pencil:
+        file: /Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
+        nodeId: order-home
+        name: 订单首页 750px 开发稿
+        width: 750
+        role: active-source
+        note: 订单分包首页，后续承接订单列表、详情、售后和物流。 UI 参考 docs/ui/source/hkp-mini-page/order-list-all.png。
+    implementation:
+      files:
+        - src/pkg-order/pages/index/index.tsx
+        - src/pkg-order/pages/index/index.scss
+        - src/pkg-order/pages/index/index.config.ts
+      verification:
+        - yarn typecheck
+        - yarn check:page-convention
+        - yarn check:package-boundary
+        - yarn check:ui-contract
+  member-home:
+    title: 会员中心
+    route: src/pkg-member/pages/index
+    status: implementing
+    spec: docs/ui/pages/member-home.md
+    design:
+      currentTool: pencil
+      approval: phase-1-shell-draft
+      pencil:
+        file: /Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
+        nodeId: member-home
+        name: 会员中心 750px 开发稿
+        width: 750
+        role: active-source
+        note: 会员分包首页，后续承接优惠券、分享收益和提现。
+    implementation:
+      files:
+        - src/pkg-member/pages/index/index.tsx
+        - src/pkg-member/pages/index/index.scss
+        - src/pkg-member/pages/index/index.config.ts
       verification:
         - yarn typecheck
         - yarn check:page-convention

@@ -45,6 +45,24 @@ function toCamelCase(value) {
   return pascalName.charAt(0).toLowerCase() + pascalName.slice(1);
 }
 
+function startsWithPackagePrefix(pageKey, packageName) {
+  return Boolean(packageName) && pageKey.startsWith(`${packageName}-`);
+}
+
+function resolveRegistryKey(pageKey, packageName) {
+  if (!packageName) return pageKey;
+  if (pageKey === 'index') return `${packageName}-home`;
+  if (startsWithPackagePrefix(pageKey, packageName)) return pageKey;
+  return `${packageName}-${pageKey}`;
+}
+
+function resolveRouteConstantKey(pageKey, packageName) {
+  if (!packageName) return toCamelCase(pageKey);
+  if (pageKey === 'index') return toCamelCase(`${packageName}-home`);
+  if (startsWithPackagePrefix(pageKey, packageName)) return toCamelCase(pageKey);
+  return toCamelCase(`${packageName}-${pageKey}`);
+}
+
 function parseOptions(rawArgs) {
   const [command, rawPageKey, ...rest] = rawArgs;
   if (!command || command === '--help' || command === '-h') {
@@ -131,6 +149,7 @@ function resolvePaths(options) {
     : `src/core/services/${options.pageKey}.ts`;
   const appConfigPage = isPackagePage ? `pages/${options.pageKey}/index` : `pages/${options.pageKey}/index`;
   const routeValue = isPackagePage ? `/${packageRoot}/pages/${options.pageKey}/index` : `/pages/${options.pageKey}/index`;
+  const registryKey = resolveRegistryKey(options.pageKey, options.packageName);
 
   return {
     isPackagePage,
@@ -139,7 +158,8 @@ function resolvePaths(options) {
     serviceRoute,
     appConfigPage,
     routeValue,
-    specPath: `docs/ui/pages/${options.pageKey}.md`,
+    registryKey,
+    specPath: `docs/ui/pages/${registryKey}.md`,
   };
 }
 
@@ -173,12 +193,15 @@ function appendRouteConstant(paths, names) {
   const routeFile = 'src/core/constants/routes.ts';
   const text = readText(routeFile);
   const routeGroup = paths.isPackagePage ? 'MINI_PACKAGE_ROUTES' : 'MINI_MAIN_ROUTES';
-  const routeLine = `  ${names.camelName}: '${paths.routeValue}',`;
+  const routeLine = `  ${names.routeKey}: '${paths.routeValue}',`;
 
-  if (text.includes(`${names.camelName}: '${paths.routeValue}'`)) return;
+  if (text.includes(`${names.routeKey}: '${paths.routeValue}'`)) return;
 
   const pattern = new RegExp(`(export const ${routeGroup} = \\{\\n)([\\s\\S]*?)(\\n\\} as const;)`);
-  const nextText = text.replace(pattern, (_match, start, body, end) => `${start}${body}${routeLine}\n${end}`);
+  const nextText = text.replace(pattern, (_match, start, body, end) => {
+    const normalizedBody = body.endsWith('\n') ? body : `${body}\n`;
+    return `${start}${normalizedBody}${routeLine}\n${end}`;
+  });
   if (nextText === text) fail(`无法更新 ${routeFile} 中的 ${routeGroup}`);
   writeText(routeFile, nextText);
 }
@@ -196,14 +219,13 @@ function registerAppConfig(paths) {
     return;
   }
 
-  if (text.includes(`'${paths.appConfigPage}'`)) return;
-
   const blockPattern = new RegExp(`(root:\\s*'${paths.packageRoot}'[\\s\\S]*?pages:\\s*\\[)([^\\]]*)(\\])`);
   const nextText = text.replace(blockPattern, (_match, start, body, end) => {
     const pages = [];
     const pagePattern = /['"]([^'"]+)['"]/g;
     let match;
     while ((match = pagePattern.exec(body))) pages.push(match[1]);
+    if (pages.includes(paths.appConfigPage)) return `${start}${body}${end}`;
     pages.push(paths.appConfigPage);
     return `${start}${pages.map((page) => `'${page}'`).join(', ')}${end}`;
   });
@@ -217,10 +239,10 @@ function appendRegistry(options, paths) {
   if (!existsSync(join(rootDir, registryFile))) return;
 
   const text = readText(registryFile);
-  if (new RegExp(`\\n  ${options.pageKey}:\\n`).test(text)) return;
+  if (new RegExp(`\\n  ${paths.registryKey}:\\n`).test(text)) return;
 
   const serviceFileLine = options.service ? `        - ${paths.serviceRoute}\n` : '';
-  const block = `  ${options.pageKey}:
+  const block = `  ${paths.registryKey}:
     title: ${options.title}
     route: ${paths.pageRoute}
     status: implementing
@@ -230,7 +252,7 @@ function appendRegistry(options, paths) {
       approval: code-first-draft
       pencil:
         file: /Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
-        nodeId: ${options.pageKey}
+        nodeId: ${paths.registryKey}
         name: ${options.title} 750px 开发稿
         width: 750
         role: active-source
@@ -243,6 +265,8 @@ function appendRegistry(options, paths) {
 ${serviceFileLine}      verification:
         - yarn typecheck
         - yarn check:page-convention
+        - yarn check:package-boundary
+        - yarn check:ui-contract
 `;
 
   writeText(registryFile, `${text.trimEnd()}\n${block}`);
@@ -259,7 +283,7 @@ function createSpec(options, paths, names) {
   const serviceMapping = options.service ? `- \`${paths.serviceRoute}\`：页面 service。\n` : '';
   const content = renderTemplate('spec.md.tpl', {
     PAGE_TITLE: options.title,
-    PAGE_KEY: options.pageKey,
+    PAGE_KEY: paths.registryKey,
     PAGE_ROUTE: paths.pageRoute,
     REGISTRY_ROUTE: paths.pageRoute,
     TODAY: new Date().toISOString().slice(0, 10),
@@ -315,6 +339,7 @@ function main() {
   const names = {
     pascalName: toPascalCase(options.pageKey),
     camelName: toCamelCase(options.pageKey),
+    routeKey: resolveRouteConstantKey(options.pageKey, options.packageName),
   };
 
   createPageFiles(options, paths, names);

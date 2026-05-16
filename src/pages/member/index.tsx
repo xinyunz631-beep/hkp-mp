@@ -18,19 +18,21 @@ const MemberTabPage = observer(function MemberTabPage() {
   }
 
   return pageRuntime.renderPage(() => (
-    <PageShell title="会员" description="会员等级、积分和权益入口。">
-      <View className="page-shell__section">
-        <View className="page-shell__section-title">{memberProfile?.nickname || '游客'}</View>
-        <View className="page-shell__muted">
-          {memberProfile
-            ? `${memberProfile.levelName} · ${memberProfile.points} 积分`
-            : '登录后查看等级、积分、卡券和权益'}
+    <View className="_pg">
+      <PageShell title="会员" description="会员等级、积分和权益入口。" className="_pg-shell">
+        <View className="_pg-section">
+          <View className="_pg-section_title">{memberProfile?.nickname || '游客'}</View>
+          <View className="_pg-section_desc">
+            {memberProfile
+              ? `${memberProfile.levelName} · ${memberProfile.points} 积分`
+              : '登录后查看等级、积分、卡券和权益'}
+          </View>
+          <AuthAction className="_pg-member-entry" reason="登录后可进入会员中心" onAuthed={openMemberCenter}>
+            <Text>{rootStore.member.isLoggedIn ? '进入会员中心' : '登录并查看会员权益'}</Text>
+          </AuthAction>
         </View>
-        <AuthAction className="member-entry" reason="登录后可进入会员中心" onAuthed={openMemberCenter}>
-          <Text>{rootStore.member.isLoggedIn ? '进入会员中心' : '登录并查看会员权益'}</Text>
-        </AuthAction>
-      </View>
-    </PageShell>
+      </PageShell>
+    </View>
   ));
 });
 

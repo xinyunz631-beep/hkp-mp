@@ -1,7 +1,9 @@
 import Taro from '@tarojs/taro';
 import { Text, View } from '@tarojs/components';
+import { observer } from 'mobx-react';
 import { PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES, type MiniPackageRoute } from '@/core/constants/routes';
+import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 
 const parkEntries: Array<{ title: string; desc: string; path: MiniPackageRoute }> = [
   { title: '票务核验', desc: '查看门票、套餐和入园说明', path: MINI_PACKAGE_ROUTES.ticketHome },
@@ -10,24 +12,28 @@ const parkEntries: Array<{ title: string; desc: string; path: MiniPackageRoute }
 ];
 
 // 渲染乐园入口页，承载轻量导航和园区基础信息。
-function ParkPage() {
+const ParkPage = observer(function ParkPage() {
+  const pageRuntime = usePageRuntime();
+
   // 跳转对应业务分包，主包仅持有路径。
   function navigateTo(path: MiniPackageRoute) {
     Taro.navigateTo({ url: path });
   }
 
-  return (
-    <PageShell title="乐园" description="园区服务、票务、酒店和餐饮入口。">
-      <View className="page-shell__section">
-        {parkEntries.map((item) => (
-          <View className="park-entry" key={item.title} onClick={() => navigateTo(item.path)}>
-            <Text className="park-entry__title">{item.title}</Text>
-            <Text className="park-entry__desc">{item.desc}</Text>
-          </View>
-        ))}
-      </View>
-    </PageShell>
-  );
-}
+  return pageRuntime.renderPage(() => (
+    <View className="_pg">
+      <PageShell title="乐园" description="园区服务、票务、酒店和餐饮入口。" className="_pg-shell">
+        <View className="_pg-section">
+          {parkEntries.map((item) => (
+            <View className="_pg-park-entry" key={item.title} onClick={() => navigateTo(item.path)}>
+              <Text className="_pg-park-entry_title">{item.title}</Text>
+              <Text className="_pg-park-entry_desc">{item.desc}</Text>
+            </View>
+          ))}
+        </View>
+      </PageShell>
+    </View>
+  ));
+});
 
 export default ParkPage;

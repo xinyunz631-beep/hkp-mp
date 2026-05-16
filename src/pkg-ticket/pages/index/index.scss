@@ -1,18 +1,32 @@
-.package-page {
+._pg {
   min-height: 100vh;
-  padding: 40px 32px;
-  box-sizing: border-box;
-  background: #ffffff;
+  background: $color-page-bg;
+
+  .page-shell__body {
+    min-height: 100%;
+  }
 }
 
-.package-page__title {
+._pg-shell {
+  min-height: 100vh;
+  box-sizing: border-box;
+  background: $color-page-bg;
+}
+
+._pg-content {
+  min-height: 240px;
+  padding: 32px;
+  box-sizing: border-box;
+}
+
+._pg-title {
   display: block;
   font-size: 40px;
   font-weight: 700;
   color: #16201d;
 }
 
-.package-page__desc {
+._pg-desc {
   display: block;
   margin-top: 16px;
   font-size: 26px;
