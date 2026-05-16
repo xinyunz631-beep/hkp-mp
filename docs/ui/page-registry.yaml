@@ -86,7 +86,7 @@ pages:
         name: 门票预定 750px 开发稿
         width: 750
         role: active-source
-        note: 本版按用户提供截图在代码侧完成首版还原；顶部自定义栏、景区图、开园信息、游玩日期、年卡商品和固定提交栏已落地。
+        note: 本版按用户提供截图在代码侧完成首版还原；顶部自定义栏、景区图、开园信息、游玩日期、门票与年卡商品、日期面板和固定提交栏已落地。
     implementation:
       files:
         - src/pkg-ticket/pages/ticket-booking/index.tsx

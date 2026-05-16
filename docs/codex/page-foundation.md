@@ -61,6 +61,7 @@
 
 ## 组件决策顺序
 
+- 先查事实源：`docs/ui/components.md` 和 `docs/codex/nutui-component-registry.md`。
 - 先查项目内封装：`src/core/components`、当前分包组件、已有同类页面。
 - 交易类通用 UI 优先查 `src/core/components/commerce`，当前包含商品卡、订单卡、优惠券卡、地址卡、提交栏、数量选择、筛选 Tab、SKU 弹层和日期选择。
 - 再查已安装 UI 库：当前优先 NutUI Taro；命中后也先封装一层项目组件，再给页面或业务代码使用。

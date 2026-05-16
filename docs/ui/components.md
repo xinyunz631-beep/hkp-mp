@@ -2,6 +2,8 @@
 
 本文件维护设计模块到当前 Taro 小程序代码组件的映射。新增页面优先复用这些基础件，不另造平行体系。
 
+NutUI 组件补位与封装顺序，统一参见 `docs/codex/nutui-component-registry.md`。
+
 ## 页面结构
 
 - 页面容器：`PageShell`

@@ -4,6 +4,7 @@ import { Text, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
 import { AppIcon } from '@/core/components/AppIcon';
 import { AppImage } from '@/core/components/AppImage';
+import { DateRangePanel, FixedSubmitBar, QuantityStepper } from '@/core/components/commerce';
 import { PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
@@ -18,16 +19,10 @@ interface TicketQuantityMap {
   [productId: string]: number;
 }
 
-interface TicketBookingSubmitBarProps {
-  totalAmount: number;
-  onSubmit: () => void;
-}
-
 interface ProductCardProps {
   product: TicketProduct;
   quantity: number;
-  onDecrease: () => void;
-  onIncrease: () => void;
+  onQuantityChange: (value: number) => void;
 }
 
 interface TicketBookingHeroProps {
@@ -94,13 +89,24 @@ function TicketBookingInfo({ data }: { data: TicketBookingData }) {
   );
 }
 
-function TicketBookingDateRow({ travelDate }: { travelDate: string }) {
+function TicketBookingDateRow({
+  travelDate,
+  expanded,
+  onToggle,
+}: {
+  travelDate: string;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
   return (
-    <View className="_pg-date" onClick={() => showComingSoon('日期选择即将开放')}>
-      <Text className="_pg-date_label">游玩日期</Text>
+    <View className="_pg-date" onClick={onToggle}>
+      <View>
+        <Text className="_pg-date_label">游玩日期</Text>
+        <Text className="_pg-date_hint">点击后可切换出游日期</Text>
+      </View>
       <View className="_pg-date_value">
         <Text>{travelDate}</Text>
-        <Text className="_pg-date_chevron">›</Text>
+        <Text className={`_pg-date_chevron ${expanded ? '_pg-date_chevron--expanded' : ''}`}>›</Text>
       </View>
     </View>
   );
@@ -114,7 +120,7 @@ function TicketSectionTitle({ title }: { title: string }) {
   );
 }
 
-function ProductCard({ product, quantity, onDecrease, onIncrease }: ProductCardProps) {
+function ProductCard({ product, quantity, onQuantityChange }: ProductCardProps) {
   return (
     <View className="_pg-product">
       <View className="_pg-product_main">
@@ -126,38 +132,8 @@ function ProductCard({ product, quantity, onDecrease, onIncrease }: ProductCardP
         <Text className="_pg-product_price-label">{product.priceLabel}</Text>
         <View className="_pg-product_buy-row">
           <Text className="_pg-product_price">¥{product.price}</Text>
-          <View className="_pg-stepper">
-            <View
-              className={`_pg-stepper_button ${quantity <= 0 ? '_pg-stepper_button--disabled' : ''}`}
-              onClick={onDecrease}
-            >
-              -
-            </View>
-            <Text className="_pg-stepper_value">{quantity}</Text>
-            <View className="_pg-stepper_button" onClick={onIncrease}>
-              +
-            </View>
-          </View>
+          <QuantityStepper className="_pg-product_stepper" value={quantity} min={0} onChange={onQuantityChange} />
         </View>
-      </View>
-    </View>
-  );
-}
-
-function TicketBookingSubmitBar({ totalAmount, onSubmit }: TicketBookingSubmitBarProps) {
-  const canSubmit = totalAmount > 0;
-
-  return (
-    <View className="_pg-submit">
-      <View className="_pg-submit_total">
-        <Text>订单总金额:</Text>
-        <Text className="_pg-submit_amount">{totalAmount.toFixed(2)}</Text>
-      </View>
-      <View
-        className={`_pg-submit_button ${canSubmit ? '_pg-submit_button--active' : ''}`}
-        onClick={onSubmit}
-      >
-        提交订单
       </View>
     </View>
   );
@@ -166,26 +142,20 @@ function TicketBookingSubmitBar({ totalAmount, onSubmit }: TicketBookingSubmitBa
 const TicketBookingPage = observer(function TicketBookingPage() {
   const [bookingData, setBookingData] = useState<TicketBookingData>();
   const [quantities, setQuantities] = useState<TicketQuantityMap>({});
+  const [selectedDate, setSelectedDate] = useState('');
+  const [datePanelVisible, setDatePanelVisible] = useState(false);
   const pageRuntime = usePageRuntime({
     initPage: async () => {
       const nextData = await fetchTicketBookingData();
       setBookingData(nextData);
       setQuantities(createInitialQuantities(nextData.products));
+      setSelectedDate(nextData.parkInfo.travelDate);
     },
   });
   const products = bookingData?.products ?? [];
+  const tickets = products.filter((product) => product.category === 'ticket');
   const annualCards = products.filter((product) => product.category === 'annualCard');
   const totalAmount = products.reduce((total, product) => total + (quantities[product.id] ?? 0) * product.price, 0);
-
-  function updateProductQuantity(productId: string, delta: number) {
-    setQuantities((current) => {
-      const nextQuantity = Math.max(0, (current[productId] ?? 0) + delta);
-      return {
-        ...current,
-        [productId]: nextQuantity,
-      };
-    });
-  }
 
   function handleSubmit() {
     if (totalAmount <= 0) {
@@ -204,27 +174,70 @@ const TicketBookingPage = observer(function TicketBookingPage() {
         title="门票预定"
         className="_pg-shell"
         reserveTabBarSpace={false}
-        footer={<TicketBookingSubmitBar totalAmount={totalAmount} onSubmit={handleSubmit} />}
+        footer={(
+          <FixedSubmitBar
+            className="_pg-submit"
+            label="订单总金额:"
+            amountText={<Text className="_pg-submit_amount">¥{totalAmount.toFixed(2)}</Text>}
+            buttonText="提交订单"
+            disabled={totalAmount <= 0}
+            onSubmit={handleSubmit}
+          />
+        )}
         scrollViewProps={{}}
       >
         {bookingData ? (
           <View className="_pg-content">
             <TicketBookingHero imageCount={bookingData.parkInfo.imageCount} imageSrc={heroImageSrc} />
             <TicketBookingInfo data={bookingData} />
-            <TicketBookingDateRow travelDate={bookingData.parkInfo.travelDate} />
-            <TicketSectionTitle title="门票" />
-            <TicketSectionTitle title="年卡" />
-            <View className="_pg-products">
-              {annualCards.map((product) => (
-                <ProductCard
-                  key={product.id}
-                  product={product}
-                  quantity={quantities[product.id] ?? 0}
-                  onDecrease={() => updateProductQuantity(product.id, -1)}
-                  onIncrease={() => updateProductQuantity(product.id, 1)}
+            <View className="_pg-date-block">
+              <TicketBookingDateRow
+                travelDate={selectedDate}
+                expanded={datePanelVisible}
+                onToggle={() => setDatePanelVisible((current) => !current)}
+              />
+              {datePanelVisible ? (
+                <DateRangePanel
+                  className="_pg-date-block_panel"
+                  dates={bookingData.dates}
+                  activeDate={selectedDate}
+                  onSelect={(date) => {
+                    setSelectedDate(date);
+                    setDatePanelVisible(false);
+                  }}
                 />
-              ))}
+              ) : null}
             </View>
+            {tickets.length > 0 ? (
+              <>
+                <TicketSectionTitle title="门票" />
+                <View className="_pg-products">
+                  {tickets.map((product) => (
+                    <ProductCard
+                      key={product.id}
+                      product={product}
+                      quantity={quantities[product.id] ?? 0}
+                      onQuantityChange={(value) => setQuantities((current) => ({ ...current, [product.id]: value }))}
+                    />
+                  ))}
+                </View>
+              </>
+            ) : null}
+            {annualCards.length > 0 ? (
+              <>
+                <TicketSectionTitle title="年卡" />
+                <View className="_pg-products">
+                  {annualCards.map((product) => (
+                    <ProductCard
+                      key={product.id}
+                      product={product}
+                      quantity={quantities[product.id] ?? 0}
+                      onQuantityChange={(value) => setQuantities((current) => ({ ...current, [product.id]: value }))}
+                    />
+                  ))}
+                </View>
+              </>
+            ) : null}
           </View>
         ) : null}
       </PageShell>
