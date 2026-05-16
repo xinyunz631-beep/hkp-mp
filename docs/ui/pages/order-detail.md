@@ -12,8 +12,8 @@
 - Figma nodeId：-
 - Pencil file：/Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
 - Pencil nodeId：order-detail
-- 当前版本：v0.1
-- 页面状态：implementing
+- 当前版本：v0.2
+- 页面状态：implemented
 - 更新时间：2026-05-16
 - 实现文件：
   - src/pkg-order/pages/detail/index.tsx
@@ -23,7 +23,7 @@
 
 ## 设计意图
 
-订单详情页面先按代码优先方式创建基础实现，后续根据截图、设计稿或业务规则持续更新。
+订单详情页面按 `order-detail-paid.png` 先完成状态头、订单信息、入园信息、取票信息、金额汇总、订单元信息和底部退款按钮。
 
 ## 页面结构
 
@@ -31,7 +31,7 @@
 - 页面容器：`PageShell`
 - 页面运行时：`usePageRuntime`
 - 页面状态订阅：`observer`
-- 内容区域：按本次业务需求实现
+- 内容区域：状态头、商品信息卡、入园信息卡、取票信息卡、金额卡、订单信息卡。
 
 ## 动态与静态边界
 
@@ -53,11 +53,12 @@
 
 | 模块 | service | 失败策略 | 是否阻断页面 |
 |---|---|---|---|
-| 页面数据 | `fetchDetailData()` | service 内归一和兜底 | 按业务决定 |
+| 页面数据 | `fetchDetailData()` | service 内归一和兜底 | 是 |
 
 ## 交互与跳转
 
-- 按页面业务需求补充。
+- 底部“申请退款”当前先提示能力即将开放。
+- 后续接真实订单详情接口时，只替换 service 层字段映射。
 
 ## 实现映射
 
@@ -68,10 +69,18 @@
 
 ## 变更记录
 
+### v0.2
+
+- 按 `order-detail-paid.png` 完成订单详情首版 UI。
+- 订单详情拆为状态、商品、入园、取票、金额和订单信息六个信息区，便于后续扩展售后入口。
+
 ### v0.1
 
 - 初始化页面基础实现。
 
 ## 验证记录
 
-- 待验证。
+- `yarn typecheck`
+- `yarn check:page-convention`
+- `yarn check:package-boundary`
+- `yarn check:ui-contract`

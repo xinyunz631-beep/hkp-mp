@@ -12,8 +12,8 @@
 - Figma nodeId：-
 - Pencil file：/Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
 - Pencil nodeId：order-checkout
-- 当前版本：v0.1
-- 页面状态：implementing
+- 当前版本：v0.2
+- 页面状态：implemented
 - 更新时间：2026-05-16
 - 实现文件：
   - src/pkg-order/pages/checkout/index.tsx
@@ -23,7 +23,7 @@
 
 ## 设计意图
 
-确认订单页面先按代码优先方式创建基础实现，后续根据截图、设计稿或业务规则持续更新。
+确认订单页面按 `order-checkout-address.png` 先完成默认地址、支付方法、商品列表、配送、优惠券、折扣和底部支付栏，作为商城下单场景的首版确认页。
 
 ## 页面结构
 
@@ -31,7 +31,7 @@
 - 页面容器：`PageShell`
 - 页面运行时：`usePageRuntime`
 - 页面状态订阅：`observer`
-- 内容区域：按本次业务需求实现
+- 内容区域：地址卡、支付方式、商品列表、配送、优惠券、折扣信息、金额汇总。
 
 ## 动态与静态边界
 
@@ -53,11 +53,13 @@
 
 | 模块 | service | 失败策略 | 是否阻断页面 |
 |---|---|---|---|
-| 页面数据 | `fetchCheckoutData()` | service 内归一和兜底 | 按业务决定 |
+| 页面数据 | `fetchCheckoutData()` | service 内归一和兜底 | 是 |
 
 ## 交互与跳转
 
-- 按页面业务需求补充。
+- 点击地址卡跳到 `order-address`。
+- 支付按钮当前先提示能力即将开放。
+- 优惠券与折扣信息先保留结构，后续接真实能力时替换 service 与交互。
 
 ## 实现映射
 
@@ -68,10 +70,19 @@
 
 ## 变更记录
 
+### v0.2
+
+- 按 `order-checkout-address.png` 完成确认订单首版 UI。
+- 复用 `FixedSubmitBar` 实现底部支付栏，并保留优惠金额提示。
+- 已串到地址页，为后续地址管理和提交订单能力预留入口。
+
 ### v0.1
 
 - 初始化页面基础实现。
 
 ## 验证记录
 
-- 待验证。
+- `yarn typecheck`
+- `yarn check:page-convention`
+- `yarn check:package-boundary`
+- `yarn check:ui-contract`

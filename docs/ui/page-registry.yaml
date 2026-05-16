@@ -520,7 +520,7 @@ pages:
   order-detail:
     title: 订单详情
     route: src/pkg-order/pages/detail
-    status: implementing
+    status: implemented
     spec: docs/ui/pages/order-detail.md
     design:
       currentTool: pencil
@@ -531,7 +531,7 @@ pages:
         name: 订单详情 750px 开发稿
         width: 750
         role: active-source
-        note: 代码优先创建页面，后续按截图或设计稿继续同步。
+        note: 已按 order-detail-paid.png 完成状态头、商品信息、入园/取票信息、金额汇总和退款按钮首版。
     implementation:
       files:
         - src/pkg-order/pages/detail/index.tsx
@@ -546,7 +546,7 @@ pages:
   order-checkout:
     title: 确认订单
     route: src/pkg-order/pages/checkout
-    status: implementing
+    status: implemented
     spec: docs/ui/pages/order-checkout.md
     design:
       currentTool: pencil
@@ -557,7 +557,7 @@ pages:
         name: 确认订单 750px 开发稿
         width: 750
         role: active-source
-        note: 代码优先创建页面，后续按截图或设计稿继续同步。
+        note: 已按 order-checkout-address.png 完成地址卡、商品列表、优惠券、折扣和底部支付栏首版。
     implementation:
       files:
         - src/pkg-order/pages/checkout/index.tsx
@@ -1165,7 +1165,7 @@ pages:
   order-home:
     title: 订单首页
     route: src/pkg-order/pages/index
-    status: implementing
+    status: implemented
     spec: docs/ui/pages/order-home.md
     design:
       currentTool: pencil
@@ -1176,12 +1176,13 @@ pages:
         name: 订单首页 750px 开发稿
         width: 750
         role: active-source
-        note: 订单分包首页，后续承接订单列表、详情、售后和物流。 UI 参考 docs/ui/source/hkp-mini-page/order-list-all.png。
+        note: 已按 order-list-all.png 完成订单 Tab、日期分组和订单项列表首版。
     implementation:
       files:
         - src/pkg-order/pages/index/index.tsx
         - src/pkg-order/pages/index/index.scss
         - src/pkg-order/pages/index/index.config.ts
+        - src/pkg-order/services/index.ts
       verification:
         - yarn typecheck
         - yarn check:page-convention

@@ -10,11 +10,136 @@
 ._pg-shell {
   min-height: 100vh;
   box-sizing: border-box;
-  background: $color-page-bg;
+  background: #f6f7fb;
 }
 
 ._pg-content {
-  min-height: 240px;
-  padding: 32px;
+  min-height: 100%;
+  padding-bottom: 32px;
   box-sizing: border-box;
+  background: #f6f7fb;
+}
+
+._pg-status-card,
+._pg-card {
+  margin-top: 20px;
+  padding: 28px 32px;
+  background: #ffffff;
+}
+
+._pg-status-card {
+  &_title {
+    display: block;
+    color: #23262f;
+    font-size: 48px;
+    font-weight: 700;
+    line-height: 1.4;
+  }
+
+  &_amount {
+    display: flex;
+    align-items: baseline;
+    margin-top: 18px;
+  }
+
+  &_label {
+    color: #6b7280;
+    font-size: 28px;
+    line-height: 1.45;
+  }
+
+  &_value {
+    margin-left: 18px;
+    color: #d94a88;
+    font-size: 56px;
+    line-height: 1.2;
+  }
+}
+
+._pg-card {
+  &_header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding-bottom: 20px;
+  }
+
+  &_title {
+    flex: 1;
+    color: #23262f;
+    font-size: 30px;
+    line-height: 1.45;
+  }
+
+  &_quantity {
+    flex: none;
+    margin-left: 20px;
+    color: #6b7280;
+    font-size: 30px;
+    line-height: 1.45;
+  }
+
+  &_section-title {
+    display: block;
+    padding-bottom: 18px;
+    color: #23262f;
+    font-size: 30px;
+    line-height: 1.45;
+  }
+}
+
+._pg-line-row {
+  display: flex;
+  align-items: flex-start;
+  padding: 20px 0;
+  border-top: 1px solid #edf0f4;
+
+  &_label {
+    flex: none;
+    width: 140px;
+    color: #23262f;
+    font-size: 28px;
+    line-height: 1.5;
+  }
+
+  &_value {
+    flex: 1;
+    color: #6b7280;
+    font-size: 28px;
+    line-height: 1.5;
+  }
+}
+
+._pg-order-meta {
+  display: flex;
+  align-items: flex-start;
+  padding: 16px 0;
+
+  &_label,
+  &_value {
+    color: #23262f;
+    font-size: 28px;
+    line-height: 1.5;
+  }
+
+  &_label {
+    flex: none;
+  }
+
+  &_value {
+    flex: 1;
+  }
+}
+
+._pg-footer-action {
+  width: 196px;
+  height: 68px;
+  margin: 26px 0 0 auto;
+  border: 1px solid #d94a88;
+  border-radius: 999px;
+  box-sizing: border-box;
+  color: #d94a88;
+  font-size: 30px;
+  line-height: 66px;
+  text-align: center;
 }
