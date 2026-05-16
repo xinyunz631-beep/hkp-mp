@@ -3,10 +3,10 @@
 ## 当前状态
 
 - 更新时间：`2026-05-16`
-- 当前阶段：`Phase 5 - 订单/售后闭环（已收口）`
-- 当前分支：`feature/hkp-mini-phase-5-order-aftersale`
+- 当前阶段：`Phase 6 - 会员基础页与优惠券`
+- 当前分支：`feature/hkp-mini-phase-6-member-growth`
 - 基线提交：`36b7517 chore: 保存小程序当前开发基线`
-- 最近阶段提交：`813d78d feat: 完成订单售后链路首版闭环`
+- 最近阶段提交：`8639746 docs: 更新订单售后阶段恢复检查点`
 - 总控 Skill：`/Users/kite/.codex/skills/hkp-mini-build/SKILL.md`
 - 主执行 Skill：`$mpcode-page`
 
@@ -57,7 +57,7 @@
 
 ## 下一步
 
-1. Phase 5 已完成，下一步进入 Phase 6 会员基础页与优惠券。
+1. 优先完成 `pkg-member/pages/coupons` 和 `pkg-member/pages/index` 的会员基础页/优惠券页首版。
 2. 会员分销链路继续只保留基础框架，不进入 UI 实现。
 3. 餐饮 `pkg-dining` 继续只保留基础框架和 service/mock 入口，不进入 UI 实现。
 4. 订单主链路如需补状态切换、复制订单号、评价提交等细节，再按截图继续收紧。

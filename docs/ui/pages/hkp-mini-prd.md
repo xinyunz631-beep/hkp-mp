@@ -3,8 +3,8 @@
 ## 基本信息
 
 - 项目：HKP C 端乐园小程序全页面工程
-- 当前阶段：Phase 5 - 订单/售后闭环
-- 当前 Git 分支：`feature/hkp-mini-phase-5-order-aftersale`
+- 当前阶段：Phase 6 - 会员基础页与优惠券
+- 当前 Git 分支：`feature/hkp-mini-phase-6-member-growth`
 - 基线提交：`36b7517 chore: 保存小程序当前开发基线`
 - UI 事实源：`docs/ui/source/hkp-mini-page/*.png`
 - UI 宽度：`750px`
