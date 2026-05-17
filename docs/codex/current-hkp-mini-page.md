@@ -6,7 +6,7 @@
 - 当前阶段：`Phase D Core Batch - 商城交互补完`
 - 当前分支：`feature/hkp-mini-phase-7-polish-verify`
 - 基线提交：`36b7517 chore: 保存小程序当前开发基线`
-- 最近阶段提交：`28a826e feat: 补齐首页会员基础交互`
+- 最近阶段提交：`05694a7 feat: 补齐商城核心交互闭环`
 - 总控 Skill：`/Users/kite/.codex/skills/hkp-mini-build/SKILL.md`
 - 主执行 Skill：`$mpcode-page`
 
