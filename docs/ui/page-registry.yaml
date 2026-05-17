@@ -1,15 +1,15 @@
 version: 1
-updatedAt: "2026-05-16"
+updatedAt: "2026-05-17"
 hkpMiniBuild:
-  phase: phase-6-member-growth
-  branch: feature/hkp-mini-phase-6-member-growth
+  phase: phase-7-polish-verify
+  branch: feature/hkp-mini-phase-7-polish-verify
   baselineCommit: "36b7517"
   prd: docs/ui/pages/hkp-mini-prd.md
   checkpoint: docs/codex/current-hkp-mini-page.md
   sourceDir: docs/ui/source/hkp-mini-page
   sourceManifest: docs/ui/source/hkp-mini-page/manifest.json
   resumeSkill: /Users/kite/.codex/skills/hkp-mini-build/SKILL.md
-  note: 当前已进入 Phase 6 会员基础页与优惠券；中途问话默认只视为补充约束，不中断主线计划。餐饮 pkg-dining 和分销链路（share/share-income/share-invite/share-rule/withdraw/withdraw-records）默认只保留页面基础框架，除非用户明确点名，否则不进入 UI 实现。
+  note: 当前已进入 Phase 7 状态补齐和整体验收；中途问话默认只视为补充约束，不中断主线计划。餐饮 pkg-dining 和分销链路（share/share-income/share-invite/share-rule/withdraw/withdraw-records）已补统一准备中状态页，除非用户明确点名，否则不进入完整业务 UI 实现。
 pages:
   home:
     title: 首页
@@ -364,7 +364,7 @@ pages:
   ticket-park-guide:
     title: 乐园导览
     route: src/pkg-ticket/pages/park-guide
-    status: implementing
+    status: implemented
     spec: docs/ui/pages/ticket-park-guide.md
     design:
       currentTool: pencil
@@ -375,7 +375,7 @@ pages:
         name: 乐园导览 750px 开发稿
         width: 750
         role: active-source
-        note: 代码优先创建页面，后续按截图或设计稿继续同步。
+        note: 已完成地图占位、服务分区索引和业务提示首版。
     implementation:
       files:
         - src/pkg-ticket/pages/park-guide/index.tsx
@@ -468,7 +468,7 @@ pages:
   dining-merchant-detail:
     title: 商家详情
     route: src/pkg-dining/pages/merchant-detail
-    status: implementing
+    status: implemented
     spec: docs/ui/pages/dining-merchant-detail.md
     design:
       currentTool: pencil
@@ -479,7 +479,7 @@ pages:
         name: 商家详情 750px 开发稿
         width: 750
         role: active-source
-        note: 代码优先创建页面，后续按截图或设计稿继续同步。
+        note: 已按暂缓策略补齐业务化准备中状态页，完整餐饮 UI 暂不进入。
     implementation:
       files:
         - src/pkg-dining/pages/merchant-detail/index.tsx
@@ -494,7 +494,7 @@ pages:
   dining-checkout:
     title: 餐饮确认订单
     route: src/pkg-dining/pages/checkout
-    status: implementing
+    status: implemented
     spec: docs/ui/pages/dining-checkout.md
     design:
       currentTool: pencil
@@ -505,7 +505,7 @@ pages:
         name: 餐饮确认订单 750px 开发稿
         width: 750
         role: active-source
-        note: 代码优先创建页面，后续按截图或设计稿继续同步。
+        note: 已按暂缓策略补齐业务化准备中状态页，完整餐饮 UI 暂不进入。
     implementation:
       files:
         - src/pkg-dining/pages/checkout/index.tsx
@@ -832,7 +832,7 @@ pages:
   member-share-rule:
     title: 分享规则
     route: src/pkg-member/pages/share-rule
-    status: implementing
+    status: implemented
     spec: docs/ui/pages/member-share-rule.md
     design:
       currentTool: pencil
@@ -843,7 +843,7 @@ pages:
         name: 分享规则 750px 开发稿
         width: 750
         role: active-source
-        note: 代码优先创建页面，后续按截图或设计稿继续同步。
+        note: 已按暂缓策略补齐业务化准备中状态页，完整分享规则 UI 暂不进入。
     implementation:
       files:
         - src/pkg-member/pages/share-rule/index.tsx
@@ -858,7 +858,7 @@ pages:
   member-share:
     title: 分享收益
     route: src/pkg-member/pages/share
-    status: implementing
+    status: implemented
     spec: docs/ui/pages/member-share.md
     design:
       currentTool: pencil
@@ -869,7 +869,7 @@ pages:
         name: 分享收益 750px 开发稿
         width: 750
         role: active-source
-        note: 代码优先创建页面，后续按截图或设计稿继续同步。
+        note: 已按暂缓策略补齐业务化准备中状态页，完整分享收益 UI 暂不进入。
     implementation:
       files:
         - src/pkg-member/pages/share/index.tsx
@@ -884,7 +884,7 @@ pages:
   member-share-income:
     title: 收益明细
     route: src/pkg-member/pages/share-income
-    status: implementing
+    status: implemented
     spec: docs/ui/pages/member-share-income.md
     design:
       currentTool: pencil
@@ -895,7 +895,7 @@ pages:
         name: 收益明细 750px 开发稿
         width: 750
         role: active-source
-        note: 代码优先创建页面，后续按截图或设计稿继续同步。
+        note: 已按暂缓策略补齐业务化准备中状态页，完整收益明细 UI 暂不进入。
     implementation:
       files:
         - src/pkg-member/pages/share-income/index.tsx
@@ -910,7 +910,7 @@ pages:
   member-share-invite:
     title: 邀请明细
     route: src/pkg-member/pages/share-invite
-    status: implementing
+    status: implemented
     spec: docs/ui/pages/member-share-invite.md
     design:
       currentTool: pencil
@@ -921,7 +921,7 @@ pages:
         name: 邀请明细 750px 开发稿
         width: 750
         role: active-source
-        note: 代码优先创建页面，后续按截图或设计稿继续同步。
+        note: 已按暂缓策略补齐业务化准备中状态页，完整邀请明细 UI 暂不进入。
     implementation:
       files:
         - src/pkg-member/pages/share-invite/index.tsx
@@ -936,7 +936,7 @@ pages:
   member-withdraw-records:
     title: 提现记录
     route: src/pkg-member/pages/withdraw-records
-    status: implementing
+    status: implemented
     spec: docs/ui/pages/member-withdraw-records.md
     design:
       currentTool: pencil
@@ -947,7 +947,7 @@ pages:
         name: 提现记录 750px 开发稿
         width: 750
         role: active-source
-        note: 代码优先创建页面，后续按截图或设计稿继续同步。
+        note: 已按暂缓策略补齐业务化准备中状态页，完整提现记录 UI 暂不进入。
     implementation:
       files:
         - src/pkg-member/pages/withdraw-records/index.tsx
@@ -962,7 +962,7 @@ pages:
   member-withdraw:
     title: 申请提现
     route: src/pkg-member/pages/withdraw
-    status: implementing
+    status: implemented
     spec: docs/ui/pages/member-withdraw.md
     design:
       currentTool: pencil
@@ -973,7 +973,7 @@ pages:
         name: 申请提现 750px 开发稿
         width: 750
         role: active-source
-        note: 代码优先创建页面，后续按截图或设计稿继续同步。
+        note: 已按暂缓策略补齐业务化准备中状态页，完整提现申请 UI 暂不进入。
     implementation:
       files:
         - src/pkg-member/pages/withdraw/index.tsx
@@ -988,7 +988,7 @@ pages:
   park:
     title: 乐园
     route: src/pages/park
-    status: implementing
+    status: implemented
     spec: docs/ui/pages/park.md
     design:
       currentTool: pencil
@@ -999,7 +999,7 @@ pages:
         name: 乐园 750px 开发稿
         width: 750
         role: active-source
-        note: 主包乐园聚合入口，串联票务、酒店和餐饮分包。
+        note: 主包乐园聚合入口，已串联票务、酒店和餐饮分包；不展示页面内 tabbar。
     implementation:
       files:
         - src/pages/park/index.tsx
@@ -1013,7 +1013,7 @@ pages:
   member:
     title: 会员
     route: src/pages/member
-    status: implementing
+    status: implemented
     spec: docs/ui/pages/member.md
     design:
       currentTool: pencil
@@ -1024,7 +1024,7 @@ pages:
         name: 会员 750px 开发稿
         width: 750
         role: active-source
-        note: 主包会员聚合入口，串联会员中心和权益能力。
+        note: 主包会员聚合入口，已串联会员中心和登录态权益入口；不展示页面内 tabbar。
     implementation:
       files:
         - src/pages/member/index.tsx
@@ -1038,7 +1038,7 @@ pages:
   profile:
     title: 我的
     route: src/pages/profile
-    status: implementing
+    status: implemented
     spec: docs/ui/pages/profile.md
     design:
       currentTool: pencil
@@ -1049,7 +1049,7 @@ pages:
         name: 我的 750px 开发稿
         width: 750
         role: active-source
-        note: 主包我的入口，串联订单、地址和账户能力。
+        note: 主包我的入口，已补齐账户卡、积分卡券、订单/地址/售后/优惠券/会员中心入口和页面内 tabbar。
     implementation:
       files:
         - src/pages/profile/index.tsx
@@ -1089,7 +1089,7 @@ pages:
   ticket-home:
     title: 票务首页
     route: src/pkg-ticket/pages/index
-    status: implementing
+    status: implemented
     spec: docs/ui/pages/ticket-home.md
     design:
       currentTool: pencil
@@ -1100,7 +1100,7 @@ pages:
         name: 票务首页 750px 开发稿
         width: 750
         role: active-source
-        note: 票务分包首页，后续承接乐园详情和门票预定入口。
+        note: 已完成票务服务聚合入口，串联乐园详情、门票预定和乐园导览。
     implementation:
       files:
         - src/pkg-ticket/pages/index/index.tsx
@@ -1140,7 +1140,7 @@ pages:
   dining-home:
     title: 餐饮首页
     route: src/pkg-dining/pages/index
-    status: implementing
+    status: implemented
     spec: docs/ui/pages/dining-home.md
     design:
       currentTool: pencil
@@ -1151,7 +1151,7 @@ pages:
         name: 餐饮首页 750px 开发稿
         width: 750
         role: active-source
-        note: 餐饮分包首页，后续承接商家详情和套餐选择。 UI 参考 docs/ui/source/hkp-mini-page/dining-home.png。
+        note: 已按暂缓策略补齐业务化准备中状态页，完整餐饮首页 UI 暂不进入。
     implementation:
       files:
         - src/pkg-dining/pages/index/index.tsx

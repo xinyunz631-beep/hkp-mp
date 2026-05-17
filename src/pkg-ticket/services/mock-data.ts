@@ -29,11 +29,17 @@ export interface TicketParkData {
   otherInfo: TicketParkInfoItem[];
 }
 
+export interface TicketParkGuideData {
+  title: string;
+  imageSrc: string;
+  sections: string[];
+}
+
 export const ticketParkData: TicketParkData = {
   name: 'Hello Kitty Park',
   heroImages: [''],
   intro:
-    '杭州 Hello Kitty 乐园位于浙江安吉，以 Sanrio 经典角色为主题，集合乐园游乐、亲子互动、主题演艺与假日度假体验。当前阶段先按页面开发需要沉淀基础介绍文案，后续接入真实接口时仅替换 service 层字段。',
+    '杭州 Hello Kitty 乐园位于浙江安吉，以 Sanrio 经典角色为主题，集合乐园游乐、亲子互动、主题演艺与假日度假体验。',
   openTime: '10:00~17:00',
   hotline: '4009778899',
   address: '浙江安吉县昌硕街道天使大道1号',
@@ -180,7 +186,7 @@ export const ticketCheckoutData: TicketCheckoutData = {
   payButtonText: '去支付',
 };
 
-export const parkGuideData = {
+export const parkGuideData: TicketParkGuideData = {
   title: '乐园导览',
   imageSrc: '',
   sections: ['吃', '住', '行', '游', '购', '娱', '商', '学', '情'],

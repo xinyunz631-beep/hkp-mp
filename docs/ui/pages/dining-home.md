@@ -6,9 +6,9 @@
 - 路由：src/pkg-dining/pages/index
 - 当前设计工具（以 `page-registry.currentTool` 为准）：pencil
 - UI 图：docs/ui/source/hkp-mini-page/dining-home.png
-- 当前版本：v0.1
-- 页面状态：implementing
-- 更新时间：2026-05-16
+- 当前版本：v0.2
+- 页面状态：implemented
+- 更新时间：2026-05-17
 - 实现文件：
   - src/pkg-dining/pages/index/index.tsx
   - src/pkg-dining/pages/index/index.scss
@@ -16,7 +16,7 @@
 
 ## 设计意图
 
-餐饮分包首页，后续承接商家详情和套餐选择。
+餐饮分包首页，当前按暂缓策略展示业务化准备中状态页。
 
 ## 页面结构
 
@@ -24,12 +24,12 @@
 - 页面容器：`PageShell`
 - 页面运行时：`usePageRuntime`
 - 页面状态订阅：`observer`
-- 内容区域：当前只保留 Phase 1 骨架，后续阶段按截图补齐 UI。
+- 内容区域：`BaseEmpty` 准备中状态卡。
 
 ## 动态与静态边界
 
-- 页面图片：真实图片区域后续统一使用 `AppImage`。
-- 接口数据：通过对应分包 service 获取，页面不直接写接口 mock。
+- 页面图片：当前暂不渲染餐饮图片。
+- 接口数据：当前无阻断接口，完整餐饮服务另行进入。
 - 本地配置：页面标题、导航策略、路由和分包注册。
 
 ## 状态要求
@@ -43,19 +43,23 @@
 
 | 模块 | service | 失败策略 | 是否阻断页面 |
 |---|---|---|---|
-| Phase 1 骨架 | - | 暂无接口 | 否 |
+| 准备中状态 | - | 静态配置 | 否 |
 
 ## 交互与跳转
 
-- 后续按 HKP PRD 对应流程继续补齐入口和下一跳。
+- 当前仅展示餐饮服务准备中，不进入商家详情或套餐下单。
 
 ## 实现映射
 
-- `src/pkg-dining/pages/index/index.tsx`：页面骨架相关文件。
-- `src/pkg-dining/pages/index/index.scss`：页面骨架相关文件。
-- `src/pkg-dining/pages/index/index.config.ts`：页面骨架相关文件。
+- `src/pkg-dining/pages/index/index.tsx`：准备中状态页。
+- `src/pkg-dining/pages/index/index.scss`：状态页样式。
+- `src/pkg-dining/pages/index/index.config.ts`：页面配置。
 
 ## 变更记录
+
+### v0.2
+
+- Phase 7 按暂缓策略补齐餐饮首页准备中状态页。
 
 ### v0.1
 
@@ -63,4 +67,5 @@
 
 ## 验证记录
 
-- 待验证。
+- `2026-05-17`：已通过 `yarn typecheck`
+- `2026-05-17`：已通过 `yarn check:page-convention`

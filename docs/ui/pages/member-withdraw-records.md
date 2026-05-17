@@ -12,9 +12,9 @@
 - Figma nodeId：-
 - Pencil file：/Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
 - Pencil nodeId：member-withdraw-records
-- 当前版本：v0.1
-- 页面状态：implementing
-- 更新时间：2026-05-16
+- 当前版本：v0.2
+- 页面状态：implemented
+- 更新时间：2026-05-17
 - 实现文件：
   - src/pkg-member/pages/withdraw-records/index.tsx
   - src/pkg-member/pages/withdraw-records/index.scss
@@ -23,7 +23,7 @@
 
 ## 设计意图
 
-提现记录页面先按代码优先方式创建基础实现，后续根据截图、设计稿或业务规则持续更新。
+提现记录页面当前按暂缓策略展示业务化准备中状态页。
 
 ## 页面结构
 
@@ -31,7 +31,7 @@
 - 页面容器：`PageShell`
 - 页面运行时：`usePageRuntime`
 - 页面状态订阅：`observer`
-- 内容区域：按本次业务需求实现
+- 内容区域：`BaseEmpty` 准备中状态卡
 
 ## 动态与静态边界
 
@@ -53,11 +53,11 @@
 
 | 模块 | service | 失败策略 | 是否阻断页面 |
 |---|---|---|---|
-| 页面数据 | `fetchWithdrawRecordsData()` | service 内归一和兜底 | 按业务决定 |
+| 页面数据 | `fetchWithdrawRecordsData()` | service 内归一和兜底 | 否 |
 
 ## 交互与跳转
 
-- 按页面业务需求补充。
+- 当前仅展示提现记录准备中，不进入记录列表。
 
 ## 实现映射
 
@@ -68,10 +68,15 @@
 
 ## 变更记录
 
+### v0.2
+
+- Phase 7 按暂缓策略补齐提现记录准备中状态页。
+
 ### v0.1
 
 - 初始化页面基础实现。
 
 ## 验证记录
 
-- 待验证。
+- `2026-05-17`：已通过 `yarn typecheck`
+- `2026-05-17`：已通过 `yarn check:page-convention`

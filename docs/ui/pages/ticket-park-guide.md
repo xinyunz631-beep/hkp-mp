@@ -12,9 +12,9 @@
 - Figma nodeId：-
 - Pencil file：/Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
 - Pencil nodeId：ticket-park-guide
-- 当前版本：v0.1
-- 页面状态：implementing
-- 更新时间：2026-05-16
+- 当前版本：v0.2
+- 页面状态：implemented
+- 更新时间：2026-05-17
 - 实现文件：
   - src/pkg-ticket/pages/park-guide/index.tsx
   - src/pkg-ticket/pages/park-guide/index.scss
@@ -23,7 +23,7 @@
 
 ## 设计意图
 
-乐园导览页面先按代码优先方式创建基础实现，后续根据截图、设计稿或业务规则持续更新。
+乐园导览页面本轮先完成地图占位、服务分区索引和业务提示。
 
 ## 页面结构
 
@@ -31,7 +31,11 @@
 - 页面容器：`PageShell`
 - 页面运行时：`usePageRuntime`
 - 页面状态订阅：`observer`
-- 内容区域：按本次业务需求实现
+- 内容区域：
+  - 园区服务导览卡
+  - 地图图片占位
+  - 吃住行游购娱商学情服务分区
+  - 到园提示
 
 ## 动态与静态边界
 
@@ -53,11 +57,11 @@
 
 | 模块 | service | 失败策略 | 是否阻断页面 |
 |---|---|---|---|
-| 页面数据 | `fetchParkGuideData()` | service 内归一和兜底 | 按业务决定 |
+| 页面数据 | `fetchParkGuideData()` | service 内归一和兜底 | 是 |
 
 ## 交互与跳转
 
-- 按页面业务需求补充。
+- 当前页面展示园区导览和服务分区索引，后续真实地图交互另行接入。
 
 ## 实现映射
 
@@ -68,10 +72,15 @@
 
 ## 变更记录
 
+### v0.2
+
+- Phase 7 完成地图占位、服务分区索引和业务提示首版。
+
 ### v0.1
 
 - 初始化页面基础实现。
 
 ## 验证记录
 
-- 待验证。
+- `2026-05-17`：已通过 `yarn typecheck`
+- `2026-05-17`：已通过 `yarn check:page-convention`

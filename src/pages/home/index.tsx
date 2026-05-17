@@ -182,7 +182,7 @@ const HomePage = observer(function HomePage() {
 
   return pageRuntime.renderPage(() => (
     <View className="_pg">
-      <PageShell title="首页" navbar={false} className="_pg-shell" scrollViewProps={{}}>
+      <PageShell title="首页" navbar={false} className="_pg-shell" reserveTabBarSpace scrollViewProps={{}}>
         <View className="_pg-page">
           <View className="_pg-nav" style={fixedNavStyle}>
             <View className="_pg-nav_scan" onClick={handleScan}>

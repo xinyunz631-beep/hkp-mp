@@ -3,8 +3,8 @@
 ## 基本信息
 
 - 项目：HKP C 端乐园小程序全页面工程
-- 当前阶段：Phase 6 - 会员基础页与优惠券
-- 当前 Git 分支：`feature/hkp-mini-phase-6-member-growth`
+- 当前阶段：Phase 7 - 状态补齐和整体验收
+- 当前 Git 分支：`feature/hkp-mini-phase-7-polish-verify`
 - 基线提交：`36b7517 chore: 保存小程序当前开发基线`
 - UI 事实源：`docs/ui/source/hkp-mini-page/*.png`
 - UI 宽度：`750px`
@@ -194,6 +194,9 @@
 - `2026-05-16`：Phase 5 已补齐地址管理、物流详情、创建评价、评价列表四个页面首版，并把订单首页动作串到查看物流和去评价。
 - `2026-05-16`：工程约束补充：分包默认不再启用 `independent: true`，避免分包丢失 `app.scss` 的全局样式继承。
 - `2026-05-16`：Phase 5 已补齐取消订单、售后类型、售后申请、售后列表、售后进度五个页面首版，并把订单列表/详情动作串到售后链路。
+- `2026-05-17`：Phase 6 已完成会员中心首页、优惠券页和登录阻断态收口。
+- `2026-05-17`：Phase 7 已补齐票务首页、乐园导览、餐饮/分销暂缓状态页，并将 PageShell tabbar 默认调整为不展示，仅首页和“我的”显式开启。
+- `2026-05-17`：Phase 7 已确认主包乐园、会员、我的三个聚合入口状态；首页继续保留独立首页设计流的 implementing 状态。
 
 ## 验证记录
 
@@ -202,3 +205,6 @@
 - Phase 1 完整构建：`yarn build:weapp` 已尝试，因本地 Taro 构建长时间无输出并伴随 `system-configuration` panic 日志被终止，后续需单独复验。
 - Phase 2 门禁已通过：`yarn typecheck`、`yarn check:page-convention`、`yarn check:package-boundary`、`yarn check:ui-contract`。
 - Phase 3 当前轮门禁已通过：`yarn typecheck`、`yarn check:page-convention`、`yarn check:package-boundary`、`yarn check:ui-contract`。
+- Phase 6 当前轮门禁已通过：`yarn typecheck`、`yarn check:page-convention`、`yarn check:package-boundary`、`yarn check:ui-contract`。
+- Phase 7 当前轮门禁已通过：`yarn typecheck`、`yarn check:page-convention`、`yarn check:package-boundary`、`yarn check:ui-contract`。
+- Phase 7 完整构建：`yarn build:weapp` 已尝试，因本地 Taro 构建再次出现 `system-configuration` panic 且约 50 秒无新增输出被终止，按环境风险记录。

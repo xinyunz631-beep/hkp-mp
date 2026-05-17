@@ -171,6 +171,7 @@ function checkPage(page) {
 
   const pageText = readText(pageFile);
   const configText = existsSync(resolve(rootDir, configFile)) ? readText(configFile) : '';
+  const tabBarAllowedPages = new Set(['home', 'profile']);
 
   if (!pageText.includes('PageShell')) {
     fail(`${page.key} 未使用 PageShell`);
@@ -191,6 +192,14 @@ function checkPage(page) {
 
   if (/src\/core\/components\/PageLoading/.test(pageText)) {
     fail(`${page.key} 仍引用旧 PageLoading 路径，应使用 src/core/components/loading`);
+  }
+
+  const enablesTabBar = /\breserveTabBarSpace(?:\s|>)/.test(pageText)
+    || /\breserveTabBarSpace\s*=\s*\{\s*true\s*\}/.test(pageText)
+    || /\breserveTabBarSpace\s*=\s*['"]true['"]/.test(pageText);
+
+  if (enablesTabBar && !tabBarAllowedPages.has(page.key)) {
+    fail(`${page.key} 不应展示页面内 AppTabBar，仅 home 和 profile 允许开启 reserveTabBarSpace`);
   }
 
   checkClassNameTokens(page, pageText);

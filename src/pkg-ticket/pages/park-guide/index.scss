@@ -14,7 +14,83 @@
 }
 
 ._pg-content {
-  min-height: 240px;
-  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-height: 100%;
+  padding: 24px 24px 40px;
   box-sizing: border-box;
+}
+
+._pg-map-card,
+._pg-section {
+  padding: 28px;
+  border-radius: 28px;
+  background: #ffffff;
+  box-shadow: 0 14px 34px rgba(22, 32, 29, 0.08);
+}
+
+._pg-map-card {
+  &_title,
+  &_desc {
+    display: block;
+  }
+
+  &_title {
+    color: $color-text-primary;
+    font-size: 32px;
+    font-weight: 800;
+  }
+
+  &_desc {
+    margin-top: 12px;
+    color: $color-text-secondary;
+    font-size: 24px;
+    line-height: 1.6;
+  }
+
+  &_image {
+    width: 100%;
+    height: 420px;
+    margin-top: 24px;
+    border-radius: 26px;
+  }
+}
+
+._pg-section {
+  &_title {
+    display: block;
+    color: $color-text-primary;
+    font-size: 30px;
+    font-weight: 800;
+  }
+
+  &_grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+    margin-top: 22px;
+  }
+
+  &_item {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 96px;
+    border-radius: 24px;
+    background: $color-page-bg;
+  }
+
+  &_text {
+    color: $color-primary;
+    font-size: 32px;
+    font-weight: 800;
+  }
+}
+
+._pg-tip {
+  display: block;
+  color: $color-text-secondary;
+  font-size: 22px;
+  line-height: 1.6;
 }

@@ -2,7 +2,7 @@
 
 ## 更新时间
 
-- 更新时间：`2026-05-15`
+- 更新时间：`2026-05-17`
 - 当前状态：登录、请求、会员状态、页面初始化闸门、页面显式 runtime hook、页面单例 loading、统一 loading 组件入口和白色渐变淡出蒙层、全局登录态弹窗、webpack5 prebundle/cache 关闭、NutUI 按需样式、`@tarojs/plugin-html` 和 `@nutui/icons-react-taro` 显式依赖、BaseSkeleton/BaseEmpty/BaseException、中性页面底色+粉色品牌点缀、自定义 tabbar、独立 PageNavbar 和页面级 header/layout 已完成代码收口并通过本地校验；系统 custom-tab-bar 已压成 0 高度占位，可见 tabbar 已下沉到页面内 fixed 底部容器；首页已按最新 Pencil 画板重排为透明固定导航、高 banner、会员信息卡、上图下文开园时间卡、横滑热玩榜单、精选活动、精彩推荐、会员专享福利和玩转乐园九宫格，优惠券数量放在首页 `initPage` 中直接 await，服务层 catch 兜底返回 0，异常不进入首页失败态；新增 `docs/ui` 小程序 UI 工程事实源和 `check:ui-contract` 校验，用于 Pencil/Figma 设计、页面 MD、Codex 开发之间保持同步。
 - 恢复优先级：下一步优先在微信开发工具中验证真实 V2 响应、首页优惠券数量、首页新视觉还原、登录弹窗交互、页面内自定义 tabbar 跳转/选中态、弹层覆盖关系和自定义 navbar 安全区表现。
 
@@ -81,7 +81,8 @@
 - `src/app.scss` 已统一给 `view`、`text`、`button`、`scroll-view` 等常用宿主元素设置 `box-sizing: border-box`。
 - 底部安全区不使用 CSS `env(safe-area-inset-bottom)`；需要底部安全区的设备统一加 20Px 占位元素，避免被 Taro 转成 `rpx`。
 - `scroll-view padding="{{...}}"` 若仅来自 Taro 生成模板，不通过本地插件改写构建产物；业务侧 tabbar 预留使用占位节点。
-- `PageShell` 已基于 `PageLayout` 改造，主包页面默认渲染页面内 `AppTabBar`。
+- `PageShell` 已基于 `PageLayout` 改造，默认不渲染页面内 `AppTabBar`；只有首页和“我的”页显式传 `reserveTabBarSpace` 开启。
+- `yarn check:page-convention` 已增加 tabbar 约束：除 `home` 和 `profile` 外，其它页面不得开启 `reserveTabBarSpace`。
 - 页面需要运行时能力时显式调用 `usePageRuntime()`；新页面优先用 `pageRuntime.renderPage(...)` 自动挂载运行时节点，旧 `runtimeNode` 透传仅保留兼容。
 
 ## 当前已做
@@ -113,6 +114,8 @@
 - 已新增 `src/core/components/PageNavbar`，并由 `PageShell` 作为 `PageLayout` 的 header 传入。
 - 已将 `PageNavbar` 默认左侧 icon 改为 NutUI `ArrowLeft`，并移除票务页单独的首页图标入口，当前非 tab 页面统一走同一套返回 icon 和居中标题。
 - 已新增 `src/core/components/PageLayout`，支持 fixed header/footer、可配置 ScrollView / 普通 View 两种中间布局、页面级覆盖层插槽和页面内 fixed tabbar；滚动内容上下会根据 header/footer 高度自动插入占位节点，末尾还会预留 tabbar 空间。
+- 已将票务首页补齐为票务服务聚合入口，串联乐园详情、门票预定和乐园导览；乐园导览页已补地图占位、服务分区和到园提示。
+- 已按暂缓策略为餐饮页和会员分销/提现页补齐业务化准备中状态页，避免空白骨架直接展示给用户。
 - 已新增 `src/core/utils/style.ts`，集中封装设备信息、navbar 胶囊尺寸、selector rect 高度和底部安全区判断。
 - 已将主包 tab 页面导航栏切到 `navigationStyle: 'custom'`，由 `PageLayout` 统一处理状态栏和微信胶囊避让。
 - 已新增 `yarn check:main-package:build`，通过 `HKITTY_MP_OUTPUT_ROOT=.dist-check/main-package` 隔离构建并检测主包体积，不覆盖 `dist/`。

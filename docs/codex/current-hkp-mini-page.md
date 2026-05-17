@@ -3,10 +3,10 @@
 ## 当前状态
 
 - 更新时间：`2026-05-17`
-- 当前阶段：`Phase 6 - 会员基础页与优惠券`
-- 当前分支：`feature/hkp-mini-phase-6-member-growth`
+- 当前阶段：`Phase 7 - 状态补齐和整体验收`
+- 当前分支：`feature/hkp-mini-phase-7-polish-verify`
 - 基线提交：`36b7517 chore: 保存小程序当前开发基线`
-- 最近阶段提交：`8639746 docs: 更新订单售后阶段恢复检查点`
+- 最近阶段提交：`5820ae9 feat: 完成会员基础页和登录阻断收口`
 - 总控 Skill：`/Users/kite/.codex/skills/hkp-mini-build/SKILL.md`
 - 主执行 Skill：`$mpcode-page`
 
@@ -52,21 +52,30 @@
 - 已将 `LoginPopup` 调整为关闭后销毁节点，减少微信开发工具辅助树里残留弹窗节点对会员页验收的干扰。
 - 已将 `loginRequired` 页面默认未登录阻断态收口为业务化登录提示，并把主动作改为“立即登录”。
 - Phase 6 当前轮轻量门禁已通过：`yarn typecheck`、`yarn check:page-convention`、`yarn check:package-boundary`、`yarn check:ui-contract`。
+- Phase 6 已提交：`5820ae9 feat: 完成会员基础页和登录阻断收口`。
+- 已切入 `feature/hkp-mini-phase-7-polish-verify` 分支。
+- 已将 `PageShell` 的页面内 tabbar 默认改为不展示，仅首页和“我的”页显式开启，并为该规则补充页面约束检查。
+- 已完成票务首页聚合入口，串联乐园详情、门票预定和乐园导览。
+- 已完成乐园导览页首版，补齐地图占位、服务分区索引和到园提示。
+- 已按暂缓策略为餐饮页面和会员分享/提现页面补齐业务化准备中状态页，避免空白骨架直接展示给用户。
+- 已确认主包乐园、会员、我的三个聚合入口状态并同步为 implemented；首页仍保留独立首页设计流的 implementing 状态。
+- 已修复“我的”tab 页面过空问题，补齐账户卡、快捷入口、常用服务和账户设置区，并补回 `src/pages/profile/index.scss` 导入。
+- Phase 7 当前轮轻量门禁已通过：`yarn typecheck`、`yarn check:page-convention`、`yarn check:package-boundary`、`yarn check:ui-contract`。
+- `yarn build:weapp` 已尝试执行，Taro 构建再次出现历史 `system-configuration` panic，并在约 50 秒无新增输出后手动停止；按既有本地环境风险记录。
 
 ## 当前约束
 
-- `pkg-dining` 餐饮板块当前只保留页面基础框架和 service/mock 入口，不进入 UI 实现。
-- `pkg-member` 下分销链路 `share-rule/share/share-income/share-invite/withdraw/withdraw-records` 当前只保留基础框架，不进入 UI 实现。
+- `pkg-dining` 餐饮板块当前只补业务化准备中状态页，不进入完整餐饮 UI 实现。
+- `pkg-member` 下分销链路 `share-rule/share/share-income/share-invite/withdraw/withdraw-records` 当前只补业务化准备中状态页，不进入完整分销 UI 实现。
 - 只有用户明确点名后，才允许继续完善以上两个板块的 UI。
+- `PageShell` 默认不展示页面内 `AppTabBar`；只有首页和“我的”页允许显式开启。
 - 用户中途发来的问题、提醒、补充条件默认只更新约束，不中断当前主线阶段；只有明确说“停”或改主任务时才切线。
 
 ## 下一步
 
-1. 在微信开发工具中目视确认会员中心和优惠券页的导航、滚动与空态表现。
-   - 验收时以模拟器可见画面为准；微信开发工具辅助树会同时列出隐藏 webview，不能只看辅助树判断是否叠层。
-2. 会员分销链路继续只保留基础框架，不进入 UI 实现。
-3. 餐饮 `pkg-dining` 继续只保留基础框架和 service/mock 入口，不进入 UI 实现。
-4. Phase 6 验证通过后提交当前分支，再切入 `feature/hkp-mini-phase-7-polish-verify` 收口状态页和整体验收。
+1. 最后复跑 Phase 7 四件套，确认文档同步后仍通过。
+2. 提交 `feature/hkp-mini-phase-7-polish-verify`，作为 HKP 小程序计划任务收口提交。
+3. 如需继续做真机/微信开发工具验收，以模拟器可见画面为准确认首页/我的页展示页面内 tabbar，分包页和其它主包页不展示 tabbar。
 
 ## 恢复方式
 

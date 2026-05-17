@@ -14,7 +14,16 @@
 }
 
 ._pg-content {
-  min-height: 240px;
-  padding: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100%;
+  padding: 40px 24px;
   box-sizing: border-box;
+}
+
+._pg-state {
+  border-radius: 28px;
+  background: #ffffff;
+  box-shadow: 0 14px 34px rgba(22, 32, 29, 0.08);
 }

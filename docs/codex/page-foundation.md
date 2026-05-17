@@ -29,7 +29,8 @@
 
 - 使用 `PageShell` 默认 navbar 的页面，必须在页面 `config.ts` 声明 `navigationStyle: 'custom'`。
 - 使用系统导航栏的页面，传 `navbar={false}`，且 `config.ts` 只保留系统标题。
-- tab 页面不展示返回按钮，只显示标题和底部 tabbar。
+- 主包 tab 页面不展示返回按钮；页面内底部 tabbar 只由首页和“我的”页显式开启。
+- `PageShell` 默认不展示底部 `AppTabBar`；只有首页和“我的”页显式传 `reserveTabBarSpace` 开启页面内 tabbar。
 - 非 tab 自定义 navbar 页面默认使用 `navigateBackOrHome()` 返回。
 - 页面栈判断和“有上一页则返回、无上一页则回首页”的按钮事件必须封装在 `src/core/utils/navigation.ts`，页面或状态组件不要直接散写 `Taro.getCurrentPages()`。
 - 首页错误态不展示返回入口；通用错误组件需要临时隐藏返回时使用 `hideBack`，不要在页面里重复写路由判断。

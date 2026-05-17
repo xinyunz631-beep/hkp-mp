@@ -127,7 +127,7 @@ function resolvePageShellSlots(children: ReactNode): PageShellSlots {
   };
 }
 
-// 渲染轻量页面壳，仅用于主包占位页和极简基础页面。
+// 渲染轻量页面壳。默认不展示页面内 tabbar，仅主包指定页面显式开启。
 export function PageShell({
   title,
   description,
@@ -139,7 +139,7 @@ export function PageShell({
   bottom,
   share,
   runtimeNode,
-  reserveTabBarSpace = true,
+  reserveTabBarSpace = false,
   scrollViewProps,
   children,
 }: PageShellProps) {

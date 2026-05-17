@@ -5,10 +5,10 @@
 - 页面：会员
 - 路由：src/pages/member
 - 当前设计工具（以 `page-registry.currentTool` 为准）：pencil
-- UI 图：当前无独立截图，按代码骨架先登记，后续补设计源。
-- 当前版本：v0.1
-- 页面状态：implementing
-- 更新时间：2026-05-16
+- UI 图：当前无独立截图，按代码优先完成会员聚合入口。
+- 当前版本：v0.2
+- 页面状态：implemented
+- 更新时间：2026-05-17
 - 实现文件：
   - src/pages/member/index.tsx
   - src/pages/member/index.scss
@@ -24,12 +24,12 @@
 - 页面容器：`PageShell`
 - 页面运行时：`usePageRuntime`
 - 页面状态订阅：`observer`
-- 内容区域：当前只保留 Phase 1 骨架，后续阶段按截图补齐 UI。
+- 内容区域：会员态摘要和进入会员中心动作。
 
 ## 动态与静态边界
 
-- 页面图片：真实图片区域后续统一使用 `AppImage`。
-- 接口数据：通过对应分包 service 获取，页面不直接写接口 mock。
+- 页面图片：当前页面无真实图片区域。
+- 接口数据：读取全局会员态，不直接请求接口。
 - 本地配置：页面标题、导航策略、路由和分包注册。
 
 ## 状态要求
@@ -43,19 +43,23 @@
 
 | 模块 | service | 失败策略 | 是否阻断页面 |
 |---|---|---|---|
-| Phase 1 骨架 | - | 暂无接口 | 否 |
+| 会员态摘要 | `rootStore.member` | 全局状态兜底游客态 | 否 |
 
 ## 交互与跳转
 
-- 后续按 HKP PRD 对应流程继续补齐入口和下一跳。
+- 点击入口时通过 `AuthAction` 登录守卫，登录后进入 `src/pkg-member/pages/index`。
 
 ## 实现映射
 
-- `src/pages/member/index.tsx`：页面骨架相关文件。
-- `src/pages/member/index.scss`：页面骨架相关文件。
-- `src/pages/member/index.config.ts`：页面骨架相关文件。
+- `src/pages/member/index.tsx`：会员聚合入口和登录守卫。
+- `src/pages/member/index.scss`：页面样式。
+- `src/pages/member/index.config.ts`：页面配置。
 
 ## 变更记录
+
+### v0.2
+
+- Phase 7 确认会员聚合入口接入登录守卫并保持不展示页面内 tabbar。
 
 ### v0.1
 
@@ -63,4 +67,5 @@
 
 ## 验证记录
 
-- 待验证。
+- `2026-05-17`：已通过 `yarn typecheck`
+- `2026-05-17`：已通过 `yarn check:page-convention`
