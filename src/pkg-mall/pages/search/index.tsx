@@ -3,7 +3,7 @@ import Taro from '@tarojs/taro';
 import { Text, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
 import { AppIcon } from '@/core/components/AppIcon';
-import { PageShell } from '@/core/components/PageShell';
+import { PageHeader, PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import { navigateBackOrHome } from '@/core/utils/navigation';
@@ -29,10 +29,10 @@ const SearchPage = observer(function SearchPage() {
   return pageRuntime.renderPage(() => (
     <View className="_pg">
       <PageShell title="商品搜索" navbar={false} className="_pg-shell" reserveTabBarSpace={false}>
-        <View className="_pg-page">
+        <PageHeader>
           <View className="_pg-search-row">
             <View className="_pg-search" onClick={() => handleSearch(searchData?.query || '')}>
-              <AppIcon name="search" className="_pg-search_icon" size={24} color="#b9bec6" />
+              <AppIcon name="search" className="_pg-search_icon" size={16} color="#b9bec6" />
               <Text className="_pg-search_text">{searchData?.query}</Text>
               <View className="_pg-search_clear">
                 <Text>×</Text>
@@ -40,7 +40,9 @@ const SearchPage = observer(function SearchPage() {
             </View>
             <Text className="_pg-cancel" onClick={navigateBackOrHome}>取消</Text>
           </View>
+        </PageHeader>
 
+        <View className="_pg-page">
           <View className="_pg-section">
             <Text className="_pg-section_title">热门搜索</Text>
             <View className="_pg-tags">

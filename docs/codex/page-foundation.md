@@ -30,6 +30,8 @@
 
 - 使用 `PageShell` 默认 navbar 的页面，必须在页面 `config.ts` 声明 `navigationStyle: 'custom'`。
 - 使用系统导航栏的页面，传 `navbar={false}`，且 `config.ts` 只保留系统标题。
+- `navbar={false}` 且自定义顶部栏的页面，顶部内容必须放入 `PageHeader`，由 `PageShell` 统一注入微信状态栏高度和右侧胶囊避让；不要把搜索栏、返回栏直接放进滚动内容顶部。
+- `PageShell` 默认 navbar 如果存在 `navbarRight`，标题必须左对齐，右侧操作按钮必须在微信胶囊内容高度内垂直居中；没有右侧操作时标题保持居中。
 - 主包 tab 页面不展示返回按钮；页面内底部 tabbar 只由首页和“我的”页显式开启。
 - `PageShell` 默认不展示底部 `AppTabBar`；只有首页和“我的”页显式传 `reserveTabBarSpace` 开启页面内 tabbar。
 - 非 tab 自定义 navbar 页面默认使用 `navigateBackOrHome()` 返回。

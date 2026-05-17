@@ -181,6 +181,20 @@ function checkCommercialReadyContract(page, pageText, scssFile) {
   }
 }
 
+function checkCustomNavbarHeaderSafety(page, pageText) {
+  if (!/<PageShell\b[^>]*navbar=\{false\}/.test(pageText)) return;
+  if (page.key === 'home') {
+    if (!pageText.includes('resolvePageChromeMetrics')) {
+      fail(`${page.key} 自定义顶部栏必须使用微信状态栏/胶囊高度指标`);
+    }
+    return;
+  }
+
+  if (!/<PageHeader\b/.test(pageText)) {
+    fail(`${page.key} navbar={false} 自定义顶部栏必须通过 PageHeader 承接微信状态栏安全高度`);
+  }
+}
+
 function checkPage(page) {
   const pageFile = resolvePageTsx(page);
   const scssFile = resolvePageScss(page);
@@ -226,6 +240,7 @@ function checkPage(page) {
 
   checkClassNameTokens(page, pageText);
   checkScssClassSelectors(page, scssFile);
+  checkCustomNavbarHeaderSafety(page, pageText);
   checkCommercialReadyContract(page, pageText, scssFile);
 }
 

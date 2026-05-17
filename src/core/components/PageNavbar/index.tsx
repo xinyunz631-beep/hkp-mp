@@ -1,6 +1,7 @@
 import { CSSProperties, ReactNode, useState } from 'react';
 import { View } from '@tarojs/components';
 import { ArrowLeft } from '@nutui/icons-react-taro';
+import classNames from 'classnames';
 import { navigateBackOrHome, isCurrentMainTabPage } from '@/core/utils/navigation';
 import { resolvePageChromeMetrics } from '@/core/utils/style';
 import './index.scss';
@@ -51,10 +52,14 @@ export function PageNavbar({ title, left, right }: PageNavbarProps) {
     marginTop: `${metrics.headerContentTopGap}px`,
     paddingRight: `${metrics.menuRightReserve}px`,
   };
+  const hasRightContent = Boolean(right);
 
   return (
     <View className="page-navbar" style={navbarStyle}>
-      <View className="page-navbar__content" style={contentStyle}>
+      <View
+        className={classNames('page-navbar__content', hasRightContent && 'page-navbar__content--with-right')}
+        style={contentStyle}
+      >
         <View className="page-navbar__left">
           {left ?? (showDefaultBackButton ? <PageNavbarBackButton onClick={navigateBackOrHome} /> : null)}
         </View>

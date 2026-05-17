@@ -3,7 +3,7 @@ import { Canvas, Text, View } from '@tarojs/components';
 import Taro, { useDidHide, useDidShow } from '@tarojs/taro';
 import { observer } from 'mobx-react';
 import drawQrcode from 'weapp-qrcode';
-import { PageShell } from '@/core/components/PageShell';
+import { PageHeader, PageShell } from '@/core/components/PageShell';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import { fetchMemberCode } from '@/pkg-member/services/member-code';
 import './index.scss';
@@ -78,6 +78,10 @@ const MemberCodePage = observer(function MemberCodePage() {
   return pageRuntime.renderPage(() => (
     <View className="_pg">
       <PageShell title="会员码" navbar={false} reserveTabBarSpace={false} className="_pg-shell">
+        <PageHeader>
+          <View className="_pg-safe-header" />
+        </PageHeader>
+
         <View className="_pg-scene">
           <View className="_pg-card">
             <View className="_pg-card_halo _pg-card_halo--left" />

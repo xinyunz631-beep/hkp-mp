@@ -1,8 +1,9 @@
-import { Children, PropsWithChildren, ReactElement, ReactNode, isValidElement } from 'react';
+import { Children, CSSProperties, PropsWithChildren, ReactElement, ReactNode, isValidElement, useState } from 'react';
 import { View } from '@tarojs/components';
 import { AppTabBar } from '@/core/components/AppTabBar';
 import { PageLayout, type PageLayoutProps } from '@/core/components/PageLayout';
 import { PageNavbar } from '@/core/components/PageNavbar';
+import { resolvePageChromeMetrics, type PageChromeMetrics } from '@/core/utils/style';
 import './PageShell.scss';
 
 interface PageShellProps extends PropsWithChildren {
@@ -69,13 +70,25 @@ function resolvePageShellLayoutHeader(
   title: string,
   navbar: PageShellProps['navbar'],
   slots: PageShellSlots,
+  chromeMetrics: PageChromeMetrics,
   navbarLeft?: ReactNode,
   navbarRight?: ReactNode,
 ) {
   const navbarContent = resolvePageShellNavbar(title, navbar, navbarLeft, navbarRight);
 
   if (!slots.hasHeader) return navbarContent;
-  if (!navbarContent) return slots.header;
+  if (!navbarContent) {
+    const customHeaderStyle: CSSProperties = {
+      paddingTop: `${chromeMetrics.statusBarHeight}px`,
+      paddingRight: `${chromeMetrics.menuRightReserve}px`,
+    };
+
+    return (
+      <View className="page-shell__custom-header" style={customHeaderStyle}>
+        {slots.header}
+      </View>
+    );
+  }
 
   return (
     <>
@@ -143,8 +156,9 @@ export function PageShell({
   scrollViewProps,
   children,
 }: PageShellProps) {
+  const [chromeMetrics] = useState(resolvePageChromeMetrics);
   const slots = resolvePageShellSlots(children);
-  const layoutHeader = resolvePageShellLayoutHeader(title, navbar, slots, navbarLeft, navbarRight);
+  const layoutHeader = resolvePageShellLayoutHeader(title, navbar, slots, chromeMetrics, navbarLeft, navbarRight);
   const layoutFooter = slots.hasFooter ? slots.footer : footer ?? bottom;
   const layoutShare = slots.hasShare ? slots.share : share;
 

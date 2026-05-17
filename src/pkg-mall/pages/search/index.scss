@@ -10,7 +10,7 @@
 
 ._pg-page {
   min-height: 100vh;
-  padding: 20px 24px 40px;
+  padding: 32px 24px 40px;
   box-sizing: border-box;
   background: #ffffff;
 }
@@ -19,6 +19,9 @@
   display: flex;
   align-items: center;
   gap: 18px;
+  padding: 14px 24px 18px;
+  border-bottom: 1px solid #f2f3f5;
+  background: #ffffff;
 }
 
 ._pg-search {
