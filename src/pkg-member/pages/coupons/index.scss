@@ -14,7 +14,64 @@
 }
 
 ._pg-content {
-  min-height: 240px;
-  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-height: 100%;
+  padding: 24px 24px 40px;
   box-sizing: border-box;
+}
+
+._pg-summary {
+  padding: 28px;
+  border-radius: 28px;
+  background: linear-gradient(155deg, #fff7fb 0%, #ffffff 100%);
+  box-shadow: 0 14px 34px rgba(22, 32, 29, 0.08);
+
+  &_title,
+  &_desc {
+    display: block;
+  }
+
+  &_title {
+    color: $color-text-primary;
+    font-size: 32px;
+    font-weight: 800;
+  }
+
+  &_desc {
+    margin-top: 12px;
+    color: $color-text-secondary;
+    font-size: 24px;
+    line-height: 1.6;
+  }
+}
+
+._pg-tabs {
+  margin-top: -2px;
+}
+
+._pg-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+
+  &_item {
+    box-shadow: 0 12px 30px rgba(22, 32, 29, 0.08);
+  }
+}
+
+._pg-empty {
+  margin-top: 12px;
+  padding: 40px 0;
+  border-radius: 28px;
+  background: #ffffff;
+  box-shadow: 0 14px 34px rgba(22, 32, 29, 0.08);
+}
+
+._pg-tip {
+  display: block;
+  color: $color-text-secondary;
+  font-size: 22px;
+  line-height: 1.6;
 }

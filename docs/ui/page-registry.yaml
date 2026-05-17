@@ -806,7 +806,7 @@ pages:
   member-coupons:
     title: 优惠券
     route: src/pkg-member/pages/coupons
-    status: implementing
+    status: implemented
     spec: docs/ui/pages/member-coupons.md
     design:
       currentTool: pencil
@@ -817,7 +817,7 @@ pages:
         name: 优惠券 750px 开发稿
         width: 750
         role: active-source
-        note: 代码优先创建页面，后续按截图或设计稿继续同步。
+        note: 已按优惠券状态页语义完成概览卡、状态筛选、卡券列表和空态反馈首版。
     implementation:
       files:
         - src/pkg-member/pages/coupons/index.tsx
@@ -1191,23 +1191,24 @@ pages:
   member-home:
     title: 会员中心
     route: src/pkg-member/pages/index
-    status: implementing
+    status: implemented
     spec: docs/ui/pages/member-home.md
     design:
       currentTool: pencil
-      approval: phase-1-shell-draft
+      approval: code-first-draft
       pencil:
         file: /Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
         nodeId: member-home
         name: 会员中心 750px 开发稿
         width: 750
         role: active-source
-        note: 会员分包首页，后续承接优惠券、分享收益和提现。
+        note: 已按代码优先完成会员资料卡、卡券概览、快捷入口和权益服务区首版。
     implementation:
       files:
         - src/pkg-member/pages/index/index.tsx
         - src/pkg-member/pages/index/index.scss
         - src/pkg-member/pages/index/index.config.ts
+        - src/pkg-member/services/index.ts
       verification:
         - yarn typecheck
         - yarn check:page-convention

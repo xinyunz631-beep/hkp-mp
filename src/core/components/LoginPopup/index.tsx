@@ -45,7 +45,13 @@ export const LoginPopup = observer(function LoginPopup() {
   }
 
   return (
-    <AppPopup visible={visible} className="login-popup" contentClassName="login-popup__content" onClose={handleCancel}>
+    <AppPopup
+      visible={visible}
+      className="login-popup"
+      contentClassName="login-popup__content"
+      destroyOnClose
+      onClose={handleCancel}
+    >
       <View className="login-popup__panel">
         <View className="login-popup__title">登录乐园会员</View>
         <View className="login-popup__desc">{rootStore.app.loginReason}</View>

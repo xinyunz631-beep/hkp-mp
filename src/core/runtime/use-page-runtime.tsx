@@ -104,6 +104,14 @@ function isLoginRequiredError(error: unknown): error is PageRuntimeLoginRequired
     && (error as PageRuntimeLoginRequiredError).code === PAGE_RUNTIME_LOGIN_REQUIRED_ERROR);
 }
 
+// 统一提取登录拦截失败后的业务文案，优先复用页面传入的登录原因。
+function resolveLoginRequiredDescription(error: unknown) {
+  if (!(error instanceof Error)) return '完成登录后即可加载当前页面。';
+
+  const reason = error.message.trim();
+  return reason || '完成登录后即可加载当前页面。';
+}
+
 // 等待首屏 loading 最短展示时间，避免接口过快返回导致页面状态一闪而过。
 function waitInitialLoading(startedAt: number, minDuration: number) {
   const remainingDuration = minDuration - (Date.now() - startedAt);
@@ -348,16 +356,18 @@ export function usePageRuntime(options: PageRuntimeOptions = {}): PageRuntimeCon
         }));
       }
 
+      const loginRequiredError = isLoginRequiredError(initError);
+
       return renderWithRuntime(
         <StatusException
           fullScreen
-          type={isLoginRequiredError(initError) ? 'server' : 'network'}
-          title={isLoginRequiredError(initError) ? '需要登录后继续' : undefined}
-          description={isLoginRequiredError(initError) ? '完成登录后即可加载当前页面。' : undefined}
-          actionText="重新加载"
+          type={loginRequiredError ? 'server' : 'network'}
+          title={loginRequiredError ? '需要登录后继续' : undefined}
+          description={loginRequiredError ? resolveLoginRequiredDescription(initError) : undefined}
+          actionText={loginRequiredError ? '立即登录' : '重新加载'}
           backActionVisible
           hideBack={isCurrentHomePage()}
-          error={isLoginRequiredError(initError) ? undefined : initError}
+          error={loginRequiredError ? undefined : initError}
           onRetry={() => reload()}
         />
       );

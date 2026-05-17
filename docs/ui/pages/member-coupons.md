@@ -12,9 +12,9 @@
 - Figma nodeId：-
 - Pencil file：/Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
 - Pencil nodeId：member-coupons
-- 当前版本：v0.1
-- 页面状态：implementing
-- 更新时间：2026-05-16
+- 当前版本：v0.2
+- 页面状态：implemented
+- 更新时间：2026-05-17
 - 实现文件：
   - src/pkg-member/pages/coupons/index.tsx
   - src/pkg-member/pages/coupons/index.scss
@@ -23,7 +23,7 @@
 
 ## 设计意图
 
-优惠券页面先按代码优先方式创建基础实现，后续根据截图、设计稿或业务规则持续更新。
+优惠券页面本轮先按截图语义完成卡券概览、状态筛选、卡券列表和空态反馈。
 
 ## 页面结构
 
@@ -31,7 +31,11 @@
 - 页面容器：`PageShell`
 - 页面运行时：`usePageRuntime`
 - 页面状态订阅：`observer`
-- 内容区域：按本次业务需求实现
+- 内容区域：
+  - 卡券概览摘要
+  - 可用 / 已使用 / 已过期筛选条
+  - 卡券列表
+  - 无数据时的统一空态
 
 ## 动态与静态边界
 
@@ -57,7 +61,8 @@
 
 ## 交互与跳转
 
-- 按页面业务需求补充。
+- 点击筛选条切换卡券状态列表。
+- 点击卡券时展示轻提示，后续再补详情或使用说明。
 
 ## 实现映射
 
@@ -68,10 +73,17 @@
 
 ## 变更记录
 
+### v0.2
+
+- Phase 6 完成状态筛选、卡券列表和空态反馈首版。
+
 ### v0.1
 
 - 初始化页面基础实现。
 
 ## 验证记录
 
-- 待验证。
+- `2026-05-17`：已通过 `yarn typecheck`
+- `2026-05-17`：已通过 `yarn check:page-convention`
+- `2026-05-17`：已通过 `yarn check:package-boundary`
+- `2026-05-17`：已通过 `yarn check:ui-contract`

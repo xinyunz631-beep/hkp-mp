@@ -100,8 +100,10 @@
 - 已新增 `member-store`、`app-store` 和 `identity.ts` 登录身份判断。
 - 已新增 `usePageRuntime()`、`PageRuntimeHost` 和统一 `src/core/components/loading`，页面显式接入 runtime 并维护本页单例 loading。
 - `usePageRuntime` 已支持 `initPage`、`initialLoading`、`refreshLoading`、`errorFallback`、`loginRequired`、`reload` 和 `renderPage`；首页新 UI 把优惠券数量放在首屏 `initPage` 中直接 `await fetchCouponUsedCount()`；该服务在方法内部解析数量，catch 时返回 0，不进入首页失败页。
+- `usePageRuntime({ loginRequired: true })` 在用户取消登录后，默认进入业务化登录阻断态，并提供“立即登录”动作重新拉起登录流程。
 - 已删除 `runtime/page-loading.ts` 和 `utils/page.ts`，不再使用 pageKey 注册表。
 - 已把 `App` 中的可见登录弹窗和 loading 挪出。
+- 已将 `src/core/components/LoginPopup` 调整为关闭后销毁节点，减少微信开发工具辅助树里残留弹窗节点对验收判断的干扰。
 - 首页已按 Pencil 750px 可开发稿重做：顶部动态 banner 为灰色占位，去除截图稿顶部标题和外侧边距；会员卡、快捷入口、营业时间、交通/导览按钮、榜单、精选活动、玩乐攻略、会员福利和园区动态已落入 `src/pages/home`；登录能力由签到、会员相关快捷入口和福利入口触发；优惠券数量接口通过 `src/core/services/home.ts` 安全服务补充徽章。
 - 旧 `session-store`、旧 `ui-store` 以及 `rootStore.session` / `rootStore.ui` 旧引用已清理。
 - `yarn typecheck`、`yarn build:weapp`、`yarn check:package-boundary`、`yarn check:main-package:build` 已通过；包体检测输出到 `.dist-check/main-package`，不覆盖 `dist/`，`dist` 未出现 prebundle wxss JS require。`yarn check:main-package` 会读取当前 `dist/`，如旧产物带 sourcemap 可能误报，需要以隔离构建命令为准。
@@ -126,6 +128,7 @@
 - 在微信开发工具中确认会员码页面的二维码 canvas 渲染、30 秒刷新和登录中断引导。
 - 在微信开发工具中目视确认首页新视觉、会员入口、登录弹窗、页面 loading 和 tabBar 选中态的粉色主题表现。
 - 在微信开发工具中确认页面内自定义 tabbar 四个入口可跳转、选中态正确，登录弹窗/loading 能盖住 tabbar，且自定义 navbar 在不同机型胶囊和状态栏下不遮挡。
+- 用微信开发工具做验收时以模拟器可见画面为准；辅助树会同时列出隐藏 webview，不能只靠辅助树判断页面是否叠层。
 - 如果 V2 字段结构与当前兼容逻辑不一致，调整 `src/core/request/index.ts`。
 
 ## 首页登录触发入口

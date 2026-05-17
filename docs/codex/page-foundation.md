@@ -9,6 +9,7 @@
 - 新建页面默认使用 `PageShell`。
 - `PageShell` 外层必须包一层 `<View className="_pg">`，作为页面级样式作用域根节点。
 - 新建页面默认使用 `usePageRuntime()`，首屏依赖接口、登录拦截或页面 loading 时传 `initPage`。
+- `usePageRuntime({ loginRequired: true })` 页面在用户取消登录后，默认进入业务化登录阻断态，并提供“立即登录”重试入口。
 - 新建页面默认使用 `observer(function PageName() {})` 包裹，减少后续接入 MobX 状态时的返工。
 - 页面只负责渲染、交互和状态组合；接口、默认值和失败兜底放到 service。
 - 用户可见文案禁止出现 `mock`、组件库、技术栈、开发态或测试态字眼。

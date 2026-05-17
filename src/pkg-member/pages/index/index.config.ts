@@ -1,4 +1,4 @@
 export default definePageConfig({
-  navigationBarTitleText: '会员',
+  navigationBarTitleText: '会员中心',
   navigationStyle: 'custom',
 });
