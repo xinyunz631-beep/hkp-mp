@@ -6,9 +6,9 @@
 - 路由：src/pkg-mall/pages/index
 - 当前设计工具（以 `page-registry.currentTool` 为准）：pencil
 - UI 图：docs/ui/source/hkp-mini-page/mall-home.png
-- 当前版本：v0.2
-- 页面状态：implemented
-- 更新时间：2026-05-16
+- 当前版本：v0.3-interaction-ready
+- 页面状态：interaction-ready
+- 更新时间：2026-05-18
 - 实现文件：
   - src/pkg-mall/pages/index/index.tsx
   - src/pkg-mall/pages/index/index.scss
@@ -52,7 +52,31 @@
 - 搜索框进入 `mall-search`。
 - Banner、分类、活动卡串到商城列表、分类、购物车、赠品页等入口。
 - 商品卡进入 `mall-product-detail`。
+- 推荐商品加购写入本地购物车 service，并给出微信 toast 成功反馈。
 - 底部导航支持到 `mall-cart` 和 `order-home`。
+
+## 交互矩阵
+
+| 元素 | 处理结果 |
+|---|---|
+| 搜索框 | 进入商品搜索页 |
+| Banner / 分类 / 活动卡 | 进入对应商城、会员卡券或赠品页面 |
+| 商品卡 | 进入商品详情 |
+| 加购按钮 | 写入本地购物车并提示成功 |
+| 底部购物车 / 我的订单 | 进入购物车或订单中心 |
+
+## 状态矩阵
+
+| 状态 | 页面表现 |
+|---|---|
+| loading | `usePageRuntime` 初始化商城首页数据 |
+| 图片为空 | `AppImage` 展示失败态占位 |
+| 加购成功 | 本地购物车可在购物车页读取 |
+
+## 微信开发工具验收清单
+
+- 点击搜索、Banner、分类、活动卡、商品卡和底部导航，均应有跳转结果。
+- 点击商品加购，再进入购物车，应能看到本地加入的商品分组。
 
 ## 实现映射
 
@@ -61,6 +85,11 @@
 - `src/pkg-mall/pages/index/index.config.ts`：页面骨架相关文件。
 
 ## 变更记录
+
+### v0.3-interaction-ready
+
+- 推荐商品加购改为写入本地购物车 service，去掉直接 toast 假反馈。
+- 商城首页功能 icon 尺寸统一收回到 16。
 
 ### v0.2
 

@@ -107,7 +107,7 @@ pages:
   mall-category:
     title: 商城分类
     route: src/pkg-mall/pages/category
-    status: implemented
+    status: interaction-ready
     spec: docs/ui/pages/mall-category.md
     design:
       currentTool: pencil
@@ -118,7 +118,7 @@ pages:
         name: 商城分类 750px 开发稿
         width: 750
         role: active-source
-        note: 已按 mall-category-home.png 完成左侧类目、推荐 Banner、快捷入口和底部商城导航首版。
+        note: 已按 mall-category-home.png 完成左侧类目、推荐 Banner、快捷入口和底部商城导航，功能 icon 尺寸已统一收口。
     implementation:
       files:
         - src/pkg-mall/pages/category/index.tsx
@@ -133,7 +133,7 @@ pages:
   mall-category-list:
     title: 分类商品
     route: src/pkg-mall/pages/category-list
-    status: implemented
+    status: interaction-ready
     spec: docs/ui/pages/mall-category-list.md
     design:
       currentTool: pencil
@@ -144,7 +144,7 @@ pages:
         name: 分类商品 750px 开发稿
         width: 750
         role: active-source
-        note: 已按 mall-category-list.png 完成左侧类目、品牌区和查看更多入口首版。
+        note: 已按 mall-category-list.png 完成左侧类目、品牌区和查看更多入口，功能 icon 尺寸已统一收口。
     implementation:
       files:
         - src/pkg-mall/pages/category-list/index.tsx
@@ -159,7 +159,7 @@ pages:
   mall-search:
     title: 商品搜索
     route: src/pkg-mall/pages/search
-    status: implemented
+    status: interaction-ready
     spec: docs/ui/pages/mall-search.md
     design:
       currentTool: pencil
@@ -170,7 +170,7 @@ pages:
         name: 商品搜索 750px 开发稿
         width: 750
         role: active-source
-        note: 已按 mall-search-keyboard.png 完成搜索头和热门搜索首版；系统键盘不做页面内模拟。
+        note: 已按 mall-search-keyboard.png 完成搜索头和热门搜索；顶部使用 PageHeader 统一避让微信状态栏和胶囊，并补回左侧返回。
     implementation:
       files:
         - src/pkg-mall/pages/search/index.tsx
@@ -185,7 +185,7 @@ pages:
   mall-products:
     title: 商品列表
     route: src/pkg-mall/pages/products
-    status: implemented
+    status: interaction-ready
     spec: docs/ui/pages/mall-products.md
     design:
       currentTool: pencil
@@ -196,7 +196,7 @@ pages:
         name: 商品列表 750px 开发稿
         width: 750
         role: active-source
-        note: 代码优先创建页面，后续按截图或设计稿继续同步。
+        note: 已补本地筛选、排序、商品详情跳转和本地购物车加购闭环。
     implementation:
       files:
         - src/pkg-mall/pages/products/index.tsx
@@ -211,7 +211,7 @@ pages:
   mall-recommend:
     title: 推荐商品
     route: src/pkg-mall/pages/recommend
-    status: implemented
+    status: interaction-ready
     spec: docs/ui/pages/mall-recommend.md
     design:
       currentTool: pencil
@@ -222,7 +222,7 @@ pages:
         name: 推荐商品 750px 开发稿
         width: 750
         role: active-source
-        note: 已按 mall-recommend-grid.png 完成搜索条、筛选条和双列推荐商品首版。
+        note: 已按 mall-recommend-grid.png 完成搜索条、筛选条、双列推荐商品和本地筛选交互。
     implementation:
       files:
         - src/pkg-mall/pages/recommend/index.tsx
@@ -237,7 +237,7 @@ pages:
   mall-product-detail:
     title: 商品详情
     route: src/pkg-mall/pages/product-detail
-    status: implemented
+    status: interaction-ready
     spec: docs/ui/pages/mall-product-detail.md
     design:
       currentTool: pencil
@@ -248,7 +248,7 @@ pages:
         name: 商品详情 750px 开发稿
         width: 750
         role: active-source
-        note: 代码优先创建页面，后续按截图或设计稿继续同步。
+        note: 已补图片预览、客服、分享、收藏、优惠券、参数、SKU 弹层层级和本地购物车闭环。
     implementation:
       files:
         - src/pkg-mall/pages/product-detail/index.tsx
@@ -263,7 +263,7 @@ pages:
   mall-cart:
     title: 购物车
     route: src/pkg-mall/pages/cart
-    status: implemented
+    status: interaction-ready
     spec: docs/ui/pages/mall-cart.md
     design:
       currentTool: pencil
@@ -274,7 +274,7 @@ pages:
         name: 购物车 750px 开发稿
         width: 750
         role: active-source
-        note: 代码优先创建页面，后续按截图或设计稿继续同步。
+        note: 已补本地加购商品读取、删除确认、空选择提示和结算入口。
     implementation:
       files:
         - src/pkg-mall/pages/cart/index.tsx
@@ -289,7 +289,7 @@ pages:
   mall-favorites:
     title: 我的收藏
     route: src/pkg-mall/pages/favorites
-    status: implemented
+    status: interaction-ready
     spec: docs/ui/pages/mall-favorites.md
     design:
       currentTool: pencil
@@ -300,7 +300,7 @@ pages:
         name: 我的收藏 750px 开发稿
         width: 750
         role: active-source
-        note: 已按 mall-favorites.png 完成筛选、编辑遮罩和收藏列表首版。
+        note: 已按 mall-favorites.png 完成筛选、编辑遮罩、本地加购、微信分享和删除确认。
     implementation:
       files:
         - src/pkg-mall/pages/favorites/index.tsx
@@ -315,7 +315,7 @@ pages:
   mall-gift-select:
     title: 赠品选择
     route: src/pkg-mall/pages/gift-select
-    status: implemented
+    status: interaction-ready
     spec: docs/ui/pages/mall-gift-select.md
     design:
       currentTool: pencil
@@ -326,7 +326,7 @@ pages:
         name: 赠品选择 750px 开发稿
         width: 750
         role: active-source
-        note: 已按 gift-select.png 完成双列赠品宫格和更换按钮首版。
+        note: 已按 gift-select.png 完成双列赠品宫格和本地选择状态。
     implementation:
       files:
         - src/pkg-mall/pages/gift-select/index.tsx
@@ -1068,7 +1068,7 @@ pages:
   mall-home:
     title: 商城首页
     route: src/pkg-mall/pages/index
-    status: implemented
+    status: interaction-ready
     spec: docs/ui/pages/mall-home.md
     design:
       currentTool: pencil
@@ -1079,7 +1079,7 @@ pages:
         name: 商城首页 750px 开发稿
         width: 750
         role: active-source
-        note: 商城分包首页，后续承接商品、分类、搜索和推荐入口。 UI 参考 docs/ui/source/hkp-mini-page/mall-home.png。
+        note: 商城分包首页，已补搜索、Banner、分类、活动、商品加购、本地购物车和底部导航交互。 UI 参考 docs/ui/source/hkp-mini-page/mall-home.png。
     implementation:
       files:
         - src/pkg-mall/pages/index/index.tsx

@@ -8,6 +8,8 @@ import { PageHeader, PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import { navigateBackOrHome } from '@/core/utils/navigation';
+import { showWechatToast } from '@/core/utils/wechat-actions';
+import { addMallCartItem } from '@/pkg-mall/services/cart';
 import { fetchProductsData } from '@/pkg-mall/services/products';
 import type { MallProductListData } from '@/pkg-mall/services/mock-data';
 import './index.scss';
@@ -19,6 +21,7 @@ const ProductsPage = observer(function ProductsPage() {
   const [listData, setListData] = useState<MallProductListData>();
   const [activeTab, setActiveTab] = useState<MallProductsTabKey>('comprehensive');
   const [priceAscending, setPriceAscending] = useState(true);
+  const [filterActive, setFilterActive] = useState(false);
   const [previewAmount, setPreviewAmount] = useState(0);
   const pageRuntime = usePageRuntime({
     initPage: async () => {
@@ -32,7 +35,10 @@ const ProductsPage = observer(function ProductsPage() {
   const products = listData?.products ?? [];
 
   const sortedProducts = useMemo(() => {
-    const nextProducts = [...products];
+    const filteredProducts = filterActive
+      ? products.filter((product) => product.tag || product.price <= 180)
+      : products;
+    const nextProducts = [...filteredProducts];
 
     if (activeTab === 'sales') {
       return nextProducts.reverse();
@@ -45,7 +51,7 @@ const ProductsPage = observer(function ProductsPage() {
     }
 
     return nextProducts;
-  }, [activeTab, priceAscending, products]);
+  }, [activeTab, filterActive, priceAscending, products]);
 
   function handleSearch() {
     Taro.navigateTo({ url: MINI_PACKAGE_ROUTES.mallSearch });
@@ -53,10 +59,10 @@ const ProductsPage = observer(function ProductsPage() {
 
   function handleTabChange(nextKey: MallProductsTabKey) {
     if (nextKey === 'filter') {
-      Taro.showToast({
-        title: '筛选面板稍后补齐',
-        icon: 'none',
-      });
+      const nextFilterActive = !filterActive;
+      setFilterActive(nextFilterActive);
+      setActiveTab(nextFilterActive ? 'filter' : 'comprehensive');
+      void showWechatToast(nextFilterActive ? '已筛选会员价商品' : '已清除筛选');
       return;
     }
 
@@ -73,12 +79,10 @@ const ProductsPage = observer(function ProductsPage() {
     });
   }
 
-  function handleAddToCart(price: number) {
-    setPreviewAmount((currentValue) => Number((currentValue + price).toFixed(2)));
-    Taro.showToast({
-      title: '已加入购物车',
-      icon: 'none',
-    });
+  async function handleAddToCart(product: MallProductListData['products'][number]) {
+    setPreviewAmount((currentValue) => Number((currentValue + product.price).toFixed(2)));
+    await addMallCartItem(product);
+    await showWechatToast('已加入购物车', 'success');
   }
 
   return pageRuntime.renderPage(() => (
@@ -113,10 +117,10 @@ const ProductsPage = observer(function ProductsPage() {
           <View className="_pg-header">
             <View className="_pg-header_nav">
               <View className="_pg-header_back" onClick={navigateBackOrHome}>
-                <AppIcon name="back" size={20} color="#111111" />
+                <AppIcon name="back" size={16} color="#111111" />
               </View>
               <View className="_pg-header_search" onClick={handleSearch}>
-                <AppIcon name="search" className="_pg-header_search-icon" size={22} color="#c0c4cc" />
+                <AppIcon name="search" className="_pg-header_search-icon" size={16} color="#c0c4cc" />
                 <Text className="_pg-header_search-placeholder">搜索</Text>
               </View>
             </View>
@@ -137,7 +141,7 @@ const ProductsPage = observer(function ProductsPage() {
                       <Text className="_pg-header_tab-indicator">{priceAscending ? '↑' : '↓'}</Text>
                     ) : null}
                     {tabKey === 'filter' ? (
-                      <AppIcon name="filter" className="_pg-header_tab-icon" size={18} color="#9ea4ad" />
+                      <AppIcon name="filter" className="_pg-header_tab-icon" size={16} color="#9ea4ad" />
                     ) : null}
                   </View>
                 );
@@ -164,10 +168,10 @@ const ProductsPage = observer(function ProductsPage() {
                   className="_pg-product_cart"
                   onClick={(event) => {
                     event.stopPropagation();
-                    handleAddToCart(product.price);
+                    void handleAddToCart(product);
                   }}
                 >
-                  <AppIcon name="cartAdd" size={24} color="#ffffff" />
+                  <AppIcon name="cartAdd" size={16} color="#ffffff" />
                 </View>
               </View>
             ))}

@@ -7,7 +7,9 @@ import { AppImage } from '@/core/components/AppImage';
 import { PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES, type MiniPackageRoute } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
+import { showWechatToast } from '@/core/utils/wechat-actions';
 import { fetchMallHomeData } from '@/pkg-mall/services';
+import { addMallCartItem } from '@/pkg-mall/services/cart';
 import type { MallCategoryItem, MallHomeData, MallPromoCard } from '@/pkg-mall/services/mock-data';
 import './index.scss';
 
@@ -69,11 +71,9 @@ const MallIndexPage = observer(function MallIndexPage() {
     });
   }
 
-  function handleAddToCart() {
-    Taro.showToast({
-      title: `已加入购物车`,
-      icon: 'none',
-    });
+  async function handleAddToCart(product: MallHomeData['products'][number]) {
+    await addMallCartItem(product);
+    await showWechatToast('已加入购物车', 'success');
   }
 
   function handleFooterPress(item: MallFooterItem) {
@@ -101,7 +101,7 @@ const MallIndexPage = observer(function MallIndexPage() {
                   <AppIcon
                     name={item.icon}
                     className="_pg-footer_icon"
-                    size={18}
+                    size={16}
                     color={active ? '#db2777' : '#222222'}
                   />
                   <Text className="_pg-footer_text">{item.title}</Text>
@@ -113,7 +113,7 @@ const MallIndexPage = observer(function MallIndexPage() {
       >
         <View className="_pg-page">
           <View className="_pg-search" onClick={handleSearch}>
-            <AppIcon name="search" className="_pg-search_icon" size={24} color="#c0c4cc" />
+            <AppIcon name="search" className="_pg-search_icon" size={16} color="#c0c4cc" />
             <Text className="_pg-search_placeholder">Hello Kitty公仔</Text>
           </View>
 
@@ -200,7 +200,7 @@ const MallIndexPage = observer(function MallIndexPage() {
                         className="_pg-product-card_cart"
                         onClick={(event) => {
                           event.stopPropagation();
-                          handleAddToCart();
+                          void handleAddToCart(product);
                         }}
                       >
                         <AppIcon name="cartAdd" size={14} color="#ffffff" />

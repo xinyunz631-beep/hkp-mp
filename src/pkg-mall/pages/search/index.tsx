@@ -31,6 +31,9 @@ const SearchPage = observer(function SearchPage() {
       <PageShell title="商品搜索" navbar={false} className="_pg-shell" reserveTabBarSpace={false}>
         <PageHeader>
           <View className="_pg-search-row">
+            <View className="_pg-back" onClick={navigateBackOrHome}>
+              <AppIcon name="back" size={16} color="#111111" />
+            </View>
             <View className="_pg-search" onClick={() => handleSearch(searchData?.query || '')}>
               <AppIcon name="search" className="_pg-search_icon" size={16} color="#b9bec6" />
               <Text className="_pg-search_text">{searchData?.query}</Text>

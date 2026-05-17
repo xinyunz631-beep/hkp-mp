@@ -1,16 +1,17 @@
 import { useState } from 'react';
-import Taro from '@tarojs/taro';
 import { Text, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
 import { AppImage } from '@/core/components/AppImage';
 import { PageShell } from '@/core/components/PageShell';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
+import { showWechatToast } from '@/core/utils/wechat-actions';
 import { fetchGiftSelectData } from '@/pkg-mall/services/gift-select';
 import './index.scss';
 
 // 赠品选择页按截图实现双列宫格和更换操作。
 const GiftSelectPage = observer(function GiftSelectPage() {
   const [giftData, setGiftData] = useState<Awaited<ReturnType<typeof fetchGiftSelectData>>>();
+  const [selectedGiftId, setSelectedGiftId] = useState('');
   const pageRuntime = usePageRuntime({
     initPage: async () => {
       const nextData = await fetchGiftSelectData();
@@ -30,13 +31,11 @@ const GiftSelectPage = observer(function GiftSelectPage() {
                 <View
                   className="_pg-item_button"
                   onClick={() => {
-                    Taro.showToast({
-                      title: '赠品已更换',
-                      icon: 'none',
-                    });
+                    setSelectedGiftId(gift.id);
+                    void showWechatToast('已选择赠品', 'success');
                   }}
                 >
-                  <Text>更换</Text>
+                  <Text>{selectedGiftId === gift.id ? '已选择' : '更换'}</Text>
                 </View>
               </View>
             ))}

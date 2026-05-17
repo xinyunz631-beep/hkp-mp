@@ -3,7 +3,7 @@
 ## 当前状态
 
 - 更新时间：`2026-05-18`
-- 当前阶段：`Phase D Core Batch - 首页 / 我的 / 会员基础交互补完`
+- 当前阶段：`Phase D Core Batch - 商城交互补完`
 - 当前分支：`feature/hkp-mini-phase-7-polish-verify`
 - 基线提交：`36b7517 chore: 保存小程序当前开发基线`
 - 最近阶段提交：`28a826e feat: 补齐首页会员基础交互`
@@ -69,6 +69,10 @@
 - 已完成 Phase D 第一批核心入口交互补完：首页扫码、搜索、banner、快捷入口、榜单、推荐、玩转乐园；我的页常用游客、客服、退出登录；会员 tab、会员中心、优惠券点击均补齐可执行结果。
 - 已将首页、我的、会员、会员中心、优惠券从 `implemented/implementing` 调整为 `interaction-ready`，避免把首版 UI 误判为商用最终完成。
 - 本批轻量门禁已通过：`yarn typecheck`、`yarn check:page-convention`、`yarn check:package-boundary`、`yarn check:ui-contract`；`git diff --check` 通过。
+- 已修复本地门票草稿 / 本地订单缓存兼容问题，避免历史缓存不是数组时触发 `.filter is not a function`。
+- 已统一顶部安全区约束：`navbar={false}` 的自定义顶部栏必须走 `PageHeader`，由 `PageShell` 注入微信状态栏高度和右侧胶囊避让；默认 navbar 存在 `navbarRight` 时标题左对齐，右侧操作垂直居中。
+- 已完成商城交互补完批次：商城首页、搜索、分类、分类商品、商品列表、推荐、商品详情、购物车、收藏、赠品选择均推进到 `interaction-ready`；商品加购写入本地购物车，商品详情补图片预览、客服拨号、分享、优惠券、参数和 `PageShare` SKU 层级。
+- 商城批次轻量门禁已通过：`yarn typecheck`、`yarn check:page-convention`、`yarn check:package-boundary`、`yarn check:ui-contract`；商城页面扫描未发现直接 `Taro.showToast`、非暂缓占位文案或功能 icon 尺寸漂移。
 
 ## 当前约束
 
@@ -82,9 +86,9 @@
 
 ## 下一步
 
-1. 由用户在微信开发工具按首页、我的、会员基础验收清单点验交互手感和视觉还原。
+1. 由用户在微信开发工具按首页、我的、会员基础和商城验收清单点验交互手感和视觉还原。
 2. 用户反馈不符合预期的点后，Codex 进入本批修复循环。
-3. 本批确认后继续进入商城闭环商用级补完；餐饮和分销/提现继续最后处理。
+3. 本批确认后继续进入票务 + 酒店剩余商用级补完；餐饮和分销/提现继续最后处理。
 
 ## 恢复方式
 

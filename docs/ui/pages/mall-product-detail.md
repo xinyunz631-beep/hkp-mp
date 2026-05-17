@@ -12,9 +12,9 @@
 - Figma nodeId：-
 - Pencil file：/Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
 - Pencil nodeId：mall-product-detail
-- 当前版本：v0.2
-- 页面状态：implemented
-- 更新时间：2026-05-16
+- 当前版本：v0.3-interaction-ready
+- 页面状态：interaction-ready
+- 更新时间：2026-05-18
 - 实现文件：
   - src/pkg-mall/pages/product-detail/index.tsx
   - src/pkg-mall/pages/product-detail/index.scss
@@ -59,9 +59,44 @@
 ## 交互与跳转
 
 - 加入购物车、立即购买统一通过 `SkuPopup` 选择规格和数量。
+- SKU 弹层挂在 `PageShare`，层级高于底部购买栏。
+- 商品图、评价图、详情图点击走微信图片预览；空图时给出业务反馈。
+- 客服调用微信拨号；收藏给成功反馈；分享调用微信分享引导。
+- 领券和参数点击弹微信 modal 展示规则或商品参数。
 - 立即购买跳转 `order-checkout` 骨架页。
 - 购物车入口进入 `mall-cart`。
-- 推荐商品进入 `mall-products` 或同类商品流程。
+- 推荐商品进入对应商品详情。
+
+## 交互矩阵
+
+| 元素 | 处理结果 |
+|---|---|
+| 商品图 / 评价图 / 详情图 | 微信预览图片，空图提示暂无图片 |
+| 收藏 | 成功 toast |
+| 分享 | 微信分享引导 |
+| 优惠券 | 微信 modal 展示优惠规则 |
+| 规格选择 | 打开 SKU 弹层 |
+| 参数 | 微信 modal 展示商品参数 |
+| 查看更多评论 | 进入评价列表 |
+| 首页 / 客服 / 购物车 | 切回首页、拨号、进入购物车 |
+| 加入购物车 | 选择 SKU 后写入本地购物车 |
+| 立即购买 | 选择 SKU 后进入确认订单 |
+
+## 状态矩阵
+
+| 状态 | 页面表现 |
+|---|---|
+| loading | `usePageRuntime` 初始化商品详情 |
+| SKU 弹层打开 | 通过 `PageShare` 覆盖底部栏 |
+| 图片为空 | 点击后走空图业务提示 |
+| 加购成功 | 本地购物车可读取新增商品 |
+
+## 微信开发工具验收清单
+
+- 点击商品图、评价图、详情图：有图片时预览，无图片时提示暂无图片。
+- 点击客服、分享、优惠券、参数：分别触发微信拨号、分享引导和 modal。
+- 加入购物车后进入购物车：应出现本地加入商品。
+- SKU 弹层应覆盖底部购买栏，不被 footer 压住。
 
 ## 实现映射
 
@@ -71,6 +106,11 @@
 - `src/pkg-mall/services/product-detail.ts`：页面 service。
 
 ## 变更记录
+
+### v0.3-interaction-ready
+
+- 商品详情补齐图片预览、微信客服、分享、收藏、优惠券、参数、SKU 层级和本地购物车闭环。
+- `SkuPopup` 迁入 `PageShare`，功能 icon 尺寸统一收回到 16。
 
 ### v0.2
 

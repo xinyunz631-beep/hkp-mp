@@ -12,9 +12,9 @@
 - Figma nodeId：-
 - Pencil file：/Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
 - Pencil nodeId：mall-products
-- 当前版本：v0.2
-- 页面状态：implemented
-- 更新时间：2026-05-16
+- 当前版本：v0.3-interaction-ready
+- 页面状态：interaction-ready
+- 更新时间：2026-05-18
 - 实现文件：
   - src/pkg-mall/pages/products/index.tsx
   - src/pkg-mall/pages/products/index.scss
@@ -62,8 +62,35 @@
 - 返回按钮使用统一 `navigateBackOrHome()`。
 - 搜索框进入 `mall-search`。
 - 商品项进入 `mall-product-detail`。
-- 购物车按钮累加本地预览金额。
+- 筛选按钮切换本地筛选结果，不再给占位提示。
+- 购物车按钮累加本地预览金额，并写入本地购物车 service。
 - 底部按钮进入 `mall-cart`。
+
+## 交互矩阵
+
+| 元素 | 处理结果 |
+|---|---|
+| 返回 | `navigateBackOrHome()` |
+| 搜索 | 进入商品搜索 |
+| 综合 / 销量 / 价格 | 切换排序 |
+| 筛选 | 切换本地会员价商品筛选 |
+| 商品卡 | 进入商品详情 |
+| 加购按钮 | 写入本地购物车并更新底部金额 |
+| 去购物车 | 进入购物车 |
+
+## 状态矩阵
+
+| 状态 | 页面表现 |
+|---|---|
+| loading | `usePageRuntime` 初始化商品列表 |
+| 筛选开启 | 列表展示本地筛选后的商品 |
+| 加购成功 | 本地购物车可读取新增商品 |
+
+## 微信开发工具验收清单
+
+- 点击价格排序应切换升降序。
+- 点击筛选应切换列表数量，并出现微信 toast 反馈。
+- 点击加购后进入购物车，应看到新增商品。
 
 ## 实现映射
 
@@ -73,6 +100,11 @@
 - `src/pkg-mall/services/products.ts`：页面 service。
 
 ## 变更记录
+
+### v0.3-interaction-ready
+
+- 筛选从占位提示改为本地筛选状态。
+- 加购写入本地购物车 service，功能 icon 尺寸统一收回到 16。
 
 ### v0.2
 

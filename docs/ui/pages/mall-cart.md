@@ -12,9 +12,9 @@
 - Figma nodeId：-
 - Pencil file：/Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
 - Pencil nodeId：mall-cart
-- 当前版本：v0.2
-- 页面状态：implemented
-- 更新时间：2026-05-16
+- 当前版本：v0.3-interaction-ready
+- 页面状态：interaction-ready
+- 更新时间：2026-05-18
 - 实现文件：
   - src/pkg-mall/pages/cart/index.tsx
   - src/pkg-mall/pages/cart/index.scss
@@ -55,13 +55,42 @@
 | 模块 | service | 失败策略 | 是否阻断页面 |
 |---|---|---|---|
 | 页面数据 | `fetchCartData()` | service 内归一和兜底 | 按业务决定 |
+| 本地加购 | `addMallCartItem()` | 本地 storage 兼容读取，异常为空 | 否 |
 
 ## 交互与跳转
 
 - 右上角编辑可切换删除模式。
 - 商品勾选和数量修改实时更新底部金额。
+- 删除模式下无选择会提示；有选择时先弹微信确认 modal，再删除。
 - 结算按钮进入 `order-checkout` 骨架页。
 - 猜你喜欢商品进入 `mall-product-detail`。
+
+## 交互矩阵
+
+| 元素 | 处理结果 |
+|---|---|
+| 编辑 / 完成 | 切换删除模式 |
+| 商品勾选 | 更新选中状态和金额 |
+| 数量步进器 | 更新当前商品数量 |
+| 全选 | 切换全部商品选中 |
+| 删除 | 微信确认后删除选中商品 |
+| 结算 | 选中商品后进入确认订单 |
+| 猜你喜欢 | 进入商品详情 |
+
+## 状态矩阵
+
+| 状态 | 页面表现 |
+|---|---|
+| loading | `usePageRuntime` 初始化购物车 |
+| 本地加购商品存在 | 置顶展示本地购物车分组 |
+| 未选择商品 | 删除 / 结算给微信 toast 提示 |
+| 删除确认取消 | 保持原购物车状态 |
+
+## 微信开发工具验收清单
+
+- 从商品详情或商城首页加购后进入购物车，应看到本地加入商品。
+- 编辑模式下删除商品，应先出现确认 modal。
+- 未勾选点击结算或删除，应提示先选择商品。
 
 ## 实现映射
 
@@ -71,6 +100,10 @@
 - `src/pkg-mall/services/cart.ts`：页面 service。
 
 ## 变更记录
+
+### v0.3-interaction-ready
+
+- 购物车读取本地加购商品，删除动作补微信确认 modal，空选择补反馈。
 
 ### v0.2
 

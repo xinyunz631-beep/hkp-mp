@@ -6,8 +6,12 @@ import { AppImage } from '@/core/components/AppImage';
 import { PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
+import { showWechatConfirm, showWechatShareGuide, showWechatToast } from '@/core/utils/wechat-actions';
+import { addMallCartItem } from '@/pkg-mall/services/cart';
 import { fetchFavoritesData } from '@/pkg-mall/services/favorites';
 import './index.scss';
+
+type FavoriteItem = Awaited<ReturnType<typeof fetchFavoritesData>>['items'][number];
 
 // 我的收藏页按截图补齐筛选、编辑态遮罩和快捷操作。
 const FavoritesPage = observer(function FavoritesPage() {
@@ -46,11 +50,41 @@ const FavoritesPage = observer(function FavoritesPage() {
     });
   }
 
-  function handleEditAction(title: string) {
-    Taro.showToast({
-      title,
-      icon: 'none',
+  async function handleEditAction(item: FavoriteItem, action: 'cart' | 'share' | 'delete') {
+    if (action === 'cart') {
+      if (item.invalid) {
+        await showWechatToast('该收藏已失效，暂不能加入购物车');
+        return;
+      }
+
+      await addMallCartItem(item);
+      await showWechatToast('已加入购物车', 'success');
+      return;
+    }
+
+    if (action === 'share') {
+      await showWechatShareGuide();
+      return;
+    }
+
+    const confirmed = await showWechatConfirm({
+      title: '删除收藏',
+      content: `确定删除「${item.title}」吗？`,
+      confirmText: '删除',
+      cancelText: '取消',
     });
+    if (!confirmed) return;
+
+    setFavoritesData((currentData) => {
+      if (!currentData) return currentData;
+      const nextItems = currentData.items.filter((currentItem) => currentItem.id !== item.id);
+      setSelectedItemId(nextItems[0]?.id || '');
+      return {
+        ...currentData,
+        items: nextItems,
+      };
+    });
+    await showWechatToast('已删除收藏', 'success');
   }
 
   return pageRuntime.renderPage(() => (
@@ -98,13 +132,31 @@ const FavoritesPage = observer(function FavoritesPage() {
                   {selected ? (
                     <View className="_pg-item_overlay">
                       <View className="_pg-item_actions">
-                        <View className="_pg-item_action" onClick={() => handleEditAction('已加入购物车')}>
+                        <View
+                          className="_pg-item_action"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            void handleEditAction(item, 'cart');
+                          }}
+                        >
                           <Text>加入购物车</Text>
                         </View>
-                        <View className="_pg-item_action" onClick={() => handleEditAction('分享能力稍后接入')}>
+                        <View
+                          className="_pg-item_action"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            void handleEditAction(item, 'share');
+                          }}
+                        >
                           <Text>请分享</Text>
                         </View>
-                        <View className="_pg-item_action" onClick={() => handleEditAction('已删除收藏')}>
+                        <View
+                          className="_pg-item_action"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            void handleEditAction(item, 'delete');
+                          }}
+                        >
                           <Text>删除</Text>
                         </View>
                       </View>

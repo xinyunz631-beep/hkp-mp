@@ -7,6 +7,7 @@ import { QuantityStepper } from '@/core/components/commerce';
 import { PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
+import { showWechatConfirm, showWechatToast } from '@/core/utils/wechat-actions';
 import { fetchCartData } from '@/pkg-mall/services/cart';
 import type { MallCartData, MallCartMerchantGroup, MallCartItem } from '@/pkg-mall/services/mock-data';
 import './index.scss';
@@ -57,26 +58,33 @@ const CartPage = observer(function CartPage() {
     })));
   }
 
-  function handlePrimaryAction() {
+  async function handlePrimaryAction() {
     if (editMode) {
+      if (!selectedCount) {
+        await showWechatToast('请先选择商品');
+        return;
+      }
+
+      const confirmed = await showWechatConfirm({
+        title: '删除商品',
+        content: `确定从购物车删除选中的 ${selectedCount} 件商品吗？`,
+        confirmText: '删除',
+        cancelText: '取消',
+      });
+      if (!confirmed) return;
+
       setGroups((currentGroups) => currentGroups
         .map((group) => ({
           ...group,
           items: group.items.filter((item) => !item.checked),
         }))
         .filter((group) => group.items.length > 0));
-      Taro.showToast({
-        title: '已删除选中商品',
-        icon: 'none',
-      });
+      await showWechatToast('已删除选中商品', 'success');
       return;
     }
 
     if (!selectedCount) {
-      Taro.showToast({
-        title: '请先选择商品',
-        icon: 'none',
-      });
+      await showWechatToast('请先选择商品');
       return;
     }
 
@@ -109,7 +117,7 @@ const CartPage = observer(function CartPage() {
               <Text className="_pg-footer_summary-amount">¥{totalAmount.toFixed(0)}</Text>
             </View>
 
-            <View className="_pg-footer_button" onClick={handlePrimaryAction}>
+            <View className="_pg-footer_button" onClick={() => void handlePrimaryAction()}>
               <Text>{editMode ? '删除' : '结算'}</Text>
             </View>
           </View>

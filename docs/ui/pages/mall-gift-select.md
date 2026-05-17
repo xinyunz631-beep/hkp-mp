@@ -12,9 +12,9 @@
 - Figma nodeId：-
 - Pencil file：/Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
 - Pencil nodeId：mall-gift-select
-- 当前版本：v0.2
-- 页面状态：implemented
-- 更新时间：2026-05-16
+- 当前版本：v0.3-interaction-ready
+- 页面状态：interaction-ready
+- 更新时间：2026-05-18
 - 实现文件：
   - src/pkg-mall/pages/gift-select/index.tsx
   - src/pkg-mall/pages/gift-select/index.scss
@@ -57,7 +57,24 @@
 
 ## 交互与跳转
 
-- 点击更换按钮展示赠品切换占位提示。
+- 点击更换按钮写入当前选中赠品状态，按钮文案变为“已选择”，并给微信 toast 成功反馈。
+
+## 交互矩阵
+
+| 元素 | 处理结果 |
+|---|---|
+| 赠品更换 | 设置当前选中赠品 |
+
+## 状态矩阵
+
+| 状态 | 页面表现 |
+|---|---|
+| loading | `usePageRuntime` 初始化赠品列表 |
+| 已选择 | 当前赠品按钮文案变为“已选择” |
+
+## 微信开发工具验收清单
+
+- 点击任一赠品更换按钮，应出现成功提示并切换“已选择”状态。
 
 ## 实现映射
 
@@ -67,6 +84,10 @@
 - `src/pkg-mall/services/gift-select.ts`：页面 service。
 
 ## 变更记录
+
+### v0.3-interaction-ready
+
+- 赠品更换从占位提示改为本地选中状态。
 
 ### v0.2
 

@@ -63,7 +63,7 @@ const CategoryListPage = observer(function CategoryListPage() {
                 <AppIcon
                   name={item.icon}
                   className="_pg-footer_icon"
-                  size={28}
+                  size={16}
                   color={item.key === 'home' ? '#db2777' : '#222222'}
                 />
                 <Text className="_pg-footer_text">{item.title}</Text>
@@ -75,10 +75,10 @@ const CategoryListPage = observer(function CategoryListPage() {
         <PageHeader>
           <View className="_pg-header">
             <View className="_pg-header_back" onClick={navigateBackOrHome}>
-              <AppIcon name="back" size={20} color="#111111" />
+              <AppIcon name="back" size={16} color="#111111" />
             </View>
             <View className="_pg-header_search" onClick={() => Taro.navigateTo({ url: MINI_PACKAGE_ROUTES.mallSearch })}>
-              <AppIcon name="search" className="_pg-header_search-icon" size={22} color="#c0c4cc" />
+              <AppIcon name="search" className="_pg-header_search-icon" size={16} color="#c0c4cc" />
               <Text className="_pg-header_search-placeholder">{categoryData?.query}</Text>
             </View>
           </View>

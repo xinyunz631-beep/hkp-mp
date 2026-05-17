@@ -12,9 +12,9 @@
 - Figma nodeId：-
 - Pencil file：/Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
 - Pencil nodeId：mall-search
-- 当前版本：v0.2
-- 页面状态：implemented
-- 更新时间：2026-05-16
+- 当前版本：v0.3-interaction-ready
+- 页面状态：interaction-ready
+- 更新时间：2026-05-18
 - 实现文件：
   - src/pkg-mall/pages/search/index.tsx
   - src/pkg-mall/pages/search/index.scss
@@ -31,7 +31,8 @@
 - 页面容器：`PageShell`
 - 页面运行时：`usePageRuntime`
 - 页面状态订阅：`observer`
-- 内容区域：搜索头、取消按钮、热门搜索关键词区。
+- 顶部区域：`PageHeader` 承接返回、搜索框和取消按钮，由 `PageShell` 注入微信状态栏高度和胶囊避让。
+- 内容区域：热门搜索关键词区。
 
 ## 动态与静态边界
 
@@ -58,7 +59,29 @@
 ## 交互与跳转
 
 - 取消按钮统一走 `navigateBackOrHome()`。
+- 左侧返回按钮统一走 `navigateBackOrHome()`。
 - 搜索头和热门关键词进入 `mall-products`。
+
+## 交互矩阵
+
+| 元素 | 处理结果 |
+|---|---|
+| 返回 / 取消 | `navigateBackOrHome()` |
+| 搜索头 | 带默认关键词进入商品列表 |
+| 热门关键词 | 带关键词进入商品列表 |
+
+## 状态矩阵
+
+| 状态 | 页面表现 |
+|---|---|
+| loading | `usePageRuntime` 初始化搜索数据 |
+| 微信顶部安全区 | `PageHeader` 自动避让状态栏和胶囊 |
+
+## 微信开发工具验收清单
+
+- 顶部返回、搜索框、取消按钮不得被状态栏或右侧胶囊遮挡。
+- 点击返回 / 取消应回上一页或回首页。
+- 点击热门关键词应进入商品列表。
 
 ## 实现映射
 
@@ -68,6 +91,10 @@
 - `src/pkg-mall/services/search.ts`：页面 service。
 
 ## 变更记录
+
+### v0.3-interaction-ready
+
+- 搜索页顶部迁入 `PageHeader`，补回左侧返回按钮并统一微信顶部安全区。
 
 ### v0.2
 

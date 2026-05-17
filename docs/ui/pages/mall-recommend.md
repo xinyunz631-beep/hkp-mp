@@ -12,9 +12,9 @@
 - Figma nodeId：-
 - Pencil file：/Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
 - Pencil nodeId：mall-recommend
-- 当前版本：v0.2
-- 页面状态：implemented
-- 更新时间：2026-05-16
+- 当前版本：v0.3-interaction-ready
+- 页面状态：interaction-ready
+- 更新时间：2026-05-18
 - 实现文件：
   - src/pkg-mall/pages/recommend/index.tsx
   - src/pkg-mall/pages/recommend/index.scss
@@ -62,6 +62,29 @@
 - 列表按钮进入 `mall-products`。
 - 商品卡进入 `mall-product-detail`。
 - 综合 / 销量 / 价格切换当前排序。
+- 筛选按钮切换本地权益商品筛选，不再展示占位提示。
+
+## 交互矩阵
+
+| 元素 | 处理结果 |
+|---|---|
+| 搜索条 | 进入商品搜索 |
+| 列表按钮 | 进入商品列表 |
+| 综合 / 销量 / 价格 | 切换排序 |
+| 筛选 | 切换本地热卖权益商品筛选 |
+| 商品卡 | 进入商品详情 |
+
+## 状态矩阵
+
+| 状态 | 页面表现 |
+|---|---|
+| loading | `usePageRuntime` 初始化推荐数据 |
+| 筛选开启 | 列表展示本地筛选后的商品 |
+
+## 微信开发工具验收清单
+
+- 点击筛选应切换列表并有微信 toast 反馈。
+- 点击列表按钮、商品卡应进入对应页面。
 
 ## 实现映射
 
@@ -71,6 +94,10 @@
 - `src/pkg-mall/services/recommend.ts`：页面 service。
 
 ## 变更记录
+
+### v0.3-interaction-ready
+
+- 筛选从占位提示改为本地筛选状态，功能 icon 尺寸统一收回到 16。
 
 ### v0.2
 

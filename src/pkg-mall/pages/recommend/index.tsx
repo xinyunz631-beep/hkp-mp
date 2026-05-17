@@ -7,6 +7,7 @@ import { AppImage } from '@/core/components/AppImage';
 import { PageHeader, PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
+import { showWechatToast } from '@/core/utils/wechat-actions';
 import { fetchRecommendData } from '@/pkg-mall/services/recommend';
 import './index.scss';
 
@@ -17,6 +18,7 @@ const RecommendPage = observer(function RecommendPage() {
   const [recommendData, setRecommendData] = useState<Awaited<ReturnType<typeof fetchRecommendData>>>();
   const [activeTab, setActiveTab] = useState<RecommendTabKey>('comprehensive');
   const [priceAscending, setPriceAscending] = useState(true);
+  const [filterActive, setFilterActive] = useState(false);
   const pageRuntime = usePageRuntime({
     initPage: async () => {
       const nextData = await fetchRecommendData();
@@ -28,7 +30,10 @@ const RecommendPage = observer(function RecommendPage() {
   const products = recommendData?.products ?? [];
 
   const sortedProducts = useMemo(() => {
-    const nextProducts = [...products];
+    const filteredProducts = filterActive
+      ? products.filter((product) => product.tag || product.price <= 200)
+      : products;
+    const nextProducts = [...filteredProducts];
 
     if (activeTab === 'sales') return nextProducts.reverse();
     if (activeTab === 'price') {
@@ -38,14 +43,14 @@ const RecommendPage = observer(function RecommendPage() {
     }
 
     return nextProducts;
-  }, [activeTab, priceAscending, products]);
+  }, [activeTab, filterActive, priceAscending, products]);
 
   function handleTabChange(nextKey: RecommendTabKey) {
     if (nextKey === 'filter') {
-      Taro.showToast({
-        title: '筛选能力稍后补齐',
-        icon: 'none',
-      });
+      const nextFilterActive = !filterActive;
+      setFilterActive(nextFilterActive);
+      setActiveTab(nextFilterActive ? 'filter' : 'comprehensive');
+      void showWechatToast(nextFilterActive ? '已筛选热卖权益商品' : '已清除筛选');
       return;
     }
 
@@ -71,14 +76,14 @@ const RecommendPage = observer(function RecommendPage() {
                 className="_pg-header_search"
                 onClick={() => Taro.navigateTo({ url: MINI_PACKAGE_ROUTES.mallSearch })}
               >
-                <AppIcon name="search" className="_pg-header_search-icon" size={22} color="#c0c4cc" />
+                <AppIcon name="search" className="_pg-header_search-icon" size={16} color="#c0c4cc" />
                 <Text className="_pg-header_search-placeholder">{recommendData?.query}</Text>
               </View>
               <View
                 className="_pg-header_switch"
                 onClick={() => Taro.navigateTo({ url: MINI_PACKAGE_ROUTES.mallProducts })}
               >
-                <AppIcon name="list" size={28} color="#111111" />
+                <AppIcon name="list" size={16} color="#111111" />
               </View>
             </View>
 
@@ -95,7 +100,7 @@ const RecommendPage = observer(function RecommendPage() {
                   >
                     <Text>{tab.text}</Text>
                     {tabKey === 'price' ? <Text className="_pg-header_tab-indicator">{priceAscending ? '↑' : '↓'}</Text> : null}
-                    {tabKey === 'filter' ? <AppIcon name="filter" className="_pg-header_tab-icon" size={18} color="#9ea4ad" /> : null}
+                    {tabKey === 'filter' ? <AppIcon name="filter" className="_pg-header_tab-icon" size={16} color="#9ea4ad" /> : null}
                   </View>
                 );
               })}

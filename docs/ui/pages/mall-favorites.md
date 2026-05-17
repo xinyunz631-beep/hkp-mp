@@ -12,9 +12,9 @@
 - Figma nodeId：-
 - Pencil file：/Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
 - Pencil nodeId：mall-favorites
-- 当前版本：v0.2
-- 页面状态：implemented
-- 更新时间：2026-05-16
+- 当前版本：v0.3-interaction-ready
+- 页面状态：interaction-ready
+- 更新时间：2026-05-18
 - 实现文件：
   - src/pkg-mall/pages/favorites/index.tsx
   - src/pkg-mall/pages/favorites/index.scss
@@ -58,8 +58,33 @@
 ## 交互与跳转
 
 - 右上角编辑按钮可切换编辑态。
-- 编辑态可选择条目并触发加入购物车、分享、删除占位动作。
+- 编辑态可选择条目并触发加入购物车、微信分享、删除确认动作。
 - 非编辑态点击商品进入 `mall-product-detail`。
+
+## 交互矩阵
+
+| 元素 | 处理结果 |
+|---|---|
+| 筛选标签 | 切换全部 / 仅看有货 |
+| 编辑 / 完成 | 切换编辑态 |
+| 收藏商品 | 非编辑态进入商品详情，编辑态选中当前商品 |
+| 加入购物车 | 有效商品写入本地购物车，失效商品给 toast |
+| 请分享 | 微信分享引导 |
+| 删除 | 微信确认后移除收藏 |
+
+## 状态矩阵
+
+| 状态 | 页面表现 |
+|---|---|
+| loading | `usePageRuntime` 初始化收藏数据 |
+| 仅看有货 | 过滤失效商品 |
+| 编辑态 | 展示遮罩操作按钮 |
+| 删除取消 | 保持原收藏列表 |
+
+## 微信开发工具验收清单
+
+- 点击筛选应切换列表。
+- 编辑态点击加入购物车、分享、删除，应分别写入购物车、出现分享引导、弹删除确认。
 
 ## 实现映射
 
@@ -69,6 +94,10 @@
 - `src/pkg-mall/services/favorites.ts`：页面 service。
 
 ## 变更记录
+
+### v0.3-interaction-ready
+
+- 收藏编辑态从占位提示升级为本地加购、微信分享和删除确认。
 
 ### v0.2
 

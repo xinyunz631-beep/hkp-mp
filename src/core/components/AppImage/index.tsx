@@ -120,6 +120,7 @@ export function AppImage({
   showErrorIcon = true,
   onLoad,
   onError,
+  onClick,
   ...imageProps
 }: AppImageProps) {
   const [status, setStatus] = useState<AppImageStatus>(() => resolveInitialStatus(src, emptyState));
@@ -162,7 +163,7 @@ export function AppImage({
   }
 
   return (
-    <View className={rootClassName} style={rootStyle}>
+    <View className={rootClassName} style={rootStyle} onClick={onClick}>
       {hasSrc ? (
         <Image
           {...imageProps}
