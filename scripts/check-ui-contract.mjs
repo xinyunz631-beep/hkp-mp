@@ -11,10 +11,22 @@ const validPageStatuses = new Set([
   'implementation-ready',
   'implementing',
   'implemented',
+  'wireframe',
+  'visual-ready',
+  'interaction-ready',
+  'commercial-ready',
   'verified',
   'design-changed',
 ]);
-const statusesWithImplementation = new Set(['implementing', 'implemented', 'verified']);
+const statusesWithImplementation = new Set([
+  'implementing',
+  'implemented',
+  'wireframe',
+  'visual-ready',
+  'interaction-ready',
+  'commercial-ready',
+  'verified',
+]);
 
 function fail(message) {
   console.error(`UI Contract 检查失败：${message}`);

@@ -1,5 +1,18 @@
 import { resolveMockData } from '@/core/services/mock';
-import { ticketDates } from './mock-data';
+import { ticketCoupons, ticketDates } from './mock-data';
+import type { HkpCouponSummary } from '@/core/types/hkp';
+
+export interface TicketBookingMapLocation {
+  latitude: number;
+  longitude: number;
+  name: string;
+  address: string;
+}
+
+export interface TicketCoupon extends HkpCouponSummary {
+  minimumAmount: number;
+  discountAmount: number;
+}
 
 export interface TicketBookingParkInfo {
   openTime: string;
@@ -8,6 +21,9 @@ export interface TicketBookingParkInfo {
   address: string;
   travelDate: string;
   imageCount: number;
+  heroImages: string[];
+  rules: string[];
+  mapLocation: TicketBookingMapLocation;
 }
 
 export interface TicketProduct {
@@ -24,6 +40,7 @@ export interface TicketBookingData {
   parkInfo: TicketBookingParkInfo;
   dates: typeof ticketDates;
   products: TicketProduct[];
+  coupons: TicketCoupon[];
 }
 
 const ticketBookingData: TicketBookingData = {
@@ -34,8 +51,25 @@ const ticketBookingData: TicketBookingData = {
     address: '浙江安吉县昌硕街道天使大道1号',
     travelDate: ticketDates[0].date,
     imageCount: 1,
+    heroImages: [''],
+    rules: [
+      '门票仅限所选游玩日期当天使用，入园时需出示购票人身份证件。',
+      '未使用门票支持随时退，已核销或超过有效期后不可退。',
+      '园区营业时间可能因天气、活动或设备维护调整，请以当日公告为准。',
+    ],
+    mapLocation: {
+      latitude: 30.6382,
+      longitude: 119.6826,
+      name: '杭州 Hello Kitty 乐园',
+      address: '浙江安吉县昌硕街道天使大道1号',
+    },
   },
   dates: ticketDates,
+  coupons: ticketCoupons.map((coupon) => ({
+    ...coupon,
+    minimumAmount: 299,
+    discountAmount: 30,
+  })),
   products: [
     {
       id: 'adult-ticket',

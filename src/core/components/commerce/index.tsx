@@ -1,4 +1,5 @@
 import { Text, View } from '@tarojs/components';
+import { Calendar, InputNumber } from '@nutui/nutui-react-taro';
 import classNames from 'classnames';
 import type { ReactNode } from 'react';
 import { AppImage } from '@/core/components/AppImage';
@@ -65,6 +66,8 @@ interface QuantityStepperProps {
   onChange?: (value: number) => void;
 }
 
+type DateSelectionMode = 'single' | 'range';
+
 interface FilterTabsProps {
   tabs: HkpFilterTab[];
   activeKey: string;
@@ -94,6 +97,26 @@ interface DateRangePanelProps {
   activeDate?: string;
   className?: string;
   onSelect?: (date: string) => void;
+}
+
+interface DateSelectionPopupProps {
+  visible: boolean;
+  mode: DateSelectionMode;
+  title: string;
+  value?: string | string[];
+  startDate?: string;
+  endDate?: string;
+  onClose: () => void;
+  onConfirm: (value: string | string[]) => void;
+}
+
+interface CouponSelectionPopupProps {
+  visible: boolean;
+  title?: string;
+  coupons: HkpCouponSummary[];
+  selectedCouponId?: string;
+  onClose: () => void;
+  onSelect: (coupon: HkpCouponSummary) => void;
 }
 
 export function ProductCard({
@@ -264,22 +287,18 @@ export function QuantityStepper({
   disabled = false,
   onChange,
 }: QuantityStepperProps) {
-  function updateValue(nextValue: number) {
-    if (disabled) return;
-    const normalizedValue = Math.max(min, Math.min(max, nextValue));
-    if (normalizedValue !== value) onChange?.(normalizedValue);
-  }
-
   return (
-    <View className={classNames('hkp-stepper', disabled && 'hkp-stepper--disabled', className)}>
-      <View className="hkp-stepper__button" onClick={() => updateValue(value - 1)}>
-        <Text>-</Text>
-      </View>
-      <Text className="hkp-stepper__value">{value}</Text>
-      <View className="hkp-stepper__button" onClick={() => updateValue(value + 1)}>
-        <Text>+</Text>
-      </View>
-    </View>
+    <InputNumber
+      className={classNames('hkp-stepper', disabled && 'hkp-stepper--disabled', className)}
+      value={value}
+      min={min}
+      max={max}
+      disabled={disabled}
+      onChange={(nextValue) => {
+        const normalizedValue = Number(nextValue);
+        if (!Number.isNaN(normalizedValue) && normalizedValue !== value) onChange?.(normalizedValue);
+      }}
+    />
   );
 }
 
@@ -395,5 +414,77 @@ export function DateRangePanel({ dates, activeDate, className, onSelect }: DateR
         </View>
       ))}
     </View>
+  );
+}
+
+export function DateSelectionPopup({
+  visible,
+  mode,
+  title,
+  value,
+  startDate,
+  endDate,
+  onClose,
+  onConfirm,
+}: DateSelectionPopupProps) {
+  return (
+    <Calendar
+      visible={visible}
+      popup
+      title={title}
+      type={mode}
+      viewMode="day"
+      defaultValue={value}
+      startDate={startDate}
+      endDate={endDate}
+      firstDayOfWeek={1}
+      showToday
+      showTitle
+      showSubTitle
+      confirmText="确定"
+      onClose={onClose}
+      onConfirm={(nextValue) => {
+        const confirmedValue = Array.isArray(nextValue)
+          ? nextValue
+          : nextValue
+            ? [nextValue]
+            : [];
+        onConfirm(mode === 'single' ? confirmedValue[0] || '' : confirmedValue);
+      }}
+    />
+  );
+}
+
+export function CouponSelectionPopup({
+  visible,
+  title = '选择优惠券',
+  coupons,
+  selectedCouponId,
+  onClose,
+  onSelect,
+}: CouponSelectionPopupProps) {
+  return (
+    <AppPopup visible={visible} contentClassName="hkp-coupon-popup" onClose={onClose}>
+      <View className="hkp-coupon-popup__header">
+        <Text className="hkp-coupon-popup__title">{title}</Text>
+        <Text className="hkp-coupon-popup__close" onClick={onClose}>×</Text>
+      </View>
+      <View className="hkp-coupon-popup__list">
+        {coupons.map((coupon) => (
+          <View
+            className={classNames(
+              'hkp-coupon-popup__item',
+              selectedCouponId === coupon.id && 'hkp-coupon-popup__item--active',
+            )}
+            key={coupon.id}
+            onClick={() => onSelect(coupon)}
+          >
+            <CouponCard coupon={coupon} />
+            {selectedCouponId === coupon.id ? <Text className="hkp-coupon-popup__checked">已选</Text> : null}
+          </View>
+        ))}
+        {coupons.length === 0 ? <Text className="hkp-coupon-popup__empty">暂无可用优惠券</Text> : null}
+      </View>
+    </AppPopup>
   );
 }

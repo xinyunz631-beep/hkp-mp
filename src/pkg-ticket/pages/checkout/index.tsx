@@ -2,10 +2,13 @@ import { useMemo, useState } from 'react';
 import Taro from '@tarojs/taro';
 import { Input, Text, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
-import { FixedSubmitBar, QuantityStepper } from '@/core/components/commerce';
-import { PageShell } from '@/core/components/PageShell';
+import { CouponSelectionPopup, DateSelectionPopup, FixedSubmitBar, QuantityStepper } from '@/core/components/commerce';
+import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
+import { PageShare, PageShell } from '@/core/components/PageShell';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
-import { fetchCheckoutData, type TicketCheckoutData } from '@/pkg-ticket/services/checkout';
+import { showWechatConfirm, showWechatToast } from '@/core/utils/wechat-actions';
+import { fetchCheckoutData, type TicketCheckoutPageData } from '@/pkg-ticket/services/checkout';
+import { submitTicketOrderDraft, updateTicketOrderDraft } from '@/pkg-ticket/services/order-draft';
 import './index.scss';
 
 interface ContactFormState {
@@ -15,8 +18,13 @@ interface ContactFormState {
 }
 
 const CheckoutPage = observer(function CheckoutPage() {
-  const [checkoutData, setCheckoutData] = useState<TicketCheckoutData>();
+  const [checkoutData, setCheckoutData] = useState<TicketCheckoutPageData>();
+  const [draftId, setDraftId] = useState('');
   const [addonQuantity, setAddonQuantity] = useState(1);
+  const [selectedDate, setSelectedDate] = useState('');
+  const [selectedCouponId, setSelectedCouponId] = useState<string>();
+  const [datePopupVisible, setDatePopupVisible] = useState(false);
+  const [couponPopupVisible, setCouponPopupVisible] = useState(false);
   const [contactForm, setContactForm] = useState<ContactFormState>({
     name: '',
     mobile: '',
@@ -24,9 +32,13 @@ const CheckoutPage = observer(function CheckoutPage() {
   });
   const pageRuntime = usePageRuntime({
     initPage: async () => {
-      const nextData = await fetchCheckoutData();
+      const nextDraftId = Taro.getCurrentInstance().router?.params?.draftId || '';
+      const nextData = await fetchCheckoutData(nextDraftId);
+      setDraftId(nextDraftId);
       setCheckoutData(nextData);
       setAddonQuantity(nextData.addonItem.quantity);
+      setSelectedDate(nextData.ticketItem.travelDate);
+      setSelectedCouponId(nextData.draft?.selectedCouponId);
       setContactForm({
         name: nextData.contact.name,
         mobile: nextData.contact.mobile,
@@ -37,9 +49,19 @@ const CheckoutPage = observer(function CheckoutPage() {
 
   const payAmount = useMemo(() => {
     if (!checkoutData) return 0;
+    const selectedCoupon = checkoutData.draft?.coupons.find((coupon) => coupon.id === selectedCouponId);
+    const discountAmount = selectedCoupon && checkoutData.ticketItem.price >= selectedCoupon.minimumAmount
+      ? selectedCoupon.discountAmount
+      : 0;
 
-    return checkoutData.ticketItem.price + checkoutData.addonItem.price * addonQuantity - checkoutData.discountAmount;
-  }, [addonQuantity, checkoutData]);
+    return Math.max(0, checkoutData.ticketItem.price + checkoutData.addonItem.price * addonQuantity - discountAmount);
+  }, [addonQuantity, checkoutData, selectedCouponId]);
+
+  const selectedCoupon = checkoutData?.draft?.coupons.find((coupon) => coupon.id === selectedCouponId);
+  const discountAmount = selectedCoupon && checkoutData && checkoutData.ticketItem.price >= selectedCoupon.minimumAmount
+    ? selectedCoupon.discountAmount
+    : 0;
+  const couponText = selectedCoupon ? `${selectedCoupon.amountText} ${selectedCoupon.thresholdText}` : '请选择优惠券';
 
   function updateContactField(field: keyof ContactFormState, value: string) {
     setContactForm((current) => ({
@@ -48,13 +70,48 @@ const CheckoutPage = observer(function CheckoutPage() {
     }));
   }
 
-  function handleSubmit() {
-    if (!contactForm.name || !contactForm.mobile || !contactForm.idCard) {
-      Taro.showToast({ title: '请补全出游信息', icon: 'none' });
+  async function handleSubmit() {
+    if (!checkoutData?.draft || !draftId) {
+      showWechatToast('请先选择门票');
       return;
     }
 
-    Taro.showToast({ title: '支付能力即将开放', icon: 'none' });
+    if (!contactForm.name.trim()) {
+      showWechatToast('请填写联系人姓名');
+      return;
+    }
+
+    if (!/^1\d{10}$/.test(contactForm.mobile)) {
+      showWechatToast('请填写正确手机号');
+      return;
+    }
+
+    if (!/^[0-9A-Za-z]{6,18}$/.test(contactForm.idCard)) {
+      showWechatToast('请填写正确身份证号');
+      return;
+    }
+
+    const confirmed = await showWechatConfirm({
+      title: '确认支付',
+      content: `本次需支付 ¥${payAmount.toFixed(2)}，确认后将生成门票订单。`,
+      confirmText: '确认支付',
+    });
+    if (!confirmed) return;
+
+    const nextOrder = submitTicketOrderDraft(draftId, {
+      selectedDate,
+      selectedCouponId,
+      addonQuantity,
+      contact: contactForm,
+    });
+
+    if (!nextOrder) {
+      showWechatToast('订单提交失败，请重新选择门票');
+      return;
+    }
+
+    await showWechatToast('支付成功', 'success');
+    Taro.navigateTo({ url: `${MINI_PACKAGE_ROUTES.orderDetail}?orderId=${encodeURIComponent(nextOrder.id)}` });
   }
 
   return pageRuntime.renderPage(() => {
@@ -86,10 +143,10 @@ const CheckoutPage = observer(function CheckoutPage() {
                   <Text className="_pg-item_title">1. {checkoutData.ticketItem.title}</Text>
                   <Text className="_pg-item_quantity">X{checkoutData.ticketItem.quantity}</Text>
                 </View>
-                <View className="_pg-item_row _pg-item_row--link">
+                <View className="_pg-item_row _pg-item_row--link" onClick={() => setDatePopupVisible(true)}>
                   <Text className="_pg-item_label">游玩日期</Text>
                   <View className="_pg-item_value">
-                    <Text>{checkoutData.ticketItem.travelDate}</Text>
+                    <Text>{selectedDate}</Text>
                     <Text className="_pg-item_chevron">›</Text>
                   </View>
                 </View>
@@ -163,20 +220,50 @@ const CheckoutPage = observer(function CheckoutPage() {
             <View className="_pg-card _pg-card--compact">
               <View className="_pg-line-row">
                 <Text className="_pg-line-row_label">折扣信息</Text>
-                <Text className="_pg-line-row_value">{checkoutData.discountText}</Text>
+                <Text className="_pg-line-row_value">{discountAmount > 0 ? `已优惠 ¥${discountAmount.toFixed(2)}` : checkoutData.discountText}</Text>
               </View>
             </View>
 
             <View className="_pg-card _pg-card--compact">
-              <View className="_pg-line-row _pg-line-row--link">
+              <View className="_pg-line-row _pg-line-row--link" onClick={() => setCouponPopupVisible(true)}>
                 <Text className="_pg-line-row_label">优惠券</Text>
                 <View className="_pg-line-row_coupon">
-                  <Text className="_pg-line-row_coupon-tag">{checkoutData.couponText}</Text>
+                  <Text className="_pg-line-row_coupon-tag">{couponText}</Text>
                   <Text className="_pg-line-row_chevron">›</Text>
                 </View>
               </View>
             </View>
           </View>
+          <PageShare>
+            <DateSelectionPopup
+              visible={datePopupVisible}
+              mode="single"
+              title="选择游玩日期"
+              value={selectedDate}
+              startDate={checkoutData.dates[0]?.date}
+              endDate={checkoutData.dates[checkoutData.dates.length - 1]?.date}
+              onClose={() => setDatePopupVisible(false)}
+              onConfirm={(value) => {
+                const nextDate = Array.isArray(value) ? value[0] : value;
+                if (nextDate) {
+                  setSelectedDate(nextDate);
+                  if (draftId) updateTicketOrderDraft(draftId, { selectedDate: nextDate });
+                }
+                setDatePopupVisible(false);
+              }}
+            />
+            <CouponSelectionPopup
+              visible={couponPopupVisible}
+              coupons={checkoutData.draft?.coupons ?? []}
+              selectedCouponId={selectedCouponId}
+              onClose={() => setCouponPopupVisible(false)}
+              onSelect={(coupon) => {
+                setSelectedCouponId(coupon.id);
+                if (draftId) updateTicketOrderDraft(draftId, { selectedCouponId: coupon.id });
+                setCouponPopupVisible(false);
+              }}
+            />
+          </PageShare>
         </PageShell>
       </View>
     );

@@ -20,6 +20,9 @@ NutUI 组件补位与封装顺序，统一参见 `docs/codex/nutui-component-reg
 - 异常状态：`BaseException`、`StatusException`
 - 登录弹窗：`LoginPopup`
 - 通用弹层：`AppPopup`
+- 日期弹层：`DateSelectionPopup`，底层使用 NutUI `Calendar`，支持单日和范围选择。
+- 优惠券弹层：`CouponSelectionPopup`
+- 页面级弹层挂载：页面使用弹层组件时放入 `PageShell` 直接子节点 `PageShare` / `PageRoot`，避免被 header/footer/tabbar 压住。
 - 登录动作拦截：`AuthAction` 或 `usePageRuntime().ensureLogin`
 
 ## 交易通用组件
@@ -34,6 +37,7 @@ NutUI 组件补位与封装顺序，统一参见 `docs/codex/nutui-component-reg
 - 筛选与状态 Tab：`FilterTabs`、`StatusListTabs`，用于商品列表、订单列表、售后列表和优惠券列表。
 - SKU 弹层：`SkuPopup`，基于 `AppPopup`，用于商品、餐饮套餐和可规格化商品。
 - 日期选择：`DateRangePanel`，用于门票日期、酒店入住日期和可滑动日期选择。
+- 商用级日期选择：`DateSelectionPopup`，用于需要弹层日历的交易页面；门票单日、酒店范围，优先保留 NutUI 原生弹层和样式。
 - 这些组件只承接通用 UI 结构和轻交互，具体下单、接口提交、业务状态仍放在页面和 service。
 
 ## 首页规范组件

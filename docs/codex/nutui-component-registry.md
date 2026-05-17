@@ -40,6 +40,8 @@
   - `CouponCard`
   - `AddressCard`
   - `SkuPopup`
+  - `DateSelectionPopup`
+  - `CouponSelectionPopup`
 
 ## 高优先级可选 NutUI 组件
 
@@ -90,6 +92,7 @@
 - `ActionSheet`
 - `Popover`
 - `Overlay`
+- 页面级弹层挂载到 `PageShare` / `PageRoot`，不要放在滚动内容区，避免层级低于 `PageLayout` header/footer/tabbar。
 
 ### 资源与上传
 
@@ -103,6 +106,8 @@
 - 搜索页：优先看 `SearchBar`，但落地前先评估是否需要封装为项目搜索头组件。
 - 订单/优惠券/售后筛选：优先看 `Tabs`、`Cell`、`Popup`，再结合现有 `FilterTabs` / `StatusListTabs`。
 - 日期选择：先查 `DateRangePanel`；如果业务需要更完整日历选择，再评估 NutUI `Calendar` / `DatePicker` 并封装。
+- 弹层日历选择：优先使用 `DateSelectionPopup`，底层为 NutUI `Calendar`；门票用 `single`，酒店用 `range`。
+- NutUI 组件样式默认依赖 `config/index.ts` 中的 `deviceRatio[375]=2`，不要用页面局部样式覆盖 `NaNrpx` 这类编译问题。
 - 数量步进：先查 `QuantityStepper`；不要在页面里重复造加减器。
 - 图片上传/评价晒单：优先看 `Uploader`，并先封装到项目组件。
 - 详情须知、规则说明、筛选弹层：优先看 `Popup` / `Dialog` / `CellGroup` 组合。

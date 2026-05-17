@@ -12,7 +12,8 @@ const DetailPage = observer(function DetailPage() {
   const [detailData, setDetailData] = useState<OrderDetailData>();
   const pageRuntime = usePageRuntime({
     initPage: async () => {
-      const nextData = await fetchDetailData();
+      const orderId = Taro.getCurrentInstance().router?.params?.orderId;
+      const nextData = await fetchDetailData(orderId);
       setDetailData(nextData);
     },
   });

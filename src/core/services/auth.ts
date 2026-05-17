@@ -85,6 +85,20 @@ export async function loginWithProfile() {
   return false;
 }
 
+// 使用本地会员身份完成登录，支撑无真实后端时的完整交易链路验收。
+export function loginWithLocalMember() {
+  rootStore.member.setMember('local-hkitty-session', {
+    id: 'local-member-001',
+    nickname: '乐园会员',
+    avatarUrl: '',
+    mobile: '13800000000',
+    levelName: 'Hello Kitty Park 会员',
+    points: 1280,
+  });
+
+  return finishCurrentLogin();
+}
+
 // 同步判断登录状态，未登录时打开登录弹窗并缓存成功后的动作。
 export function requireLogin(options?: string | LoginGuardOptions) {
   const normalizedOptions: LoginGuardOptions = typeof options === 'string' ? { reason: options } : options || {};

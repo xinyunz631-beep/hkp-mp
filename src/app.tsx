@@ -1,6 +1,7 @@
 import { PropsWithChildren, useEffect } from 'react';
 import { configure } from 'mobx';
 import { silentLogin } from '@/core/services/auth';
+import '@nutui/nutui-react-taro/dist/styles/theme-default.css';
 import './app.scss';
 
 configure({

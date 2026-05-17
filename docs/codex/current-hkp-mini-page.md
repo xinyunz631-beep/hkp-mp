@@ -3,10 +3,10 @@
 ## 当前状态
 
 - 更新时间：`2026-05-17`
-- 当前阶段：`Phase 7 - 状态补齐和整体验收`
+- 当前阶段：`Phase Commercial Pilot - 门票样板页商用级补完`
 - 当前分支：`feature/hkp-mini-phase-7-polish-verify`
 - 基线提交：`36b7517 chore: 保存小程序当前开发基线`
-- 最近阶段提交：`5820ae9 feat: 完成会员基础页和登录阻断收口`
+- 最近阶段提交：`955a5b1 feat: 完成小程序状态收口和整体验收`
 - 总控 Skill：`/Users/kite/.codex/skills/hkp-mini-build/SKILL.md`
 - 主执行 Skill：`$mpcode-page`
 
@@ -62,6 +62,10 @@
 - 已修复“我的”tab 页面过空问题，补齐账户卡、快捷入口、常用服务和账户设置区，并补回 `src/pages/profile/index.scss` 导入。
 - Phase 7 当前轮轻量门禁已通过：`yarn typecheck`、`yarn check:page-convention`、`yarn check:package-boundary`、`yarn check:ui-contract`。
 - `yarn build:weapp` 已尝试执行，Taro 构建再次出现历史 `system-configuration` panic，并在约 50 秒无新增输出后手动停止；按既有本地环境风险记录。
+- 已进入商用级补完样板阶段，目标不再以页面骨架或首版 UI 为完成标准，而以 `commercial-ready` 为完成标准。
+- 已为门票预定和门票确认订单建立样板闭环：微信动作封装、`DateSelectionPopup` 日期弹层、本地订单草稿、本地订单写入、订单详情读取、交互矩阵、状态矩阵和微信开发工具验收清单。
+- 已确认页面级弹层必须挂到 `PageShare` / `PageRoot`，门票预定和确认订单的日期、优惠券、须知弹层已按该规则迁移，后续页面必须沿用。
+- 已新增 `commercial-ready` 页面检查规则：页面文档必须有交互矩阵、状态矩阵和微信开发工具验收清单；页面源码不得残留“即将开放/准备中”占位；页面 SCSS 不得使用伪类绘制功能性元素。
 
 ## 当前约束
 
@@ -69,13 +73,15 @@
 - `pkg-member` 下分销链路 `share-rule/share/share-income/share-invite/withdraw/withdraw-records` 当前只补业务化准备中状态页，不进入完整分销 UI 实现。
 - 只有用户明确点名后，才允许继续完善以上两个板块的 UI。
 - `PageShell` 默认不展示页面内 `AppTabBar`；只有首页和“我的”页允许显式开启。
+- `AppIcon` 默认尺寸保持 `14-16`，功能性图标必须优先走 NutUI / `AppIcon` / 项目封装，不能用 CSS 伪类绘制。
+- 当前只按微信小程序 `weapp` 实现和验收，图片预览、扫码、地图、电话、复制、modal、toast 优先走微信 API 封装。
 - 用户中途发来的问题、提醒、补充条件默认只更新约束，不中断当前主线阶段；只有明确说“停”或改主任务时才切线。
 
 ## 下一步
 
-1. 最后复跑 Phase 7 四件套，确认文档同步后仍通过。
-2. 提交 `feature/hkp-mini-phase-7-polish-verify`，作为 HKP 小程序计划任务收口提交。
-3. 如需继续做真机/微信开发工具验收，以模拟器可见画面为准确认首页/我的页展示页面内 tabbar，分包页和其它主包页不展示 tabbar。
+1. 完成门票样板页代码和文档门禁验证。
+2. 由用户按门票预定 + 门票确认订单的微信开发工具验收清单点验。
+3. 样板页验收通过后，再按同一标准进入首页、我的、会员基础和商城闭环。
 
 ## 恢复方式
 

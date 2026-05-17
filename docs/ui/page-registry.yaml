@@ -1,7 +1,7 @@
 version: 1
 updatedAt: "2026-05-17"
 hkpMiniBuild:
-  phase: phase-7-polish-verify
+  phase: phase-commercial-pilot-ticket
   branch: feature/hkp-mini-phase-7-polish-verify
   baselineCommit: "36b7517"
   prd: docs/ui/pages/hkp-mini-prd.md
@@ -9,7 +9,7 @@ hkpMiniBuild:
   sourceDir: docs/ui/source/hkp-mini-page
   sourceManifest: docs/ui/source/hkp-mini-page/manifest.json
   resumeSkill: /Users/kite/.codex/skills/hkp-mini-build/SKILL.md
-  note: 当前已进入 Phase 7 状态补齐和整体验收；中途问话默认只视为补充约束，不中断主线计划。餐饮 pkg-dining 和分销链路（share/share-income/share-invite/share-rule/withdraw/withdraw-records）已补统一准备中状态页，除非用户明确点名，否则不进入完整业务 UI 实现。
+  note: 当前进入商用级补完样板阶段；先以门票预定 + 门票确认订单建立 commercial-ready 标准，再复制到其它核心板块。餐饮 pkg-dining 和分销链路（share/share-income/share-invite/share-rule/withdraw/withdraw-records）继续最后处理。
 pages:
   home:
     title: 首页
@@ -75,7 +75,7 @@ pages:
   ticket-booking:
     title: 门票预定
     route: src/pkg-ticket/pages/ticket-booking
-    status: implemented
+    status: commercial-ready
     spec: docs/ui/pages/ticket-booking.md
     design:
       currentTool: pencil
@@ -86,13 +86,16 @@ pages:
         name: 门票预定 750px 开发稿
         width: 750
         role: active-source
-        note: 本版按用户提供截图在代码侧完成首版还原；顶部自定义栏、景区图、开园信息、游玩日期、门票与年卡商品、日期面板和固定提交栏已落地。
+        note: 已升级为商用级样板页；图片预览、分享、须知、电话、地图、单日日期、优惠券、登录拦截和订单草稿已闭环。
     implementation:
       files:
         - src/pkg-ticket/pages/ticket-booking/index.tsx
         - src/pkg-ticket/pages/ticket-booking/index.scss
         - src/pkg-ticket/pages/ticket-booking/index.config.ts
         - src/pkg-ticket/services/ticket-booking.ts
+        - src/pkg-ticket/services/order-draft.ts
+        - src/core/utils/wechat-actions.ts
+        - src/core/components/commerce/index.tsx
         - src/core/constants/routes.ts
         - src/core/components/AppTabBar/index.tsx
         - src/app.config.ts
@@ -390,7 +393,7 @@ pages:
   ticket-checkout:
     title: 门票确认订单
     route: src/pkg-ticket/pages/checkout
-    status: implemented
+    status: commercial-ready
     spec: docs/ui/pages/ticket-checkout.md
     design:
       currentTool: pencil
@@ -401,13 +404,15 @@ pages:
         name: 门票确认订单 750px 开发稿
         width: 750
         role: active-source
-        note: 已按 ticket-checkout.png 完成订单卡、数量步进、联系人表单、折扣/优惠券和固定支付栏首版。
+        note: 已升级为商用级样板页；读取门票草稿、改日期、选优惠券、表单校验、支付确认、本地订单写入和订单详情跳转已闭环。
     implementation:
       files:
         - src/pkg-ticket/pages/checkout/index.tsx
         - src/pkg-ticket/pages/checkout/index.scss
         - src/pkg-ticket/pages/checkout/index.config.ts
         - src/pkg-ticket/services/checkout.ts
+        - src/pkg-ticket/services/order-draft.ts
+        - src/core/services/local-order.ts
       verification:
         - yarn typecheck
         - yarn check:page-convention

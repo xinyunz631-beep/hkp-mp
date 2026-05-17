@@ -8,22 +8,21 @@
 - 设计文件：/Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
 - 设计节点：ticket-booking
 - 设计稿名称：门票预定 750px 开发稿
-- Figma fileKey：-
-- Figma nodeId：-
-- Pencil file：/Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
-- Pencil nodeId：ticket-booking
-- 当前版本：v0.8
-- 页面状态：implemented
-- 更新时间：2026-05-16
+- 当前版本：v1.0
+- 页面状态：commercial-ready
+- 更新时间：2026-05-17
 - 实现文件：
   - src/pkg-ticket/pages/ticket-booking/index.tsx
   - src/pkg-ticket/pages/ticket-booking/index.scss
   - src/pkg-ticket/pages/ticket-booking/index.config.ts
   - src/pkg-ticket/services/ticket-booking.ts
+  - src/pkg-ticket/services/order-draft.ts
+  - src/core/components/commerce/index.tsx
+  - src/core/utils/wechat-actions.ts
 
 ## 设计意图
 
-门票预定页面按用户提供截图做代码侧首版还原，优先保证购票路径可进入、页面基础设施完整、首屏结构和下单栏符合当前小程序视觉方向。
+门票预定页作为 HKP 商用级补完样板页之一，不再只承接 UI 结构，而是完整覆盖景区图片、预定须知、电话、地图、单日日期、优惠券、票种数量、登录拦截和订单草稿流转。
 
 ## 页面结构
 
@@ -31,95 +30,112 @@
 - 页面容器：`PageShell`
 - 页面运行时：`usePageRuntime`
 - 页面状态订阅：`observer`
-- 顶部导航：`PageShell` 自定义导航，左侧为统一返回 icon，标题水平居中，右侧保留微信系统胶囊区域。
-- 景区图区域：顶部大图位使用 `AppImage`，地址在 render 内以空字符串变量预留，未接入前显示灰色占位，组件统一承接加载中、淡入和失败态。
-- 开园信息：包含开放时间、咨询电话、节目单提示、详情须知入口、地址和地图入口。
-- 游玩日期：独立白底日期行，点击后展开 `DateRangePanel` 切换出游日期。
-- 商品区域：拆分“门票”和“年卡”两个分区，统一复用交易组件数量步进器。
-- 固定底栏：展示订单总金额和提交订单按钮，金额为 0 时保持弱按钮态。
+- 顶部景区图：`AppImage` 渲染，点击走微信图片预览。
+- 开园信息：开放时间、详情须知、地址地图、客服热线。
+- 游玩日期：点击打开项目封装 `DateSelectionPopup`，底层使用 NutUI `Calendar`，门票只允许单日。
+- 优惠券：点击打开项目封装 `CouponSelectionPopup`，选择后联动底部金额。
+- 商品区域：门票和年卡分区，数量使用项目封装 `QuantityStepper`。
+- 固定底栏：`FixedSubmitBar` 展示应付金额、优惠金额和提交订单动作。
+- 页面弹层：日期、优惠券和预定须知统一挂载到 `PageShare`，层级高于 header/footer/tabbar。
 
 ## 动态与静态边界
 
-- 接口图片：当前用 `heroImageSrc` 空字符串预留，通过 `AppImage` 渲染，后续替换为接口返回字段或固定 CDN。
-- 接口文本/数据：通过 `fetchTicketBookingData()` 获取并在 service 内归一。
-- 代码渲染：页面结构、状态、交互和基础样式。
-- 本地配置：页面标题、导航策略和分包注册。
+- 图片数据：由 service 返回 `heroImages`，空地址时仍通过 `AppImage` 展示灰底占位。
+- 页面数据：由 `fetchTicketBookingData()` 返回 DTO，页面不直接写业务常量。
+- 订单草稿：提交时由 `createTicketOrderDraft()` 写入本地草稿，再携带 `draftId` 跳转确认订单。
+- 真实接口替换：后续只替换 service 和草稿提交实现，页面交互协议保持不变。
 
 ## 状态要求
 
 - loading：页面运行时统一承接。
-- empty：优先使用 `BaseEmpty`。
-- error：优先使用 `BaseException` 或 `StatusException`。
-- 未登录：需要身份时使用 `usePageRuntime({ loginRequired: true })` 或 `AuthAction`。
-- 降级态：可降级接口在 service 内返回默认值。
+- 空态：后续票种为空时使用 `BaseEmpty`，当前 mock 保持有票。
+- 错误态：阻断型接口失败使用页面运行时异常兜底。
+- 未登录态：浏览和选票不打扰，提交订单时通过 `pageRuntime.ensureLogin()` 触发登录，支持本地会员身份登录后续执行。
+- 禁用态：未选择票种时提交按钮禁用，并提示选择门票数量。
+- 弹层态：日期、优惠券、预定须知均可独立打开和关闭。
 
 ## 接口与 Service
 
 | 模块 | service | 失败策略 | 是否阻断页面 |
 |---|---|---|---|
 | 页面数据 | `fetchTicketBookingData()` | service 内归一和兜底 | 是 |
+| 订单草稿 | `createTicketOrderDraft()` | 本地缓存保存草稿 | 是 |
+| 微信动作 | `wechat-actions.ts` | 失败时给业务反馈或复制降级 | 否 |
 
 ## 交互与跳转
 
-- 左侧返回 icon：调用统一返回逻辑，页面栈只剩一页时回首页。
-- 分享、详情须知、地图：当前提示能力即将开放。
-- 日期选择：复用 `DateRangePanel` 做本地日期切换，选择后自动收起。
-- 数量步进器：复用 `QuantityStepper`，支持门票和年卡数量加减，不允许低于 0。
-- 提交订单：未选择商品时提示选择数量；选择后跳转到 `ticket-checkout`。
-- 底部「购票」入口：从应用底部 tabbar 打开本页。
+| 元素 | 交互结果 |
+|---|---|
+| 顶部景区图 / 图片数量 | 调用微信图片预览；无图片时提示暂无可预览图片 |
+| 分享按钮 | 打开微信分享菜单并提示使用右上角分享 |
+| 详情须知 | 打开预定须知弹层 |
+| 地图 | 调用微信地图；缺经纬度时复制地址 |
+| 客服电话 | 调用微信拨号；失败时复制号码 |
+| 游玩日期 | 打开单日日期弹层，选择后更新日期 |
+| 优惠券 | 打开优惠券弹层，选择后更新优惠金额 |
+| 票种数量 | 使用项目封装步进器调整数量和应付金额 |
+| 商品预定须知 | 打开预定须知弹层 |
+| 提交订单 | 未选票提示；未登录弹登录；登录后创建草稿并跳 `ticket-checkout?draftId=` |
+
+## 交互矩阵
+
+| 点位 | 正常结果 | 异常/降级 |
+|---|---|---|
+| 图片预览 | `Taro.previewImage` | 无图片提示 |
+| 分享 | `Taro.showShareMenu` | 调试环境不可用时只提示 |
+| 电话 | `Taro.makePhoneCall` | 复制号码 |
+| 地图 | `Taro.openLocation` | 复制地址 |
+| 日期 | `DateSelectionPopup` 单日选择 | 关闭不改变日期 |
+| 优惠券 | 选择券并联动金额 | 无券显示空提示 |
+| 登录 | 本地会员身份可完成登录 | 用户取消则留在预定页 |
+| 提交 | 生成本地草稿并跳确认订单 | 无票种提示选择数量 |
+
+## 状态矩阵
+
+| 状态 | 页面表现 |
+|---|---|
+| 首屏 loading | `usePageRuntime` 默认 loading |
+| 正常态 | 展示图片、信息、日期、优惠券、票种和提交栏 |
+| 未登录态 | 只在提交时弹登录，不阻断浏览 |
+| 禁用态 | 0 件票时提交按钮禁用 |
+| 弹层态 | 日期、优惠券、须知弹层覆盖当前页 |
+| 草稿态 | 登录后提交写入本地 `draftId` |
 
 ## 实现映射
 
-- `src/pkg-ticket/pages/ticket-booking/index.tsx`：页面主体。
+- `src/pkg-ticket/pages/ticket-booking/index.tsx`：页面主体和交互编排。
 - `src/pkg-ticket/pages/ticket-booking/index.scss`：页面样式。
-- `src/pkg-ticket/pages/ticket-booking/index.config.ts`：页面配置。
-- `src/pkg-ticket/services/ticket-booking.ts`：页面 service。
+- `src/pkg-ticket/services/ticket-booking.ts`：页面 DTO。
+- `src/pkg-ticket/services/order-draft.ts`：订单草稿创建。
+- `src/core/components/commerce/index.tsx`：日期、优惠券、数量和提交栏组件。
+- `src/core/utils/wechat-actions.ts`：微信小程序动作封装。
 
 ## 变更记录
 
-### v0.8
+### v1.0
 
-- 回补门票商品分区，页面不再只剩“年卡”单分区。
-- 游玩日期改为复用 `DateRangePanel`，支持本地切换日期。
-- 商品数量改为统一复用 `QuantityStepper`，底部提交栏改为统一复用 `FixedSubmitBar`。
-- 同步补齐 NutUI / 项目组件选型事实源，后续页面优先按清单复用。
-
-### v0.7
-
-- 提交订单从本地 toast 占位改为跳转 `ticket-checkout`，票务链路首版可继续流转。
-
-### v0.6
-
-- 顶部景区图改用项目级 `AppImage`。
-- 分享图标改用项目级 `AppIcon`，不再在页面里直接散用 NutUI icon。
-
-### v0.5
-
-- 景区图从 CSS 模拟图改为 `Image` 元素，图片地址在 render 内用变量预留。
-- 分享图标改为优先使用 NutUI `Share` icon。
-
-### v0.4
-
-- 按页面样式新规范迁移为 `_pg` 根容器和 `_pg-模块_元素` 命名。
-- 重写页面 SCSS 为嵌套结构，业务 class 不再使用页面名作为前缀。
-
-### v0.3
-
-- 取消票务页单独的首页图标入口，统一回到默认返回按钮。
-
-### v0.2
-
-- 按门票预定截图完成首版页面 UI 和基础交互。
-- 新增页面 service 数据结构和年卡商品数据。
-- 注册 `ticketBooking` 路由，并将底部「购票」入口指向本页。
-
-### v0.1
-
-- 初始化页面基础实现。
+- 升级为 `commercial-ready` 样板页。
+- 日期选择改为项目封装 `DateSelectionPopup`，底层使用 NutUI `Calendar`。
+- 日期、优惠券和须知弹层统一迁入 `PageShare`，避免被固定提交栏压住。
+- 补齐图片预览、分享、预定须知、电话、地图、优惠券和登录后续执行。
+- 提交订单改为创建本地草稿并携带 `draftId` 进入门票确认订单。
 
 ## 验证记录
 
 - `yarn typecheck`
-- `yarn check:page-convention`
-- `yarn check:package-boundary`
-- `yarn check:ui-contract`
+- 待本轮完成后执行：`yarn check:page-convention`
+- 待本轮完成后执行：`yarn check:package-boundary`
+- 待本轮完成后执行：`yarn check:ui-contract`
+
+## 微信开发工具验收清单
+
+| 步骤 | 预期 |
+|---|---|
+| 打开门票预定页，点顶部图片 | 有图片时预览，无图片时提示暂无可预览图片 |
+| 点分享按钮 | 提示使用右上角分享 |
+| 点详情须知或票种预定须知 | 打开预定须知弹层，可关闭 |
+| 点地图 | 调起地图或复制地址 |
+| 点拨打 | 调起拨号或复制号码 |
+| 点游玩日期 | 打开日期弹层，只能选 1 天 |
+| 点优惠券 | 打开优惠券弹层，选择后金额联动 |
+| 加 1 张门票后提交 | 未登录先弹登录，本地会员登录后进入确认订单 |

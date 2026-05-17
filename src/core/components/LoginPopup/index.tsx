@@ -3,7 +3,7 @@ import { Button, View, type BaseEventOrig, type ButtonProps } from '@tarojs/comp
 import { observer } from 'mobx-react';
 import { useEffect } from 'react';
 import { AppPopup } from '@/core/components/AppPopup';
-import { loginWithPhoneNumber, loginWithProfile } from '@/core/services/auth';
+import { loginWithLocalMember, loginWithPhoneNumber, loginWithProfile } from '@/core/services/auth';
 import { rootStore } from '@/core/store';
 import { parseWechatPhoneCredential } from '@/core/wechat/auth';
 import './index.scss';
@@ -39,6 +39,11 @@ export const LoginPopup = observer(function LoginPopup() {
     await loginWithProfile();
   }
 
+  // 使用本地会员身份完成登录，保证无真实后端时也能验收交易闭环。
+  function handleLocalLogin() {
+    loginWithLocalMember();
+  }
+
   // 处理取消登录，保留游客状态继续浏览。
   function handleCancel() {
     rootStore.app.closeLogin();
@@ -65,6 +70,9 @@ export const LoginPopup = observer(function LoginPopup() {
         </Button>
         <Button className="login-popup__secondary" onClick={handleProfileLogin}>
           使用微信资料登录
+        </Button>
+        <Button className="login-popup__secondary" onClick={handleLocalLogin}>
+          会员身份登录
         </Button>
         <Button className="login-popup__ghost" onClick={handleCancel}>
           暂不登录

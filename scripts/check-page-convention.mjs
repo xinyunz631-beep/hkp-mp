@@ -157,6 +157,28 @@ function checkScssClassSelectors(page, scssFile) {
 
     fail(`${page.key} SCSS selector ".${selector}" 不符合 _pg-* BEM 命名`);
   }
+
+  if (page.status === 'commercial-ready' && /::before|::after|:before|:after/.test(scssText)) {
+    fail(`${page.key} commercial-ready 页面 SCSS 不应使用伪类绘制功能性元素`);
+  }
+}
+
+function checkCommercialReadyContract(page, pageText, scssFile) {
+  if (page.status !== 'commercial-ready') return;
+
+  if (/即将开放|准备中/.test(pageText)) {
+    fail(`${page.key} commercial-ready 页面仍存在占位文案`);
+  }
+
+  if (!page.spec || !existsSync(resolve(rootDir, page.spec))) {
+    fail(`${page.key} commercial-ready 页面缺少页面说明文档`);
+    return;
+  }
+
+  const specText = readText(page.spec);
+  for (const heading of ['交互矩阵', '状态矩阵', '微信开发工具验收清单']) {
+    if (!specText.includes(heading)) fail(`${page.key} commercial-ready 页面文档缺少 ${heading}`);
+  }
 }
 
 function checkPage(page) {
@@ -204,6 +226,7 @@ function checkPage(page) {
 
   checkClassNameTokens(page, pageText);
   checkScssClassSelectors(page, scssFile);
+  checkCommercialReadyContract(page, pageText, scssFile);
 }
 
 function main() {

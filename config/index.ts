@@ -23,6 +23,7 @@ const baseConfig: UserConfigExport<'webpack5'> = {
   plugins: ['@tarojs/plugin-html'],
   designWidth: resolveDesignWidth,
   deviceRatio: {
+    375: 2,
     640: 2.34 / 2,
     750: 1,
     828: 1.81 / 2,

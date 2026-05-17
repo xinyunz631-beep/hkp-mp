@@ -23,6 +23,15 @@ page {
   color: $color-text-primary;
   font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
   font-size: 26px;
+  --nutui-color-primary: #{$color-primary};
+  --nutui-color-primary-stop-1: #{$color-primary-stop-1};
+  --nutui-color-primary-stop-2: #{$color-primary-stop-2};
+  --nutui-color-primary-pressed: #{$color-primary-pressed};
+  --nutui-color-primary-disabled: #{$color-primary-disabled};
+  --nutui-color-primary-text: #{$color-primary-text};
+  --nutui-color-primary-light: #{$color-primary-light};
+  --nutui-color-primary-light-pressed: #{$color-primary-light-pressed};
+  --nutui-color-text-disabled: #98a2b3;
 }
 
 page,

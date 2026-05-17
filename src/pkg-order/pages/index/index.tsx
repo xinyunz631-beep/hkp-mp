@@ -18,6 +18,7 @@ function resolveOrderActionRoute(actionText: string) {
   if (actionText === '查看物流') return MINI_PACKAGE_ROUTES.orderLogistics;
   if (actionText === '申请售后') return MINI_PACKAGE_ROUTES.orderAftersaleType;
   if (actionText === '取消订单') return MINI_PACKAGE_ROUTES.orderCancel;
+  if (actionText === '查看详情') return MINI_PACKAGE_ROUTES.orderDetail;
   return '';
 }
 
@@ -86,7 +87,8 @@ const OrderIndexPage = observer(function OrderIndexPage() {
                           const nextRoute = resolveOrderActionRoute(item.actionText);
 
                           if (nextRoute) {
-                            Taro.navigateTo({ url: nextRoute });
+                            const nextUrl = item.actionText === '查看详情' ? `${nextRoute}?orderId=${item.id}` : nextRoute;
+                            Taro.navigateTo({ url: nextUrl });
                             return;
                           }
 

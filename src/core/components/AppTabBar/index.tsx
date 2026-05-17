@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import Taro, { useDidShow } from '@tarojs/taro';
 import { Text, View } from '@tarojs/components';
+import { AppIcon, type AppIconName } from '@/core/components/AppIcon';
 import { MINI_MAIN_ROUTES, MINI_PACKAGE_ROUTES, type MiniMainRoute, type MiniPackageRoute } from '@/core/constants/routes';
 import './index.scss';
 
@@ -11,7 +12,7 @@ interface AppTabBarItem {
   text: string;
   path: AppTabBarRoute;
   routeType: 'tab' | 'package';
-  icon: 'home' | 'ticket' | 'code' | 'hotel' | 'profile';
+  icon: AppIconName;
   center?: boolean;
   hideText?: boolean;
 }
@@ -73,16 +74,10 @@ export function AppTabBar() {
           <View className={itemClassName} key={item.key} onClick={() => handleNavigate(item)}>
             {item.center ? (
               <View className="hkitty-tabbar__center-button">
-                <View className="hkitty-tabbar__code-mark">
-                  <View className="hkitty-tabbar__code-square hkitty-tabbar__code-square--tl" />
-                  <View className="hkitty-tabbar__code-square hkitty-tabbar__code-square--tr" />
-                  <View className="hkitty-tabbar__code-square hkitty-tabbar__code-square--bl" />
-                  <View className="hkitty-tabbar__code-square hkitty-tabbar__code-square--br" />
-                  <View className="hkitty-tabbar__code-dot hkitty-tabbar__code-dot--center" />
-                </View>
+                <AppIcon name={item.icon} size={16} color="#ffffff" />
               </View>
             ) : (
-              <View className={`hkitty-tabbar__icon hkitty-tabbar__icon--${item.icon}`} />
+              <AppIcon className="hkitty-tabbar__icon" name={item.icon} size={16} color="currentColor" />
             )}
             {item.hideText ? null : <Text className="hkitty-tabbar__text">{item.text}</Text>}
           </View>

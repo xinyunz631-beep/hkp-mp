@@ -13,6 +13,7 @@
 - 新建页面默认使用 `observer(function PageName() {})` 包裹，减少后续接入 MobX 状态时的返工。
 - 页面只负责渲染、交互和状态组合；接口、默认值和失败兜底放到 service。
 - 用户可见文案禁止出现 `mock`、组件库、技术栈、开发态或测试态字眼。
+- 商用级补完页面使用 `commercial-ready` 状态；必须在页面文档记录交互矩阵、状态矩阵和微信开发工具验收清单。
 
 ## 多页面流开发
 
@@ -40,6 +41,7 @@
 
 - `PageLayout` 的 footer 只有存在真实 footer/bottom 内容时才渲染固定区域，并默认给整个 footer 区域白色背景，确保底部操作栏和安全区占位视觉连续。
 - 页面涉及底部固定栏、footer、弹层底部操作区时，不要再在页面或组件里追加 `env(safe-area-inset-bottom)`；安全区由 `PageLayout / layout` 统一承接，页面只写业务需要的常规 padding。
+- 页面级弹层、浮层和遮罩默认放入 `PageShell` 的直接子节点 `PageShare` / `PageRoot`，不要放在滚动内容里；日期、优惠券、规则说明、SKU、筛选、支付确认类弹层都必须高于 `PageLayout` 的 header/footer/tabbar。
 - 全局 loading、popup、runtime host、toast bridge、页面级 overlay 等全局状态组件，最外层 host 节点必须常驻渲染；显示隐藏只控制下一层真实节点或 class，避免 `PageLayout` / `ScrollView` 周边节点增删导致滚动回到顶部。
 - 分包默认不要开启 `independent: true`；独立分包不会继承主包 `app.scss -> app.wxss/app-origin.wxss` 的全局样式，只有明确需要独立启动能力时才单独评估开启。
 
@@ -60,12 +62,21 @@
 - 图片加载中和加载失败都保留灰底，loading 居中且默认按传入宽度自适配大小，加载完成后去除灰底并淡入真实图片，不展示技术占位文案。
 - 图标先查项目内封装；NutUI 有匹配项时先封装为项目组件，例如 `AppIcon`，再在页面使用；找不到合适图标时使用图片组件并将 `src` 默认置空，等待补链接。
 - `AppIcon` 默认尺寸按 `14-16` 书写，优先从 `16` 开始；只有主视觉、悬浮主按钮、空态插图辅助等明确需要放大的场景，才额外写到 `18+`，不要默认给 `20+`。
+- 功能性图标必须走 `AppIcon` / NutUI icon / 项目封装，不允许用 CSS `::before` / `::after` 绘制；伪类仅可用于装饰线、骨架光效和背景氛围。
+
+## 微信能力规则
+
+- 当前只按微信小程序 `weapp` 实现和验收，不为 H5 或其它端写兼容分支。
+- 图片预览、扫码、地图、电话、复制、确认弹窗和 toast 默认优先使用 `src/core/utils/wechat-actions.ts` 封装。
+- 页面可见点击必须落到跳转、弹层、微信 API、本地状态变化、登录拦截或提交结果，不允许用“即将开放”作为非暂缓页面兜底。
 
 ## 组件决策顺序
 
 - 先查事实源：`docs/ui/components.md` 和 `docs/codex/nutui-component-registry.md`。
 - 先查项目内封装：`src/core/components`、当前分包组件、已有同类页面。
 - 交易类通用 UI 优先查 `src/core/components/commerce`，当前包含商品卡、订单卡、优惠券卡、地址卡、提交栏、数量选择、筛选 Tab、SKU 弹层和日期选择。
+- 日期选择优先使用项目封装 `DateSelectionPopup`，底层使用 NutUI `Calendar`；门票使用单日，酒店使用范围。
+- NutUI 样式依赖 `designWidth=375` 和 `deviceRatio[375]=2`，缺失时会把 NutUI CSS fallback 编译成 `NaNrpx`。
 - 再查已安装 UI 库：当前优先 NutUI Taro；命中后也先封装一层项目组件，再给页面或业务代码使用。
 - 命中基础状态能力时优先使用项目封装：`BaseSkeleton`、`BaseEmpty`、`BaseException`、`src/core/components/loading`。
 - 会被多个页面复用的能力再沉淀到 `src/core/components` 或分包 components。
