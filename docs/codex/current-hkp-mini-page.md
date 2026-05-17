@@ -2,11 +2,11 @@
 
 ## 当前状态
 
-- 更新时间：`2026-05-17`
-- 当前阶段：`Phase Commercial Pilot - 门票样板页商用级补完`
+- 更新时间：`2026-05-18`
+- 当前阶段：`Phase D Core Batch - 首页 / 我的 / 会员基础交互补完`
 - 当前分支：`feature/hkp-mini-phase-7-polish-verify`
 - 基线提交：`36b7517 chore: 保存小程序当前开发基线`
-- 最近阶段提交：`955a5b1 feat: 完成小程序状态收口和整体验收`
+- 最近阶段提交：`52c458f feat: 建立门票商用级样板闭环`
 - 总控 Skill：`/Users/kite/.codex/skills/hkp-mini-build/SKILL.md`
 - 主执行 Skill：`$mpcode-page`
 
@@ -57,7 +57,7 @@
 - 已将 `PageShell` 的页面内 tabbar 默认改为不展示，仅首页和“我的”页显式开启，并为该规则补充页面约束检查。
 - 已完成票务首页聚合入口，串联乐园详情、门票预定和乐园导览。
 - 已完成乐园导览页首版，补齐地图占位、服务分区索引和到园提示。
-- 已按暂缓策略为餐饮页面和会员分享/提现页面补齐业务化准备中状态页，避免空白骨架直接展示给用户。
+- 已按暂缓策略为餐饮页面和会员分享/提现页面补齐业务化暂缓状态页，避免空白骨架直接展示给用户。
 - 已确认主包乐园、会员、我的三个聚合入口状态并同步为 implemented；首页仍保留独立首页设计流的 implementing 状态。
 - 已修复“我的”tab 页面过空问题，补齐账户卡、快捷入口、常用服务和账户设置区，并补回 `src/pages/profile/index.scss` 导入。
 - Phase 7 当前轮轻量门禁已通过：`yarn typecheck`、`yarn check:page-convention`、`yarn check:package-boundary`、`yarn check:ui-contract`。
@@ -65,12 +65,15 @@
 - 已进入商用级补完样板阶段，目标不再以页面骨架或首版 UI 为完成标准，而以 `commercial-ready` 为完成标准。
 - 已为门票预定和门票确认订单建立样板闭环：微信动作封装、`DateSelectionPopup` 日期弹层、本地订单草稿、本地订单写入、订单详情读取、交互矩阵、状态矩阵和微信开发工具验收清单。
 - 已确认页面级弹层必须挂到 `PageShare` / `PageRoot`，门票预定和确认订单的日期、优惠券、须知弹层已按该规则迁移，后续页面必须沿用。
-- 已新增 `commercial-ready` 页面检查规则：页面文档必须有交互矩阵、状态矩阵和微信开发工具验收清单；页面源码不得残留“即将开放/准备中”占位；页面 SCSS 不得使用伪类绘制功能性元素。
+- 已新增 `commercial-ready` 页面检查规则：页面文档必须有交互矩阵、状态矩阵和微信开发工具验收清单；页面源码不得残留占位兜底文案；页面 SCSS 不得使用伪类绘制功能性元素。
+- 已完成 Phase D 第一批核心入口交互补完：首页扫码、搜索、banner、快捷入口、榜单、推荐、玩转乐园；我的页常用游客、客服、退出登录；会员 tab、会员中心、优惠券点击均补齐可执行结果。
+- 已将首页、我的、会员、会员中心、优惠券从 `implemented/implementing` 调整为 `interaction-ready`，避免把首版 UI 误判为商用最终完成。
+- 本批轻量门禁已通过：`yarn typecheck`、`yarn check:page-convention`、`yarn check:package-boundary`、`yarn check:ui-contract`；`git diff --check` 通过。
 
 ## 当前约束
 
-- `pkg-dining` 餐饮板块当前只补业务化准备中状态页，不进入完整餐饮 UI 实现。
-- `pkg-member` 下分销链路 `share-rule/share/share-income/share-invite/withdraw/withdraw-records` 当前只补业务化准备中状态页，不进入完整分销 UI 实现。
+- `pkg-dining` 餐饮板块当前只补业务化暂缓状态页，不进入完整餐饮 UI 实现。
+- `pkg-member` 下分销链路 `share-rule/share/share-income/share-invite/withdraw/withdraw-records` 当前只补业务化暂缓状态页，不进入完整分销 UI 实现。
 - 只有用户明确点名后，才允许继续完善以上两个板块的 UI。
 - `PageShell` 默认不展示页面内 `AppTabBar`；只有首页和“我的”页允许显式开启。
 - `AppIcon` 默认尺寸保持 `14-16`，功能性图标必须优先走 NutUI / `AppIcon` / 项目封装，不能用 CSS 伪类绘制。
@@ -79,9 +82,9 @@
 
 ## 下一步
 
-1. 完成门票样板页代码和文档门禁验证。
-2. 由用户按门票预定 + 门票确认订单的微信开发工具验收清单点验。
-3. 样板页验收通过后，再按同一标准进入首页、我的、会员基础和商城闭环。
+1. 由用户在微信开发工具按首页、我的、会员基础验收清单点验交互手感和视觉还原。
+2. 用户反馈不符合预期的点后，Codex 进入本批修复循环。
+3. 本批确认后继续进入商城闭环商用级补完；餐饮和分销/提现继续最后处理。
 
 ## 恢复方式
 

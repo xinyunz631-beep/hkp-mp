@@ -5,7 +5,9 @@ import { observer } from 'mobx-react';
 import { BaseEmpty } from '@/core/components/BaseEmpty';
 import { CouponCard, FilterTabs } from '@/core/components/commerce';
 import { PageShell } from '@/core/components/PageShell';
+import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
+import { showWechatConfirm } from '@/core/utils/wechat-actions';
 import { fetchCouponsData, type MemberCouponsData } from '@/pkg-member/services/coupons';
 import './index.scss';
 
@@ -45,6 +47,38 @@ const CouponsPage = observer(function CouponsPage() {
     loginReason: '登录后可查看优惠券',
   });
 
+  async function handleCouponPress(coupon: MemberCouponsData['coupons'][number]) {
+    if (coupon.status !== 'available') {
+      await showWechatConfirm({
+        title: coupon.title,
+        content: `${coupon.amountText} ${coupon.thresholdText}，${coupon.validityText}。该卡券仅作为记录展示。`,
+        confirmText: '知道了',
+        cancelText: '关闭',
+      });
+      return;
+    }
+
+    const confirmed = await showWechatConfirm({
+      title: coupon.title,
+      content: `${coupon.amountText} ${coupon.thresholdText}，${coupon.validityText}。是否现在去可用业务页使用？`,
+      confirmText: '去使用',
+      cancelText: '稍后',
+    });
+    if (!confirmed) return;
+
+    if (coupon.title.includes('酒店')) {
+      Taro.navigateTo({ url: MINI_PACKAGE_ROUTES.hotelHome });
+      return;
+    }
+
+    if (coupon.title.includes('商城')) {
+      Taro.navigateTo({ url: MINI_PACKAGE_ROUTES.mallHome });
+      return;
+    }
+
+    Taro.navigateTo({ url: MINI_PACKAGE_ROUTES.ticketBooking });
+  }
+
   return pageRuntime.renderPage(() => {
     if (!pageData) return null;
 
@@ -81,13 +115,7 @@ const CouponsPage = observer(function CouponsPage() {
                     className="_pg-list_item"
                     coupon={coupon}
                     key={coupon.id}
-                    onClick={() => {
-                      Taro.showToast({
-                        title: `${coupon.title}详情整理中`,
-                        icon: 'none',
-                        duration: 1800,
-                      });
-                    }}
+                    onClick={() => void handleCouponPress(coupon)}
                   />
                 ))}
               </View>

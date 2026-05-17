@@ -8,6 +8,7 @@ import { PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import { rootStore } from '@/core/store';
+import { showWechatToast } from '@/core/utils/wechat-actions';
 import {
   fetchMemberHomeData,
   type MemberHomeData,
@@ -36,16 +37,9 @@ function resolveShortcutRoute(action: MemberHomeShortcut['action']) {
 function resolveSectionRoute(action: MemberHomeSectionItem['action']) {
   if (action === 'coupons') return MINI_PACKAGE_ROUTES.memberCoupons;
   if (action === 'orders') return MINI_PACKAGE_ROUTES.orderHome;
+  if (action === 'parkGuide') return MINI_PACKAGE_ROUTES.ticketParkGuide;
+  if (action === 'ticketBooking') return MINI_PACKAGE_ROUTES.ticketBooking;
   return '';
-}
-
-// 统一会员中心页内的轻提示，保持业务语气一致。
-function showMemberToast(title: string) {
-  Taro.showToast({
-    title,
-    icon: 'none',
-    duration: 1800,
-  });
 }
 
 // 会员首页快捷入口统一映射图标，优先复用项目图标封装。
@@ -73,13 +67,13 @@ const MemberIndexPage = observer(function MemberIndexPage() {
   // 处理会员首页快捷入口跳转，未开放能力统一走轻提示兜底。
   function handleShortcutTap(shortcut: MemberHomeShortcut) {
     if (shortcut.disabled) {
-      showMemberToast(`${shortcut.title}即将开放`);
+      void showWechatToast('该服务按计划暂缓到核心板块完成后处理');
       return;
     }
 
     const nextRoute = resolveShortcutRoute(shortcut.action);
     if (!nextRoute) {
-      showMemberToast(`${shortcut.title}即将开放`);
+      void showWechatToast('该服务按计划暂缓到核心板块完成后处理');
       return;
     }
 
@@ -89,13 +83,13 @@ const MemberIndexPage = observer(function MemberIndexPage() {
   // 处理会员权益和更多服务区动作，避免 render 内散写业务分支。
   function handleSectionTap(item: MemberHomeSectionItem) {
     if (item.disabled) {
-      showMemberToast(`${item.title}即将开放`);
+      void showWechatToast('分销和提现按当前计划暂缓到最后处理');
       return;
     }
 
     const nextRoute = resolveSectionRoute(item.action);
     if (!nextRoute) {
-      showMemberToast(`${item.title}即将开放`);
+      void showWechatToast('该服务按计划暂缓到核心板块完成后处理');
       return;
     }
 
@@ -176,7 +170,7 @@ const MemberIndexPage = observer(function MemberIndexPage() {
                   onClick={() => handleShortcutTap(shortcut)}
                 >
                   <View className="_pg-shortcuts_icon">
-                    <AppIcon name={resolveShortcutIcon(shortcut.action)} size={18} color="#db2777" />
+                    <AppIcon name={resolveShortcutIcon(shortcut.action)} size={16} color="#db2777" />
                   </View>
                   <Text className="_pg-shortcuts_title">{shortcut.title}</Text>
                   <Text className="_pg-shortcuts_value">{shortcut.value}</Text>
@@ -199,7 +193,7 @@ const MemberIndexPage = observer(function MemberIndexPage() {
                         <Text className="_pg-section_item-desc">{item.desc}</Text>
                       </View>
                       <View className="_pg-section_item-action">
-                        <Text className="_pg-section_item-tag">{item.disabled ? '敬请期待' : '查看'}</Text>
+                        <Text className="_pg-section_item-tag">{item.disabled ? '暂缓' : '查看'}</Text>
                         <AppIcon name="arrowRight" size={14} color={item.disabled ? '#98a2b3' : '#db2777'} />
                       </View>
                     </View>

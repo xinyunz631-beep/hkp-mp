@@ -12,7 +12,7 @@ export interface MemberHomeSectionItem {
   key: string;
   title: string;
   desc: string;
-  action: 'comingSoon' | 'coupons' | 'orders';
+  action: 'coupons' | 'orders' | 'parkGuide' | 'ticketBooking' | 'shareDeferred' | 'withdrawDeferred';
   disabled?: boolean;
 }
 
@@ -100,16 +100,14 @@ export const memberHomeData: MemberHomeData = {
         {
           key: 'birthday',
           title: '生日礼遇',
-          desc: '生日月可领取限定券包，后续开放',
-          action: 'comingSoon',
-          disabled: true,
+          desc: '生日月券包到账后在优惠券页领取',
+          action: 'coupons',
         },
         {
           key: 'parking',
           title: '停车权益',
           desc: '酒店住客与年卡会员可享受停车优惠',
-          action: 'comingSoon',
-          disabled: true,
+          action: 'parkGuide',
         },
       ],
     },
@@ -120,14 +118,14 @@ export const memberHomeData: MemberHomeData = {
           key: 'share',
           title: '分享收益',
           desc: '邀请好友下单后可查看专属奖励',
-          action: 'comingSoon',
+          action: 'shareDeferred',
           disabled: true,
         },
         {
           key: 'withdraw',
           title: '提现服务',
           desc: '奖励到账后可在这里发起提现',
-          action: 'comingSoon',
+          action: 'withdrawDeferred',
           disabled: true,
         },
       ],

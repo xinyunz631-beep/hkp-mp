@@ -14,7 +14,7 @@ pages:
   home:
     title: 首页
     route: src/pages/home
-    status: implementing
+    status: interaction-ready
     spec: docs/ui/pages/home.md
     design:
       currentTool: pencil
@@ -25,14 +25,14 @@ pages:
         nodeId: "7:110"
         name: 页面-首页/750开发稿
         width: 750
-        note: 首页开发稿使用独立页面看板；同文件全局设计规范看板 nodeId=7:6，当前仅作参考来源。首页当前已按最新版本进入实现阶段。
+        note: 首页开发稿使用独立页面看板；同文件全局设计规范看板 nodeId=7:6，当前仅作参考来源。首页当前已补齐核心可见元素交互，待微信开发工具产品验收后再推进 commercial-ready。
       pencil:
         file: /Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
         nodeId: CJZyH
         name: 首页 750px 可开发稿
         width: 750
         role: active-source
-        note: 首页首屏继续按最新参考图收紧中，当前关注透明顶部导航、图标化快捷入口、上图下文开园时间卡和无文案会员码。
+        note: 首页首屏继续按最新参考图收紧中，当前已补扫码、搜索、banner、快捷入口、榜单、推荐和分类入口交互。
     implementation:
       files:
         - src/pages/home/index.tsx
@@ -811,7 +811,7 @@ pages:
   member-coupons:
     title: 优惠券
     route: src/pkg-member/pages/coupons
-    status: implemented
+    status: interaction-ready
     spec: docs/ui/pages/member-coupons.md
     design:
       currentTool: pencil
@@ -822,7 +822,7 @@ pages:
         name: 优惠券 750px 开发稿
         width: 750
         role: active-source
-        note: 已按优惠券状态页语义完成概览卡、状态筛选、卡券列表和空态反馈首版。
+        note: 已完成概览卡、状态筛选、卡券列表、空态反馈和卡券点击 modal / 去使用跳转。
     implementation:
       files:
         - src/pkg-member/pages/coupons/index.tsx
@@ -1018,7 +1018,7 @@ pages:
   member:
     title: 会员
     route: src/pages/member
-    status: implemented
+    status: interaction-ready
     spec: docs/ui/pages/member.md
     design:
       currentTool: pencil
@@ -1029,7 +1029,7 @@ pages:
         name: 会员 750px 开发稿
         width: 750
         role: active-source
-        note: 主包会员聚合入口，已串联会员中心和登录态权益入口；不展示页面内 tabbar。
+        note: 主包会员聚合入口，已补齐会员码、优惠券、订单、地址、售后、分享和权益卡入口；不展示页面内 tabbar。
     implementation:
       files:
         - src/pages/member/index.tsx
@@ -1043,7 +1043,7 @@ pages:
   profile:
     title: 我的
     route: src/pages/profile
-    status: implemented
+    status: interaction-ready
     spec: docs/ui/pages/profile.md
     design:
       currentTool: pencil
@@ -1054,7 +1054,7 @@ pages:
         name: 我的 750px 开发稿
         width: 750
         role: active-source
-        note: 主包我的入口，已补齐账户卡、积分卡券、订单/地址/售后/优惠券/会员中心入口和页面内 tabbar。
+        note: 主包我的入口，已补齐账户卡、积分卡券、订单/地址/售后/优惠券/会员中心、常用游客、客服和退出登录交互，并显式开启页面内 tabbar。
     implementation:
       files:
         - src/pages/profile/index.tsx
@@ -1196,7 +1196,7 @@ pages:
   member-home:
     title: 会员中心
     route: src/pkg-member/pages/index
-    status: implemented
+    status: interaction-ready
     spec: docs/ui/pages/member-home.md
     design:
       currentTool: pencil
@@ -1207,7 +1207,7 @@ pages:
         name: 会员中心 750px 开发稿
         width: 750
         role: active-source
-        note: 已按代码优先完成会员资料卡、卡券概览、快捷入口和权益服务区首版。
+        note: 已完成会员资料卡、卡券概览、快捷入口和权益服务区交互；分销/提现继续按计划暂缓。
     implementation:
       files:
         - src/pkg-member/pages/index/index.tsx

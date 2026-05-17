@@ -9,6 +9,11 @@ import { MINI_PACKAGE_ROUTES, type MiniPackageRoute } from '@/core/constants/rou
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import { logout } from '@/core/services/auth';
 import { rootStore } from '@/core/store';
+import {
+  callWechatPhone,
+  showWechatConfirm,
+  showWechatToast,
+} from '@/core/utils/wechat-actions';
 import './index.scss';
 
 interface ProfileActionItem {
@@ -16,9 +21,12 @@ interface ProfileActionItem {
   title: string;
   desc: string;
   route?: MiniPackageRoute;
+  action?: 'guests';
   reason?: string;
   tag?: string;
 }
+
+const PARK_PHONE = '4009778899';
 
 const quickActions: ProfileActionItem[] = [
   {
@@ -69,8 +77,10 @@ const serviceActions: ProfileActionItem[] = [
   {
     key: 'guests',
     title: '常用游客',
-    desc: '出行人信息即将开放',
-    tag: '准备中',
+    desc: '最近联系人下单时可复用',
+    action: 'guests',
+    reason: '登录后可管理常用游客',
+    tag: '已同步',
   },
 ];
 
@@ -78,14 +88,6 @@ function maskMobile(mobile?: string) {
   if (!mobile) return '登录后同步手机号';
   if (mobile.length < 7) return mobile;
   return `${mobile.slice(0, 3)}****${mobile.slice(-4)}`;
-}
-
-function showBusinessToast(title: string) {
-  Taro.showToast({
-    title,
-    icon: 'none',
-    duration: 1800,
-  });
 }
 
 // 渲染个人中心主包页，承载账户、订单、地址、售后和会员服务入口。
@@ -101,8 +103,32 @@ const ProfilePage = observer(function ProfilePage() {
     Taro.navigateTo({ url: route });
   }
 
-  function handleLogout() {
+  async function handleLogout() {
+    const confirmed = await showWechatConfirm({
+      title: '退出登录',
+      content: '退出后仍可浏览首页、乐园和商城公开内容，订单和会员权益需要重新登录后查看。',
+      confirmText: '退出',
+      cancelText: '取消',
+    });
+    if (!confirmed) return;
+
     logout();
+    await showWechatToast('已退出登录', 'success');
+  }
+
+  async function handleLocalAction(item: ProfileActionItem) {
+    if (item.action === 'guests') {
+      const confirmed = await showWechatConfirm({
+        title: '常用游客',
+        content: '当前本地 mock 已同步 2 位最近联系人，门票和酒店下单时会自动带入可选联系人。',
+        confirmText: '去预定门票',
+        cancelText: '知道了',
+      });
+
+      if (confirmed) {
+        openRoute(MINI_PACKAGE_ROUTES.ticketBooking);
+      }
+    }
   }
 
   function renderActionItem(item: ProfileActionItem) {
@@ -118,8 +144,23 @@ const ProfilePage = observer(function ProfilePage() {
     );
 
     if (!item.route) {
+      if (item.reason) {
+        return (
+          <AuthAction
+            className="_pg-action"
+            key={item.key}
+            reason={item.reason}
+            onAuthed={() => {
+              void handleLocalAction(item);
+            }}
+          >
+            {content}
+          </AuthAction>
+        );
+      }
+
       return (
-        <View className="_pg-action" key={item.key} onClick={() => showBusinessToast(`${item.title}即将开放`)}>
+        <View className="_pg-action" key={item.key} onClick={() => void handleLocalAction(item)}>
           {content}
         </View>
       );
@@ -190,7 +231,7 @@ const ProfilePage = observer(function ProfilePage() {
                 onAuthed={() => openRoute(item.route as MiniPackageRoute)}
               >
                 <View className="_pg-grid_icon">
-                  <AppIcon name={item.key === 'orders' ? 'order' : item.key === 'address' ? 'service' : 'list'} size={18} color="#db2777" />
+                  <AppIcon name={item.key === 'orders' ? 'order' : item.key === 'address' ? 'service' : 'list'} size={16} color="#db2777" />
                 </View>
                 <Text className="_pg-grid_title">{item.title}</Text>
                 <Text className="_pg-grid_desc">{item.desc}</Text>
@@ -208,7 +249,7 @@ const ProfilePage = observer(function ProfilePage() {
           <View className="_pg-section">
             <Text className="_pg-section_title">账户设置</Text>
             <View className="_pg-section_list">
-              <View className="_pg-action" onClick={() => showBusinessToast('客服服务即将开放')}>
+              <View className="_pg-action" onClick={() => void callWechatPhone(PARK_PHONE)}>
                 <View className="_pg-action_main">
                   <Text className="_pg-action_title">联系客服</Text>
                   <Text className="_pg-action_desc">咨询订单、票务和园区服务</Text>

@@ -12,9 +12,9 @@
 - Figma nodeId：-
 - Pencil file：/Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
 - Pencil nodeId：member-coupons
-- 当前版本：v0.2
-- 页面状态：implemented
-- 更新时间：2026-05-17
+- 当前版本：v0.3-interaction-ready
+- 页面状态：interaction-ready
+- 更新时间：2026-05-18
 - 实现文件：
   - src/pkg-member/pages/coupons/index.tsx
   - src/pkg-member/pages/coupons/index.scss
@@ -61,8 +61,37 @@
 
 ## 交互与跳转
 
-- 点击筛选条切换卡券状态列表。
-- 点击卡券时展示轻提示，后续再补详情或使用说明。
+- 点击筛选条切换可用 / 已使用 / 已过期卡券状态列表。
+- 点击可用卡券时弹微信 modal 展示规则，确认后按卡券类型跳门票、酒店或商城可用业务页。
+- 点击已使用 / 已过期卡券时弹微信 modal 展示记录说明，不进入结算页。
+
+## 交互矩阵
+
+| 元素 | 处理结果 |
+|---|---|
+| 可用 / 已使用 / 已过期筛选 | 切换当前卡券列表和空态文案 |
+| 可用门票券 | modal 确认后跳门票预定 |
+| 可用酒店券 | modal 确认后跳酒店首页 |
+| 可用商城券 | modal 确认后跳商城首页 |
+| 已使用 / 已过期券 | modal 展示记录说明 |
+| 空态 | 展示 `BaseEmpty` 文案 |
+
+## 状态矩阵
+
+| 状态 | 页面表现 |
+|---|---|
+| loading | `usePageRuntime` 初始化卡券数据 |
+| 未登录 | `loginRequired` 阻断并拉起登录提示 |
+| 有数据 | 展示 `CouponCard` 列表 |
+| 无数据 | 展示对应状态空态 |
+| 非可用券点击 | 只展示记录说明，不产生下单副作用 |
+
+## 微信开发工具验收清单
+
+- 进入优惠券页未登录：应先出现登录提示。
+- 切换三个 tab：列表和空态文案应随状态变化。
+- 点击可用门票券：应出现 modal，确认后进入门票预定。
+- 点击已使用或已过期券：应出现记录说明 modal。
 
 ## 实现映射
 
@@ -72,6 +101,10 @@
 - `src/pkg-member/services/coupons.ts`：页面 service。
 
 ## 变更记录
+
+### v0.3-interaction-ready
+
+- 卡券点击从轻提示升级为微信 modal，支持可用券确认后跳业务页。
 
 ### v0.2
 
