@@ -53,7 +53,17 @@ export interface SubmitTicketOrderDraftPayload {
 
 // 读取全部本地门票订单草稿，异常时返回空列表。
 function listTicketOrderDrafts() {
-  return getCache<TicketOrderDraft[]>(MINI_STORAGE_KEYS.ticketOrderDrafts) ?? [];
+  const cachedDrafts = getCache<unknown>(MINI_STORAGE_KEYS.ticketOrderDrafts);
+
+  if (Array.isArray(cachedDrafts)) {
+    return cachedDrafts.filter((draft): draft is TicketOrderDraft => Boolean(draft?.id));
+  }
+
+  if (cachedDrafts && typeof cachedDrafts === 'object' && 'id' in cachedDrafts) {
+    return [cachedDrafts as TicketOrderDraft];
+  }
+
+  return [];
 }
 
 // 保存门票订单草稿列表，统一隔离本地缓存 key。

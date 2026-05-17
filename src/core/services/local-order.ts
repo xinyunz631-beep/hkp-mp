@@ -63,7 +63,17 @@ export function createLocalOrderTime() {
 
 // 读取本地订单列表，失败时返回空数组，避免页面层重复兜底。
 export function listLocalOrders() {
-  return getCache<LocalOrderRecord[]>(MINI_STORAGE_KEYS.localOrders) ?? [];
+  const cachedOrders = getCache<unknown>(MINI_STORAGE_KEYS.localOrders);
+
+  if (Array.isArray(cachedOrders)) {
+    return cachedOrders.filter((order): order is LocalOrderRecord => Boolean(order?.id));
+  }
+
+  if (cachedOrders && typeof cachedOrders === 'object' && 'id' in cachedOrders) {
+    return [cachedOrders as LocalOrderRecord];
+  }
+
+  return [];
 }
 
 // 按订单编号读取本地订单，供订单详情页优先展示刚提交的订单。
