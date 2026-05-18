@@ -341,7 +341,7 @@ pages:
   ticket-park-detail:
     title: 乐园详情
     route: src/pkg-ticket/pages/park-detail
-    status: implemented
+    status: interaction-ready
     spec: docs/ui/pages/ticket-park-detail.md
     design:
       currentTool: pencil
@@ -352,7 +352,7 @@ pages:
         name: 乐园详情 750px 开发稿
         width: 750
         role: active-source
-        note: 已按 park-detail-intro.png 完成介绍、开放时间、优惠政策和其他信息四块信息卡，并补在线购票入口。
+        note: 已按 park-detail-intro.png 完成信息卡，客服热线/园区地址/节目单分别接入微信拨号、地图和说明弹窗，并补在线购票入口。
     implementation:
       files:
         - src/pkg-ticket/pages/park-detail/index.tsx
@@ -367,7 +367,7 @@ pages:
   ticket-park-guide:
     title: 乐园导览
     route: src/pkg-ticket/pages/park-guide
-    status: implemented
+    status: interaction-ready
     spec: docs/ui/pages/ticket-park-guide.md
     design:
       currentTool: pencil
@@ -378,7 +378,7 @@ pages:
         name: 乐园导览 750px 开发稿
         width: 750
         role: active-source
-        note: 已完成地图占位、服务分区索引和业务提示首版。
+        note: 已完成地图占位、服务分区索引和业务提示，地图可预览，分区点击有业务反馈。
     implementation:
       files:
         - src/pkg-ticket/pages/park-guide/index.tsx
@@ -421,7 +421,7 @@ pages:
   hotel-checkout:
     title: 酒店确认订单
     route: src/pkg-hotel/pages/checkout
-    status: implemented
+    status: interaction-ready
     spec: docs/ui/pages/hotel-checkout.md
     design:
       currentTool: pencil
@@ -432,7 +432,7 @@ pages:
         name: 酒店确认订单 750px 开发稿
         width: 750
         role: active-source
-        note: 已按 hotel-checkout.png 完成房型摘要、入住信息、优惠券/折扣、发票和底部支付栏首版。
+        note: 已按 hotel-checkout.png 完成确认订单，并补房间数调整、优惠/折扣弹窗、入住人/手机号校验、本地支付生成订单闭环。
     implementation:
       files:
         - src/pkg-hotel/pages/checkout/index.tsx
@@ -447,7 +447,7 @@ pages:
   hotel-room-detail:
     title: 房间详情
     route: src/pkg-hotel/pages/room-detail
-    status: implemented
+    status: interaction-ready
     spec: docs/ui/pages/hotel-room-detail.md
     design:
       currentTool: pencil
@@ -458,7 +458,7 @@ pages:
         name: 房间详情 750px 开发稿
         width: 750
         role: active-source
-        note: 已按 hotel-room-detail.png 完成房间主图、标题摘要、床型和更多详情首版。
+        note: 已按 hotel-room-detail.png 完成房间详情，主图支持预览，底部立即预订跳转酒店确认订单。
     implementation:
       files:
         - src/pkg-hotel/pages/room-detail/index.tsx
@@ -1119,7 +1119,7 @@ pages:
   hotel-home:
     title: 酒店首页
     route: src/pkg-hotel/pages/index
-    status: implemented
+    status: interaction-ready
     spec: docs/ui/pages/hotel-home.md
     design:
       currentTool: pencil
@@ -1130,7 +1130,7 @@ pages:
         name: 酒店首页 750px 开发稿
         width: 750
         role: active-source
-        note: 已按 hotel-detail.png 完成酒店切换、主图、入住信息、房型列表和套餐推荐首版。
+        note: 已按 hotel-detail.png 完成酒店切换、主图、入住信息、房型列表和套餐推荐，并补范围日期弹层、地图、分享、介绍、入住人数交互。
     implementation:
       files:
         - src/pkg-hotel/pages/index/index.tsx

@@ -4,6 +4,7 @@ import { observer } from 'mobx-react';
 import { AppImage } from '@/core/components/AppImage';
 import { PageShell } from '@/core/components/PageShell';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
+import { previewWechatImages, showWechatToast } from '@/core/utils/wechat-actions';
 import { fetchParkGuideData, type TicketParkGuideData } from '@/pkg-ticket/services/park-guide';
 import './index.scss';
 
@@ -34,6 +35,7 @@ const ParkGuidePage = observer(function ParkGuidePage() {
                 src={guideData.imageSrc}
                 mode="aspectFill"
                 emptyState="error"
+                onClick={() => previewWechatImages({ urls: [guideData.imageSrc], emptyText: '暂无导览大图' })}
               />
             </View>
 
@@ -41,7 +43,11 @@ const ParkGuidePage = observer(function ParkGuidePage() {
               <Text className="_pg-section_title">服务分区</Text>
               <View className="_pg-section_grid">
                 {guideData.sections.map((section) => (
-                  <View className="_pg-section_item" key={section}>
+                  <View
+                    className="_pg-section_item"
+                    key={section}
+                    onClick={() => void showWechatToast(`已定位${section}类服务`)}
+                  >
                     <Text className="_pg-section_text">{section}</Text>
                   </View>
                 ))}

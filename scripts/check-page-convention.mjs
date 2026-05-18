@@ -193,6 +193,11 @@ function checkCustomNavbarHeaderSafety(page, pageText) {
   if (!/<PageHeader\b/.test(pageText)) {
     fail(`${page.key} navbar={false} 自定义顶部栏必须通过 PageHeader 承接微信状态栏安全高度`);
   }
+
+  const fullScreenHeaderAllowList = new Set(['member-code']);
+  if (!fullScreenHeaderAllowList.has(page.key) && !pageText.includes('navigateBackOrHome')) {
+    fail(`${page.key} navbar={false} 业务页必须提供显式返回入口 navigateBackOrHome`);
+  }
 }
 
 function checkPage(page) {

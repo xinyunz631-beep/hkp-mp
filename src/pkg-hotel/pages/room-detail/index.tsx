@@ -4,16 +4,20 @@ import { Text, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
 import { AppImage } from '@/core/components/AppImage';
 import { PageShell } from '@/core/components/PageShell';
+import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
+import { previewWechatImages } from '@/core/utils/wechat-actions';
 import { fetchRoomDetailData, type HotelRoomDetailData } from '@/pkg-hotel/services/room-detail';
 import './index.scss';
 
 const RoomDetailPage = observer(function RoomDetailPage() {
   const [roomDetailData, setRoomDetailData] = useState<HotelRoomDetailData>();
+  const [currentRoomId, setCurrentRoomId] = useState('luxury-twin');
   const pageRuntime = usePageRuntime({
     initPage: async () => {
-      const roomId = Taro.getCurrentInstance().router?.params?.roomId;
+      const roomId = Taro.getCurrentInstance().router?.params?.roomId || 'luxury-twin';
       const nextData = await fetchRoomDetailData(roomId);
+      setCurrentRoomId(roomId);
       setRoomDetailData(nextData);
     },
   });
@@ -25,9 +29,28 @@ const RoomDetailPage = observer(function RoomDetailPage() {
 
     return (
       <View className="_pg">
-        <PageShell title="房间详情" className="_pg-shell" reserveTabBarSpace={false}>
+        <PageShell
+          title="房间详情"
+          className="_pg-shell"
+          reserveTabBarSpace={false}
+          footer={(
+            <View className="_pg-footer">
+              <View
+                className="_pg-footer_button"
+                onClick={() => Taro.navigateTo({ url: `${MINI_PACKAGE_ROUTES.hotelCheckout}?roomId=${currentRoomId}` })}
+              >
+                <Text>立即预订</Text>
+              </View>
+            </View>
+          )}
+        >
           <View className="_pg-content">
-            <AppImage className="_pg-image" src={roomImageSrc} mode="aspectFill" />
+            <AppImage
+              className="_pg-image"
+              src={roomImageSrc}
+              mode="aspectFill"
+              onClick={() => previewWechatImages({ urls: [roomImageSrc], emptyText: '暂无房型大图' })}
+            />
 
             <View className="_pg-summary">
               <View className="_pg-summary_heading">

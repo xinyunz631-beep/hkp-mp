@@ -12,9 +12,9 @@
 - Figma nodeId：-
 - Pencil file：/Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
 - Pencil nodeId：ticket-park-detail
-- 当前版本：v0.2
-- 页面状态：implemented
-- 更新时间：2026-05-16
+- 当前版本：v0.3
+- 页面状态：interaction-ready
+- 更新时间：2026-05-18
 - 实现文件：
   - src/pkg-ticket/pages/park-detail/index.tsx
   - src/pkg-ticket/pages/park-detail/index.scss
@@ -58,7 +58,33 @@
 ## 交互与跳转
 
 - 在线购票：点击“前往预定”跳到 `ticket-booking`。
-- 其他信息：当前展示热线、地址和节目单说明，后续接真实接口时只替换 service 数据。
+- 客服热线：点击调用微信拨号。
+- 园区地址：点击调用微信地图导航。
+- 节目单：点击展示微信 modal 说明。
+
+## 交互矩阵
+
+| 元素 | 行为 | 反馈/去向 |
+|---|---|---|
+| 客服热线 | 调用微信拨号 | 拨号失败按 `wechat-actions` 降级复制 |
+| 园区地址 | 打开微信地图 | 降级复制地址 |
+| 节目单 | 微信 modal | 展示节目单说明 |
+| 在线购票 | 跳转门票预定 | `ticket-booking` |
+
+## 状态矩阵
+
+| 状态 | 处理 |
+|---|---|
+| loading | `usePageRuntime` 统一承接 |
+| 地图不可用 | `wechat-actions` 降级复制地址 |
+| 拨号不可用 | `wechat-actions` 降级复制号码 |
+
+## 微信开发工具验收清单
+
+- 点客服热线，应调起微信拨号或复制号码。
+- 点园区地址，应调起微信地图或复制地址。
+- 点节目单，应出现微信 modal。
+- 点在线购票，应进入门票预定页。
 
 ## 实现映射
 
@@ -68,6 +94,11 @@
 - `src/pkg-ticket/services/park-detail.ts`：页面 service。
 
 ## 变更记录
+
+### v0.3
+
+- 其他信息中的客服热线、园区地址、节目单分别接入微信拨号、地图和 modal。
+- 页面状态推进到 `interaction-ready`。
 
 ### v0.2
 

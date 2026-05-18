@@ -4,20 +4,56 @@ import { Text, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
 import { AppIcon } from '@/core/components/AppIcon';
 import { AppImage } from '@/core/components/AppImage';
-import { PageShell } from '@/core/components/PageShell';
+import { DateSelectionPopup } from '@/core/components/commerce';
+import { PageShare, PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
+import {
+  openWechatLocation,
+  previewWechatImages,
+  showWechatConfirm,
+  showWechatShareGuide,
+  showWechatToast,
+} from '@/core/utils/wechat-actions';
 import { fetchHotelHomeData, type HotelHomeData } from '@/pkg-hotel/services';
 import './index.scss';
 
-function showComingSoon(title: string) {
-  Taro.showToast({ title, icon: 'none' });
+const HOTEL_LOCATION = {
+  latitude: 30.6386,
+  longitude: 119.684,
+  name: '银润锦江城堡酒店',
+  address: '安吉县天使大道8号',
+};
+
+const stayRangeDefault = ['2026-10-25', '2026-10-26'];
+const guestOptions = ['每间 2成人 0儿童', '每间 2成人 1儿童', '每间 1成人 1儿童'];
+
+function formatDateLabel(dateText: string) {
+  const date = new Date(`${dateText}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return { week: '周日', date: '10月25日' };
+
+  const weeks = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+  return {
+    week: weeks[date.getDay()],
+    date: `${date.getMonth() + 1}月${date.getDate()}日`,
+  };
+}
+
+function resolveNights(range: string[]) {
+  const [start, end] = range;
+  const startDate = new Date(`${start}T00:00:00`);
+  const endDate = new Date(`${end}T00:00:00`);
+  const nights = Math.max(1, Math.round((endDate.getTime() - startDate.getTime()) / 86400000));
+  return `${nights}晚`;
 }
 
 const HotelIndexPage = observer(function HotelIndexPage() {
   const [pageData, setPageData] = useState<HotelHomeData>();
   const [activeHotelId, setActiveHotelId] = useState('');
   const [activeFilterKey, setActiveFilterKey] = useState('queen');
+  const [stayRange, setStayRange] = useState<string[]>(stayRangeDefault);
+  const [datePopupVisible, setDatePopupVisible] = useState(false);
+  const [guestOptionIndex, setGuestOptionIndex] = useState(0);
   const pageRuntime = usePageRuntime({
     initPage: async () => {
       const nextData = await fetchHotelHomeData();
@@ -32,6 +68,9 @@ const HotelIndexPage = observer(function HotelIndexPage() {
     [activeHotelId, pageData],
   );
   const activeFilterLabel = pageData?.filterOptions.find((item) => item.key === activeFilterKey)?.label;
+  const checkInLabel = formatDateLabel(stayRange[0]);
+  const checkOutLabel = formatDateLabel(stayRange[1]);
+  const roomGuestText = guestOptions[guestOptionIndex] || guestOptions[0];
   const visibleRooms = useMemo(() => {
     if (!activeHotel) return [];
     if (!activeFilterLabel) return activeHotel.rooms;
@@ -48,6 +87,21 @@ const HotelIndexPage = observer(function HotelIndexPage() {
     Taro.navigateTo({ url: `${MINI_PACKAGE_ROUTES.hotelCheckout}?roomId=${roomId}` });
   }
 
+  async function handleIntroPress() {
+    await showWechatConfirm({
+      title: activeHotel?.heroTitle || '酒店介绍',
+      content: `${activeHotel?.heroSubtitle || '亲子度假酒店'}，位于${activeHotel?.address || HOTEL_LOCATION.address}，适合乐园游玩前后入住。`,
+      confirmText: '知道了',
+      cancelText: '关闭',
+    });
+  }
+
+  async function handleGuestPress() {
+    const nextIndex = (guestOptionIndex + 1) % guestOptions.length;
+    setGuestOptionIndex(nextIndex);
+    await showWechatToast(`已切换为${guestOptions[nextIndex]}`);
+  }
+
   return pageRuntime.renderPage(() => {
     if (!pageData || !activeHotel) return null;
 
@@ -60,7 +114,7 @@ const HotelIndexPage = observer(function HotelIndexPage() {
           className="_pg-shell"
           reserveTabBarSpace={false}
           navbarRight={(
-            <View className="_pg-nav-action" onClick={() => showComingSoon('分享能力即将开放')}>
+            <View className="_pg-nav-action" onClick={() => void showWechatShareGuide()}>
               <AppIcon name="share" size={16} color="#23262f" />
             </View>
           )}
@@ -82,7 +136,12 @@ const HotelIndexPage = observer(function HotelIndexPage() {
             </View>
 
             <View className="_pg-hero">
-              <AppImage className="_pg-hero_image" src={heroImageSrc} mode="aspectFill" />
+              <AppImage
+                className="_pg-hero_image"
+                src={heroImageSrc}
+                mode="aspectFill"
+                onClick={() => previewWechatImages({ urls: [heroImageSrc], emptyText: '暂无酒店大图' })}
+              />
               <View className="_pg-hero_mask" />
               <View className="_pg-hero_caption">
                 <Text className="_pg-hero_title">{activeHotel.heroTitle}</Text>
@@ -97,7 +156,7 @@ const HotelIndexPage = observer(function HotelIndexPage() {
               </View>
             </View>
 
-            <View className="_pg-info-row" onClick={() => showComingSoon('地图导航即将开放')}>
+            <View className="_pg-info-row" onClick={() => void openWechatLocation({ ...HOTEL_LOCATION, name: activeHotel.heroTitle, address: activeHotel.address })}>
               <View className="_pg-info-row_main">
                 <Text className="_pg-info-row_address">{activeHotel.address}</Text>
                 <Text className="_pg-info-row_area">{activeHotel.areaText}</Text>
@@ -105,26 +164,26 @@ const HotelIndexPage = observer(function HotelIndexPage() {
               <Text className="_pg-info-row_action">地图/导航 ›</Text>
             </View>
 
-            <View className="_pg-info-row" onClick={() => showComingSoon('酒店介绍详情即将开放')}>
+            <View className="_pg-info-row" onClick={() => void handleIntroPress()}>
               <Text className="_pg-info-row_label">酒店介绍</Text>
               <Text className="_pg-info-row_action">详情 ›</Text>
             </View>
 
             <View className="_pg-stay">
-              <View className="_pg-stay_item">
-                <Text className="_pg-stay_week">{pageData.stayPanel.checkInWeek}</Text>
-                <Text className="_pg-stay_date">{pageData.stayPanel.checkInDate}</Text>
+              <View className="_pg-stay_item" onClick={() => setDatePopupVisible(true)}>
+                <Text className="_pg-stay_week">{checkInLabel.week}</Text>
+                <Text className="_pg-stay_date">{checkInLabel.date}</Text>
               </View>
-              <View className="_pg-stay_middle">
-                <Text className="_pg-stay_night">{pageData.stayPanel.nightsText}</Text>
+              <View className="_pg-stay_middle" onClick={() => setDatePopupVisible(true)}>
+                <Text className="_pg-stay_night">{resolveNights(stayRange)}</Text>
               </View>
-              <View className="_pg-stay_item">
-                <Text className="_pg-stay_week">{pageData.stayPanel.checkOutWeek}</Text>
-                <Text className="_pg-stay_date">{pageData.stayPanel.checkOutDate}</Text>
+              <View className="_pg-stay_item" onClick={() => setDatePopupVisible(true)}>
+                <Text className="_pg-stay_week">{checkOutLabel.week}</Text>
+                <Text className="_pg-stay_date">{checkOutLabel.date}</Text>
               </View>
-              <View className="_pg-stay_guest" onClick={() => showComingSoon('入住人数调整即将开放')}>
+              <View className="_pg-stay_guest" onClick={() => void handleGuestPress()}>
                 <Text className="_pg-stay_guest-top">每间</Text>
-                <Text className="_pg-stay_guest-bottom">{pageData.stayPanel.roomGuestText}</Text>
+                <Text className="_pg-stay_guest-bottom">{roomGuestText.replace('每间 ', '')}</Text>
               </View>
             </View>
 
@@ -187,6 +246,23 @@ const HotelIndexPage = observer(function HotelIndexPage() {
               ))}
             </View>
           </View>
+
+          <PageShare>
+            <DateSelectionPopup
+              visible={datePopupVisible}
+              mode="range"
+              title="选择入住日期"
+              value={stayRange}
+              startDate="2026-01-01"
+              endDate="2026-12-31"
+              onClose={() => setDatePopupVisible(false)}
+              onConfirm={(nextValue) => {
+                const nextRange = Array.isArray(nextValue) ? nextValue : [nextValue];
+                if (nextRange.length >= 2) setStayRange(nextRange.slice(0, 2));
+                setDatePopupVisible(false);
+              }}
+            />
+          </PageShare>
         </PageShell>
       </View>
     );

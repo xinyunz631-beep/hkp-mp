@@ -12,9 +12,9 @@
 - Figma nodeId：-
 - Pencil file：/Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
 - Pencil nodeId：hotel-room-detail
-- 当前版本：v0.2
-- 页面状态：implemented
-- 更新时间：2026-05-16
+- 当前版本：v0.3
+- 页面状态：interaction-ready
+- 更新时间：2026-05-18
 - 实现文件：
   - src/pkg-hotel/pages/room-detail/index.tsx
   - src/pkg-hotel/pages/room-detail/index.scss
@@ -58,6 +58,29 @@
 ## 交互与跳转
 
 - 页面根据 `roomId` 查询参数加载对应房型详情；未命中时兜底第一条房型。
+- 主图：点击调用微信图片预览；无图时给出业务提示。
+- 立即预订：底部固定按钮跳转 `hotel-checkout?roomId=`。
+
+## 交互矩阵
+
+| 元素 | 行为 | 反馈/去向 |
+|---|---|---|
+| 房间主图 | 图片预览 | 无图展示“暂无房型大图” |
+| 立即预订 | 跳转确认订单 | `hotel-checkout?roomId=` |
+
+## 状态矩阵
+
+| 状态 | 处理 |
+|---|---|
+| loading | `usePageRuntime` 统一承接 |
+| 房型未命中 | service 兜底第一条房型 |
+| 空图片 | `AppImage` 灰底占位，点击预览时给业务提示 |
+
+## 微信开发工具验收清单
+
+- 从酒店首页点房型卡进入房型详情，页面应展示对应房型信息。
+- 点房间主图，应进入图片预览或提示暂无房型大图。
+- 点底部立即预订，应进入酒店确认订单并携带当前 `roomId`。
 
 ## 实现映射
 
@@ -67,6 +90,12 @@
 - `src/pkg-hotel/services/room-detail.ts`：页面 service。
 
 ## 变更记录
+
+### v0.3
+
+- 房间主图接入微信图片预览。
+- 增加底部立即预订入口，串联到酒店确认订单。
+- 页面状态推进到 `interaction-ready`。
 
 ### v0.2
 

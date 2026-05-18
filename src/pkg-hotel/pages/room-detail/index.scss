@@ -127,3 +127,21 @@
     flex: 1;
   }
 }
+
+._pg-footer {
+  padding: 18px 32px;
+  background: #ffffff;
+  box-shadow: 0 -10px 26px rgba(15, 23, 42, 0.06);
+
+  &_button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 88px;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #f472b6, #db2777);
+    color: #ffffff;
+    font-size: 30px;
+    font-weight: 700;
+  }
+}

@@ -5,8 +5,14 @@ import { observer } from 'mobx-react';
 import { PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
+import { callWechatPhone, openWechatLocation, showWechatConfirm } from '@/core/utils/wechat-actions';
 import { fetchParkDetailData, type TicketParkDetailData } from '@/pkg-ticket/services/park-detail';
 import './index.scss';
+
+const PARK_LOCATION = {
+  latitude: 30.6269,
+  longitude: 119.6817,
+};
 
 interface DetailSectionProps {
   title: string;
@@ -33,6 +39,29 @@ const ParkDetailPage = observer(function ParkDetailPage() {
 
   function handleBookingEntry() {
     Taro.navigateTo({ url: MINI_PACKAGE_ROUTES.ticketBooking });
+  }
+
+  async function handleInfoPress(label: string, value: string) {
+    if (label.includes('客服')) {
+      await callWechatPhone(value);
+      return;
+    }
+
+    if (label.includes('地址')) {
+      await openWechatLocation({
+        ...PARK_LOCATION,
+        name: detailData?.park.name || 'Hello Kitty Park',
+        address: value,
+      });
+      return;
+    }
+
+    await showWechatConfirm({
+      title: label,
+      content: value,
+      confirmText: '知道了',
+      cancelText: '关闭',
+    });
   }
 
   return pageRuntime.renderPage(() => {
@@ -76,9 +105,16 @@ const ParkDetailPage = observer(function ParkDetailPage() {
             <DetailSection title="其他信息">
               <View className="_pg-info">
                 {park.otherInfo.map((item) => (
-                  <View className="_pg-info_row" key={item.label}>
+                  <View
+                    className="_pg-info_row _pg-info_row--link"
+                    key={item.label}
+                    onClick={() => void handleInfoPress(item.label, item.value)}
+                  >
                     <Text className="_pg-info_label">{item.label}</Text>
-                    <Text className="_pg-info_value">{item.value}</Text>
+                    <View className="_pg-info_value-wrap">
+                      <Text className="_pg-info_value">{item.value}</Text>
+                      <Text className="_pg-info_chevron">›</Text>
+                    </View>
                   </View>
                 ))}
                 <View className="_pg-info_row _pg-info_row--link" onClick={handleBookingEntry}>

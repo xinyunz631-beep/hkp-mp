@@ -117,6 +117,13 @@
     }
   }
 
+  &_value-wrap {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    flex: 1;
+  }
+
   &_label {
     flex: none;
     width: 190px;
@@ -131,6 +138,14 @@
     font-size: 28px;
     line-height: 1.5;
     text-align: right;
+  }
+
+  &_chevron {
+    flex: none;
+    margin-left: 10px;
+    color: #c0c5cf;
+    font-size: 34px;
+    line-height: 1;
   }
 
   &_action {

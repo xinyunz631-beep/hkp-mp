@@ -12,9 +12,9 @@
 - Figma nodeId：-
 - Pencil file：/Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
 - Pencil nodeId：ticket-park-guide
-- 当前版本：v0.2
-- 页面状态：implemented
-- 更新时间：2026-05-17
+- 当前版本：v0.3
+- 页面状态：interaction-ready
+- 更新时间：2026-05-18
 - 实现文件：
   - src/pkg-ticket/pages/park-guide/index.tsx
   - src/pkg-ticket/pages/park-guide/index.scss
@@ -61,7 +61,27 @@
 
 ## 交互与跳转
 
-- 当前页面展示园区导览和服务分区索引，后续真实地图交互另行接入。
+- 地图图片：点击调用微信图片预览；无图时给出业务提示。
+- 服务分区：点击给出当前分区定位反馈。
+
+## 交互矩阵
+
+| 元素 | 行为 | 反馈/去向 |
+|---|---|---|
+| 导览地图 | 图片预览 | 无图展示“暂无导览大图” |
+| 服务分区 | 本地点击反馈 | toast 提示已定位对应服务 |
+
+## 状态矩阵
+
+| 状态 | 处理 |
+|---|---|
+| loading | `usePageRuntime` 统一承接 |
+| 空地图 | `AppImage` 灰底占位，点击预览时给业务提示 |
+
+## 微信开发工具验收清单
+
+- 点导览地图，应进入图片预览或提示暂无导览大图。
+- 点吃、住、行等服务分区，应看到对应定位 toast。
 
 ## 实现映射
 
@@ -71,6 +91,12 @@
 - `src/pkg-ticket/services/park-guide.ts`：页面 service。
 
 ## 变更记录
+
+### v0.3
+
+- 导览地图接入微信图片预览。
+- 服务分区点击给出业务反馈。
+- 页面状态推进到 `interaction-ready`。
 
 ### v0.2
 
