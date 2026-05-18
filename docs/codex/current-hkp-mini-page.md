@@ -3,10 +3,10 @@
 ## 当前状态
 
 - 更新时间：`2026-05-18`
-- 当前阶段：`Phase D Core Batch - 商城交互补完`
+- 当前阶段：`Phase D Core Batch - 票务酒店交互补完`
 - 当前分支：`feature/hkp-mini-phase-7-polish-verify`
 - 基线提交：`36b7517 chore: 保存小程序当前开发基线`
-- 最近阶段提交：`05694a7 feat: 补齐商城核心交互闭环`
+- 最近阶段提交：`dc3eac0 feat: 补齐酒店票务剩余交互`
 - 总控 Skill：`/Users/kite/.codex/skills/hkp-mini-build/SKILL.md`
 - 主执行 Skill：`$mpcode-page`
 
@@ -73,6 +73,12 @@
 - 已统一顶部安全区约束：`navbar={false}` 的自定义顶部栏必须走 `PageHeader`，由 `PageShell` 注入微信状态栏高度和右侧胶囊避让；默认 navbar 存在 `navbarRight` 时标题左对齐，右侧操作垂直居中。
 - 已完成商城交互补完批次：商城首页、搜索、分类、分类商品、商品列表、推荐、商品详情、购物车、收藏、赠品选择均推进到 `interaction-ready`；商品加购写入本地购物车，商品详情补图片预览、客服拨号、分享、优惠券、参数和 `PageShare` SKU 层级。
 - 商城批次轻量门禁已通过：`yarn typecheck`、`yarn check:page-convention`、`yarn check:package-boundary`、`yarn check:ui-contract`；商城页面扫描未发现直接 `Taro.showToast`、非暂缓占位文案或功能 icon 尺寸漂移。
+- 已完成票务 + 酒店剩余交互补完批次：乐园详情、乐园导览、酒店首页、房间详情、酒店确认订单推进到 `interaction-ready`。
+- 票务详情客服热线、园区地址、节目单分别接入微信拨号、地图和 modal；导览地图支持图片预览，服务分区点击有业务反馈。
+- 酒店首页补分享、图片预览、地图、介绍 modal、入住日期范围弹层、入住人数切换和筛选联动；日期弹层挂载在 `PageShare`。
+- 酒店房间详情补主图预览和底部立即预订；酒店确认订单补房间数调整、入住人动态字段、手机号校验、优惠/折扣 modal、模拟微信支付、本地订单生成和订单详情跳转。
+- 已新增页面约束：`navbar={false}` 的非全屏业务页必须在 `PageHeader` 内保留显式返回入口并统一调用 `navigateBackOrHome()`；搜索页源码和当前 `dist` 均已确认包含左侧返回。
+- 本批轻量门禁已通过：`yarn typecheck`、`yarn check:page-convention`、`yarn check:package-boundary`、`yarn check:ui-contract`；`git diff --check` 通过；酒店/票务扫描未发现非暂缓占位文案或直接 `Taro.showToast`。
 
 ## 当前约束
 
@@ -86,9 +92,9 @@
 
 ## 下一步
 
-1. 由用户在微信开发工具按首页、我的、会员基础和商城验收清单点验交互手感和视觉还原。
+1. 由用户在微信开发工具按首页、我的、会员基础、商城、票务和酒店验收清单点验交互手感和视觉还原。
 2. 用户反馈不符合预期的点后，Codex 进入本批修复循环。
-3. 本批确认后继续进入票务 + 酒店剩余商用级补完；餐饮和分销/提现继续最后处理。
+3. 验收反馈修完后继续进入订单 + 售后 + 地址 + 评价商用级补完；餐饮和分销/提现继续最后处理。
 
 ## 恢复方式
 
