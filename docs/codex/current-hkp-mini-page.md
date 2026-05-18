@@ -6,7 +6,7 @@
 - 当前阶段：`Phase D Core Batch - 订单售后评价交互补完`
 - 当前分支：`feature/hkp-mini-phase-7-polish-verify`
 - 基线提交：`36b7517 chore: 保存小程序当前开发基线`
-- 最近阶段提交：`62df521 refactor: 替换业务页伪类状态指示`
+- 最近阶段提交：`9b16c46 fix: 移除会员码页多余滚动高度`
 - 总控 Skill：`/Users/kite/.codex/skills/hkp-mini-build/SKILL.md`
 - 主执行 Skill：`$mpcode-page`
 
@@ -87,9 +87,10 @@
 - 本批轻量门禁已通过：`yarn typecheck`、`yarn check:page-convention`、`yarn check:package-boundary`、`yarn check:ui-contract`；`git diff --check` 通过；订单分包扫描未发现非暂缓占位文案、直接页面 `Taro.showToast` 或功能 icon 尺寸漂移。
 - 已将非暂缓入口页会员码、乐园聚合页、票务首页推进到 `interaction-ready`；registry 中剩余 `implemented` 均为约定最后处理的餐饮和分销/提现暂缓页。
 - 已按用户微信开发工具反馈修复会员码页：恢复 `PageShell` 默认自定义导航栏，页面顶部重新展示“会员码”和返回入口；二维码改为隐藏 canvas 生成后转成本地临时图片，再通过 `AppImage` 在白卡中展示，避免可见 canvas 被裁切。
-- 会员码页文档已更新到 v0.4，补齐交互矩阵、状态矩阵和微信开发工具验收清单；本次门禁已通过：`yarn typecheck`、`yarn check:page-convention`、`yarn check:package-boundary`、`yarn check:ui-contract`、`git diff --check`。
+- 会员码页文档已更新到 v0.6，补齐交互矩阵、状态矩阵和微信开发工具验收清单；本次门禁已通过：`yarn typecheck`、`yarn check:page-convention`、`yarn check:package-boundary`、`yarn check:ui-contract`、`git diff --check`。
 - 已继续补齐商城搜索页交互：新增项目组件 `AppSearchBar`，底层使用 NutUI `SearchBar`；搜索页输入、清除、键盘搜索和空关键词 toast 已形成闭环，修复原清除按钮误触发搜索的问题；页面文档和 NutUI 组件选型清单已同步。
 - 已继续清理业务页面功能性伪类状态指示：商城分类、分类商品、酒店首页和订单首页的 active 指示条已从 `::before/::after` 改为真实 `View` 节点；剩余伪类仅保留在骨架装饰、会员码背景氛围和全局 button reset。
+- 已二次修复会员码页：隐藏 canvas 的生成尺寸和展示尺寸已拆开，JS 绘制 / 导出使用微信真实像素，页面展示使用 750 设计稿 `rpx`，避免二维码只显示左上角 1/4；同时移除会员码主区域自身 `100vh / calc(100vh - header)` 硬编码高度，避免和 `PageLayout` 的 header spacer 叠加产生无意义滚动条。
 
 ## 当前约束
 
@@ -104,7 +105,7 @@
 ## 下一步
 
 1. 由用户在微信开发工具按首页、我的、会员基础、商城、票务和酒店验收清单点验交互手感和视觉还原。
-2. 会员码页需要在微信开发工具重新编译后确认：顶部导航栏可见、左侧返回可用、白卡内展示完整二维码图片且不出现可见 canvas 裁切。
+2. 会员码页需要在微信开发工具重新编译后确认：顶部导航栏可见、左侧返回可用、白卡内展示完整二维码图片，不出现左上角 1/4 截取，不出现无意义滚动条。
 3. 商城搜索页需要在微信开发工具重新编译后确认：输入文字后键盘搜索进入商品列表，清除按钮只清空输入不跳转，热门关键词仍可进入商品列表。
 4. 用户反馈不符合预期的点后，Codex 进入本批修复循环。
 5. 验收反馈修完后继续做核心页面视觉/交互回归与缺口修复；餐饮和分销/提现继续最后处理。
