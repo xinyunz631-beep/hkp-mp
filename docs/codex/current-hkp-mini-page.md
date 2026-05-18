@@ -6,7 +6,7 @@
 - 当前阶段：`Phase D Core Batch - 订单售后评价交互补完`
 - 当前分支：`feature/hkp-mini-phase-7-polish-verify`
 - 基线提交：`36b7517 chore: 保存小程序当前开发基线`
-- 最近阶段提交：`70addf7 fix: 修正乐园地图默认坐标`
+- 最近阶段提交：`50dc6b1 fix: 替换页面文本图标并加约束`
 - 总控 Skill：`/Users/kite/.codex/skills/hkp-mini-build/SKILL.md`
 - 主执行 Skill：`$mpcode-page`
 
@@ -92,6 +92,7 @@
 - 已继续清理业务页面功能性伪类状态指示：商城分类、分类商品、酒店首页和订单首页的 active 指示条已从 `::before/::after` 改为真实 `View` 节点；剩余伪类仅保留在骨架装饰、会员码背景氛围和全局 button reset。
 - 已二次修复会员码页：隐藏 canvas 的生成尺寸和展示尺寸已拆开，JS 绘制 / 导出使用微信真实像素，页面展示使用 750 设计稿 `rpx`，避免二维码只显示左上角 1/4；同时移除会员码主区域自身 `100vh / calc(100vh - header)` 硬编码高度，避免和 `PageLayout` 的 header spacer 叠加产生无意义滚动条。
 - 已按腾讯地图 POI 搜索结果修正乐园默认地图坐标：`安吉Hello Kitty乐园`、`浙江省湖州市安吉县天使大道1号`、`lng=119.740987`、`lat=30.621754`；源码中的历史偏移坐标已清空，首页导航、门票预定页地址和乐园详情地址统一引用 `src/core/constants/park-location.ts`。
+- 已清理源码中用文本符号冒充图标的问题：首页 `♡/✦/▱` 分区图标、页面 `›` 右箭头、弹层 `×` 关闭按钮均已改为 `AppIcon` / NutUI icon；`$mpcode-page` skill、`docs/codex/page-foundation.md` 和 `yarn check:page-convention` 已新增文本图标禁止规则。
 
 ## 当前约束
 
@@ -100,6 +101,7 @@
 - 只有用户明确点名后，才允许继续完善以上两个板块的 UI。
 - `PageShell` 默认不展示页面内 `AppTabBar`；只有首页和“我的”页允许显式开启。
 - `AppIcon` 默认尺寸保持 `14-16`，功能性图标必须优先走 NutUI / `AppIcon` / 项目封装，不能用 CSS 伪类绘制。
+- 页面和通用组件禁止用 `♡`、`✨`、`✦`、`▱`、`›`、`→`、`×` 等文本符号充当图标；箭头、关闭、收藏、星标、定位、电话等必须走 `AppIcon` / NutUI icon / 项目封装，并由 `yarn check:page-convention` 拦截。
 - 当前只按微信小程序 `weapp` 实现和验收，图片预览、扫码、地图、电话、复制、modal、toast 优先走微信 API 封装。
 - 用户中途发来的问题、提醒、补充条件默认只更新约束，不中断当前主线阶段；只有明确说“停”或改主任务时才切线。
 
