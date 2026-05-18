@@ -6,7 +6,7 @@
 - 当前阶段：`Phase D Core Batch - 订单售后评价交互补完`
 - 当前分支：`feature/hkp-mini-phase-7-polish-verify`
 - 基线提交：`36b7517 chore: 保存小程序当前开发基线`
-- 最近阶段提交：`0da1152 feat: 补齐订单售后评价交互`
+- 最近阶段提交：`382e6b2 docs: 标记非暂缓入口交互就绪`
 - 总控 Skill：`/Users/kite/.codex/skills/hkp-mini-build/SKILL.md`
 - 主执行 Skill：`$mpcode-page`
 
@@ -85,6 +85,7 @@
 - 物流详情补商品图预览、快递单号复制、官方电话拨号和确认收货状态反馈。
 - 售后申请补微信图片上传、预览、删除和提交反馈；创建评价补图片上传/预览/删除、内容校验、匿名切换和提交确认；评价列表补图片预览。
 - 本批轻量门禁已通过：`yarn typecheck`、`yarn check:page-convention`、`yarn check:package-boundary`、`yarn check:ui-contract`；`git diff --check` 通过；订单分包扫描未发现非暂缓占位文案、直接页面 `Taro.showToast` 或功能 icon 尺寸漂移。
+- 已将非暂缓入口页会员码、乐园聚合页、票务首页推进到 `interaction-ready`；registry 中剩余 `implemented` 均为约定最后处理的餐饮和分销/提现暂缓页。
 
 ## 当前约束
 
