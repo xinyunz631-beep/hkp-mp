@@ -6,9 +6,9 @@
 - 路由：src/pkg-ticket/pages/index
 - 当前设计工具（以 `page-registry.currentTool` 为准）：pencil
 - UI 图：当前无独立截图，按代码优先完成票务服务聚合入口。
-- 当前版本：v0.2
-- 页面状态：implemented
-- 更新时间：2026-05-17
+- 当前版本：v0.3
+- 页面状态：interaction-ready
+- 更新时间：2026-05-18
 - 实现文件：
   - src/pkg-ticket/pages/index/index.tsx
   - src/pkg-ticket/pages/index/index.scss
@@ -55,6 +55,12 @@
 - 门票预定：跳转 `src/pkg-ticket/pages/ticket-booking`
 - 乐园导览：跳转 `src/pkg-ticket/pages/park-guide`
 
+## 微信开发工具验收清单
+
+- 点击乐园详情，应进入乐园详情页。
+- 点击门票预定，应进入门票预定页。
+- 点击乐园导览，应进入乐园导览页。
+
 ## 实现映射
 
 - `src/pkg-ticket/pages/index/index.tsx`：票务聚合入口和跳转。
@@ -62,6 +68,10 @@
 - `src/pkg-ticket/pages/index/index.config.ts`：页面配置。
 
 ## 变更记录
+
+### v0.3
+
+- 确认票务聚合入口跳转闭环，页面状态推进到 `interaction-ready`。
 
 ### v0.2
 

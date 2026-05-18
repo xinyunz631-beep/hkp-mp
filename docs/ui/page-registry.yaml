@@ -46,7 +46,7 @@ pages:
   member-code:
     title: 会员码
     route: src/pkg-member/pages/member-code
-    status: implemented
+    status: interaction-ready
     spec: docs/ui/pages/member-code.md
     design:
       currentTool: pencil
@@ -993,7 +993,7 @@ pages:
   park:
     title: 乐园
     route: src/pages/park
-    status: implemented
+    status: interaction-ready
     spec: docs/ui/pages/park.md
     design:
       currentTool: pencil
@@ -1094,7 +1094,7 @@ pages:
   ticket-home:
     title: 票务首页
     route: src/pkg-ticket/pages/index
-    status: implemented
+    status: interaction-ready
     spec: docs/ui/pages/ticket-home.md
     design:
       currentTool: pencil

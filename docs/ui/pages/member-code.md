@@ -12,9 +12,9 @@
 - Figma nodeId：-
 - Pencil file：/Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
 - Pencil nodeId：member-code-page
-- 当前版本：v0.2
-- 页面状态：implemented
-- 更新时间：2026-05-15
+- 当前版本：v0.3
+- 页面状态：interaction-ready
+- 更新时间：2026-05-18
 - 实现文件：
   - src/pkg-member/pages/member-code/index.tsx
   - src/pkg-member/pages/member-code/index.scss
@@ -65,6 +65,12 @@
 - 未登录时先走登录弹窗，取消后展示统一登录引导异常态。
 - 当前页面不提供额外跳转入口，后续可从会员中心或快捷入口进入。
 
+## 微信开发工具验收清单
+
+- 已登录进入会员码页，应看到二维码 canvas。
+- 停留 30 秒后二维码应重新绘制，不应出现页面报错。
+- 未登录进入时应先走登录弹窗，取消后显示统一登录引导态。
+
 ## 实现映射
 
 - `src/pkg-member/pages/member-code/index.tsx`：页面主体、二维码绘制和自动刷新。
@@ -76,6 +82,10 @@
 - `src/app.config.ts`：分包页面接入。
 
 ## 变更记录
+
+### v0.3
+
+- 确认会员码页登录态、二维码绘制和 30 秒刷新为当前交互闭环，页面状态推进到 `interaction-ready`。
 
 ### v0.2
 

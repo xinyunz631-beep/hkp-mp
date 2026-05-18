@@ -6,9 +6,9 @@
 - 路由：src/pages/park
 - 当前设计工具（以 `page-registry.currentTool` 为准）：pencil
 - UI 图：当前无独立截图，按代码优先完成乐园聚合入口。
-- 当前版本：v0.2
-- 页面状态：implemented
-- 更新时间：2026-05-17
+- 当前版本：v0.3
+- 页面状态：interaction-ready
+- 更新时间：2026-05-18
 - 实现文件：
   - src/pages/park/index.tsx
   - src/pages/park/index.scss
@@ -51,6 +51,12 @@
 - 酒店服务：跳转 `src/pkg-hotel/pages/index`
 - 餐饮点单：跳转 `src/pkg-dining/pages/index`
 
+## 微信开发工具验收清单
+
+- 点击票务核验，应进入票务首页。
+- 点击酒店服务，应进入酒店首页。
+- 点击餐饮点单，应进入餐饮暂缓状态页。
+
 ## 实现映射
 
 - `src/pages/park/index.tsx`：乐园聚合入口和跳转。
@@ -58,6 +64,10 @@
 - `src/pages/park/index.config.ts`：页面配置。
 
 ## 变更记录
+
+### v0.3
+
+- 确认乐园聚合入口跳转闭环，页面状态推进到 `interaction-ready`；餐饮入口仍按暂缓策略展示状态页。
 
 ### v0.2
 
