@@ -83,3 +83,18 @@
   left: 0;
   z-index: 20;
 }
+
+.page-layout__measure-cover {
+  position: fixed;
+  inset: 0;
+  z-index: 9;
+  background: #ffffff;
+  opacity: 1;
+  pointer-events: none;
+  transition: opacity 180ms ease;
+  will-change: opacity;
+}
+
+.page-layout__measure-cover--hidden {
+  opacity: 0;
+}

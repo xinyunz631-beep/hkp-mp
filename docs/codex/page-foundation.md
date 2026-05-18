@@ -43,6 +43,7 @@
 ## 布局规则
 
 - `PageLayout` 的 footer 只有存在真实 footer/bottom 内容时才渲染固定区域，并默认给整个 footer 区域白色背景，确保底部操作栏和安全区占位视觉连续。
+- `PageLayout` 首次测量 header/footer 高度前会用白色测量遮罩盖住主内容区，测量完成后淡出，避免 header spacer 首次落位时页面内容裸眼跳动；页面层不要再自己写首屏遮罩处理这个问题。
 - 页面涉及底部固定栏、footer、弹层底部操作区时，不要再在页面或组件里追加 `env(safe-area-inset-bottom)`；安全区由 `PageLayout / layout` 统一承接，页面只写业务需要的常规 padding。
 - 页面级弹层、浮层和遮罩默认放入 `PageShell` 的直接子节点 `PageShare` / `PageRoot`，不要放在滚动内容里；日期、优惠券、规则说明、SKU、筛选、支付确认类弹层都必须高于 `PageLayout` 的 header/footer/tabbar。
 - 全局 loading、popup、runtime host、toast bridge、页面级 overlay 等全局状态组件，最外层 host 节点必须常驻渲染；显示隐藏只控制下一层真实节点或 class，避免 `PageLayout` / `ScrollView` 周边节点增删导致滚动回到顶部。

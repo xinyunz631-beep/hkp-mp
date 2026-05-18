@@ -50,6 +50,8 @@ export function PageLayout({
   const [headerHeight, setHeaderHeight] = useState(0);
   const [footerHeight, setFooterHeight] = useState(0);
   const [layoutActive, setLayoutActive] = useState(true);
+  const [chromeMeasured, setChromeMeasured] = useState(false);
+  const [measureCoverVisible, setMeasureCoverVisible] = useState(true);
   const [bottomSafeAreaNeeded] = useState(shouldReserveBottomSafeArea);
   const headerId = `${layoutId}-header`;
   const footerId = `${layoutId}-footer`;
@@ -78,6 +80,7 @@ export function PageLayout({
         setFooterHeight((currentHeight) => (
           Math.abs(currentHeight - nextFooterHeight) > 0.5 ? nextFooterHeight : currentHeight
         ));
+        setChromeMeasured(true);
       });
     });
   }, [footerId, headerId]);
@@ -107,6 +110,19 @@ export function PageLayout({
       clearTimeout(settleTimer);
     };
   });
+
+  // 首次测量前 header spacer 还没落位，用白色遮罩挡住主内容轻微跳动，测量完成后淡出。
+  useEffect(() => {
+    if (!chromeMeasured) return undefined;
+
+    const coverTimer = setTimeout(() => {
+      setMeasureCoverVisible(false);
+    }, 220);
+
+    return () => {
+      clearTimeout(coverTimer);
+    };
+  }, [chromeMeasured]);
 
   const scrollViewStyle: ScrollViewProps['style'] = hasScrollView
     ? typeof scrollViewProps?.style === 'string'
@@ -174,6 +190,14 @@ export function PageLayout({
       ) : null}
       {share ? <View className="page-layout__share">{share}</View> : null}
       {tabBar ? <View className="page-layout__tabbar">{tabBar}</View> : null}
+      {measureCoverVisible ? (
+        <View
+          className={classNames(
+            'page-layout__measure-cover',
+            chromeMeasured && 'page-layout__measure-cover--hidden',
+          )}
+        />
+      ) : null}
       {runtimeNode}
     </View>
   );
