@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import type { CSSProperties } from 'react';
 import { Canvas, Text, View } from '@tarojs/components';
 import Taro, { useDidHide, useDidShow } from '@tarojs/taro';
 import { observer } from 'mobx-react';
@@ -11,8 +12,20 @@ import './index.scss';
 
 const MEMBER_CODE_CANVAS_ID = 'member-code-canvas';
 const MEMBER_CODE_REFRESH_INTERVAL = 30_000;
-const MEMBER_CODE_CANVAS_SIZE = 300;
-const MEMBER_CODE_IMAGE_SIZE = 300;
+const MEMBER_CODE_CANVAS_SIZE_PX = 300;
+const MEMBER_CODE_DISPLAY_SIZE_RPX = 300;
+const WEAPP_DESIGN_WIDTH = 750;
+
+function resolveCanvasSizeRpx() {
+  try {
+    const systemInfo = Taro.getSystemInfoSync();
+    if (!systemInfo.windowWidth) return MEMBER_CODE_CANVAS_SIZE_PX * 2;
+
+    return Math.round((MEMBER_CODE_CANVAS_SIZE_PX * WEAPP_DESIGN_WIDTH) / systemInfo.windowWidth);
+  } catch {
+    return MEMBER_CODE_CANVAS_SIZE_PX * 2;
+  }
+}
 
 function convertCanvasToImage() {
   return new Promise<string>((resolve, reject) => {
@@ -20,10 +33,10 @@ function convertCanvasToImage() {
       canvasId: MEMBER_CODE_CANVAS_ID,
       x: 0,
       y: 0,
-      width: MEMBER_CODE_CANVAS_SIZE,
-      height: MEMBER_CODE_CANVAS_SIZE,
-      destWidth: MEMBER_CODE_IMAGE_SIZE,
-      destHeight: MEMBER_CODE_IMAGE_SIZE,
+      width: MEMBER_CODE_CANVAS_SIZE_PX,
+      height: MEMBER_CODE_CANVAS_SIZE_PX,
+      destWidth: MEMBER_CODE_CANVAS_SIZE_PX,
+      destHeight: MEMBER_CODE_CANVAS_SIZE_PX,
       success: (result) => resolve(result.tempFilePath),
       fail: reject,
     });
@@ -32,9 +45,14 @@ function convertCanvasToImage() {
 
 // 渲染会员码页面，先用 mock 服务生成二维码内容，后续可直接替换为真实接口。
 const MemberCodePage = observer(function MemberCodePage() {
+  const [canvasSizeRpx] = useState(resolveCanvasSizeRpx);
   const [memberCode, setMemberCode] = useState('');
   const [memberCodeImageSrc, setMemberCodeImageSrc] = useState('');
   const [pageVisible, setPageVisible] = useState(false);
+  const hiddenCanvasStyle: CSSProperties = {
+    width: `${canvasSizeRpx}rpx`,
+    height: `${canvasSizeRpx}rpx`,
+  };
 
   // 拉取会员码内容，页面初始化和定时刷新都复用这一条链路。
   const refreshMemberCode = useCallback(async () => {
@@ -54,8 +72,8 @@ const MemberCodePage = observer(function MemberCodePage() {
 
     Taro.nextTick(() => {
       drawQrcode({
-        width: MEMBER_CODE_CANVAS_SIZE,
-        height: MEMBER_CODE_CANVAS_SIZE,
+        width: MEMBER_CODE_CANVAS_SIZE_PX,
+        height: MEMBER_CODE_CANVAS_SIZE_PX,
         canvasId: MEMBER_CODE_CANVAS_ID,
         text: code,
         background: '#ffffff',
@@ -112,8 +130,8 @@ const MemberCodePage = observer(function MemberCodePage() {
                   className="_pg-qrcode_image"
                   src={memberCodeImageSrc}
                   mode="aspectFit"
-                  width={MEMBER_CODE_IMAGE_SIZE}
-                  height={MEMBER_CODE_IMAGE_SIZE}
+                  width={`${MEMBER_CODE_DISPLAY_SIZE_RPX}rpx`}
+                  height={`${MEMBER_CODE_DISPLAY_SIZE_RPX}rpx`}
                   showLoading={false}
                   showErrorIcon={false}
                 />
@@ -124,8 +142,8 @@ const MemberCodePage = observer(function MemberCodePage() {
           </View>
           <Text className="_pg-hint">老会员需要绑定，请至“我的”-“老会员绑定”</Text>
         </View>
-        <View className="_pg-qrcode_canvas-host">
-          <Canvas canvasId={MEMBER_CODE_CANVAS_ID} className="_pg-qrcode_canvas" />
+        <View className="_pg-qrcode_canvas-host" style={hiddenCanvasStyle}>
+          <Canvas canvasId={MEMBER_CODE_CANVAS_ID} className="_pg-qrcode_canvas" style={hiddenCanvasStyle} />
         </View>
       </PageShell>
     </View>
