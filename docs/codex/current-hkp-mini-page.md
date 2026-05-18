@@ -6,7 +6,7 @@
 - 当前阶段：`Phase D Core Batch - 订单售后评价交互补完`
 - 当前分支：`feature/hkp-mini-phase-7-polish-verify`
 - 基线提交：`36b7517 chore: 保存小程序当前开发基线`
-- 最近阶段提交：`382e6b2 docs: 标记非暂缓入口交互就绪`
+- 最近阶段提交：`6fe8839 fix: 修复会员码导航和二维码渲染`
 - 总控 Skill：`/Users/kite/.codex/skills/hkp-mini-build/SKILL.md`
 - 主执行 Skill：`$mpcode-page`
 
@@ -86,6 +86,8 @@
 - 售后申请补微信图片上传、预览、删除和提交反馈；创建评价补图片上传/预览/删除、内容校验、匿名切换和提交确认；评价列表补图片预览。
 - 本批轻量门禁已通过：`yarn typecheck`、`yarn check:page-convention`、`yarn check:package-boundary`、`yarn check:ui-contract`；`git diff --check` 通过；订单分包扫描未发现非暂缓占位文案、直接页面 `Taro.showToast` 或功能 icon 尺寸漂移。
 - 已将非暂缓入口页会员码、乐园聚合页、票务首页推进到 `interaction-ready`；registry 中剩余 `implemented` 均为约定最后处理的餐饮和分销/提现暂缓页。
+- 已按用户微信开发工具反馈修复会员码页：恢复 `PageShell` 默认自定义导航栏，页面顶部重新展示“会员码”和返回入口；二维码改为隐藏 canvas 生成后转成本地临时图片，再通过 `AppImage` 在白卡中展示，避免可见 canvas 被裁切。
+- 会员码页文档已更新到 v0.4，补齐交互矩阵、状态矩阵和微信开发工具验收清单；本次门禁已通过：`yarn typecheck`、`yarn check:page-convention`、`yarn check:package-boundary`、`yarn check:ui-contract`、`git diff --check`。
 
 ## 当前约束
 
@@ -100,8 +102,9 @@
 ## 下一步
 
 1. 由用户在微信开发工具按首页、我的、会员基础、商城、票务和酒店验收清单点验交互手感和视觉还原。
-2. 用户反馈不符合预期的点后，Codex 进入本批修复循环。
-3. 验收反馈修完后继续做核心页面视觉/交互回归与缺口修复；餐饮和分销/提现继续最后处理。
+2. 会员码页需要在微信开发工具重新编译后确认：顶部导航栏可见、左侧返回可用、白卡内展示完整二维码图片且不出现可见 canvas 裁切。
+3. 用户反馈不符合预期的点后，Codex 进入本批修复循环。
+4. 验收反馈修完后继续做核心页面视觉/交互回归与缺口修复；餐饮和分销/提现继续最后处理。
 
 ## 恢复方式
 
