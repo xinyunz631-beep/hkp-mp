@@ -1,6 +1,5 @@
 ._pg {
   position: relative;
-  min-height: 100vh;
   overflow: hidden;
   box-sizing: border-box;
   background: linear-gradient(180deg, #fff8fc 0%, #ffffff 34%, #f7fbff 100%);
@@ -37,7 +36,8 @@
 }
 
 ._pg-shell {
-  min-height: 100%;
+  min-height: 100vh;
+  background: linear-gradient(180deg, #fff8fc 0%, #ffffff 34%, #f7fbff 100%);
 }
 
 ._pg-scene {
@@ -46,8 +46,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  min-height: calc(100vh - 72px);
-  padding: 54px 28px 48px;
+  padding: 44px 28px 48px;
   box-sizing: border-box;
 }
 
