@@ -2,6 +2,7 @@ import { useState } from 'react';
 import Taro from '@tarojs/taro';
 import { Text, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
+import { AppIcon } from '@/core/components/AppIcon';
 import { PageShell } from '@/core/components/PageShell';
 import { HKP_PARK_LOCATION } from '@/core/constants/park-location';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
@@ -108,13 +109,16 @@ const ParkDetailPage = observer(function ParkDetailPage() {
                     <Text className="_pg-info_label">{item.label}</Text>
                     <View className="_pg-info_value-wrap">
                       <Text className="_pg-info_value">{item.value}</Text>
-                      <Text className="_pg-info_chevron">›</Text>
+                      <AppIcon name="arrowRight" className="_pg-info_chevron" size={16} color="#c0c5cf" />
                     </View>
                   </View>
                 ))}
                 <View className="_pg-info_row _pg-info_row--link" onClick={handleBookingEntry}>
                   <Text className="_pg-info_label">在线购票</Text>
-                  <Text className="_pg-info_action">前往预定 ›</Text>
+                  <View className="_pg-info_action">
+                    <Text>前往预定</Text>
+                    <AppIcon name="arrowRight" className="_pg-info_action-icon" size={16} color="#d94a88" />
+                  </View>
                 </View>
               </View>
             </DetailSection>

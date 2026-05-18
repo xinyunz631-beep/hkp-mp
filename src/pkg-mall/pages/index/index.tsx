@@ -176,7 +176,9 @@ const MallIndexPage = observer(function MallIndexPage() {
                 <View className="_pg-promo_content">
                   <Text className="_pg-promo_title">{card.title}</Text>
                   <Text className="_pg-promo_subtitle">{card.subtitle}</Text>
-                  <View className="_pg-promo_arrow">›</View>
+                  <View className="_pg-promo_arrow">
+                    <AppIcon name="arrowRight" size={14} color="#ffffff" />
+                  </View>
                 </View>
                 <AppImage className="_pg-promo_image" src={card.imageSrc} mode="aspectFit" emptyState="error" />
               </View>

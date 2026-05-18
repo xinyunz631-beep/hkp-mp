@@ -255,19 +255,22 @@ const ProductDetailPage = observer(function ProductDetailPage() {
             <View className="_pg-cell" onClick={() => openSkuPopup('cart')}>
               <Text className="_pg-cell_label">选择</Text>
               <Text className="_pg-cell_value">{selectedSkuText || '颜色、尺码'}</Text>
-              <Text className="_pg-cell_arrow">›</Text>
+              <AppIcon name="arrowRight" className="_pg-cell_arrow" size={16} color="#a1a1aa" />
             </View>
             <View className="_pg-cell" onClick={() => void handleParamsPress()}>
               <Text className="_pg-cell_label">参数</Text>
               <Text className="_pg-cell_value">品牌、型号、材质...</Text>
-              <Text className="_pg-cell_arrow">›</Text>
+              <AppIcon name="arrowRight" className="_pg-cell_arrow" size={16} color="#a1a1aa" />
             </View>
           </View>
 
           <View className="_pg-review">
             <View className="_pg-section_header">
               <Text className="_pg-section_title">评论（5236）</Text>
-              <Text className="_pg-section_more" onClick={() => Taro.navigateTo({ url: MINI_PACKAGE_ROUTES.orderReviewList })}>查看更多 ›</Text>
+              <View className="_pg-section_more" onClick={() => Taro.navigateTo({ url: MINI_PACKAGE_ROUTES.orderReviewList })}>
+                <Text>查看更多</Text>
+                <AppIcon name="arrowRight" className="_pg-section_more-icon" size={14} color="#a1a1aa" />
+              </View>
             </View>
             {reviews.map((review) => (
               <View className="_pg-review_card" key={review.id}>

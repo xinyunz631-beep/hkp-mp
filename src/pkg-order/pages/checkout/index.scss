@@ -77,9 +77,6 @@
   &_chevron {
     flex: none;
     margin-left: 16px;
-    color: #c0c5cf;
-    font-size: 36px;
-    line-height: 1;
   }
 }
 
@@ -172,10 +169,8 @@
   }
 
   &_chevron {
+    flex: none;
     margin-left: 10px;
-    color: #c0c5cf;
-    font-size: 36px;
-    line-height: 1;
   }
 
   &_value--amount {

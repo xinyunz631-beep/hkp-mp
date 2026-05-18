@@ -282,11 +282,8 @@
   }
 
   &_mark {
+    flex: none;
     margin-right: 16px;
-    color: #e5004f;
-    font-size: 38px;
-    font-weight: 900;
-    line-height: 1;
   }
 
   &_title {
@@ -307,11 +304,8 @@
   }
 
   &_arrow {
+    flex: none;
     margin-left: 8px;
-    color: #a1a1aa;
-    font-size: 36px;
-    font-weight: 500;
-    line-height: 0.8;
   }
 }
 

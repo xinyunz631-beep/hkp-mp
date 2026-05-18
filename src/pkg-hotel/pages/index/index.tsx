@@ -166,12 +166,18 @@ const HotelIndexPage = observer(function HotelIndexPage() {
                 <Text className="_pg-info-row_address">{activeHotel.address}</Text>
                 <Text className="_pg-info-row_area">{activeHotel.areaText}</Text>
               </View>
-              <Text className="_pg-info-row_action">地图/导航 ›</Text>
+              <View className="_pg-info-row_action">
+                <Text>地图/导航</Text>
+                <AppIcon name="arrowRight" className="_pg-info-row_arrow" size={16} color="#23262f" />
+              </View>
             </View>
 
             <View className="_pg-info-row" onClick={() => void handleIntroPress()}>
               <Text className="_pg-info-row_label">酒店介绍</Text>
-              <Text className="_pg-info-row_action">详情 ›</Text>
+              <View className="_pg-info-row_action">
+                <Text>详情</Text>
+                <AppIcon name="arrowRight" className="_pg-info-row_arrow" size={16} color="#23262f" />
+              </View>
             </View>
 
             <View className="_pg-stay">
@@ -211,7 +217,7 @@ const HotelIndexPage = observer(function HotelIndexPage() {
                   <View className="_pg-room-card_main">
                     <Text className="_pg-room-card_title">{room.title}</Text>
                     <Text className="_pg-room-card_tags">{room.tagsText}</Text>
-                    <Text className="_pg-room-card_arrow">›</Text>
+                    <AppIcon name="arrowRight" className="_pg-room-card_arrow" size={16} color="#9ca3af" />
                   </View>
                   <View className="_pg-room-card_aside">
                     <Text className="_pg-room-card_price">¥{room.price.toFixed(2)}</Text>

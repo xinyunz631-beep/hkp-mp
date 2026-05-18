@@ -87,7 +87,7 @@ function TicketBookingInfo({
         </View>
         <View className="_pg-info_link" onClick={onShowRules}>
           详情须知
-          <Text className="_pg-info_chevron">›</Text>
+          <AppIcon name="arrowRight" className="_pg-info_chevron" size={16} color="#c0c5cf" />
         </View>
       </View>
       <View className="_pg-info_divider" />
@@ -103,7 +103,7 @@ function TicketBookingInfo({
           onClick={() => openWechatLocation(parkInfo.mapLocation)}
         >
           地图
-          <Text className="_pg-info_chevron">›</Text>
+          <AppIcon name="arrowRight" className="_pg-info_chevron" size={16} color="#c0c5cf" />
         </View>
       </View>
       <View className="_pg-info_divider" />
@@ -113,7 +113,7 @@ function TicketBookingInfo({
         </View>
         <View className="_pg-info_link" onClick={() => callWechatPhone(parkInfo.hotline)}>
           拨打
-          <Text className="_pg-info_chevron">›</Text>
+          <AppIcon name="arrowRight" className="_pg-info_chevron" size={16} color="#c0c5cf" />
         </View>
       </View>
     </View>
@@ -137,7 +137,12 @@ function TicketBookingDateRow({
       </View>
       <View className="_pg-date_value">
         <Text>{travelDate}</Text>
-        <Text className={`_pg-date_chevron ${expanded ? '_pg-date_chevron--expanded' : ''}`}>›</Text>
+        <AppIcon
+          name="arrowRight"
+          className={`_pg-date_chevron ${expanded ? '_pg-date_chevron--expanded' : ''}`}
+          size={16}
+          color="#c0c5cf"
+        />
       </View>
     </View>
   );
@@ -158,7 +163,7 @@ function TicketCouponRow({
       </View>
       <View className="_pg-coupon_value">
         <Text>{couponText}</Text>
-        <Text className="_pg-coupon_chevron">›</Text>
+        <AppIcon name="arrowRight" className="_pg-coupon_chevron" size={16} color="#c0c5cf" />
       </View>
     </View>
   );
@@ -352,7 +357,9 @@ const TicketBookingPage = observer(function TicketBookingPage() {
               >
                 <View className="_pg-rules-popup_header">
                   <Text className="_pg-rules-popup_title">预定须知</Text>
-                  <Text className="_pg-rules-popup_close" onClick={() => setRulesPopupVisible(false)}>×</Text>
+                  <View className="_pg-rules-popup_close" onClick={() => setRulesPopupVisible(false)}>
+                    <AppIcon name="close" size={16} color="#8b909a" />
+                  </View>
                 </View>
                 <View className="_pg-rules-popup_list">
                   {bookingData.parkInfo.rules.map((rule) => (

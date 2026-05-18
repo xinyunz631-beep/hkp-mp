@@ -1,11 +1,13 @@
 #!/usr/bin/env node
 
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const rootDir = process.cwd();
 const registryPath = resolve(rootDir, 'docs/ui/page-registry.yaml');
 const failures = [];
+const sourceDir = resolve(rootDir, 'src');
+const forbiddenTextIconPattern = /[♡♥❤💕✨✦▱›→←★☆◆×✕✖📍📞☎]/u;
 
 function fail(message) {
   failures.push(message);
@@ -13,6 +15,42 @@ function fail(message) {
 
 function readText(path) {
   return readFileSync(resolve(rootDir, path), 'utf8');
+}
+
+function walkSourceFiles(dir) {
+  if (!existsSync(dir)) return [];
+
+  const files = [];
+
+  for (const entry of readdirSync(dir)) {
+    const fullPath = resolve(dir, entry);
+    const stat = statSync(fullPath);
+
+    if (stat.isDirectory()) {
+      files.push(...walkSourceFiles(fullPath));
+      continue;
+    }
+
+    if (/\.(ts|tsx)$/.test(entry) && !entry.endsWith('.d.ts')) files.push(fullPath);
+  }
+
+  return files;
+}
+
+function checkForbiddenTextIconGlyphs() {
+  const sourceFiles = walkSourceFiles(sourceDir);
+
+  for (const filePath of sourceFiles) {
+    const relativePath = filePath.replace(`${rootDir}/`, '');
+    const lines = readFileSync(filePath, 'utf8').split(/\r?\n/);
+
+    lines.forEach((line, index) => {
+      const matched = line.match(forbiddenTextIconPattern);
+      if (!matched) return;
+
+      fail(`${relativePath}:${index + 1} 禁止用文本符号 "${matched[0]}" 充当图标，应使用 AppIcon / NutUI icon / 项目图标组件`);
+    });
+  }
 }
 
 function getIndent(line) {
@@ -251,7 +289,15 @@ function checkPage(page) {
 
 function main() {
   const pages = parseRegistryPages();
+  checkForbiddenTextIconGlyphs();
+
   if (pages.length === 0) {
+    if (failures.length > 0) {
+      for (const message of failures) console.error(`FAIL ${message}`);
+      process.exitCode = 1;
+      return;
+    }
+
     console.log('OK 未发现登记页面，跳过页面约束检查');
     return;
   }
@@ -264,7 +310,7 @@ function main() {
     return;
   }
 
-  console.log('OK 小程序页面 PageShell、runtime、observer、navbar 和 _pg BEM 约束检查通过');
+  console.log('OK 小程序页面 PageShell、runtime、observer、navbar、_pg BEM 和文本图标约束检查通过');
 }
 
 main();

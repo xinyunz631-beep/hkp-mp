@@ -49,11 +49,17 @@
   }
 
   &_link {
+    display: flex;
+    align-items: center;
     flex: none;
     margin-left: 24px;
     color: #6b7280;
     font-size: 28px;
     line-height: 1.45;
+  }
+
+  &_link-icon {
+    margin-left: 6px;
   }
 
   &_tags {
@@ -115,10 +121,8 @@
   }
 
   &_chevron {
+    flex: none;
     margin-left: 10px;
-    color: #c0c5cf;
-    font-size: 36px;
-    line-height: 1;
   }
 
   &_column {
@@ -189,10 +193,8 @@
   }
 
   &_chevron {
+    flex: none;
     margin-left: 10px;
-    color: #c0c5cf;
-    font-size: 36px;
-    line-height: 1;
   }
 }
 

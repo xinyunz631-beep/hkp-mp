@@ -106,7 +106,10 @@ const CategoryListPage = observer(function CategoryListPage() {
             <View className="_pg-main">
               <View className="_pg-main_header">
                 <Text className="_pg-main_title">{categoryData?.sectionTitle}</Text>
-                <Text className="_pg-main_more" onClick={() => openPackagePage(MINI_PACKAGE_ROUTES.mallProducts)}>查看更多 ›</Text>
+                <View className="_pg-main_more" onClick={() => openPackagePage(MINI_PACKAGE_ROUTES.mallProducts)}>
+                  <Text>查看更多</Text>
+                  <AppIcon name="arrowRight" className="_pg-main_more-icon" size={14} color="#9da3ad" />
+                </View>
               </View>
 
               <View className="_pg-brand">

@@ -439,9 +439,11 @@
     position: absolute;
     top: -6px;
     right: 0;
-    color: $color-text-secondary;
-    font-size: 42px;
-    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
   }
 
   &__group {
@@ -567,9 +569,11 @@
 }
 
 .hkp-coupon-popup__close {
-  color: $color-text-secondary;
-  font-size: 42px;
-  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
 }
 
 .hkp-coupon-popup__list {

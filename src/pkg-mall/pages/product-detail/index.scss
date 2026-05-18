@@ -196,8 +196,7 @@
   }
 
   &_arrow {
-    color: #a1a1aa;
-    font-size: 30px;
+    flex: none;
   }
 }
 
@@ -216,8 +215,14 @@
   }
 
   &_more {
+    display: flex;
+    align-items: center;
     color: #a1a1aa;
     font-size: 22px;
+  }
+
+  &_more-icon {
+    margin-left: 6px;
   }
 }
 

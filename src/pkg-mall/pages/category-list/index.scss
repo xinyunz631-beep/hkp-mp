@@ -101,8 +101,14 @@
   }
 
   &_more {
+    display: flex;
+    align-items: center;
     color: #9da3ad;
     font-size: 22px;
+  }
+
+  &_more-icon {
+    margin-left: 6px;
   }
 }
 

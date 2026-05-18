@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import Taro from '@tarojs/taro';
 import { Input, Text, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
+import { AppIcon } from '@/core/components/AppIcon';
 import { CouponSelectionPopup, DateSelectionPopup, FixedSubmitBar, QuantityStepper } from '@/core/components/commerce';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { PageShare, PageShell } from '@/core/components/PageShell';
@@ -147,7 +148,7 @@ const CheckoutPage = observer(function CheckoutPage() {
                   <Text className="_pg-item_label">游玩日期</Text>
                   <View className="_pg-item_value">
                     <Text>{selectedDate}</Text>
-                    <Text className="_pg-item_chevron">›</Text>
+                    <AppIcon name="arrowRight" className="_pg-item_chevron" size={16} color="#c0c5cf" />
                   </View>
                 </View>
                 <Text className="_pg-item_tag">{checkoutData.ticketItem.tagText}</Text>
@@ -229,7 +230,7 @@ const CheckoutPage = observer(function CheckoutPage() {
                 <Text className="_pg-line-row_label">优惠券</Text>
                 <View className="_pg-line-row_coupon">
                   <Text className="_pg-line-row_coupon-tag">{couponText}</Text>
-                  <Text className="_pg-line-row_chevron">›</Text>
+                  <AppIcon name="arrowRight" className="_pg-line-row_chevron" size={16} color="#c0c5cf" />
                 </View>
               </View>
             </View>

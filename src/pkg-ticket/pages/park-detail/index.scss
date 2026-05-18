@@ -143,15 +143,18 @@
   &_chevron {
     flex: none;
     margin-left: 10px;
-    color: #c0c5cf;
-    font-size: 34px;
-    line-height: 1;
   }
 
   &_action {
+    display: flex;
+    align-items: center;
     color: #e779a7;
     font-size: 30px;
     font-weight: 600;
     line-height: 1.5;
+  }
+
+  &_action-icon {
+    margin-left: 6px;
   }
 }

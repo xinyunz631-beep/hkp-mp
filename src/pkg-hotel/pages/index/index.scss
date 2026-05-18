@@ -170,8 +170,14 @@
   }
 
   &_action {
+    display: flex;
+    align-items: center;
     flex: none;
     margin-left: 24px;
+  }
+
+  &_arrow {
+    margin-left: 6px;
   }
 }
 
@@ -319,11 +325,9 @@
   }
 
   &_arrow {
-    display: block;
+    display: flex;
+    align-items: center;
     margin-top: 10px;
-    color: #9ca3af;
-    font-size: 34px;
-    line-height: 1;
   }
 
   &_aside {

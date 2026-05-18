@@ -2,6 +2,7 @@ import { Text, View } from '@tarojs/components';
 import { Calendar, InputNumber } from '@nutui/nutui-react-taro';
 import classNames from 'classnames';
 import type { ReactNode } from 'react';
+import { AppIcon } from '@/core/components/AppIcon';
 import { AppImage } from '@/core/components/AppImage';
 import { AppPopup } from '@/core/components/AppPopup';
 import { formatCurrency } from '@/core/utils/money';
@@ -357,7 +358,7 @@ export function SkuPopup({
             <Text className="hkp-sku-popup__title">{product.title}</Text>
           </View>
           <View className="hkp-sku-popup__close" onClick={onClose}>
-            <Text>×</Text>
+            <AppIcon name="close" size={16} color="#667085" />
           </View>
         </View>
         {skuGroups.map((group) => (
@@ -467,7 +468,9 @@ export function CouponSelectionPopup({
     <AppPopup visible={visible} contentClassName="hkp-coupon-popup" onClose={onClose}>
       <View className="hkp-coupon-popup__header">
         <Text className="hkp-coupon-popup__title">{title}</Text>
-        <Text className="hkp-coupon-popup__close" onClick={onClose}>×</Text>
+        <View className="hkp-coupon-popup__close" onClick={onClose}>
+          <AppIcon name="close" size={16} color="#667085" />
+        </View>
       </View>
       <View className="hkp-coupon-popup__list">
         {coupons.map((coupon) => (

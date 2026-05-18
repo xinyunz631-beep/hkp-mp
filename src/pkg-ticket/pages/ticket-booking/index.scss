@@ -109,10 +109,8 @@
   }
 
   &_chevron {
+    flex: none;
     margin-left: 8px;
-    color: #9ca3af;
-    font-size: 40px;
-    line-height: 1;
   }
 
   &_divider {
@@ -155,10 +153,8 @@
   }
 
   &_chevron {
+    flex: none;
     margin-left: 8px;
-    color: #9ca3af;
-    font-size: 40px;
-    line-height: 1;
     transition: transform 180ms ease;
 
     &--expanded {
@@ -217,10 +213,8 @@
   }
 
   &_chevron {
+    flex: none;
     margin-left: 8px;
-    color: #9ca3af;
-    font-size: 40px;
-    line-height: 1;
   }
 }
 
@@ -355,9 +349,11 @@
   }
 
   &_close {
-    color: #9ca3af;
-    font-size: 42px;
-    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
   }
 
   &_list {

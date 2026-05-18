@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import Taro from '@tarojs/taro';
 import { Input, Text, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
+import { AppIcon } from '@/core/components/AppIcon';
 import { FixedSubmitBar } from '@/core/components/commerce';
 import { PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
@@ -167,7 +168,8 @@ const CheckoutPage = observer(function CheckoutPage() {
                     className="_pg-room_link"
                     onClick={() => Taro.navigateTo({ url: `${MINI_PACKAGE_ROUTES.hotelRoomDetail}?roomId=${currentRoomId}` })}
                   >
-                    房型详情 ›
+                    <Text>房型详情</Text>
+                    <AppIcon name="arrowRight" className="_pg-room_link-icon" size={16} color="#6b7280" />
                   </View>
                 </View>
                 <Text className="_pg-room_tags">{checkoutData.roomTagsText}</Text>
@@ -185,7 +187,7 @@ const CheckoutPage = observer(function CheckoutPage() {
                   <Text className="_pg-form_label">房间数</Text>
                   <View className="_pg-form_value">
                     <Text>{roomCount}间</Text>
-                    <Text className="_pg-form_chevron">›</Text>
+                    <AppIcon name="arrowRight" className="_pg-form_chevron" size={16} color="#c0c5cf" />
                   </View>
                 </View>
 
@@ -231,7 +233,7 @@ const CheckoutPage = observer(function CheckoutPage() {
                 <Text className="_pg-line-row_label">优惠券</Text>
                 <View className="_pg-line-row_value-wrap">
                   <Text className="_pg-line-row_coupon">{checkoutData.couponText}</Text>
-                  <Text className="_pg-line-row_chevron">›</Text>
+                  <AppIcon name="arrowRight" className="_pg-line-row_chevron" size={16} color="#c0c5cf" />
                 </View>
               </View>
             </View>
@@ -241,7 +243,7 @@ const CheckoutPage = observer(function CheckoutPage() {
                 <Text className="_pg-line-row_label">折扣信息</Text>
                 <View className="_pg-line-row_value-wrap">
                   <Text className="_pg-line-row_value">{discountText}</Text>
-                  <Text className="_pg-line-row_chevron">›</Text>
+                  <AppIcon name="arrowRight" className="_pg-line-row_chevron" size={16} color="#c0c5cf" />
                 </View>
               </View>
             </View>

@@ -328,12 +328,12 @@ const HomePage = observer(function HomePage() {
             <View className="_pg-section _pg-section--rank">
               <View className="_pg-section_header">
                 <View className="_pg-section_title-wrap">
-                  <Text className="_pg-section_mark">♡</Text>
+                  <AppIcon name="heart" className="_pg-section_mark" size={16} color="#e5004f" />
                   <Text className="_pg-section_title">热玩榜单</Text>
                 </View>
                 <View className="_pg-section_more" onClick={() => handleSectionMorePress('rank')}>
                   <Text>查看全部</Text>
-                  <Text className="_pg-section_arrow">›</Text>
+                  <AppIcon name="arrowRight" className="_pg-section_arrow" size={16} color="#a1a1aa" />
                 </View>
               </View>
               <ScrollView className="_pg-rank_scroll" scrollX enhanced showScrollbar={false}>
@@ -363,12 +363,12 @@ const HomePage = observer(function HomePage() {
             <View className="_pg-section">
               <View className="_pg-section_header">
                 <View className="_pg-section_title-wrap">
-                  <Text className="_pg-section_mark">✦</Text>
+                  <AppIcon name="gift" className="_pg-section_mark" size={16} color="#e5004f" />
                   <Text className="_pg-section_title">精选活动</Text>
                 </View>
                 <View className="_pg-section_more" onClick={() => handleSectionMorePress('activity')}>
                   <Text>查看全部</Text>
-                  <Text className="_pg-section_arrow">›</Text>
+                  <AppIcon name="arrowRight" className="_pg-section_arrow" size={16} color="#a1a1aa" />
                 </View>
               </View>
               {activityCards.map((card) => (
@@ -388,12 +388,12 @@ const HomePage = observer(function HomePage() {
             <View className="_pg-section">
               <View className="_pg-section_header">
                 <View className="_pg-section_title-wrap">
-                  <Text className="_pg-section_mark">✦</Text>
+                  <AppIcon name="ticket" className="_pg-section_mark" size={16} color="#e5004f" />
                   <Text className="_pg-section_title">精彩推荐</Text>
                 </View>
                 <View className="_pg-section_more" onClick={() => handleSectionMorePress('recommend')}>
                   <Text>查看全部</Text>
-                  <Text className="_pg-section_arrow">›</Text>
+                  <AppIcon name="arrowRight" className="_pg-section_arrow" size={16} color="#a1a1aa" />
                 </View>
               </View>
               <View className="_pg-card-grid">
@@ -417,12 +417,12 @@ const HomePage = observer(function HomePage() {
             <View className="_pg-section _pg-section--last">
               <View className="_pg-section_header">
                 <View className="_pg-section_title-wrap">
-                  <Text className="_pg-section_mark">▱</Text>
+                  <AppIcon name="location" className="_pg-section_mark" size={16} color="#e5004f" />
                   <Text className="_pg-section_title">玩转乐园</Text>
                 </View>
                 <View className="_pg-section_more" onClick={() => handleSectionMorePress('play')}>
                   <Text>查看全部</Text>
-                  <Text className="_pg-section_arrow">›</Text>
+                  <AppIcon name="arrowRight" className="_pg-section_arrow" size={16} color="#a1a1aa" />
                 </View>
               </View>
               <View className="_pg-play_grid">

@@ -2,6 +2,7 @@ import Taro from '@tarojs/taro';
 import { Text, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
 import { useState } from 'react';
+import { AppIcon } from '@/core/components/AppIcon';
 import { AppImage } from '@/core/components/AppImage';
 import { FixedSubmitBar } from '@/core/components/commerce';
 import { PageShell } from '@/core/components/PageShell';
@@ -92,7 +93,7 @@ const CheckoutPage = observer(function CheckoutPage() {
                     {checkoutData.address.region}
                     {checkoutData.address.detail}
                   </Text>
-                  <Text className="_pg-address_chevron">›</Text>
+                  <AppIcon name="arrowRight" className="_pg-address_chevron" size={16} color="#c0c5cf" />
                 </View>
               </View>
             </View>
@@ -136,7 +137,7 @@ const CheckoutPage = observer(function CheckoutPage() {
                 <Text className="_pg-line-row_label">优惠券</Text>
                 <View className="_pg-line-row_value-wrap">
                   <Text className="_pg-line-row_coupon">{checkoutData.couponText}</Text>
-                  <Text className="_pg-line-row_chevron">›</Text>
+                  <AppIcon name="arrowRight" className="_pg-line-row_chevron" size={16} color="#c0c5cf" />
                 </View>
               </View>
             </View>
@@ -148,7 +149,7 @@ const CheckoutPage = observer(function CheckoutPage() {
                   <Text className="_pg-line-row_value">
                     {checkoutData.discountText === '无可用' ? `已优惠 ¥${checkoutData.discountAmount.toFixed(2)}` : checkoutData.discountText}
                   </Text>
-                  <Text className="_pg-line-row_chevron">›</Text>
+                  <AppIcon name="arrowRight" className="_pg-line-row_chevron" size={16} color="#c0c5cf" />
                 </View>
               </View>
             </View>
