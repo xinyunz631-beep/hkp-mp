@@ -103,7 +103,7 @@
 
 ## 页面场景优先映射
 
-- 搜索页：优先看 `SearchBar`，但落地前先评估是否需要封装为项目搜索头组件。
+- 搜索页：优先使用项目组件 `AppSearchBar`，底层为 NutUI `SearchBar`；页面不要手写搜索输入框、清除按钮或搜索图标。
 - 订单/优惠券/售后筛选：优先看 `Tabs`、`Cell`、`Popup`，再结合现有 `FilterTabs` / `StatusListTabs`。
 - 日期选择：先查 `DateRangePanel`；如果业务需要更完整日历选择，再评估 NutUI `Calendar` / `DatePicker` 并封装。
 - 弹层日历选择：优先使用 `DateSelectionPopup`，底层为 NutUI `Calendar`；门票用 `single`，酒店用 `range`。

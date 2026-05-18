@@ -1,0 +1,28 @@
+.app-search-bar {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  --nutui-searchbar-width: 100%;
+  --nutui-searchbar-padding: 0;
+  --nutui-searchbar-background: transparent;
+  --nutui-searchbar-content-padding: 0 18px;
+  --nutui-searchbar-content-background: #f5f6f8;
+  --nutui-searchbar-input-height: 62px;
+  --nutui-searchbar-content-round-border-radius: 999px;
+  --nutui-searchbar-font-size: 22px;
+  --nutui-searchbar-input-padding: 0 6px;
+  --nutui-searchbar-input-text-color: #26292f;
+  --nutui-searchbar-input-curror-color: #db2777;
+}
+
+.app-search-bar .nut-searchbar-content {
+  min-width: 0;
+}
+
+.app-search-bar .nut-searchbar-input {
+  min-width: 0;
+}
+
+.app-search-bar .nut-searchbar-clear {
+  color: #9da3ad;
+}

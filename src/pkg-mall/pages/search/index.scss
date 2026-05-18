@@ -34,33 +34,8 @@
 }
 
 ._pg-search {
-  display: flex;
-  align-items: center;
-  gap: 14px;
   flex: 1;
-  height: 62px;
-  padding: 0 18px;
-  border-radius: 999px;
-  background: #f5f6f8;
-
-  &_text {
-    min-width: 0;
-    flex: 1;
-    color: #26292f;
-    font-size: 22px;
-  }
-
-  &_clear {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    border-radius: 999px;
-    background: #9da3ad;
-    color: #ffffff;
-    font-size: 22px;
-  }
+  min-width: 0;
 }
 
 ._pg-cancel {
