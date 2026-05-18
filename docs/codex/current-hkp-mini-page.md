@@ -3,10 +3,10 @@
 ## 当前状态
 
 - 更新时间：`2026-05-18`
-- 当前阶段：`Phase D Core Batch - 票务酒店交互补完`
+- 当前阶段：`Phase D Core Batch - 订单售后评价交互补完`
 - 当前分支：`feature/hkp-mini-phase-7-polish-verify`
 - 基线提交：`36b7517 chore: 保存小程序当前开发基线`
-- 最近阶段提交：`dc3eac0 feat: 补齐酒店票务剩余交互`
+- 最近阶段提交：`0da1152 feat: 补齐订单售后评价交互`
 - 总控 Skill：`/Users/kite/.codex/skills/hkp-mini-build/SKILL.md`
 - 主执行 Skill：`$mpcode-page`
 
@@ -79,6 +79,12 @@
 - 酒店房间详情补主图预览和底部立即预订；酒店确认订单补房间数调整、入住人动态字段、手机号校验、优惠/折扣 modal、模拟微信支付、本地订单生成和订单详情跳转。
 - 已新增页面约束：`navbar={false}` 的非全屏业务页必须在 `PageHeader` 内保留显式返回入口并统一调用 `navigateBackOrHome()`；搜索页源码和当前 `dist` 均已确认包含左侧返回。
 - 本批轻量门禁已通过：`yarn typecheck`、`yarn check:page-convention`、`yarn check:package-boundary`、`yarn check:ui-contract`；`git diff --check` 通过；酒店/票务扫描未发现非暂缓占位文案或直接 `Taro.showToast`。
+- 已完成订单 + 售后 + 地址 + 评价交互补完批次：订单首页、订单详情、确认订单、地址管理、取消订单、售后类型/申请/列表/进度、物流详情、创建评价、评价列表均推进到 `interaction-ready`。
+- 订单确认页补商品图预览、优惠/折扣 modal、模拟微信支付、本地订单写入和订单详情跳转；订单首页合流展示本地订单。
+- 地址管理补默认地址、新增、编辑、删除本地状态闭环；取消订单补原因校验和微信 modal 二次确认。
+- 物流详情补商品图预览、快递单号复制、官方电话拨号和确认收货状态反馈。
+- 售后申请补微信图片上传、预览、删除和提交反馈；创建评价补图片上传/预览/删除、内容校验、匿名切换和提交确认；评价列表补图片预览。
+- 本批轻量门禁已通过：`yarn typecheck`、`yarn check:page-convention`、`yarn check:package-boundary`、`yarn check:ui-contract`；`git diff --check` 通过；订单分包扫描未发现非暂缓占位文案、直接页面 `Taro.showToast` 或功能 icon 尺寸漂移。
 
 ## 当前约束
 
@@ -94,7 +100,7 @@
 
 1. 由用户在微信开发工具按首页、我的、会员基础、商城、票务和酒店验收清单点验交互手感和视觉还原。
 2. 用户反馈不符合预期的点后，Codex 进入本批修复循环。
-3. 验收反馈修完后继续进入订单 + 售后 + 地址 + 评价商用级补完；餐饮和分销/提现继续最后处理。
+3. 验收反馈修完后继续做核心页面视觉/交互回归与缺口修复；餐饮和分销/提现继续最后处理。
 
 ## 恢复方式
 
