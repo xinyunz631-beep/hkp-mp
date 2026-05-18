@@ -108,15 +108,20 @@ const CategoryPage = observer(function CategoryPage() {
         <View className="_pg-page">
           <View className="_pg-layout">
             <View className="_pg-sidebar">
-              {categories.map((item) => (
-                <View
-                  className={`_pg-sidebar_item ${item.id === currentCategoryId ? '_pg-sidebar_item--active' : ''}`}
-                  key={item.id}
-                  onClick={() => handleCategoryPress(item.id)}
-                >
-                  <Text>{item.title}</Text>
-                </View>
-              ))}
+              {categories.map((item) => {
+                const active = item.id === currentCategoryId;
+
+                return (
+                  <View
+                    className={`_pg-sidebar_item ${active ? '_pg-sidebar_item--active' : ''}`}
+                    key={item.id}
+                    onClick={() => handleCategoryPress(item.id)}
+                  >
+                    {active ? <View className="_pg-sidebar_indicator" /> : null}
+                    <Text>{item.title}</Text>
+                  </View>
+                );
+              })}
             </View>
 
             <View className="_pg-main">

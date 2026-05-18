@@ -45,17 +45,16 @@
     &--active {
       color: #d94a88;
       font-weight: 700;
-
-      &::after {
-        position: absolute;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        height: 4px;
-        background: #d94a88;
-        content: '';
-      }
     }
+  }
+
+  &_indicator {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 4px;
+    background: #d94a88;
   }
 }
 

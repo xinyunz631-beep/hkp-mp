@@ -121,18 +121,23 @@ const HotelIndexPage = observer(function HotelIndexPage() {
         >
           <View className="_pg-content">
             <View className="_pg-tabs">
-              {pageData.hotels.map((hotel) => (
-                <View
-                  className={`_pg-tabs_item ${hotel.id === activeHotel.id ? '_pg-tabs_item--active' : ''}`}
-                  key={hotel.id}
-                  onClick={() => {
-                    setActiveHotelId(hotel.id);
-                    setActiveFilterKey(pageData.filterOptions[0]?.key ?? '');
-                  }}
-                >
-                  <Text>{hotel.label}</Text>
-                </View>
-              ))}
+              {pageData.hotels.map((hotel) => {
+                const active = hotel.id === activeHotel.id;
+
+                return (
+                  <View
+                    className={`_pg-tabs_item ${active ? '_pg-tabs_item--active' : ''}`}
+                    key={hotel.id}
+                    onClick={() => {
+                      setActiveHotelId(hotel.id);
+                      setActiveFilterKey(pageData.filterOptions[0]?.key ?? '');
+                    }}
+                  >
+                    <Text>{hotel.label}</Text>
+                    {active ? <View className="_pg-tabs_indicator" /> : null}
+                  </View>
+                );
+              })}
             </View>
 
             <View className="_pg-hero">

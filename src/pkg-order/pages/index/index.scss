@@ -37,18 +37,17 @@
     &--active {
       color: #23262f;
       font-weight: 700;
-
-      &::after {
-        position: absolute;
-        left: 24px;
-        right: 24px;
-        bottom: 0;
-        height: 4px;
-        border-radius: 999px;
-        background: #d94a88;
-        content: '';
-      }
     }
+  }
+
+  &_indicator {
+    position: absolute;
+    left: 24px;
+    right: 24px;
+    bottom: 0;
+    height: 4px;
+    border-radius: 999px;
+    background: #d94a88;
   }
 }
 

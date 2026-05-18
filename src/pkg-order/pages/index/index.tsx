@@ -44,15 +44,20 @@ const OrderIndexPage = observer(function OrderIndexPage() {
         <PageShell title="我的订单" className="_pg-shell" reserveTabBarSpace={false}>
           <View className="_pg-content">
             <View className="_pg-tabs">
-              {pageData.tabs.map((tab) => (
-                <View
-                  className={`_pg-tabs_item ${tab.key === activeTabKey ? '_pg-tabs_item--active' : ''}`}
-                  key={tab.key}
-                  onClick={() => setActiveTabKey(tab.key)}
-                >
-                  <Text>{tab.text}</Text>
-                </View>
-              ))}
+              {pageData.tabs.map((tab) => {
+                const active = tab.key === activeTabKey;
+
+                return (
+                  <View
+                    className={`_pg-tabs_item ${active ? '_pg-tabs_item--active' : ''}`}
+                    key={tab.key}
+                    onClick={() => setActiveTabKey(tab.key)}
+                  >
+                    <Text>{tab.text}</Text>
+                    {active ? <View className="_pg-tabs_indicator" /> : null}
+                  </View>
+                );
+              })}
             </View>
 
             {visibleSections.map((section) => (

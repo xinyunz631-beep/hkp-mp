@@ -70,17 +70,16 @@
       font-weight: 700;
       background: #fffafc;
     }
+  }
 
-    &--active::before {
-      content: '';
-      position: absolute;
-      left: 0;
-      top: 32px;
-      width: 8px;
-      height: 60px;
-      border-radius: 999px;
-      background: $color-primary;
-    }
+  &_indicator {
+    position: absolute;
+    left: 0;
+    top: 32px;
+    width: 8px;
+    height: 60px;
+    border-radius: 999px;
+    background: $color-primary;
   }
 }
 
