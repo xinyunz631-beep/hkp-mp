@@ -1,3 +1,4 @@
+import { HKP_PARK_LOCATION } from '@/core/constants/park-location';
 import { resolveMockData } from '@/core/services/mock';
 import { ticketCoupons, ticketDates } from './mock-data';
 import type { HkpCouponSummary } from '@/core/types/hkp';
@@ -58,10 +59,7 @@ const ticketBookingData: TicketBookingData = {
       '园区营业时间可能因天气、活动或设备维护调整，请以当日公告为准。',
     ],
     mapLocation: {
-      latitude: 30.6382,
-      longitude: 119.6826,
-      name: '杭州 Hello Kitty 乐园',
-      address: '浙江安吉县昌硕街道天使大道1号',
+      ...HKP_PARK_LOCATION,
     },
   },
   dates: ticketDates,

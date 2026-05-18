@@ -3,16 +3,12 @@ import Taro from '@tarojs/taro';
 import { Text, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
 import { PageShell } from '@/core/components/PageShell';
+import { HKP_PARK_LOCATION } from '@/core/constants/park-location';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import { callWechatPhone, openWechatLocation, showWechatConfirm } from '@/core/utils/wechat-actions';
 import { fetchParkDetailData, type TicketParkDetailData } from '@/pkg-ticket/services/park-detail';
 import './index.scss';
-
-const PARK_LOCATION = {
-  latitude: 30.6269,
-  longitude: 119.6817,
-};
 
 interface DetailSectionProps {
   title: string;
@@ -49,8 +45,7 @@ const ParkDetailPage = observer(function ParkDetailPage() {
 
     if (label.includes('地址')) {
       await openWechatLocation({
-        ...PARK_LOCATION,
-        name: detailData?.park.name || 'Hello Kitty Park',
+        ...HKP_PARK_LOCATION,
         address: value,
       });
       return;

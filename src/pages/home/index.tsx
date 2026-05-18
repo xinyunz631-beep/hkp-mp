@@ -5,6 +5,7 @@ import { observer } from 'mobx-react';
 import { AppIcon } from '@/core/components/AppIcon';
 import { AppImage } from '@/core/components/AppImage';
 import { PageShell } from '@/core/components/PageShell';
+import { HKP_PARK_HOTLINE, HKP_PARK_LOCATION } from '@/core/constants/park-location';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import { fetchCouponUsedCount } from '@/core/services/home';
@@ -52,14 +53,6 @@ interface HomeBannerEntry {
   path: MiniPackageRoute;
   requireLogin?: boolean;
 }
-
-const PARK_PHONE = '4009778899';
-const PARK_LOCATION = {
-  latitude: 30.6382,
-  longitude: 119.6826,
-  name: '杭州 Hello Kitty 乐园',
-  address: '浙江省湖州市安吉县天使大道1号',
-};
 
 const shortcutEntries: HomeShortcutEntry[] = [
   { key: 'exchange', title: '兑换专区', path: MINI_PACKAGE_ROUTES.memberHome, requireLogin: true },
@@ -153,12 +146,12 @@ const HomePage = observer(function HomePage() {
   // 点击快捷入口时根据配置选择分包跳转、登录守卫或业务提示。
   async function handleHomeAction(action?: HomeShortcutEntry['action'] | HomeSectionCard['action'] | HomePlayCategory['action']) {
     if (action === 'phone') {
-      await callWechatPhone(PARK_PHONE);
+      await callWechatPhone(HKP_PARK_HOTLINE);
       return;
     }
 
     if (action === 'location') {
-      await openWechatLocation(PARK_LOCATION);
+      await openWechatLocation(HKP_PARK_LOCATION);
       return;
     }
 
