@@ -6,7 +6,7 @@
 - 当前阶段：`Phase D Core Batch - 订单售后评价交互补完`
 - 当前分支：`feature/hkp-mini-phase-7-polish-verify`
 - 基线提交：`36b7517 chore: 保存小程序当前开发基线`
-- 最近阶段提交：`a1e175e feat: 补齐商城搜索框交互`
+- 最近阶段提交：`62df521 refactor: 替换业务页伪类状态指示`
 - 总控 Skill：`/Users/kite/.codex/skills/hkp-mini-build/SKILL.md`
 - 主执行 Skill：`$mpcode-page`
 
@@ -89,6 +89,7 @@
 - 已按用户微信开发工具反馈修复会员码页：恢复 `PageShell` 默认自定义导航栏，页面顶部重新展示“会员码”和返回入口；二维码改为隐藏 canvas 生成后转成本地临时图片，再通过 `AppImage` 在白卡中展示，避免可见 canvas 被裁切。
 - 会员码页文档已更新到 v0.4，补齐交互矩阵、状态矩阵和微信开发工具验收清单；本次门禁已通过：`yarn typecheck`、`yarn check:page-convention`、`yarn check:package-boundary`、`yarn check:ui-contract`、`git diff --check`。
 - 已继续补齐商城搜索页交互：新增项目组件 `AppSearchBar`，底层使用 NutUI `SearchBar`；搜索页输入、清除、键盘搜索和空关键词 toast 已形成闭环，修复原清除按钮误触发搜索的问题；页面文档和 NutUI 组件选型清单已同步。
+- 已继续清理业务页面功能性伪类状态指示：商城分类、分类商品、酒店首页和订单首页的 active 指示条已从 `::before/::after` 改为真实 `View` 节点；剩余伪类仅保留在骨架装饰、会员码背景氛围和全局 button reset。
 
 ## 当前约束
 
