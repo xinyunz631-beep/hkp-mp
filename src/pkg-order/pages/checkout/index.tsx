@@ -7,7 +7,8 @@ import { FixedSubmitBar } from '@/core/components/commerce';
 import { PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
-import { fetchCheckoutData, type OrderCheckoutData } from '@/pkg-order/services/checkout';
+import { previewWechatImages, showWechatConfirm, showWechatToast } from '@/core/utils/wechat-actions';
+import { fetchCheckoutData, submitOrderCheckoutOrder, type OrderCheckoutData } from '@/pkg-order/services/checkout';
 import './index.scss';
 
 const CheckoutPage = observer(function CheckoutPage() {
@@ -18,6 +19,45 @@ const CheckoutPage = observer(function CheckoutPage() {
       setCheckoutData(nextData);
     },
   });
+
+  async function handleCouponPress() {
+    if (!checkoutData) return;
+
+    await showWechatConfirm({
+      title: '优惠券',
+      content: `${checkoutData.couponText} 已自动匹配当前订单，支付时将同步抵扣。`,
+      confirmText: '知道了',
+      cancelText: '关闭',
+    });
+  }
+
+  async function handleDiscountPress() {
+    if (!checkoutData) return;
+
+    await showWechatConfirm({
+      title: '折扣信息',
+      content: `当前订单已优惠 ¥${checkoutData.discountAmount.toFixed(2)}，最终以支付结果为准。`,
+      confirmText: '知道了',
+      cancelText: '关闭',
+    });
+  }
+
+  async function handleSubmit() {
+    if (!checkoutData) return;
+
+    const confirmed = await showWechatConfirm({
+      title: '模拟微信支付',
+      content: `确认支付 ¥${checkoutData.totalAmount.toFixed(2)}？`,
+      confirmText: '支付',
+      cancelText: '再看看',
+    });
+
+    if (!confirmed) return;
+
+    const order = submitOrderCheckoutOrder(checkoutData);
+    await showWechatToast('支付成功', 'success');
+    Taro.navigateTo({ url: `${MINI_PACKAGE_ROUTES.orderDetail}?orderId=${encodeURIComponent(order.id)}` });
+  }
 
   return pageRuntime.renderPage(() => {
     if (!checkoutData) return null;
@@ -35,7 +75,7 @@ const CheckoutPage = observer(function CheckoutPage() {
               amountText={<Text className="_pg-submit_amount">¥{checkoutData.totalAmount.toFixed(2)}</Text>}
               extra={<Text className="_pg-submit_extra">已优惠: ¥{checkoutData.discountAmount.toFixed(2)}</Text>}
               buttonText="去支付"
-              onSubmit={() => Taro.showToast({ title: '支付能力即将开放', icon: 'none' })}
+              onSubmit={() => void handleSubmit()}
             />
           )}
         >
@@ -67,7 +107,12 @@ const CheckoutPage = observer(function CheckoutPage() {
             <View className="_pg-card">
               {checkoutData.products.map((item) => (
                 <View className="_pg-product" key={item.id}>
-                  <AppImage className="_pg-product_image" src={item.imageSrc} mode="aspectFill" />
+                  <AppImage
+                    className="_pg-product_image"
+                    src={item.imageSrc}
+                    mode="aspectFill"
+                    onClick={() => previewWechatImages({ urls: [item.imageSrc], emptyText: '暂无商品大图' })}
+                  />
                   <View className="_pg-product_main">
                     <Text className="_pg-product_title">{item.title}</Text>
                     <Text className="_pg-product_spec">{item.specText}</Text>
@@ -87,7 +132,7 @@ const CheckoutPage = observer(function CheckoutPage() {
             </View>
 
             <View className="_pg-card _pg-card--compact">
-              <View className="_pg-line-row _pg-line-row--link">
+              <View className="_pg-line-row _pg-line-row--link" onClick={() => void handleCouponPress()}>
                 <Text className="_pg-line-row_label">优惠券</Text>
                 <View className="_pg-line-row_value-wrap">
                   <Text className="_pg-line-row_coupon">{checkoutData.couponText}</Text>
@@ -97,10 +142,12 @@ const CheckoutPage = observer(function CheckoutPage() {
             </View>
 
             <View className="_pg-card _pg-card--compact">
-              <View className="_pg-line-row _pg-line-row--link">
+              <View className="_pg-line-row _pg-line-row--link" onClick={() => void handleDiscountPress()}>
                 <Text className="_pg-line-row_label">折扣信息</Text>
                 <View className="_pg-line-row_value-wrap">
-                  <Text className="_pg-line-row_value">{checkoutData.discountText}</Text>
+                  <Text className="_pg-line-row_value">
+                    {checkoutData.discountText === '无可用' ? `已优惠 ¥${checkoutData.discountAmount.toFixed(2)}` : checkoutData.discountText}
+                  </Text>
                   <Text className="_pg-line-row_chevron">›</Text>
                 </View>
               </View>

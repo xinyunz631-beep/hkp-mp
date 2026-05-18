@@ -12,9 +12,9 @@
 - Figma nodeId：-
 - Pencil file：/Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
 - Pencil nodeId：order-cancel
-- 当前版本：v0.2
-- 页面状态：implemented
-- 更新时间：2026-05-16
+- 当前版本：v0.3
+- 页面状态：interaction-ready
+- 更新时间：2026-05-18
 - 实现文件：
   - src/pkg-order/pages/cancel/index.tsx
   - src/pkg-order/pages/cancel/index.scss
@@ -63,7 +63,12 @@
 
 - 从订单列表中“取消订单”动作进入本页。
 - 选择取消原因后可提交；未选原因时给出 toast 提示。
-- 提交后返回上一页，保留订单主链路闭环。
+- 提交前使用微信 modal 二次确认，确认后返回上一页，保留订单主链路闭环。
+
+## 微信开发工具验收清单
+
+- 不选取消原因直接提交，应提示请选择取消原因。
+- 选择原因并提交，应出现确认 modal；确认后返回上一页。
 
 ## 实现映射
 
@@ -73,6 +78,11 @@
 - `src/pkg-order/services/cancel.ts`：页面 service。
 
 ## 变更记录
+
+### v0.3
+
+- 提交取消申请改为微信 modal 二次确认，并统一使用 `wechat-actions` toast。
+- 页面状态推进到 `interaction-ready`。
 
 ### v0.2
 

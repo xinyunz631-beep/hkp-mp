@@ -525,7 +525,7 @@ pages:
   order-detail:
     title: 订单详情
     route: src/pkg-order/pages/detail
-    status: implemented
+    status: interaction-ready
     spec: docs/ui/pages/order-detail.md
     design:
       currentTool: pencil
@@ -536,7 +536,7 @@ pages:
         name: 订单详情 750px 开发稿
         width: 750
         role: active-source
-        note: 已按 order-detail-paid.png 完成状态头、商品信息、入园/取票信息、金额汇总和退款按钮首版。
+        note: 已按 order-detail-paid.png 完成订单详情，退款按钮可进入售后类型页，本地订单可按 orderId 读取。
     implementation:
       files:
         - src/pkg-order/pages/detail/index.tsx
@@ -551,7 +551,7 @@ pages:
   order-checkout:
     title: 确认订单
     route: src/pkg-order/pages/checkout
-    status: implemented
+    status: interaction-ready
     spec: docs/ui/pages/order-checkout.md
     design:
       currentTool: pencil
@@ -562,7 +562,7 @@ pages:
         name: 确认订单 750px 开发稿
         width: 750
         role: active-source
-        note: 已按 order-checkout-address.png 完成地址卡、商品列表、优惠券、折扣和底部支付栏首版。
+        note: 已按 order-checkout-address.png 完成确认订单，补商品图预览、优惠/折扣说明、模拟微信支付和本地订单写入。
     implementation:
       files:
         - src/pkg-order/pages/checkout/index.tsx
@@ -577,7 +577,7 @@ pages:
   order-address:
     title: 地址管理
     route: src/pkg-order/pages/address
-    status: implemented
+    status: interaction-ready
     spec: docs/ui/pages/order-address.md
     design:
       currentTool: pencil
@@ -588,7 +588,7 @@ pages:
         name: 地址管理 750px 开发稿
         width: 750
         role: active-source
-        note: 已按 address-list.png 完成地址卡、默认地址切换、编辑删除占位和底部新增按钮首版。
+        note: 已按 address-list.png 完成地址管理，补默认地址、新增、编辑、删除本地状态闭环。
     implementation:
       files:
         - src/pkg-order/pages/address/index.tsx
@@ -603,7 +603,7 @@ pages:
   order-cancel:
     title: 取消订单
     route: src/pkg-order/pages/cancel
-    status: implemented
+    status: interaction-ready
     spec: docs/ui/pages/order-cancel.md
     design:
       currentTool: pencil
@@ -614,7 +614,7 @@ pages:
         name: 取消订单 750px 开发稿
         width: 750
         role: active-source
-        note: 已完成订单摘要、取消原因、补充说明和提交按钮首版，当前可从订单列表取消动作进入。
+        note: 已完成订单摘要、取消原因、补充说明和提交按钮，提交前校验原因并用微信 modal 二次确认。
     implementation:
       files:
         - src/pkg-order/pages/cancel/index.tsx
@@ -629,7 +629,7 @@ pages:
   order-aftersale-apply:
     title: 售后申请
     route: src/pkg-order/pages/aftersale-apply
-    status: implemented
+    status: interaction-ready
     spec: docs/ui/pages/order-aftersale-apply.md
     design:
       currentTool: pencil
@@ -640,7 +640,7 @@ pages:
         name: 售后申请 750px 开发稿
         width: 750
         role: active-source
-        note: 已完成售后申请首版表单，包含类型信息、原因、说明、上传占位和联系人，并可跳转售后进度。
+        note: 已完成售后申请表单，补原因校验、微信图片上传/预览/删除和提交反馈，并可跳转售后进度。
     implementation:
       files:
         - src/pkg-order/pages/aftersale-apply/index.tsx
@@ -655,7 +655,7 @@ pages:
   order-aftersale-type:
     title: 售后类型
     route: src/pkg-order/pages/aftersale-type
-    status: implemented
+    status: interaction-ready
     spec: docs/ui/pages/order-aftersale-type.md
     design:
       currentTool: pencil
@@ -681,7 +681,7 @@ pages:
   order-aftersale-list:
     title: 售后列表
     route: src/pkg-order/pages/aftersale-list
-    status: implemented
+    status: interaction-ready
     spec: docs/ui/pages/order-aftersale-list.md
     design:
       currentTool: pencil
@@ -707,7 +707,7 @@ pages:
   order-aftersale-progress:
     title: 售后进度
     route: src/pkg-order/pages/aftersale-progress
-    status: implemented
+    status: interaction-ready
     spec: docs/ui/pages/order-aftersale-progress.md
     design:
       currentTool: pencil
@@ -733,7 +733,7 @@ pages:
   order-logistics:
     title: 物流详情
     route: src/pkg-order/pages/logistics
-    status: implemented
+    status: interaction-ready
     spec: docs/ui/pages/order-logistics.md
     design:
       currentTool: pencil
@@ -744,7 +744,7 @@ pages:
         name: 物流详情 750px 开发稿
         width: 750
         role: active-source
-        note: 已按 logistics-detail.png 完成物流信息卡、金额汇总、确认收货按钮和时间线首版。
+        note: 已按 logistics-detail.png 完成物流详情，补商品图预览、单号复制、官方电话拨号和确认收货状态反馈。
     implementation:
       files:
         - src/pkg-order/pages/logistics/index.tsx
@@ -759,7 +759,7 @@ pages:
   order-review-create:
     title: 创建评价
     route: src/pkg-order/pages/review-create
-    status: implemented
+    status: interaction-ready
     spec: docs/ui/pages/order-review-create.md
     design:
       currentTool: pencil
@@ -770,7 +770,7 @@ pages:
         name: 创建评价 750px 开发稿
         width: 750
         role: active-source
-        note: 已按 review-create.png 完成评价晒单首版，包含标签、输入区、图片上传占位和匿名评价。
+        note: 已按 review-create.png 完成评价晒单，补图片上传/预览/删除、内容校验、匿名切换和提交确认。
     implementation:
       files:
         - src/pkg-order/pages/review-create/index.tsx
@@ -785,7 +785,7 @@ pages:
   order-review-list:
     title: 评价列表
     route: src/pkg-order/pages/review-list
-    status: implemented
+    status: interaction-ready
     spec: docs/ui/pages/order-review-list.md
     design:
       currentTool: pencil
@@ -796,7 +796,7 @@ pages:
         name: 评价列表 750px 开发稿
         width: 750
         role: active-source
-        note: 已按 review-list.png 完成评价列表首版，包含筛选标签、评论内容和图片宫格。
+        note: 已按 review-list.png 完成评价列表，补筛选和评价图片预览。
     implementation:
       files:
         - src/pkg-order/pages/review-list/index.tsx
@@ -1170,7 +1170,7 @@ pages:
   order-home:
     title: 订单首页
     route: src/pkg-order/pages/index
-    status: implemented
+    status: interaction-ready
     spec: docs/ui/pages/order-home.md
     design:
       currentTool: pencil
@@ -1181,7 +1181,7 @@ pages:
         name: 订单首页 750px 开发稿
         width: 750
         role: active-source
-        note: 已按 order-list-all.png 完成订单 Tab、日期分组和订单项列表首版。
+        note: 已按 order-list-all.png 完成订单 Tab、日期分组和订单项列表，并补各订单动作跳转与本地订单合流展示。
     implementation:
       files:
         - src/pkg-order/pages/index/index.tsx

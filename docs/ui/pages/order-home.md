@@ -6,9 +6,9 @@
 - 路由：src/pkg-order/pages/index
 - 当前设计工具（以 `page-registry.currentTool` 为准）：pencil
 - UI 图：docs/ui/source/hkp-mini-page/order-list-all.png
-- 当前版本：v0.3
-- 页面状态：implemented
-- 更新时间：2026-05-16
+- 当前版本：v0.4
+- 页面状态：interaction-ready
+- 更新时间：2026-05-18
 - 实现文件：
   - src/pkg-order/pages/index/index.tsx
   - src/pkg-order/pages/index/index.scss
@@ -53,7 +53,15 @@
 - 点击“查看物流”进入物流详情页。
 - 点击“申请售后”进入售后类型页。
 - 点击“取消订单”进入取消订单页。
+- 支付成功写入的本地订单会合流展示到订单首页。
+- 未识别动作不再使用占位文案，改为业务 toast。
 - Tab 现在按 `pendingPay / pendingShip / pendingReview` 做本地过滤，后续接真实订单状态时继续细化。
+
+## 微信开发工具验收清单
+
+- 切换订单 Tab，列表应按状态筛选。
+- 点击订单卡，应进入订单详情。
+- 点击去评价、查看物流、申请售后、取消订单，应进入对应页面。
 
 ## 实现映射
 
@@ -62,6 +70,11 @@
 - `src/pkg-order/pages/index/index.config.ts`：页面骨架相关文件。
 
 ## 变更记录
+
+### v0.4
+
+- 订单首页合流展示本地生成订单，并移除未知动作占位文案。
+- 页面状态推进到 `interaction-ready`。
 
 ### v0.3
 

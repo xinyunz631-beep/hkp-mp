@@ -4,6 +4,7 @@ import { observer } from 'mobx-react';
 import { AppImage } from '@/core/components/AppImage';
 import { PageShell } from '@/core/components/PageShell';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
+import { previewWechatImages } from '@/core/utils/wechat-actions';
 import { fetchReviewListData, type OrderReviewListData } from '@/pkg-order/services/review-list';
 import './index.scss';
 
@@ -66,6 +67,7 @@ const ReviewListPage = observer(function ReviewListPage() {
                           src={imageSrc}
                           mode="aspectFill"
                           emptyState="error"
+                          onClick={() => previewWechatImages({ urls: review.imageSrcs, current: imageSrc })}
                         />
                       ))}
                     </View>

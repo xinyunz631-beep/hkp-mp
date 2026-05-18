@@ -5,6 +5,7 @@ import { observer } from 'mobx-react';
 import { OrderCard } from '@/core/components/commerce';
 import { PageShell } from '@/core/components/PageShell';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
+import { showWechatConfirm, showWechatToast } from '@/core/utils/wechat-actions';
 import { fetchCancelData, type OrderCancelData } from '@/pkg-order/services/cancel';
 import './index.scss';
 
@@ -19,13 +20,22 @@ const CancelPage = observer(function CancelPage() {
     },
   });
 
-  function handleSubmit() {
+  async function handleSubmit() {
     if (!selectedReason) {
-      Taro.showToast({ title: '请选择取消原因', icon: 'none' });
+      await showWechatToast('请选择取消原因');
       return;
     }
 
-    Taro.showToast({ title: '取消申请已提交', icon: 'none' });
+    const confirmed = await showWechatConfirm({
+      title: '提交取消申请',
+      content: `取消原因：${selectedReason}${remarkText ? `\n补充说明：${remarkText}` : ''}`,
+      confirmText: '提交',
+      cancelText: '再看看',
+    });
+
+    if (!confirmed) return;
+
+    await showWechatToast('取消申请已提交', 'success');
     setTimeout(() => {
       Taro.navigateBack({ delta: 1 });
     }, 300);
@@ -44,7 +54,7 @@ const CancelPage = observer(function CancelPage() {
             <View className="_pg-footer">
               <View
                 className={`_pg-footer_button ${selectedReason ? '_pg-footer_button--active' : ''}`}
-                onClick={handleSubmit}
+                onClick={() => void handleSubmit()}
               >
                 {pageData.submitButtonText}
               </View>

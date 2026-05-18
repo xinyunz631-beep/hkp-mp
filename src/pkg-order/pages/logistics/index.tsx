@@ -1,10 +1,16 @@
 import { useState } from 'react';
-import Taro from '@tarojs/taro';
 import { Text, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
 import { AppImage } from '@/core/components/AppImage';
 import { PageShell } from '@/core/components/PageShell';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
+import {
+  callWechatPhone,
+  copyWechatText,
+  previewWechatImages,
+  showWechatConfirm,
+  showWechatToast,
+} from '@/core/utils/wechat-actions';
 import { fetchLogisticsData, type OrderLogisticsData } from '@/pkg-order/services/logistics';
 import './index.scss';
 
@@ -16,6 +22,24 @@ const LogisticsPage = observer(function LogisticsPage() {
       setPageData(nextData);
     },
   });
+
+  async function handleConfirmReceive() {
+    const confirmed = await showWechatConfirm({
+      title: '确认收货',
+      content: '确认已收到商品？确认后订单将进入待评价状态。',
+      confirmText: '确认',
+      cancelText: '取消',
+    });
+
+    if (!confirmed) return;
+
+    setPageData((current) => (current ? {
+      ...current,
+      statusText: '已签收',
+      confirmButtonText: '已确认收货',
+    } : current));
+    await showWechatToast('已确认收货', 'success');
+  }
 
   return pageRuntime.renderPage(() => {
     if (!pageData) return null;
@@ -31,6 +55,7 @@ const LogisticsPage = observer(function LogisticsPage() {
                   src={pageData.productImageSrc}
                   mode="aspectFill"
                   emptyState="error"
+                  onClick={() => previewWechatImages({ urls: [pageData.productImageSrc], emptyText: '暂无商品大图' })}
                 />
                 <View className="_pg-summary_body">
                   <View className="_pg-summary_row">
@@ -41,11 +66,11 @@ const LogisticsPage = observer(function LogisticsPage() {
                     <Text className="_pg-summary_label">快递公司：</Text>
                     <Text className="_pg-summary_value">{pageData.companyText}</Text>
                   </View>
-                  <View className="_pg-summary_row">
+                  <View className="_pg-summary_row" onClick={() => void copyWechatText(pageData.trackingNumberText, '快递单号已复制')}>
                     <Text className="_pg-summary_label">快递单号：</Text>
                     <Text className="_pg-summary_value">{pageData.trackingNumberText}</Text>
                   </View>
-                  <View className="_pg-summary_row">
+                  <View className="_pg-summary_row" onClick={() => void callWechatPhone(pageData.hotlineText)}>
                     <Text className="_pg-summary_label">官方电话：</Text>
                     <Text className="_pg-summary_value">{pageData.hotlineText}</Text>
                   </View>
@@ -63,7 +88,7 @@ const LogisticsPage = observer(function LogisticsPage() {
               <View className="_pg-summary_action-row">
                 <View
                   className="_pg-summary_button"
-                  onClick={() => Taro.showToast({ title: '确认收货即将开放', icon: 'none' })}
+                  onClick={() => void handleConfirmReceive()}
                 >
                   {pageData.confirmButtonText}
                 </View>

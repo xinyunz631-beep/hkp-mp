@@ -12,9 +12,9 @@
 - Figma nodeId：-
 - Pencil file：/Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
 - Pencil nodeId：order-aftersale-apply
-- 当前版本：v0.2
-- 页面状态：implemented
-- 更新时间：2026-05-16
+- 当前版本：v0.3
+- 页面状态：interaction-ready
+- 更新时间：2026-05-18
 - 实现文件：
   - src/pkg-order/pages/aftersale-apply/index.tsx
   - src/pkg-order/pages/aftersale-apply/index.scss
@@ -34,7 +34,7 @@
 - 订单摘要：复用 `OrderCard` 展示当前售后商品。
 - 类型信息：展示所选售后类型和预计退款金额。
 - 原因表单：原因胶囊 + 文本域补充说明。
-- 凭证区域：保留图片上传入口占位，后续可接 `Uploader` 外层封装。
+- 凭证区域：使用微信图片选择能力，支持最多 3 张凭证预览和删除。
 - 联系信息：展示联系人与电话，便于售后沟通。
 - 固定底部：提交售后申请按钮。
 
@@ -63,8 +63,15 @@
 ## 交互与跳转
 
 - 从售后类型页点击类型卡片进入本页，并通过路由参数带入所选类型。
+- 上传凭证：调用微信图片选择，支持预览和删除。
 - 选择原因后可提交；未选原因时给出 toast 提示。
 - 提交后跳转到售后进度页。
+
+## 微信开发工具验收清单
+
+- 点击添加图片，应调起微信图片选择；选择后出现缩略图。
+- 点击凭证缩略图，应预览；点击关闭按钮应删除。
+- 清空原因后提交，应提示请选择售后原因；正常提交应跳售后进度。
 
 ## 实现映射
 
@@ -74,6 +81,11 @@
 - `src/pkg-order/services/aftersale-apply.ts`：页面 service。
 
 ## 变更记录
+
+### v0.3
+
+- 补齐微信图片上传、预览、删除和提交反馈。
+- 页面状态推进到 `interaction-ready`。
 
 ### v0.2
 

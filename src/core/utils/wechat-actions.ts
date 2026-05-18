@@ -13,6 +13,11 @@ interface PreviewImageOptions {
   emptyText?: string;
 }
 
+interface ChooseImageOptions {
+  count?: number;
+  sourceType?: Array<'album' | 'camera'>;
+}
+
 interface OpenLocationOptions {
   latitude?: number;
   longitude?: number;
@@ -68,6 +73,25 @@ export function previewWechatImages({
     urls: validUrls,
     current: current || validUrls[0],
   });
+}
+
+// 调起微信图片选择，取消时返回空数组，让页面保持当前状态。
+export async function chooseWechatImages({
+  count = 1,
+  sourceType = ['album', 'camera'],
+}: ChooseImageOptions = {}) {
+  try {
+    const result = await Taro.chooseImage({
+      count,
+      sourceType,
+      sizeType: ['compressed'],
+    });
+
+    return result.tempFilePaths ?? [];
+  } catch {
+    await showWechatToast('未选择图片');
+    return [];
+  }
 }
 
 // 打开微信地图位置；缺少经纬度时复制地址作为降级路径。

@@ -6,12 +6,9 @@ import { AppImage } from '@/core/components/AppImage';
 import { PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
+import { showWechatToast } from '@/core/utils/wechat-actions';
 import { fetchOrderHomeData, type OrderHomeData } from '@/pkg-order/services';
 import './index.scss';
-
-function showComingSoon(title: string) {
-  Taro.showToast({ title, icon: 'none' });
-}
 
 function resolveOrderActionRoute(actionText: string) {
   if (actionText === '去评价') return MINI_PACKAGE_ROUTES.orderReviewCreate;
@@ -92,7 +89,7 @@ const OrderIndexPage = observer(function OrderIndexPage() {
                             return;
                           }
 
-                          showComingSoon(`${item.actionText}即将开放`);
+                          void showWechatToast(`已选择${item.actionText}`);
                         }}
                       >
                         {item.actionText}

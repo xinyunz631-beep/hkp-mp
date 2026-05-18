@@ -1,11 +1,16 @@
 import { useState } from 'react';
-import Taro from '@tarojs/taro';
 import { Text, Textarea, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
 import { AppIcon } from '@/core/components/AppIcon';
 import { AppImage } from '@/core/components/AppImage';
 import { PageShell } from '@/core/components/PageShell';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
+import {
+  chooseWechatImages,
+  previewWechatImages,
+  showWechatConfirm,
+  showWechatToast,
+} from '@/core/utils/wechat-actions';
 import { fetchReviewCreateData, type OrderReviewCreateData } from '@/pkg-order/services/review-create';
 import './index.scss';
 
@@ -13,14 +18,46 @@ const ReviewCreatePage = observer(function ReviewCreatePage() {
   const [pageData, setPageData] = useState<OrderReviewCreateData>();
   const [activeTagKey, setActiveTagKey] = useState('');
   const [reviewText, setReviewText] = useState('');
+  const [reviewImages, setReviewImages] = useState<string[]>([]);
   const [anonymous, setAnonymous] = useState(false);
   const pageRuntime = usePageRuntime({
     initPage: async () => {
       const nextData = await fetchReviewCreateData();
       setPageData(nextData);
       setActiveTagKey(nextData.defaultTagKey);
+      setReviewImages(nextData.images.map((image) => image.src).filter(Boolean));
     },
   });
+
+  async function handleUploadImage() {
+    const nextImages = await chooseWechatImages({ count: Math.max(1, 6 - reviewImages.length) });
+    if (nextImages.length === 0) return;
+
+    setReviewImages((current) => [...current, ...nextImages].slice(0, 6));
+  }
+
+  async function handleSubmit() {
+    if (!activeTagKey) {
+      await showWechatToast('请选择评价标签');
+      return;
+    }
+
+    if (!reviewText.trim()) {
+      await showWechatToast('请填写评价内容');
+      return;
+    }
+
+    const confirmed = await showWechatConfirm({
+      title: '提交评价',
+      content: `确认提交${anonymous ? '匿名' : ''}评价？`,
+      confirmText: '提交',
+      cancelText: '再改改',
+    });
+
+    if (!confirmed) return;
+
+    await showWechatToast('评价已提交', 'success');
+  }
 
   return pageRuntime.renderPage(() => {
     if (!pageData) return null;
@@ -35,7 +72,7 @@ const ReviewCreatePage = observer(function ReviewCreatePage() {
             <View className="_pg-footer">
               <View
                 className="_pg-footer_button"
-                onClick={() => Taro.showToast({ title: '评价提交即将开放', icon: 'none' })}
+                onClick={() => void handleSubmit()}
               >
                 {pageData.submitButtonText}
               </View>
@@ -49,6 +86,7 @@ const ReviewCreatePage = observer(function ReviewCreatePage() {
                 src={pageData.productImageSrc}
                 mode="aspectFill"
                 emptyState="error"
+                onClick={() => previewWechatImages({ urls: [pageData.productImageSrc], emptyText: '暂无商品大图' })}
               />
               <View className="_pg-product_main">
                 <Text className="_pg-product_title">{pageData.productTitle}</Text>
@@ -82,28 +120,28 @@ const ReviewCreatePage = observer(function ReviewCreatePage() {
             </View>
 
             <View className="_pg-images">
-              {pageData.images.map((image) => (
-                <View className="_pg-images_item" key={image.id}>
+              {reviewImages.map((imageSrc) => (
+                <View className="_pg-images_item" key={imageSrc}>
                   <AppImage
                     className="_pg-images_preview"
-                    src={image.src}
+                    src={imageSrc}
                     mode="aspectFill"
                     emptyState="error"
+                    onClick={() => previewWechatImages({ urls: reviewImages, current: imageSrc })}
                   />
                   <View
                     className="_pg-images_remove"
-                    onClick={() => Taro.showToast({ title: '图片编辑即将开放', icon: 'none' })}
+                    onClick={() => setReviewImages((current) => current.filter((item) => item !== imageSrc))}
                   >
                     <AppIcon name="close" size={12} color="#ffffff" />
                   </View>
                 </View>
               ))}
-              <View
-                className="_pg-images_add"
-                onClick={() => Taro.showToast({ title: '图片上传即将开放', icon: 'none' })}
-              >
-                <AppIcon name="photograph" size={30} color="#4b5563" />
-              </View>
+              {reviewImages.length < 6 ? (
+                <View className="_pg-images_add" onClick={() => void handleUploadImage()}>
+                  <AppIcon name="photograph" size={16} color="#4b5563" />
+                </View>
+              ) : null}
             </View>
 
             <View className="_pg-anonymous" onClick={() => setAnonymous((current) => !current)}>

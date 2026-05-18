@@ -12,9 +12,9 @@
 - Figma nodeId：-
 - Pencil file：/Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
 - Pencil nodeId：order-review-create
-- 当前版本：v0.2
-- 页面状态：implemented
-- 更新时间：2026-05-16
+- 当前版本：v0.3
+- 页面状态：interaction-ready
+- 更新时间：2026-05-18
 - 实现文件：
   - src/pkg-order/pages/review-create/index.tsx
   - src/pkg-order/pages/review-create/index.scss
@@ -59,8 +59,16 @@
 
 - 标签支持本地切换高亮态。
 - 文本输入支持本地字数统计。
-- 图片上传、删除和评价提交当前先保留交互位并提示能力即将开放。
+- 图片上传：调用微信图片选择，支持最多 6 张图片、预览和删除。
+- 提交评价：校验标签和评价内容，微信 modal 二次确认后 toast 成功。
 - 订单首页里的“去评价”已串到当前页。
+
+## 微信开发工具验收清单
+
+- 点击商品图或评价图片，应预览或提示暂无商品大图。
+- 点击添加图片，应调起微信图片选择。
+- 不填写评价内容提交，应提示请填写评价内容。
+- 填写后提交，应出现确认 modal 并 toast 成功。
 
 ## 实现映射
 
@@ -70,6 +78,11 @@
 - `src/pkg-order/services/review-create.ts`：页面 service。
 
 ## 变更记录
+
+### v0.3
+
+- 补齐图片上传、预览、删除、匿名切换和提交校验确认。
+- 页面状态推进到 `interaction-ready`。
 
 ### v0.2
 

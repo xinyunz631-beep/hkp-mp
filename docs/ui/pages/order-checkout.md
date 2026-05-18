@@ -12,9 +12,9 @@
 - Figma nodeId：-
 - Pencil file：/Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
 - Pencil nodeId：order-checkout
-- 当前版本：v0.2
-- 页面状态：implemented
-- 更新时间：2026-05-16
+- 当前版本：v0.3
+- 页面状态：interaction-ready
+- 更新时间：2026-05-18
 - 实现文件：
   - src/pkg-order/pages/checkout/index.tsx
   - src/pkg-order/pages/checkout/index.scss
@@ -58,8 +58,16 @@
 ## 交互与跳转
 
 - 点击地址卡跳到 `order-address`。
-- 支付按钮当前先提示能力即将开放。
-- 优惠券与折扣信息先保留结构，后续接真实能力时替换 service 与交互。
+- 商品图：点击调用微信图片预览，无图时给出业务提示。
+- 优惠券与折扣信息：点击展示微信 modal 说明。
+- 支付按钮：微信 modal 二次确认，确认后写入本地订单并跳转订单详情。
+
+## 微信开发工具验收清单
+
+- 点击地址卡，应进入地址管理页。
+- 点击商品图，应预览或提示暂无商品大图。
+- 点击优惠券/折扣信息，应出现微信 modal。
+- 点击去支付并确认，应生成本地订单并跳订单详情。
 
 ## 实现映射
 
@@ -69,6 +77,11 @@
 - `src/pkg-order/services/checkout.ts`：页面 service。
 
 ## 变更记录
+
+### v0.3
+
+- 补齐商品图预览、优惠券/折扣说明、模拟微信支付和本地订单写入。
+- 页面状态推进到 `interaction-ready`。
 
 ### v0.2
 

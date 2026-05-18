@@ -12,9 +12,9 @@
 - Figma nodeId：-
 - Pencil file：/Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
 - Pencil nodeId：order-logistics
-- 当前版本：v0.2
-- 页面状态：implemented
-- 更新时间：2026-05-16
+- 当前版本：v0.3
+- 页面状态：interaction-ready
+- 更新时间：2026-05-18
 - 实现文件：
   - src/pkg-order/pages/logistics/index.tsx
   - src/pkg-order/pages/logistics/index.scss
@@ -57,9 +57,19 @@
 
 ## 交互与跳转
 
-- “确认收货”当前先提示能力即将开放。
+- 商品图：点击调用微信图片预览。
+- 快递单号：点击复制到剪贴板。
+- 官方电话：点击调起微信拨号，失败时复制号码。
+- 确认收货：微信 modal 二次确认，确认后本地改为已签收。
 - 物流轨迹首条高亮，后续接真实物流接口时只替换 service 返回。
 - 订单首页里的“查看物流”已串到当前页。
+
+## 微信开发工具验收清单
+
+- 点击商品图，应预览或提示暂无商品大图。
+- 点击快递单号，应复制并提示。
+- 点击官方电话，应调起拨号或复制电话。
+- 点击确认收货并确认，应改为已签收。
 
 ## 实现映射
 
@@ -69,6 +79,11 @@
 - `src/pkg-order/services/logistics.ts`：页面 service。
 
 ## 变更记录
+
+### v0.3
+
+- 补齐商品图预览、快递单号复制、官方电话拨号和确认收货本地状态。
+- 页面状态推进到 `interaction-ready`。
 
 ### v0.2
 

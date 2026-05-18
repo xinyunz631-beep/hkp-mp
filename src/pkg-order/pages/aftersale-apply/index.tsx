@@ -3,10 +3,16 @@ import Taro from '@tarojs/taro';
 import { Text, Textarea, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
 import { AppIcon } from '@/core/components/AppIcon';
+import { AppImage } from '@/core/components/AppImage';
 import { OrderCard } from '@/core/components/commerce';
 import { PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
+import {
+  chooseWechatImages,
+  previewWechatImages,
+  showWechatToast,
+} from '@/core/utils/wechat-actions';
 import { fetchAftersaleApplyData, type OrderAftersaleApplyData } from '@/pkg-order/services/aftersale-apply';
 import './index.scss';
 
@@ -14,6 +20,7 @@ const AftersaleApplyPage = observer(function AftersaleApplyPage() {
   const [pageData, setPageData] = useState<OrderAftersaleApplyData>();
   const [selectedReason, setSelectedReason] = useState('');
   const [remarkText, setRemarkText] = useState('');
+  const [proofImages, setProofImages] = useState<string[]>([]);
   const pageRuntime = usePageRuntime({
     initPage: async () => {
       const nextData = await fetchAftersaleApplyData();
@@ -27,12 +34,20 @@ const AftersaleApplyPage = observer(function AftersaleApplyPage() {
     },
   });
 
-  function handleSubmit() {
+  async function handleUploadProof() {
+    const nextImages = await chooseWechatImages({ count: Math.max(1, 3 - proofImages.length) });
+    if (nextImages.length === 0) return;
+
+    setProofImages((current) => [...current, ...nextImages].slice(0, 3));
+  }
+
+  async function handleSubmit() {
     if (!selectedReason) {
-      Taro.showToast({ title: '请选择售后原因', icon: 'none' });
+      await showWechatToast('请选择售后原因');
       return;
     }
 
+    await showWechatToast('售后申请已提交', 'success');
     Taro.navigateTo({ url: MINI_PACKAGE_ROUTES.orderAftersaleProgress });
   }
 
@@ -47,7 +62,7 @@ const AftersaleApplyPage = observer(function AftersaleApplyPage() {
           reserveTabBarSpace={false}
           footer={(
             <View className="_pg-footer">
-              <View className="_pg-footer_button" onClick={handleSubmit}>
+              <View className="_pg-footer_button" onClick={() => void handleSubmit()}>
                 {pageData.submitButtonText}
               </View>
             </View>
@@ -92,12 +107,29 @@ const AftersaleApplyPage = observer(function AftersaleApplyPage() {
 
               <View className="_pg-upload">
                 <Text className="_pg-upload_title">{pageData.uploadHintText}</Text>
-                <View
-                  className="_pg-upload_add"
-                  onClick={() => Taro.showToast({ title: '凭证上传即将开放', icon: 'none' })}
-                >
-                  <AppIcon name="photograph" size={26} color="#6b7280" />
-                  <Text className="_pg-upload_text">添加图片</Text>
+                <View className="_pg-upload_list">
+                  {proofImages.map((imageSrc) => (
+                    <View className="_pg-upload_item" key={imageSrc}>
+                      <AppImage
+                        className="_pg-upload_preview"
+                        src={imageSrc}
+                        mode="aspectFill"
+                        onClick={() => previewWechatImages({ urls: proofImages, current: imageSrc })}
+                      />
+                      <View
+                        className="_pg-upload_remove"
+                        onClick={() => setProofImages((current) => current.filter((item) => item !== imageSrc))}
+                      >
+                        <AppIcon name="close" size={12} color="#ffffff" />
+                      </View>
+                    </View>
+                  ))}
+                  {proofImages.length < 3 ? (
+                    <View className="_pg-upload_add" onClick={() => void handleUploadProof()}>
+                      <AppIcon name="photograph" size={16} color="#6b7280" />
+                      <Text className="_pg-upload_text">添加图片</Text>
+                    </View>
+                  ) : null}
                 </View>
               </View>
             </View>

@@ -12,9 +12,9 @@
 - Figma nodeId：-
 - Pencil file：/Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
 - Pencil nodeId：order-address
-- 当前版本：v0.2
-- 页面状态：implemented
-- 更新时间：2026-05-16
+- 当前版本：v0.3
+- 页面状态：interaction-ready
+- 更新时间：2026-05-18
 - 实现文件：
   - src/pkg-order/pages/address/index.tsx
   - src/pkg-order/pages/address/index.scss
@@ -58,8 +58,17 @@
 ## 交互与跳转
 
 - 点击默认地址可切换当前选中项。
-- 编辑、删除和新增地址当前先保留交互位并提示能力即将开放。
+- 新增地址：微信 modal 确认后追加本地模拟地址。
+- 编辑地址：微信 modal 确认后更新本地地址备注。
+- 删除地址：微信 modal 确认后删除，至少保留一条地址。
 - 该页作为 `order-checkout` 的地址管理入口，后续真实接口只替换 service。
+
+## 微信开发工具验收清单
+
+- 点击默认地址，应切换选中态并 toast 成功。
+- 点击新增地址，应确认后新增一条地址。
+- 点击编辑地址，应确认后更新地址文案。
+- 点击删除地址，应确认后删除；只剩一条时应提示不能删除。
 
 ## 实现映射
 
@@ -69,6 +78,11 @@
 - `src/pkg-order/services/address.ts`：页面 service。
 
 ## 变更记录
+
+### v0.3
+
+- 补齐地址新增、编辑、删除和默认地址切换的本地状态闭环。
+- 页面状态推进到 `interaction-ready`。
 
 ### v0.2
 

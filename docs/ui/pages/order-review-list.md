@@ -12,9 +12,9 @@
 - Figma nodeId：-
 - Pencil file：/Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
 - Pencil nodeId：order-review-list
-- 当前版本：v0.2
-- 页面状态：implemented
-- 更新时间：2026-05-16
+- 当前版本：v0.3
+- 页面状态：interaction-ready
+- 更新时间：2026-05-18
 - 实现文件：
   - src/pkg-order/pages/review-list/index.tsx
   - src/pkg-order/pages/review-list/index.scss
@@ -58,8 +58,13 @@
 ## 交互与跳转
 
 - 顶部标签支持本地切换，先用不同列表切片模拟筛选结果。
-- 评论图片统一使用 `AppImage` 承接空地址失败态。
+- 评论图片统一使用 `AppImage` 承接空地址失败态，点击调用微信图片预览。
 - 后续接真实评价列表接口时，只替换 service。
+
+## 微信开发工具验收清单
+
+- 切换筛选标签，评论列表应联动。
+- 点击评论图片，应进入图片预览。
 
 ## 实现映射
 
@@ -69,6 +74,11 @@
 - `src/pkg-order/services/review-list.ts`：页面 service。
 
 ## 变更记录
+
+### v0.3
+
+- 评价图片接入微信图片预览。
+- 页面状态推进到 `interaction-ready`。
 
 ### v0.2
 
