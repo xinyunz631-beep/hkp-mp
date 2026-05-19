@@ -36,7 +36,7 @@
     background: rgba(255, 255, 255, 0.72);
     color: $color-primary;
     font-size: 20px;
-    font-weight: 700;
+    font-weight: 550;
     letter-spacing: 1px;
   }
 
@@ -72,7 +72,7 @@
   &_name {
     color: $color-text-primary;
     font-size: 34px;
-    font-weight: 800;
+    font-weight: 550;
   }
 
   &_meta,
@@ -94,7 +94,7 @@
     background: rgba(255, 255, 255, 0.78);
     color: $color-primary;
     font-size: 20px;
-    font-weight: 700;
+    font-weight: 550;
   }
 
   &_stats {
@@ -119,14 +119,14 @@
     margin-top: 12px;
     color: $color-text-primary;
     font-size: 38px;
-    font-weight: 800;
+    font-weight: 550;
   }
 
   &_growth {
     margin-top: 22px;
     color: $color-primary;
     font-size: 24px;
-    font-weight: 700;
+    font-weight: 550;
     line-height: 1.5;
   }
 }
@@ -159,7 +159,7 @@
   &_card-title {
     color: $color-text-primary;
     font-size: 30px;
-    font-weight: 800;
+    font-weight: 550;
   }
 
   &_desc {
@@ -175,7 +175,7 @@
     gap: 6px;
     color: $color-primary;
     font-size: 24px;
-    font-weight: 700;
+    font-weight: 550;
     white-space: nowrap;
   }
 
@@ -189,7 +189,7 @@
   &_card-label {
     color: $color-primary;
     font-size: 20px;
-    font-weight: 700;
+    font-weight: 550;
   }
 
   &_card-title {
@@ -200,7 +200,7 @@
     margin-top: 14px;
     color: $color-primary;
     font-size: 38px;
-    font-weight: 800;
+    font-weight: 550;
   }
 }
 
@@ -236,7 +236,7 @@
     margin-top: 18px;
     color: $color-text-primary;
     font-size: 28px;
-    font-weight: 800;
+    font-weight: 550;
   }
 
   &_value {
@@ -252,7 +252,7 @@
     display: block;
     color: $color-text-primary;
     font-size: 30px;
-    font-weight: 800;
+    font-weight: 550;
   }
 
   &_list {
@@ -290,7 +290,7 @@
   &_item-title {
     color: $color-text-primary;
     font-size: 28px;
-    font-weight: 700;
+    font-weight: 550;
   }
 
   &_item-desc {
@@ -309,7 +309,7 @@
 
   &_item-tag {
     font-size: 22px;
-    font-weight: 700;
+    font-weight: 550;
     white-space: nowrap;
   }
 }

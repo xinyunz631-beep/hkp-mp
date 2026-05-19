@@ -1,10 +1,11 @@
-import { CSSProperties, useState } from 'react';
+import { CSSProperties, useRef, useState } from 'react';
 import Taro from '@tarojs/taro';
 import { ScrollView, Swiper, SwiperItem, Text, View } from '@tarojs/components';
+import type { ScrollViewProps } from '@tarojs/components';
 import { observer } from 'mobx-react';
 import { AppIcon } from '@/core/components/AppIcon';
 import { AppImage } from '@/core/components/AppImage';
-import { PageShell } from '@/core/components/PageShell';
+import { PageRoot, PageShell } from '@/core/components/PageShell';
 import { HKP_PARK_HOTLINE, HKP_PARK_LOCATION } from '@/core/constants/park-location';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
@@ -53,6 +54,8 @@ interface HomeBannerEntry {
   path: MiniPackageRoute;
   requireLogin?: boolean;
 }
+
+type HomeScrollHandler = NonNullable<ScrollViewProps['onScroll']>;
 
 const shortcutEntries: HomeShortcutEntry[] = [
   { key: 'exchange', title: '兑换专区', path: MINI_PACKAGE_ROUTES.memberHome, requireLogin: true },
@@ -105,6 +108,8 @@ function renderHomeImage(className: string, src: string) {
 const HomePage = observer(function HomePage() {
   const [couponCount, setCouponCount] = useState<number>();
   const [chromeMetrics] = useState(resolvePageChromeMetrics);
+  const [navSearchSolid, setNavSearchSolid] = useState(false);
+  const navSearchSolidRef = useRef(false);
   const pageRuntime = usePageRuntime({
     initPage: async () => {
       const nextCouponCount = await fetchCouponUsedCount();
@@ -264,20 +269,37 @@ const HomePage = observer(function HomePage() {
     await handleHomeAction(category.action);
   }
 
+  const handleHomeScroll: HomeScrollHandler = (event) => {
+    const nextNavSearchSolid = event.detail.scrollTop > 140;
+    if (navSearchSolidRef.current === nextNavSearchSolid) return;
+
+    navSearchSolidRef.current = nextNavSearchSolid;
+    setNavSearchSolid(nextNavSearchSolid);
+  };
+
   return pageRuntime.renderPage(() => (
     <View className="_pg">
-      <PageShell title="首页" navbar={false} className="_pg-shell" reserveTabBarSpace scrollViewProps={{}}>
-        <View className="_pg-page">
+      <PageShell
+        title="首页"
+        navbar={false}
+        className="_pg-shell"
+        reserveTabBarSpace
+        scrollViewProps={{ onScroll: handleHomeScroll }}
+      >
+        <PageRoot>
           <View className="_pg-nav" style={fixedNavStyle}>
             <View className="_pg-nav_scan" onClick={handleScan}>
-              <AppIcon name="scan" size={16} color="#ffffff" />
+              <AppIcon name="scan" size={14} color="#ffffff" />
             </View>
-            <View className="_pg-nav_search" onClick={handleSearch}>
-              <AppIcon name="search" size={16} color="#e85f9d" />
-              <Text className="_pg-nav_search-placeholder">搜索项目 / 演出 / 餐饮</Text>
+            <View className={`_pg-nav_search ${navSearchSolid ? '_pg-nav_search--solid' : ''}`} onClick={handleSearch}>
+              <AppIcon name="search" size={14} color="#e85f9d" />
+              {/* <Text className="_pg-nav_search-placeholder">搜索项目 / 演出 / 餐饮</Text> */}
+              <Text className="_pg-nav_search-placeholder">搜一搜~</Text>
             </View>
           </View>
+        </PageRoot>
 
+        <View className="_pg-page">
           <View className="_pg-hero">
             <Swiper className="_pg-hero_banner" autoplay circular interval={4500}>
               {heroBannerEntries.map((entry) => (

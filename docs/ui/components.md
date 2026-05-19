@@ -20,6 +20,7 @@ NutUI 组件补位与封装顺序，统一参见 `docs/codex/nutui-component-reg
 - 异常状态：`BaseException`、`StatusException`
 - 登录弹窗：`LoginPopup`
 - 通用弹层：`AppPopup`
+- `AppPopup` 业务变体：登录、SKU、优惠券等基于 `AppPopup` 的弹层必须传入组件自有 `className`，例如 `login-popup`、`sku-popup`，并在对应组件样式里用该 class 二次定制 `AppPopup` 根节点和内容区；不要在页面 SCSS 或全局 `AppPopup` 样式里处理单个业务弹层差异。
 - 日期弹层：`DateSelectionPopup`，底层使用 NutUI `Calendar`，支持单日和范围选择。
 - 优惠券弹层：`CouponSelectionPopup`
 - 页面级弹层挂载：页面使用弹层组件时放入 `PageShell` 直接子节点 `PageShare` / `PageRoot`，避免被 header/footer/tabbar 压住。
@@ -35,7 +36,7 @@ NutUI 组件补位与封装顺序，统一参见 `docs/codex/nutui-component-reg
 - 固定提交栏：`FixedSubmitBar`，用于确认订单、预定页、购物车和弹层底部提交。
 - 数量选择：`QuantityStepper`，用于 SKU、购物车、门票/套餐数量选择。
 - 筛选与状态 Tab：`FilterTabs`、`StatusListTabs`，用于商品列表、订单列表、售后列表和优惠券列表。
-- SKU 弹层：`SkuPopup`，基于 `AppPopup`，用于商品、餐饮套餐和可规格化商品。
+- SKU 弹层：`SkuPopup`，基于 `AppPopup`，用于商品、餐饮套餐和可规格化商品；外层 class 固定使用 `sku-popup`，业务样式基于 `.sku-popup.app-popup` / `.sku-popup .app-popup__content` 收口。
 - 日期选择：`DateRangePanel`，用于门票日期、酒店入住日期和可滑动日期选择。
 - 商用级日期选择：`DateSelectionPopup`，用于需要弹层日历的交易页面；门票单日、酒店范围，优先保留 NutUI 原生弹层和样式。
 - 这些组件只承接通用 UI 结构和轻交互，具体下单、接口提交、业务状态仍放在页面和 service。

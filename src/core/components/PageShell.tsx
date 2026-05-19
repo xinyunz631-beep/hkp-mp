@@ -1,10 +1,24 @@
-import { Children, CSSProperties, PropsWithChildren, ReactElement, ReactNode, isValidElement, useState } from 'react';
+import {
+  Children,
+  CSSProperties,
+  PropsWithChildren,
+  ReactElement,
+  ReactNode,
+  isValidElement,
+  useCallback,
+  useMemo,
+  useState,
+} from 'react';
 import { View } from '@tarojs/components';
 import { AppTabBar } from '@/core/components/AppTabBar';
 import { PageLayout, type PageLayoutProps } from '@/core/components/PageLayout';
 import { PageNavbar } from '@/core/components/PageNavbar';
+import { usePageRuntimeRefresh } from '@/core/runtime/page-runtime-context';
 import { resolvePageChromeMetrics, type PageChromeMetrics } from '@/core/utils/style';
 import './PageShell.scss';
+
+type PageShellScrollViewProps = NonNullable<PageLayoutProps['scrollViewProps']>;
+type PageShellRefresherRefreshHandler = NonNullable<PageShellScrollViewProps['onRefresherRefresh']>;
 
 interface PageShellProps extends PropsWithChildren {
   title: string;
@@ -19,6 +33,7 @@ interface PageShellProps extends PropsWithChildren {
   share?: ReactNode;
   runtimeNode?: ReactNode;
   reserveTabBarSpace?: boolean;
+  scrollView?: boolean;
   scrollViewProps?: PageLayoutProps['scrollViewProps'];
 }
 
@@ -58,11 +73,12 @@ function resolvePageShellNavbar(
   navbar: PageShellProps['navbar'],
   navbarLeft?: ReactNode,
   navbarRight?: ReactNode,
+  refreshing?: boolean,
 ) {
   if (navbar === false) return undefined;
   if (navbar !== undefined) return navbar;
 
-  return <PageNavbar title={title} left={navbarLeft} right={navbarRight} />;
+  return <PageNavbar title={title} left={navbarLeft} right={navbarRight} refreshing={refreshing} />;
 }
 
 // 合成 PageLayout 的 header：navbar 在上，PageHeader 声明内容在下。
@@ -73,8 +89,9 @@ function resolvePageShellLayoutHeader(
   chromeMetrics: PageChromeMetrics,
   navbarLeft?: ReactNode,
   navbarRight?: ReactNode,
+  navbarRefreshing?: boolean,
 ) {
-  const navbarContent = resolvePageShellNavbar(title, navbar, navbarLeft, navbarRight);
+  const navbarContent = resolvePageShellNavbar(title, navbar, navbarLeft, navbarRight, navbarRefreshing);
 
   if (!slots.hasHeader) return navbarContent;
   if (!navbarContent) {
@@ -153,14 +170,64 @@ export function PageShell({
   share,
   runtimeNode,
   reserveTabBarSpace = false,
+  scrollView = true,
   scrollViewProps,
   children,
 }: PageShellProps) {
   const [chromeMetrics] = useState(resolvePageChromeMetrics);
+  const [refresherTriggered, setRefresherTriggered] = useState(false);
+  const runtimeRefresh = usePageRuntimeRefresh();
   const slots = resolvePageShellSlots(children);
-  const layoutHeader = resolvePageShellLayoutHeader(title, navbar, slots, chromeMetrics, navbarLeft, navbarRight);
+  const navbarRefreshing = Boolean(title && (
+    refresherTriggered
+    || runtimeRefresh?.refreshing
+    || scrollViewProps?.refresherTriggered
+  ));
+  const layoutHeader = resolvePageShellLayoutHeader(
+    title,
+    navbar,
+    slots,
+    chromeMetrics,
+    navbarLeft,
+    navbarRight,
+    navbarRefreshing,
+  );
   const layoutFooter = slots.hasFooter ? slots.footer : footer ?? bottom;
   const layoutShare = slots.hasShare ? slots.share : share;
+  const handleRefresherRefresh = useCallback<PageShellRefresherRefreshHandler>((event) => {
+    const customRefresh = scrollViewProps?.onRefresherRefresh;
+
+    setRefresherTriggered(true);
+
+    void (async () => {
+      try {
+        if (customRefresh) {
+          await customRefresh(event);
+          return;
+        }
+
+        await runtimeRefresh?.reload();
+      } catch {
+        // initPage 的失败态由 usePageRuntime / 页面自定义 refresh handler 负责反馈。
+      } finally {
+        setRefresherTriggered(false);
+      }
+    })();
+  }, [runtimeRefresh, scrollViewProps]);
+  const resolvedScrollViewProps = useMemo<PageLayoutProps['scrollViewProps']>(() => {
+    if (!scrollView) return undefined;
+
+    const hasCustomRefresh = Boolean(scrollViewProps?.onRefresherRefresh);
+    const hasRuntimeRefresh = Boolean(runtimeRefresh?.hasInitPage);
+    const refresherEnabled = scrollViewProps?.refresherEnabled ?? (hasCustomRefresh || hasRuntimeRefresh);
+
+    return {
+      ...scrollViewProps,
+      refresherEnabled,
+      refresherTriggered: scrollViewProps?.refresherTriggered ?? (refresherTriggered || Boolean(runtimeRefresh?.refreshing)),
+      onRefresherRefresh: refresherEnabled ? handleRefresherRefresh : scrollViewProps?.onRefresherRefresh,
+    };
+  }, [handleRefresherRefresh, refresherTriggered, runtimeRefresh, scrollView, scrollViewProps]);
 
   return (
     <PageLayout
@@ -170,7 +237,7 @@ export function PageShell({
       share={layoutShare}
       tabBar={reserveTabBarSpace ? <AppTabBar /> : undefined}
       runtimeNode={runtimeNode}
-      scrollViewProps={scrollViewProps}
+      scrollViewProps={resolvedScrollViewProps}
     >
       <View className="page-shell">
         {slots.content.length > 0 ? <View className="page-shell__body">{slots.content}</View> : null}

@@ -18,7 +18,7 @@ const homeLoadingMenus = Array.from({ length: 8 }, (_, index) => index);
 const homeLoadingTabs = Array.from({ length: 5 }, (_, index) => index);
 
 // 渲染页面级加载内容，统一复用图形 loading 和文案排版。
-function LoadingContent({ text = '加载中...', size = 92 }: LoadingContentProps) {
+function LoadingContent({ text = '加载中...', size = 80 }: LoadingContentProps) {
   return (
     <View className="page-loading__content">
       <KittySvgLoading size={size} />

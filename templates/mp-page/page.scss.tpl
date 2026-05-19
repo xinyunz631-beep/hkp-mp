@@ -15,6 +15,6 @@
 
 ._pg-content {
   min-height: 240px;
-  padding: 32px;
+  padding: 30px;
   box-sizing: border-box;
 }

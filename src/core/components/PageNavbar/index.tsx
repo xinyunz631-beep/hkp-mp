@@ -1,6 +1,7 @@
 import { CSSProperties, ReactNode, useState } from 'react';
-import { View } from '@tarojs/components';
+import { Text, View } from '@tarojs/components';
 import { ArrowLeft } from '@nutui/icons-react-taro';
+import { Loading as NutLoading } from '@nutui/nutui-react-taro';
 import classNames from 'classnames';
 import { navigateBackOrHome, isCurrentMainTabPage } from '@/core/utils/navigation';
 import { resolvePageChromeMetrics } from '@/core/utils/style';
@@ -10,10 +11,16 @@ interface PageNavbarProps {
   title: string;
   left?: ReactNode;
   right?: ReactNode;
+  refreshing?: boolean;
 }
 
 interface NavbarButtonProps {
   onClick: () => void;
+}
+
+interface PageNavbarTitleProps {
+  title: string;
+  refreshing?: boolean;
 }
 
 // 缓存页面 chrome 尺寸，避免页面滚动时重复读取系统信息。
@@ -39,8 +46,23 @@ function PageNavbarBackButton({ onClick }: NavbarButtonProps) {
   );
 }
 
+function PageNavbarTitle({ title, refreshing }: PageNavbarTitleProps) {
+  if (!refreshing) return <>{title}</>;
+
+  return (
+    <View className="page-navbar__refreshing-title">
+      <NutLoading
+        className="page-navbar__refreshing-icon"
+        type="circular"
+        style={{ '--nutui-loading-icon-color': '#666666', '--nutui-loading-icon-size': '16px' } as CSSProperties}
+      />
+      <Text className="page-navbar__refreshing-text">刷新中</Text>
+    </View>
+  );
+}
+
 // 渲染页面导航栏，可作为 PageLayout 的 header 插槽内容使用。
-export function PageNavbar({ title, left, right }: PageNavbarProps) {
+export function PageNavbar({ title, left, right, refreshing }: PageNavbarProps) {
   const metrics = usePageChromeMetrics();
   const showDefaultBackButton = usePageBackVisibility();
   const navbarStyle: CSSProperties = {
@@ -63,7 +85,9 @@ export function PageNavbar({ title, left, right }: PageNavbarProps) {
         <View className="page-navbar__left">
           {left ?? (showDefaultBackButton ? <PageNavbarBackButton onClick={navigateBackOrHome} /> : null)}
         </View>
-        <View className="page-navbar__title">{title}</View>
+        <View className="page-navbar__title">
+          <PageNavbarTitle title={title} refreshing={refreshing} />
+        </View>
         {right ? <View className="page-navbar__right">{right}</View> : null}
       </View>
     </View>

@@ -21,7 +21,7 @@ page {
   min-height: 100%;
 //   background: $color-page-bg;
   color: $color-text-primary;
-  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+//   font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
   font-size: 26px;
   --nutui-color-primary: #{$color-primary};
   --nutui-color-primary-stop-1: #{$color-primary-stop-1};
@@ -32,11 +32,11 @@ page {
   --nutui-color-primary-light: #{$color-primary-light};
   --nutui-color-primary-light-pressed: #{$color-primary-light-pressed};
   --nutui-color-text-disabled: #98a2b3;
+  --nutui-popup-icon-size: 30px;
 }
 
 page,
 view,
-text,
 scroll-view,
 button,
 taro-view-core,
@@ -44,7 +44,7 @@ taro-button-core {
     box-sizing: border-box;
     margin: 0;
     padding: 0;
-    font-size: 26px;
+    font-size: 28px;
     // color: $color-font-base;
     // font-size: $font-size-base;
 }
@@ -64,6 +64,7 @@ scroll-view {
 }
 button,
 taro-button-core {
+    border: none;
     background: none;
 
     &::after {

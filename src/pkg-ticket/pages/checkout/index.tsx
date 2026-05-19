@@ -3,11 +3,12 @@ import Taro from '@tarojs/taro';
 import { Input, Text, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
 import { AppIcon } from '@/core/components/AppIcon';
-import { CouponSelectionPopup, DateSelectionPopup, FixedSubmitBar, QuantityStepper } from '@/core/components/commerce';
+import { CouponSelectionPopup, DateSelectionPopup, QuantityStepper } from '@/core/components/commerce';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { PageShare, PageShell } from '@/core/components/PageShell';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import { showWechatConfirm, showWechatToast } from '@/core/utils/wechat-actions';
+import { TicketSubmitFooter } from '@/pkg-ticket/components/TicketSubmitFooter';
 import { fetchCheckoutData, type TicketCheckoutPageData } from '@/pkg-ticket/services/checkout';
 import { submitTicketOrderDraft, updateTicketOrderDraft } from '@/pkg-ticket/services/order-draft';
 import './index.scss';
@@ -46,6 +47,8 @@ const CheckoutPage = observer(function CheckoutPage() {
         idCard: nextData.contact.idCard,
       });
     },
+    loginRequired: true,
+    loginReason: '登录后可提交门票订单',
   });
 
   const payAmount = useMemo(() => {
@@ -127,12 +130,11 @@ const CheckoutPage = observer(function CheckoutPage() {
           className="_pg-shell"
           reserveTabBarSpace={false}
           footer={(
-            <FixedSubmitBar
-              className="_pg-submit"
+            <TicketSubmitFooter
               label="金额:"
               amount={payAmount}
               buttonText={checkoutData.payButtonText}
-              extra={<Text className="_pg-submit_discount">已优惠: ¥{checkoutData.discountAmount.toFixed(2)}</Text>}
+              discountText={`已优惠: ¥${checkoutData.discountAmount.toFixed(2)}`}
               onSubmit={handleSubmit}
             />
           )}

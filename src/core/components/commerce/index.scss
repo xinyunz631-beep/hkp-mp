@@ -52,7 +52,7 @@
     display: block;
     color: $color-text-primary;
     font-size: 30px;
-    font-weight: 700;
+    font-weight: 500;
     line-height: 1.36;
   }
 
@@ -74,7 +74,7 @@
   &__price {
     color: $color-primary;
     font-size: 32px;
-    font-weight: 800;
+    font-weight: 500;
   }
 
   &__sales {
@@ -94,7 +94,7 @@
     background: $color-primary;
     color: #ffffff;
     font-size: 24px;
-    font-weight: 700;
+    font-weight: 500;
   }
 }
 
@@ -117,14 +117,14 @@
   &__merchant {
     color: $color-text-primary;
     font-size: 28px;
-    font-weight: 700;
+    font-weight: 500;
   }
 
   &__status,
   &__amount {
     color: $color-primary;
     font-size: 24px;
-    font-weight: 700;
+    font-weight: 500;
   }
 
   &__product {
@@ -148,7 +148,7 @@
     display: block;
     color: $color-text-primary;
     font-size: 28px;
-    font-weight: 700;
+    font-weight: 500;
     line-height: 1.35;
   }
 
@@ -172,7 +172,7 @@
   &__price {
     color: $color-text-primary;
     font-size: 26px;
-    font-weight: 700;
+    font-weight: 500;
   }
 
   &__summary {
@@ -196,7 +196,7 @@
     background: $color-primary;
     color: #ffffff;
     font-size: 24px;
-    font-weight: 700;
+    font-weight: 500;
 
     &--ghost {
       border: 1px solid $color-border;
@@ -226,7 +226,7 @@
     background: linear-gradient(135deg, $color-primary-stop-1, $color-primary-stop-2);
     color: #ffffff;
     font-size: 42px;
-    font-weight: 800;
+    font-weight: 500;
   }
 
   &__body {
@@ -239,7 +239,7 @@
     display: block;
     color: $color-text-primary;
     font-size: 30px;
-    font-weight: 700;
+    font-weight: 500;
   }
 
   &__threshold,
@@ -256,7 +256,7 @@
     right: 20px;
     color: $color-primary;
     font-size: 22px;
-    font-weight: 700;
+    font-weight: 500;
   }
 }
 
@@ -277,7 +277,7 @@
   &__name {
     color: $color-text-primary;
     font-size: 30px;
-    font-weight: 700;
+    font-weight: 500;
   }
 
   &__mobile,
@@ -308,7 +308,6 @@
   padding: 18px 24px;
   box-sizing: border-box;
   background: #ffffff;
-  box-shadow: 0 -12px 28px rgba(22, 32, 29, 0.08);
 
   &__main {
     min-width: 0;
@@ -324,13 +323,13 @@
   &__label {
     color: $color-text-primary;
     font-size: 28px;
-    font-weight: 700;
+    font-weight: 500;
   }
 
   &__amount {
     color: $color-primary;
     font-size: 36px;
-    font-weight: 800;
+    font-weight: 500;
   }
 
   &__extra {
@@ -350,11 +349,36 @@
     background: linear-gradient(135deg, $color-primary-stop-1, $color-primary-stop-2);
     color: #ffffff;
     font-size: 30px;
-    font-weight: 800;
+    font-weight: 500;
 
     &--disabled {
       background: $color-primary-disabled;
     }
+  }
+}
+
+.hkp-stepper {
+  flex: none;
+  --nutui-inputnumber-button-width: 60px;
+  --nutui-inputnumber-button-height: 60px;
+  --nutui-inputnumber-button-border-radius: 10px;
+  --nutui-inputnumber-button-background-color: #f5f6f8;
+  --nutui-inputnumber-icon-size: 18px;
+  --nutui-inputnumber-input-width: 64px;
+  --nutui-inputnumber-input-height: 60px;
+  --nutui-inputnumber-input-margin: 0 8px;
+  --nutui-inputnumber-input-background-color: #ffffff;
+  --nutui-inputnumber-input-border-radius: 12px;
+
+  .nut-input-minus,
+  .nut-input-add {
+    flex: none;
+  }
+
+  .nut-number-input,
+  input {
+    font-size: 26px;
+    font-weight: 500;
   }
 }
 
@@ -379,7 +403,7 @@
     &--active {
       background: $color-primary-light;
       color: $color-primary;
-      font-weight: 800;
+      font-weight: 500;
     }
   }
 
@@ -423,7 +447,7 @@
     display: block;
     color: $color-primary;
     font-size: 38px;
-    font-weight: 800;
+    font-weight: 500;
   }
 
   &__title {
@@ -431,7 +455,7 @@
     margin-top: 10px;
     color: $color-text-primary;
     font-size: 28px;
-    font-weight: 700;
+    font-weight: 500;
     line-height: 1.35;
   }
 
@@ -454,7 +478,7 @@
     display: block;
     color: $color-text-primary;
     font-size: 28px;
-    font-weight: 700;
+    font-weight: 500;
   }
 
   &__options {
@@ -474,7 +498,7 @@
     &--active {
       background: $color-primary-light;
       color: $color-primary;
-      font-weight: 800;
+      font-weight: 500;
     }
 
     &--disabled {
@@ -490,7 +514,7 @@
     margin-top: 32px;
     color: $color-text-primary;
     font-size: 28px;
-    font-weight: 700;
+    font-weight: 500;
   }
 
   &__submit {
@@ -503,7 +527,7 @@
     background: linear-gradient(135deg, $color-primary-stop-1, $color-primary-stop-2);
     color: #ffffff;
     font-size: 30px;
-    font-weight: 800;
+    font-weight: 500;
   }
 }
 
@@ -539,13 +563,40 @@
   &__title {
     color: $color-text-primary;
     font-size: 26px;
-    font-weight: 700;
+    font-weight: 500;
   }
 
   &__subtitle {
     margin-top: 6px;
     color: $color-text-secondary;
     font-size: 22px;
+  }
+}
+
+.nut-calendar-popup {
+  .nut-calendar-week-item:first-of-type {
+    color: var(--nutui-gray-7, #1a1a1a);
+  }
+
+  .nut-calendar-week-item:nth-child(6),
+  .nut-calendar-week-item:nth-child(7) {
+    color: var(--nutui-color-primary, #fa2c19);
+  }
+
+  .nut-calendar-day:nth-child(7n+1) {
+    color: var(--nutui-gray-7, #1a1a1a);
+  }
+
+  .nut-calendar-day:nth-child(7n+6),
+  .nut-calendar-day:nth-child(7n) {
+    color: var(--nutui-color-primary, #fa2c19);
+  }
+
+  .nut-calendar-footer .calendar-confirm-btn {
+      margin-bottom: 50px;
+  }
+  .nut-popup-title-right {
+    top: 34rpx!important;
   }
 }
 
@@ -565,7 +616,7 @@
 .hkp-coupon-popup__title {
   color: $color-text-primary;
   font-size: 32px;
-  font-weight: 800;
+  font-weight: 500;
 }
 
 .hkp-coupon-popup__close {
@@ -603,7 +654,7 @@
   background: $color-primary;
   color: #ffffff;
   font-size: 20px;
-  font-weight: 700;
+  font-weight: 500;
 }
 
 .hkp-coupon-popup__empty {

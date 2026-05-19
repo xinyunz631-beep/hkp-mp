@@ -7,7 +7,7 @@ import { AppImage } from '@/core/components/AppImage';
 import { PageHeader, PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
-import { navigateBackOrHome } from '@/core/utils/navigation';
+import { navigateBackOrHome, navigateToMiniRoute } from '@/core/utils/navigation';
 import { showWechatToast } from '@/core/utils/wechat-actions';
 import { addMallCartItem } from '@/pkg-mall/services/cart';
 import { fetchProductsData } from '@/pkg-mall/services/products';
@@ -105,7 +105,7 @@ const ProductsPage = observer(function ProductsPage() {
             <View
               className="_pg-footer_button"
               onClick={() => {
-                Taro.navigateTo({ url: MINI_PACKAGE_ROUTES.mallCart });
+                navigateToMiniRoute(MINI_PACKAGE_ROUTES.mallCart);
               }}
             >
               <Text>去购物车</Text>

@@ -9,6 +9,7 @@
 - 新建页面默认使用 `PageShell`。
 - `PageShell` 外层必须包一层 `<View className="_pg">`，作为页面级样式作用域根节点。
 - 新建页面默认使用 `usePageRuntime()`，首屏依赖接口、登录拦截或页面 loading 时传 `initPage`。
+- `usePageRuntime` 默认只在首次进入时执行 `initPage`；页面再次 `useDidShow` 不自动刷新，确需自动刷新时才显式传 `refreshOnShow: true`。
 - `usePageRuntime({ loginRequired: true })` 页面在用户取消登录后，默认进入业务化登录阻断态，并提供“立即登录”重试入口。
 - 新建页面默认使用 `observer(function PageName() {})` 包裹，减少后续接入 MobX 状态时的返工。
 - 页面只负责渲染、交互和状态组合；接口、默认值和失败兜底放到 service。
@@ -33,8 +34,11 @@
 - `navbar={false}` 且自定义顶部栏的页面，顶部内容必须放入 `PageHeader`，由 `PageShell` 统一注入微信状态栏高度和右侧胶囊避让；不要把搜索栏、返回栏直接放进滚动内容顶部。
 - `navbar={false}` 的非全屏业务页必须在 `PageHeader` 内保留显式返回入口，并统一调用 `navigateBackOrHome()`；搜索、筛选、分类等自定义顶部栏不能只保留输入框或取消按钮。
 - `PageShell` 默认 navbar 如果存在 `navbarRight`，标题必须左对齐，右侧操作按钮必须在微信胶囊内容高度内垂直居中；没有右侧操作时标题保持居中。
+- `PageShell` 默认 navbar 且存在标题时，下拉刷新或 `usePageRuntime` 刷新 loading 期间，标题区域统一切换为 NutUI `Loading` + “刷新中”，刷新完成后恢复原标题；自定义 navbar、`navbar={false}` 或无标题页面不受影响。
 - 主包 tab 页面不展示返回按钮；页面内底部 tabbar 只由首页和“我的”页显式开启。
 - `PageShell` 默认不展示底部 `AppTabBar`；只有首页和“我的”页显式传 `reserveTabBarSpace` 开启页面内 tabbar。
+- 全项目受保护业务能力都必须做登录双保险：入口点击先拦截，登录成功后再跳转；目标页面仍要保留 `usePageRuntime({ loginRequired: true })` 作为第二道兜底。公开浏览页不拦截登录，例如商品详情、商品列表、门票预订、酒店首页/房型详情和餐饮商户详情。
+- 跳转会员码、会员中心、优惠券、购物车、收藏、赠品选择、订单、地址、售后、评价创建、票务/酒店确认订单等受保护路由时，优先使用 `src/core/utils/navigation.ts` 的 `navigateToMiniRoute()`；不要在各页面散写 `Taro.navigateTo` 后漏掉入口拦截。商品评价列表、商品详情、门票预订等公开内容不放入受保护路由。
 - 非 tab 自定义 navbar 页面默认使用 `navigateBackOrHome()` 返回。
 - 页面栈判断和“有上一页则返回、无上一页则回首页”的按钮事件必须封装在 `src/core/utils/navigation.ts`，页面或状态组件不要直接散写 `Taro.getCurrentPages()`。
 - 首页错误态不展示返回入口；通用错误组件需要临时隐藏返回时使用 `hideBack`，不要在页面里重复写路由判断。
@@ -44,9 +48,14 @@
 
 - `PageLayout` 的 footer 只有存在真实 footer/bottom 内容时才渲染固定区域，并默认给整个 footer 区域白色背景，确保底部操作栏和安全区占位视觉连续。
 - `PageLayout` 首次测量 header/footer 高度前会用白色测量遮罩盖住主内容区，测量完成后淡出，避免 header spacer 首次落位时页面内容裸眼跳动；页面层不要再自己写首屏遮罩处理这个问题。
-- 页面涉及底部固定栏、footer、弹层底部操作区时，不要再在页面或组件里追加 `env(safe-area-inset-bottom)`；安全区由 `PageLayout / layout` 统一承接，页面只写业务需要的常规 padding。
+- `PageShell` 默认使用 `ScrollView` 承接页面主内容；页面在 `usePageRuntime({ initPage })` 下渲染时，默认下拉刷新会调用同一个 `initPage`，不要再用每次 `useDidShow` 自动请求代替用户手动刷新。
+- `PageLayout` 滚动模式下 header spacer 必须放在 `ScrollView` 上方同级，并从 `ScrollView` 高度中扣除；不要把 header spacer 放进 `ScrollView` 内容里，否则微信下拉刷新顶部会多出一段空白。
+- 页面涉及底部固定栏、footer、弹层底部操作区时，不要再在页面或业务组件里追加 `env(safe-area-inset-bottom)`；固定 footer 安全区由 `PageLayout / layout` 统一承接，从底部打开的 `AppPopup` 默认由组件内部追加底部安全距离，页面只写业务需要的常规 padding。
 - 页面级弹层、浮层和遮罩默认放入 `PageShell` 的直接子节点 `PageShare` / `PageRoot`，不要放在滚动内容里；日期、优惠券、规则说明、SKU、筛选、支付确认类弹层都必须高于 `PageLayout` 的 header/footer/tabbar。
+- 页面首屏完成后的非下拉刷新请求必须走 `pageRuntime.withLoading()` 或同等页面级 loading 封装锁住页面，例如切换日期、筛选、tab 条件导致当前商品区重载时；只有用户手动下拉刷新才使用系统下拉刷新态，避免用户在旧数据刷新期间继续点击旧按钮。
 - 全局 loading、popup、runtime host、toast bridge、页面级 overlay 等全局状态组件，最外层 host 节点必须常驻渲染；显示隐藏只控制下一层真实节点或 class，避免 `PageLayout` / `ScrollView` 周边节点增删导致滚动回到顶部。
+- `ScrollView` 本体只负责滚动能力、高度和横纵向参数，不要在 `scroll-view` class 上写业务 padding；页面需要内边距时，在 `ScrollView` 内嵌一层 `View` 承接 padding，避免微信 webview 渲染告警和端内差异。
+- 横向 tabs / 分类栏使用 `ScrollView scrollX` 时，外层只负责横向滚动，内层用 `white-space: nowrap` 或 `inline-flex` 撑开内容宽度；每个 tab item 必须按 750px 设计稿尺寸显式写 `width`、`flex: none`、`flex-shrink: 0`，不要把设计稿尺寸折半，也不要只依赖 `flex-basis`，避免微信端把所有 tab 压缩到一屏。
 - 分包默认不要开启 `independent: true`；独立分包不会继承主包 `app.scss -> app.wxss/app-origin.wxss` 的全局样式，只有明确需要独立启动能力时才单独评估开启。
 
 ## 页面样式规则
@@ -56,6 +65,12 @@
 - 页面 class 遵循 BEM，元素连接符使用单下划线，例如 `_pg-banner_container`、`_pg-banner_item`；状态使用双横线，例如 `_pg-banner_item--active`。
 - 页面 SCSS 尽量使用嵌套写法，例如 `._pg-banner { &_container {} &_item { &--active {} } }`。
 - 已有页面只要本次修改触达 render 或 SCSS，就必须把触达区域迁到 `_pg-*`；如果本次是页面级重写、首页整体调整或重构样式文件，则整页统一迁到 `_pg-*`，不要保留页面名前缀逃逸。
+- 页面级 SCSS 禁止裸写全局组件、NutUI 或项目组件选择器影响全局，例如 `.nut-*`、`.app-popup`、`.login-popup`、`.page-*`；除非用户明确要求页面级覆盖，否则页面只能在当前 `._pg` 作用域下做局部覆盖。组件自身问题必须改对应组件文件，并用该组件自己的外层 class 收口。
+- 基于 `AppPopup` 的业务弹层必须通过 `className` 提供组件自有外层 class，例如 `login-popup`、`sku-popup`，再在对应组件样式文件里用 `.xxx-popup.app-popup` / `.xxx-popup .app-popup__content` 做二次定制；不得为了某个页面或业务弹层直接改全局 `AppPopup`、`.nut-popup`、`.nut-overlay`。
+- 小程序页面 SCSS 尺寸默认按 750px 设计稿原值书写，不要按 375 逻辑手动折半；只有明确在写 JS canvas 实际像素、NutUI 内部变量适配或某个组件文档要求时，才单独说明换算依据。
+- 页面级默认内容左右留白统一使用 `30px`；新页面模板和商用页主体区块不要继续默认写 `32px`，组件内部、卡片内部或弹层内部的局部 padding 按组件视觉单独决定。
+- 字体默认不加粗，正文、说明、链接、普通行文不要写 `font-weight: 500`；只有标题、名称、金额、主按钮等确实需要强调的文本才显式使用 `font-weight: 500`。
+- 项目源码内 `font-weight` 数值不得超过 `550`；新增或触达样式优先使用 `normal` / `500`，不要写 `600/700/800/900`。
 
 ## 图片与图标规则
 
@@ -63,6 +78,7 @@
 - 图片地址在 render 内显式声明变量，默认空字符串，例如 `const bannerImageSrc = '';`，后续再替换为接口字段或固定 CDN。
 - 图片尺寸优先通过 `AppImage` 的 `width`、`height`、`style` 或业务 class 控制；需要改内部 `Image` 样式时再用 `imageStyle`。
 - 图片未接入真实地址时，由 `AppImage` 灰色背景占位；如果页面需要把空地址显式暴露为失败/catch 态，传 `emptyState="error"`。
+- `src` 显式置空的 `AppImage` 灰底可能是等待接口/素材替换的设计占位；`$mp-verify` 视觉走查不得自动替换成 `AppIcon`、文字标题或手写图形，除非用户明确要求调整占位策略。
 - 图片加载中和加载失败都保留灰底，loading 居中且默认按传入宽度自适配大小，加载完成后去除灰底并淡入真实图片，不展示技术占位文案。
 - 图标先查项目内封装；NutUI 有匹配项时先封装为项目组件，例如 `AppIcon`，再在页面使用；找不到合适图标时使用图片组件并将 `src` 默认置空，等待补链接。
 - `AppIcon` 默认尺寸按 `14-16` 书写，优先从 `16` 开始；只有主视觉、悬浮主按钮、空态插图辅助等明确需要放大的场景，才额外写到 `18+`，不要默认给 `20+`。
@@ -72,9 +88,21 @@
 ## 微信能力规则
 
 - 当前只按微信小程序 `weapp` 实现和验收，不为 H5 或其它端写兼容分支。
+- 项目分享只允许微信好友分享：页面使用 `useShareAppMessage` / `openType="share"` / `showShareMenu({ showShareItems: ['shareAppMessage'] })`；禁止 `useShareTimeline`、`onShareTimeline`、`shareTimeline` 或朋友圈分享入口。
 - 图片预览、扫码、地图、电话、复制、确认弹窗和 toast 默认优先使用 `src/core/utils/wechat-actions.ts` 封装。
 - 页面可见点击必须落到跳转、弹层、微信 API、本地状态变化、登录拦截或提交结果，不允许用“即将开放”作为非暂缓页面兜底。
 - 微信 canvas 生成图片时必须区分 750 设计稿 `rpx` 展示尺寸和 canvas 真实像素绘制尺寸；不要直接把 SCSS 中会被 Taro 转换的 `px` 常量复用为 JS 绘制 / 导出尺寸，避免只导出左上角局部。
+
+## 微信开发工具验证规则
+
+- Codex 不在普通开发收尾时自动进入微信开发者工具走查；只有用户明确触发 `$mp-verify`、`$mp-weapp-verify` 或说明“你自己进开发工具验证”时才执行。
+- `$mp-verify` 默认验证后自动修复确定性问题；用户明确说“只出清单 / 不要修”时才只报告不改代码。
+- `$mp-verify` 发现空图片、灰底图片、待素材位、截图还原差异等视觉资产问题时，默认列入待确认；不得把素材占位自动改成图标、文本或新视觉方案。
+- `$mp-verify` 自动修复前必须判断影响半径和通用性：先查同类页面、共享组件、调用方和样式作用域，能确定是通用基础设施问题才修通用层，能确定是单页问题才修页面局部，不允许为了修 A 破坏 B。
+- 设计取舍、多方案交互、大范围重构、新依赖、真实账号/支付/上传权限等高风险问题，必须列入待确认清单，不自动改。
+- 微信开发工具验证优先使用 DevTools MCP / `miniprogram-automator` / `weapp-ide-cli` 等可重复工具；Computer Use 只作为没有自动化工具时的降级截图和低风险点击辅助。
+- 使用 Computer Use 降级验收时，结论必须基于模拟器当前可见页面、页面路径和交互结果；不要根据 Wxml 面板里的隐藏页面栈误判页面显示状态。
+- 验证报告按 `已修 / 待确认 / 通过 / 未能确认` 输出，问题必须包含页面、复现步骤、实际表现、预期和疑似代码位置；微信系统 warning 可记录但不作为业务问题优先处理。
 
 ## 组件决策顺序
 
@@ -82,6 +110,7 @@
 - 先查项目内封装：`src/core/components`、当前分包组件、已有同类页面。
 - 交易类通用 UI 优先查 `src/core/components/commerce`，当前包含商品卡、订单卡、优惠券卡、地址卡、提交栏、数量选择、筛选 Tab、SKU 弹层和日期选择。
 - 日期选择优先使用项目封装 `DateSelectionPopup`，底层使用 NutUI `Calendar`；门票使用单日，酒店使用范围。
+- 票务分包底部提交 / 支付固定栏优先使用 `src/pkg-ticket/components/TicketSubmitFooter`，不要在门票预定页和确认订单页分别覆写提交栏形态。
 - NutUI 样式依赖 `designWidth=375` 和 `deviceRatio[375]=2`，缺失时会把 NutUI CSS fallback 编译成 `NaNrpx`。
 - 再查已安装 UI 库：当前优先 NutUI Taro；命中后也先封装一层项目组件，再给页面或业务代码使用。
 - 命中基础状态能力时优先使用项目封装：`BaseSkeleton`、`BaseEmpty`、`BaseException`、`src/core/components/loading`。
@@ -106,8 +135,12 @@
 
 ## 默认校验
 
-- 页面实现后至少运行 `yarn typecheck`。
-- 涉及分包、路由或 core 引用时运行 `yarn check:package-boundary`。
-- 涉及页面文档或 registry 时运行 `yarn check:ui-contract`。
-- 页面约束检查运行 `yarn check:page-convention`，会拦截缺少 `_pg` 根节点、页面名前缀 class、双下划线元素写法、非 `_pg-*` 页面 selector，以及用 `♡/✨/›/×` 等文本符号冒充图标。
+- 默认按影响范围运行最小门禁，不要每次无差别全跑。
+- 只改 SCSS / 页面视觉：运行 `yarn check:page-convention` 和 `git diff --check`；不运行 `typecheck`、`package-boundary`、`ui-contract`。
+- 改 TS/TSX 页面或组件逻辑：运行 `yarn typecheck`、`yarn check:page-convention` 和 `git diff --check`；未动 import / 路由 / 分包时不运行 `package-boundary`。
+- 改 service / mock / store / utils / hooks：运行 `yarn typecheck` 和 `git diff --check`；未触达页面 render / SCSS 时不运行 `page-convention`。
+- 改路由、`app.config.ts`、分包结构、主包和分包 import 边界：运行 `yarn typecheck`、`yarn check:package-boundary` 和 `git diff --check`。
+- 改 `docs/ui`、页面文档或 `page-registry.yaml`：运行 `yarn check:ui-contract` 和 `git diff --check`。
+- 只改 skill / `docs/codex` / 说明性文档：通常只运行 `git diff --check`，必要时用 `grep` 确认规则落点。
+- `yarn check:page-convention` 会拦截缺少 `_pg` 根节点、页面名前缀 class、双下划线元素写法、非 `_pg-*` 页面 selector，以及用 `♡/✨/›/×` 等文本符号冒充图标。
 - 默认不运行完整 `yarn build:weapp`，除非用户要求或需要排查完整产物。

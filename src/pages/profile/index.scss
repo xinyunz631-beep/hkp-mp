@@ -58,7 +58,7 @@
   &_name {
     color: $color-text-primary;
     font-size: 34px;
-    font-weight: 800;
+    font-weight: 550;
   }
 
   &_meta,
@@ -80,7 +80,7 @@
     background: rgba(255, 255, 255, 0.78);
     color: $color-primary;
     font-size: 22px;
-    font-weight: 800;
+    font-weight: 550;
   }
 
   &_stats {
@@ -100,7 +100,7 @@
   &_stat-value {
     color: $color-text-primary;
     font-size: 30px;
-    font-weight: 800;
+    font-weight: 550;
   }
 
   &_stat-label {
@@ -142,7 +142,7 @@
     margin-top: 18px;
     color: $color-text-primary;
     font-size: 28px;
-    font-weight: 800;
+    font-weight: 550;
   }
 
   &_desc {
@@ -163,7 +163,7 @@
     display: block;
     color: $color-text-primary;
     font-size: 30px;
-    font-weight: 800;
+    font-weight: 550;
   }
 
   &_list {
@@ -203,7 +203,7 @@
   &_title {
     color: $color-text-primary;
     font-size: 28px;
-    font-weight: 700;
+    font-weight: 550;
   }
 
   &_desc {
@@ -219,6 +219,6 @@
     background: $color-primary-light;
     color: $color-primary;
     font-size: 20px;
-    font-weight: 700;
+    font-weight: 550;
   }
 }

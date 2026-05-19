@@ -28,6 +28,8 @@ const OrderIndexPage = observer(function OrderIndexPage() {
       setPageData(nextData);
       setActiveTabKey(nextData.tabs[0]?.key ?? 'all');
     },
+    loginRequired: true,
+    loginReason: '登录后可查看订单',
   });
 
   const visibleSections = useMemo(() => {

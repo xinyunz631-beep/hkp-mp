@@ -17,6 +17,7 @@ interface AppPopupProps extends PropsWithChildren {
   overlay?: boolean;
   overlayClassName?: string;
   overlayStyle?: CSSProperties;
+  safeArea?: boolean;
   closeOnOverlayClick?: boolean;
   lockScroll?: boolean;
   round?: boolean;
@@ -44,6 +45,7 @@ export function AppPopup({
   overlay = true,
   overlayClassName,
   overlayStyle,
+  safeArea,
   closeOnOverlayClick = true,
   lockScroll = true,
   round,
@@ -55,6 +57,7 @@ export function AppPopup({
   onOverlayClick,
 }: AppPopupProps) {
   const popupClassName = classNames('app-popup', `app-popup--${position}`, className);
+  const hasSafeArea = safeArea ?? position === 'bottom';
   const popupContentClassName = classNames('app-popup__content', contentClassName);
   const popupOverlayClassName = classNames('app-popup__overlay', overlayClassName);
   const durationStyle = { '--app-popup-duration': `${duration}ms` } as CSSProperties;
@@ -87,7 +90,10 @@ export function AppPopup({
       afterClose={afterClose}
       onOverlayClick={handleOverlayClick}
     >
-      <View className={popupContentClassName}>{children}</View>
+      <View className={popupContentClassName}>
+        {children}
+        {hasSafeArea ? <View className="app-popup__safe-area" /> : null}
+      </View>
     </Popup>
   );
 }

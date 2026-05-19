@@ -127,6 +127,12 @@
 
 .app-popup__content {
   width: 100%;
+  box-sizing: border-box;
+}
+
+.app-popup__safe-area {
+  height: calc(4px + env(safe-area-inset-bottom));
+  pointer-events: none;
 }
 
 @keyframes app-popup-fade-in {

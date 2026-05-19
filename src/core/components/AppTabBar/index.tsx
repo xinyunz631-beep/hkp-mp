@@ -3,6 +3,7 @@ import Taro, { useDidShow } from '@tarojs/taro';
 import { Text, View } from '@tarojs/components';
 import { AppIcon, type AppIconName } from '@/core/components/AppIcon';
 import { MINI_MAIN_ROUTES, MINI_PACKAGE_ROUTES, type MiniMainRoute, type MiniPackageRoute } from '@/core/constants/routes';
+import { navigateToMiniRoute } from '@/core/utils/navigation';
 import './index.scss';
 
 type AppTabBarRoute = MiniMainRoute | MiniPackageRoute;
@@ -20,7 +21,15 @@ interface AppTabBarItem {
 const tabBarItems: AppTabBarItem[] = [
   { key: 'home', text: '首页', path: MINI_MAIN_ROUTES.home, routeType: 'tab', icon: 'home' },
   { key: 'ticket', text: '购票', path: MINI_PACKAGE_ROUTES.ticketBooking, routeType: 'package', icon: 'ticket' },
-  { key: 'memberCode', text: '会员码', path: MINI_PACKAGE_ROUTES.memberCode, routeType: 'package', icon: 'code', center: true, hideText: true },
+  {
+    key: 'memberCode',
+    text: '会员码',
+    path: MINI_PACKAGE_ROUTES.memberCode,
+    routeType: 'package',
+    icon: 'code',
+    center: true,
+    hideText: true,
+  },
   { key: 'hotel', text: '酒店', path: MINI_PACKAGE_ROUTES.hotelHome, routeType: 'package', icon: 'hotel' },
   { key: 'profile', text: '我的', path: MINI_MAIN_ROUTES.profile, routeType: 'tab', icon: 'profile' },
 ];
@@ -46,10 +55,15 @@ export function AppTabBar() {
     setActivePath(resolveCurrentRoute());
   });
 
+  // 打开分包页面，保持页面内 tabbar 对登录入口的前置拦截。
+  function openPackageRoute(item: AppTabBarItem) {
+    navigateToMiniRoute(item.path as MiniPackageRoute);
+  }
+
   // 切换主包 tab 页或打开分包页面，并即时刷新当前页面内 tabbar 选中态。
   function handleNavigate(item: AppTabBarItem) {
     if (item.routeType === 'package') {
-      Taro.navigateTo({ url: item.path as MiniPackageRoute });
+      openPackageRoute(item);
       return;
     }
 
@@ -74,7 +88,7 @@ export function AppTabBar() {
           <View className={itemClassName} key={item.key} onClick={() => handleNavigate(item)}>
             {item.center ? (
               <View className="hkitty-tabbar__center-button">
-                <AppIcon name={item.icon} size={16} color="#ffffff" />
+                <AppIcon name={item.icon} size={22} color="#ffffff" />
               </View>
             ) : (
               <AppIcon className="hkitty-tabbar__icon" name={item.icon} size={16} color="currentColor" />

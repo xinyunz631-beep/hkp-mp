@@ -21,6 +21,8 @@ const LogisticsPage = observer(function LogisticsPage() {
       const nextData = await fetchLogisticsData();
       setPageData(nextData);
     },
+    loginRequired: true,
+    loginReason: '登录后可查看物流',
   });
 
   async function handleConfirmReceive() {

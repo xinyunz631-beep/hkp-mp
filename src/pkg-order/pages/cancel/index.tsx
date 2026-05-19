@@ -18,6 +18,8 @@ const CancelPage = observer(function CancelPage() {
       const nextData = await fetchCancelData();
       setPageData(nextData);
     },
+    loginRequired: true,
+    loginReason: '登录后可取消订单',
   });
 
   async function handleSubmit() {

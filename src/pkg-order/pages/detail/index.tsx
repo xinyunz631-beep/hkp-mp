@@ -16,6 +16,8 @@ const DetailPage = observer(function DetailPage() {
       const nextData = await fetchDetailData(orderId);
       setDetailData(nextData);
     },
+    loginRequired: true,
+    loginReason: '登录后可查看订单详情',
   });
 
   return pageRuntime.renderPage(() => {

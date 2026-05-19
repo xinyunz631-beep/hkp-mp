@@ -49,11 +49,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 92px;
-  height: 92px;
-  margin-top: -48px;
+  width: 110px;
+  height: 110px;
+  margin-top: -58px;
   border: 4px solid #f7c1da;
-  border-radius: 46px;
+  border-radius: 50%;
   background: #ea6aa4;
   box-shadow: 0 8px 18px rgba(219, 39, 119, 0.28);
 }
@@ -62,7 +62,7 @@
   overflow: hidden;
   max-width: 100%;
   font-size: 22px;
-  font-weight: 800;
+  font-weight: 550;
   line-height: 1.2;
   text-overflow: ellipsis;
   white-space: nowrap;

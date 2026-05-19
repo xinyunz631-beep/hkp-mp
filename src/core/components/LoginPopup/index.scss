@@ -1,5 +1,9 @@
+.login-popup.app-popup {
+  background: transparent;
+}
+
 .login-popup__content {
-  padding: 0 24px 24px;
+  padding: 0 24px 14px;
 }
 
 .login-popup__panel {
@@ -11,7 +15,7 @@
 
 .login-popup__title {
   font-size: 36px;
-  font-weight: 700;
+  font-weight: 550;
   color: #14201d;
 }
 
@@ -38,7 +42,7 @@
   background: $color-primary;
   color: #ffffff;
   font-size: 28px;
-  font-weight: 700;
+  font-weight: 550;
   line-height: 88px;
 }
 
@@ -50,7 +54,7 @@
   background: #f7fbfa;
   color: $color-primary;
   font-size: 26px;
-  font-weight: 600;
+  font-weight: 550;
   line-height: 80px;
 }
 

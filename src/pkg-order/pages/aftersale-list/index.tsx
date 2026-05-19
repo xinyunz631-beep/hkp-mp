@@ -19,6 +19,8 @@ const AftersaleListPage = observer(function AftersaleListPage() {
       setPageData(nextData);
       setActiveTabKey(nextData.tabs[0]?.key ?? 'all');
     },
+    loginRequired: true,
+    loginReason: '登录后可查看售后记录',
   });
 
   const visibleRecords = useMemo(() => {

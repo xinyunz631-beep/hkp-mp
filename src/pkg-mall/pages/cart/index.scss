@@ -15,7 +15,7 @@
 ._pg-navbar_action {
   color: #2e3138;
   font-size: 24px;
-  font-weight: 600;
+  font-weight: 550;
 }
 
 ._pg-page {
@@ -32,7 +32,7 @@
     padding: 22px 0;
     color: #2b2f36;
     font-size: 28px;
-    font-weight: 700;
+    font-weight: 550;
   }
 
   &_tags {
@@ -131,7 +131,7 @@
   &_price {
     color: $color-primary;
     font-size: 28px;
-    font-weight: 700;
+    font-weight: 550;
   }
 
   &_gift {
@@ -161,7 +161,7 @@
   &_title {
     color: #262a31;
     font-size: 28px;
-    font-weight: 700;
+    font-weight: 550;
   }
 
   &_grid {
@@ -213,7 +213,7 @@
   &_price {
     color: $color-primary;
     font-size: 24px;
-    font-weight: 700;
+    font-weight: 550;
   }
 
   &_sales {
@@ -274,7 +274,7 @@
   &_summary-amount {
     color: $color-primary;
     font-size: 42px;
-    font-weight: 700;
+    font-weight: 550;
   }
 
   &_button {
@@ -286,6 +286,6 @@
     background: $color-primary;
     color: #ffffff;
     font-size: 30px;
-    font-weight: 700;
+    font-weight: 550;
   }
 }

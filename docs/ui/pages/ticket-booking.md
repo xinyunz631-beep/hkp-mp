@@ -10,7 +10,7 @@
 - 设计稿名称：门票预定 750px 开发稿
 - 当前版本：v1.0
 - 页面状态：commercial-ready
-- 更新时间：2026-05-17
+- 更新时间：2026-05-19
 - 实现文件：
   - src/pkg-ticket/pages/ticket-booking/index.tsx
   - src/pkg-ticket/pages/ticket-booking/index.scss
@@ -34,14 +34,16 @@
 - 开园信息：开放时间、详情须知、地址地图、客服热线。
 - 游玩日期：点击打开项目封装 `DateSelectionPopup`，底层使用 NutUI `Calendar`，门票只允许单日。
 - 优惠券：点击打开项目封装 `CouponSelectionPopup`，选择后联动底部金额。
-- 商品区域：门票和年卡分区，数量使用项目封装 `QuantityStepper`。
-- 固定底栏：`FixedSubmitBar` 展示应付金额、优惠金额和提交订单动作。
+- 商品导航：由 `fetchTicketBookingData({ travelDate })` 返回的 `sections` 决定，多个板块时按返回顺序展示 tabs，只有一个板块时不展示 tabs；2-3 个 tab 时内容自适应宽度并 `space-between` 分布，超过 3 个 tab 时横向滑动，单屏最多露出约 3.2 个 tab，标签文案和颜色由数据返回，当前年卡 `hot` 使用红色。
+- 商品区域：按 `sections` 返回顺序渲染对应商品或套餐，数量使用项目封装 `QuantityStepper`。
+- 固定底栏：`TicketSubmitFooter` 展示应付金额、优惠金额和提交订单动作。
 - 页面弹层：日期、优惠券和预定须知统一挂载到 `PageShare`，层级高于 header/footer/tabbar。
 
 ## 动态与静态边界
 
 - 图片数据：由 service 返回 `heroImages`，空地址时仍通过 `AppImage` 展示灰底占位。
-- 页面数据：由 `fetchTicketBookingData()` 返回 DTO，页面不直接写业务常量。
+- 页面数据：由 `fetchTicketBookingData({ travelDate })` 返回 DTO，页面不直接写业务常量。
+- 商品 tabs：依赖游玩日期返回 `sections` 顺序、标题、badge 和商品映射；mock 按日期稳定生成 2 个或 4-6 个板块，返回单个有效板块时隐藏 tabs，仅保留对应商品区；日期切换刷新期间必须展示 pageLoading 锁住页面。
 - 订单草稿：提交时由 `createTicketOrderDraft()` 写入本地草稿，再携带 `draftId` 跳转确认订单。
 - 真实接口替换：后续只替换 service 和草稿提交实现，页面交互协议保持不变。
 
@@ -58,7 +60,7 @@
 
 | 模块 | service | 失败策略 | 是否阻断页面 |
 |---|---|---|---|
-| 页面数据 | `fetchTicketBookingData()` | service 内归一和兜底 | 是 |
+| 页面数据 | `fetchTicketBookingData({ travelDate })` | service 内归一和兜底 | 是 |
 | 订单草稿 | `createTicketOrderDraft()` | 本地缓存保存草稿 | 是 |
 | 微信动作 | `wechat-actions.ts` | 失败时给业务反馈或复制降级 | 否 |
 
@@ -71,7 +73,7 @@
 | 详情须知 | 打开预定须知弹层 |
 | 地图 | 调用微信地图；缺经纬度时复制地址 |
 | 客服电话 | 调用微信拨号；失败时复制号码 |
-| 游玩日期 | 打开单日日期弹层，选择后更新日期 |
+| 游玩日期 | 打开单日日期弹层，选择后展示 pageLoading，并按新日期刷新 tabs、商品和价格 |
 | 优惠券 | 打开优惠券弹层，选择后更新优惠金额 |
 | 票种数量 | 使用项目封装步进器调整数量和应付金额 |
 | 商品预定须知 | 打开预定须知弹层 |
@@ -85,7 +87,7 @@
 | 分享 | `Taro.showShareMenu` | 调试环境不可用时只提示 |
 | 电话 | `Taro.makePhoneCall` | 复制号码 |
 | 地图 | `Taro.openLocation` | 复制地址 |
-| 日期 | `DateSelectionPopup` 单日选择 | 关闭不改变日期 |
+| 日期 | `DateSelectionPopup` 单日选择后用 `pageRuntime.withLoading()` 重新请求页面数据 | 关闭不改变日期 |
 | 优惠券 | 选择券并联动金额 | 无券显示空提示 |
 | 登录 | 本地会员身份可完成登录 | 用户取消则留在预定页 |
 | 提交 | 生成本地草稿并跳确认订单 | 无票种提示选择数量 |

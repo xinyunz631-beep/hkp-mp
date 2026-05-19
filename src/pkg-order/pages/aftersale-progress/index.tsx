@@ -16,6 +16,8 @@ const AftersaleProgressPage = observer(function AftersaleProgressPage() {
       const nextData = await fetchAftersaleProgressData();
       setPageData(nextData);
     },
+    loginRequired: true,
+    loginReason: '登录后可查看售后进度',
   });
 
   return pageRuntime.renderPage(() => {

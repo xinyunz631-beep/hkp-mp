@@ -68,7 +68,7 @@
 
     &--active {
       color: $color-primary;
-      font-weight: 700;
+      font-weight: 550;
       background: #fffafc;
     }
   }
@@ -130,13 +130,13 @@
 
   &_title {
     font-size: 34px;
-    font-weight: 700;
+    font-weight: 550;
   }
 
   &_subtitle {
     margin-top: 10px;
     font-size: 28px;
-    font-weight: 700;
+    font-weight: 550;
   }
 }
 

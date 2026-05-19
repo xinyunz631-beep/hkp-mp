@@ -7,6 +7,7 @@ import { QuantityStepper } from '@/core/components/commerce';
 import { PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
+import { navigateToMiniRoute } from '@/core/utils/navigation';
 import { showWechatConfirm, showWechatToast } from '@/core/utils/wechat-actions';
 import { fetchCartData } from '@/pkg-mall/services/cart';
 import type { MallCartData, MallCartMerchantGroup, MallCartItem } from '@/pkg-mall/services/mock-data';
@@ -23,6 +24,8 @@ const CartPage = observer(function CartPage() {
       setCartData(nextData);
       setGroups(nextData.groups);
     },
+    loginRequired: true,
+    loginReason: '登录后可查看购物车',
   });
 
   const recommendProducts = cartData?.recommendProducts ?? [];
@@ -88,7 +91,7 @@ const CartPage = observer(function CartPage() {
       return;
     }
 
-    Taro.navigateTo({ url: MINI_PACKAGE_ROUTES.orderCheckout });
+    navigateToMiniRoute(MINI_PACKAGE_ROUTES.orderCheckout);
   }
 
   return pageRuntime.renderPage(() => (

@@ -32,6 +32,8 @@ const AftersaleApplyPage = observer(function AftersaleApplyPage() {
       });
       setSelectedReason(nextData.defaultReason);
     },
+    loginRequired: true,
+    loginReason: '登录后可申请售后',
   });
 
   async function handleUploadProof() {

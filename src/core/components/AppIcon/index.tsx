@@ -2,6 +2,7 @@ import { Image } from '@tarojs/components';
 import {
   ArrowLeft,
   ArrowRight,
+  Ask,
   Calendar,
   Cart,
   CartAdd,
@@ -36,6 +37,7 @@ import './index.scss';
 
 export type AppIconName =
   | 'arrowRight'
+  | 'ask'
   | 'back'
   | 'calendar'
   | 'cart'
@@ -81,6 +83,7 @@ type NutIconComponent = ComponentType<{
 
 const nutIconMap: Record<AppIconName, NutIconComponent | undefined> = {
   arrowRight: ArrowRight,
+  ask: Ask,
   back: ArrowLeft,
   calendar: Calendar,
   cart: Cart,
@@ -121,6 +124,9 @@ export function AppIcon({
 }: AppIconProps) {
   const iconClassName = classNames('app-icon', `app-icon--${name}`, className);
   const IconComponent = nutIconMap[name];
+  if(name == 'arrowRight') {
+    size = 13
+  }
 
   if (IconComponent) {
     return <IconComponent className={iconClassName} size={size} color={color} />;

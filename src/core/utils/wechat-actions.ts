@@ -167,6 +167,7 @@ export async function showWechatShareGuide() {
   try {
     await Taro.showShareMenu({
       withShareTicket: true,
+      showShareItems: ['shareAppMessage'],
     });
   } catch {
     // 分享菜单在部分调试环境不可用时不阻断用户。

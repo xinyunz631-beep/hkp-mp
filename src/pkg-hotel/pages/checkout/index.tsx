@@ -43,6 +43,8 @@ const CheckoutPage = observer(function CheckoutPage() {
       );
       setMobile(nextData.mobileValue);
     },
+    loginRequired: true,
+    loginReason: '登录后可提交酒店订单',
   });
 
   const guestFields = useMemo(() => {

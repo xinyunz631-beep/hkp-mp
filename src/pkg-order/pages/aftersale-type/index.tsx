@@ -17,6 +17,8 @@ const AftersaleTypePage = observer(function AftersaleTypePage() {
       const nextData = await fetchAftersaleTypeData();
       setPageData(nextData);
     },
+    loginRequired: true,
+    loginReason: '登录后可申请售后',
   });
 
   function openApplyPage(typeTitle: string) {

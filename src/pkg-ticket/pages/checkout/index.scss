@@ -45,7 +45,7 @@
     flex: 1;
     color: #23262f;
     font-size: 30px;
-    font-weight: 700;
+    font-weight: 550;
     line-height: 1.4;
   }
 
@@ -145,7 +145,7 @@
   &_title {
     color: #23262f;
     font-size: 30px;
-    font-weight: 700;
+    font-weight: 550;
     line-height: 1.4;
   }
 
@@ -239,10 +239,4 @@
     flex: none;
     margin-left: 10px;
   }
-}
-
-._pg-submit_discount {
-  color: #8b909a;
-  font-size: 26px;
-  line-height: 1.4;
 }

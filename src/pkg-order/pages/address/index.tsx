@@ -17,6 +17,8 @@ const AddressPage = observer(function AddressPage() {
       setPageData(nextData);
       setSelectedAddressId(nextData.addresses.find((item) => item.isDefault)?.id ?? nextData.addresses[0]?.id ?? '');
     },
+    loginRequired: true,
+    loginReason: '登录后可管理地址',
   });
 
   function updateAddresses(updater: (current: OrderAddressData['addresses']) => OrderAddressData['addresses']) {

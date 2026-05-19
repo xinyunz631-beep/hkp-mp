@@ -26,6 +26,8 @@ const FavoritesPage = observer(function FavoritesPage() {
       setActiveFilter(nextData.activeFilter);
       setSelectedItemId(nextData.items[0]?.id || '');
     },
+    loginRequired: true,
+    loginReason: '登录后可查看收藏',
   });
 
   const filters = favoritesData?.filters ?? [];

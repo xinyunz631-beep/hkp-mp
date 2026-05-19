@@ -34,7 +34,7 @@
     display: block;
     color: #1f2937;
     font-size: 28px;
-    font-weight: 700;
+    font-weight: 550;
     line-height: 1.4;
   }
 
@@ -59,13 +59,13 @@
   &_label {
     color: #1f2937;
     font-size: 26px;
-    font-weight: 700;
+    font-weight: 550;
   }
 
   &_value {
     color: #db2777;
     font-size: 24px;
-    font-weight: 700;
+    font-weight: 550;
   }
 }
 
@@ -195,7 +195,7 @@
   &_value {
     color: #1f2937;
     font-size: 24px;
-    font-weight: 600;
+    font-weight: 550;
   }
 }
 
@@ -210,7 +210,7 @@
     border-radius: 999px;
     color: #ffffff;
     font-size: 28px;
-    font-weight: 700;
+    font-weight: 550;
     background: linear-gradient(135deg, #f9a8d4 0%, #db2777 100%);
   }
 }

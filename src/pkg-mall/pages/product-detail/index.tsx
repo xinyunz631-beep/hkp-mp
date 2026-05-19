@@ -9,6 +9,7 @@ import { PageShare, PageShell } from '@/core/components/PageShell';
 import { MINI_MAIN_ROUTES, MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import type { HkpSkuGroup } from '@/core/types/hkp';
+import { navigateToMiniRoute } from '@/core/utils/navigation';
 import {
   callWechatPhone,
   previewWechatImages,
@@ -72,7 +73,7 @@ const ProductDetailPage = observer(function ProductDetailPage() {
     setSkuVisible(false);
 
     if (skuAction === 'buy') {
-      Taro.navigateTo({ url: MINI_PACKAGE_ROUTES.orderCheckout });
+      navigateToMiniRoute(MINI_PACKAGE_ROUTES.orderCheckout);
       return;
     }
 
@@ -160,7 +161,7 @@ const ProductDetailPage = observer(function ProductDetailPage() {
               <View
                 className="_pg-footer_action"
                 onClick={() => {
-                  Taro.navigateTo({ url: MINI_PACKAGE_ROUTES.mallCart });
+                  navigateToMiniRoute(MINI_PACKAGE_ROUTES.mallCart);
                 }}
               >
                 <AppIcon name="cart" size={16} color="#6b7280" />

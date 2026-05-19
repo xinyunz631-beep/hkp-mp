@@ -40,7 +40,7 @@
 }
 
 .page-layout__content-spacer--tabbar {
-  height: $tabbar-height;
+  height: $tabbar-height + 60px;
 }
 
 .page-layout__content-spacer--safe-bottom,

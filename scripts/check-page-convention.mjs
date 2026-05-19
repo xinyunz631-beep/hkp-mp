@@ -37,6 +37,26 @@ function walkSourceFiles(dir) {
   return files;
 }
 
+function walkStyleFiles(dir) {
+  if (!existsSync(dir)) return [];
+
+  const files = [];
+
+  for (const entry of readdirSync(dir)) {
+    const fullPath = resolve(dir, entry);
+    const stat = statSync(fullPath);
+
+    if (stat.isDirectory()) {
+      files.push(...walkStyleFiles(fullPath));
+      continue;
+    }
+
+    if (/\.(scss|css)$/.test(entry)) files.push(fullPath);
+  }
+
+  return files;
+}
+
 function checkForbiddenTextIconGlyphs() {
   const sourceFiles = walkSourceFiles(sourceDir);
 
@@ -49,6 +69,40 @@ function checkForbiddenTextIconGlyphs() {
       if (!matched) return;
 
       fail(`${relativePath}:${index + 1} 禁止用文本符号 "${matched[0]}" 充当图标，应使用 AppIcon / NutUI icon / 项目图标组件`);
+    });
+  }
+}
+
+function checkFontWeightCeiling() {
+  const styleFiles = walkStyleFiles(sourceDir);
+  const overweightPattern = /font-weight:\s*(55[1-9]|5[6-9]\d|[6-9]\d{2}|[1-9]\d{3,})\s*;/;
+
+  for (const filePath of styleFiles) {
+    const relativePath = filePath.replace(`${rootDir}/`, '');
+    const lines = readFileSync(filePath, 'utf8').split(/\r?\n/);
+
+    lines.forEach((line, index) => {
+      const matched = line.match(overweightPattern);
+      if (!matched) return;
+
+      fail(`${relativePath}:${index + 1} font-weight ${matched[1]} 超过 550，正文默认 normal，强调文本优先使用 font-weight: 500`);
+    });
+  }
+}
+
+function checkShareTimelineForbidden() {
+  const sourceFiles = walkSourceFiles(sourceDir);
+  const forbiddenShareTimelinePattern = /\b(useShareTimeline|onShareTimeline|shareTimeline)\b/;
+
+  for (const filePath of sourceFiles) {
+    const relativePath = filePath.replace(`${rootDir}/`, '');
+    const lines = readFileSync(filePath, 'utf8').split(/\r?\n/);
+
+    lines.forEach((line, index) => {
+      const matched = line.match(forbiddenShareTimelinePattern);
+      if (!matched) return;
+
+      fail(`${relativePath}:${index + 1} 禁止使用 ${matched[1]}，项目分享只允许微信好友分享`);
     });
   }
 }
@@ -290,6 +344,8 @@ function checkPage(page) {
 function main() {
   const pages = parseRegistryPages();
   checkForbiddenTextIconGlyphs();
+  checkFontWeightCeiling();
+  checkShareTimelineForbidden();
 
   if (pages.length === 0) {
     if (failures.length > 0) {
@@ -310,7 +366,7 @@ function main() {
     return;
   }
 
-  console.log('OK 小程序页面 PageShell、runtime、observer、navbar、_pg BEM 和文本图标约束检查通过');
+  console.log('OK 小程序页面 PageShell、runtime、observer、navbar、_pg BEM、文本图标、font-weight 和分享约束检查通过');
 }
 
 main();

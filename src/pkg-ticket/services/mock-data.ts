@@ -101,11 +101,37 @@ export const ticketProducts: HkpProductSummary[] = [
   },
 ];
 
-export const ticketDates: HkpDateOption[] = [
-  { date: '2026-05-16', title: '今天', subtitle: '可订' },
-  { date: '2026-05-17', title: '明天', subtitle: '可订' },
-  { date: '2026-05-18', title: '周一', subtitle: '可订' },
-];
+const TICKET_BOOKING_AVAILABLE_DAYS = 30;
+const TICKET_WEEKDAY_TITLES = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+
+function padDateUnit(value: number) {
+  return `${value}`.padStart(2, '0');
+}
+
+function formatTicketDate(date: Date) {
+  return `${date.getFullYear()}-${padDateUnit(date.getMonth() + 1)}-${padDateUnit(date.getDate())}`;
+}
+
+function createTicketDate(baseDate: Date, offset: number) {
+  return new Date(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate() + offset);
+}
+
+function createTicketDates(): HkpDateOption[] {
+  const today = new Date();
+
+  return Array.from({ length: TICKET_BOOKING_AVAILABLE_DAYS + 1 }, (_, index) => {
+    const date = createTicketDate(today, index);
+    const title = index === 0 ? '今天' : index === 1 ? '明天' : TICKET_WEEKDAY_TITLES[date.getDay()];
+
+    return {
+      date: formatTicketDate(date),
+      title,
+      subtitle: '可订',
+    };
+  });
+}
+
+export const ticketDates: HkpDateOption[] = createTicketDates();
 
 export const ticketCoupons: HkpCouponSummary[] = [
   {

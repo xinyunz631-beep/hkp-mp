@@ -19,6 +19,8 @@ const CheckoutPage = observer(function CheckoutPage() {
       const nextData = await fetchCheckoutData();
       setCheckoutData(nextData);
     },
+    loginRequired: true,
+    loginReason: '登录后可提交订单',
   });
 
   async function handleCouponPress() {

@@ -3,7 +3,7 @@
   padding-left: 12Px;
   box-sizing: border-box;
   background: $color-surface;
-  border-bottom: 1px solid rgba(243, 198, 220, 0.72);
+  border-bottom: 1px solid rgba(189, 191, 191, 0.25);
 }
 
 .page-navbar__content {
@@ -35,7 +35,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 96px;
+  min-width: 66px;
 }
 
 .page-navbar__back {
@@ -68,14 +68,41 @@
   max-width: calc(100% - 192px);
   overflow: hidden;
   transform: translate(-50%, -50%);
+  margin-left: -6Px;
   color: $color-text-primary;
   font-size: 32px;
-  font-weight: 700;
+  font-weight: 550;
   line-height: 1.2;
   text-overflow: ellipsis;
   white-space: nowrap;
   text-align: center;
   pointer-events: none;
+}
+
+.page-navbar__refreshing-title {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #666666;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+.page-navbar__refreshing-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  color: #666666;
+}
+
+.page-navbar__refreshing-text {
+  display: block;
+  color: #666666;
+  font-size: 28px;
+  font-weight: 550;
+  line-height: 1;
+  margin-left: 8px;
 }
 
 .page-navbar__right {
@@ -84,7 +111,7 @@
   justify-content: flex-end;
   flex: none;
   align-self: stretch;
-  margin-left: 18px;
+  margin-left: 30px;
 }
 
 .page-navbar__right > * {

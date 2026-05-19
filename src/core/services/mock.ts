@@ -1,4 +1,4 @@
-const DEFAULT_MOCK_DELAY_MS = 120;
+const DEFAULT_MOCK_DELAY_MS = 500;
 
 export function cloneMockData<TData>(data: TData): TData {
   return JSON.parse(JSON.stringify(data)) as TData;

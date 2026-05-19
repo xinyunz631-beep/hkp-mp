@@ -8,6 +8,7 @@ import { DateSelectionPopup } from '@/core/components/commerce';
 import { PageShare, PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
+import { navigateToMiniRoute } from '@/core/utils/navigation';
 import {
   openWechatLocation,
   previewWechatImages,
@@ -84,7 +85,7 @@ const HotelIndexPage = observer(function HotelIndexPage() {
   }
 
   function handleRoomBooking(roomId: string) {
-    Taro.navigateTo({ url: `${MINI_PACKAGE_ROUTES.hotelCheckout}?roomId=${roomId}` });
+    navigateToMiniRoute(`${MINI_PACKAGE_ROUTES.hotelCheckout}?roomId=${roomId}`);
   }
 
   async function handleIntroPress() {

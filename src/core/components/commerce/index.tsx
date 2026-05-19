@@ -120,6 +120,54 @@ interface CouponSelectionPopupProps {
   onSelect: (coupon: HkpCouponSummary) => void;
 }
 
+function isDateUnit(value: unknown): value is string | number {
+  return typeof value === 'string' || typeof value === 'number';
+}
+
+function padDateUnit(value: string | number) {
+  return `${value}`.padStart(2, '0');
+}
+
+function normalizeDateText(value: string) {
+  const match = value.match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})$/);
+
+  if (!match) return '';
+
+  return `${match[1]}-${padDateUnit(match[2])}-${padDateUnit(match[3])}`;
+}
+
+function normalizeCalendarDate(value: unknown): string {
+  if (typeof value === 'string') return normalizeDateText(value);
+  if (!Array.isArray(value)) return '';
+
+  const embeddedDate = value.find((item) => typeof item === 'string' && normalizeDateText(item));
+
+  if (typeof embeddedDate === 'string') return normalizeDateText(embeddedDate);
+
+  const [year, month, day] = value;
+
+  if (!isDateUnit(year) || !isDateUnit(month) || !isDateUnit(day)) return '';
+
+  return `${year}-${padDateUnit(month)}-${padDateUnit(day)}`;
+}
+
+function normalizeCalendarValue(value: unknown, mode: DateSelectionMode): string | string[] {
+  if (mode === 'single') {
+    return normalizeCalendarDate(value);
+  }
+
+  if (Array.isArray(value)) {
+    const dates = value
+      .map((item) => normalizeCalendarDate(item))
+      .filter(Boolean);
+
+    if (dates.length > 0) return dates;
+  }
+
+  const singleDate = normalizeCalendarDate(value);
+  return singleDate ? [singleDate] : [];
+}
+
 export function ProductCard({
   product,
   layout = 'list',
@@ -428,6 +476,8 @@ export function DateSelectionPopup({
   onClose,
   onConfirm,
 }: DateSelectionPopupProps) {
+  const calendarValue = typeof value === 'string' ? value : undefined;
+
   return (
     <Calendar
       visible={visible}
@@ -435,6 +485,7 @@ export function DateSelectionPopup({
       title={title}
       type={mode}
       viewMode="day"
+      value={calendarValue}
       defaultValue={value}
       startDate={startDate}
       endDate={endDate}
@@ -445,12 +496,7 @@ export function DateSelectionPopup({
       confirmText="确定"
       onClose={onClose}
       onConfirm={(nextValue) => {
-        const confirmedValue = Array.isArray(nextValue)
-          ? nextValue
-          : nextValue
-            ? [nextValue]
-            : [];
-        onConfirm(mode === 'single' ? confirmedValue[0] || '' : confirmedValue);
+        onConfirm(normalizeCalendarValue(nextValue, mode));
       }}
     />
   );

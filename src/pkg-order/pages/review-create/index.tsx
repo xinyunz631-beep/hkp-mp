@@ -27,6 +27,8 @@ const ReviewCreatePage = observer(function ReviewCreatePage() {
       setActiveTagKey(nextData.defaultTagKey);
       setReviewImages(nextData.images.map((image) => image.src).filter(Boolean));
     },
+    loginRequired: true,
+    loginReason: '登录后可评价订单',
   });
 
   async function handleUploadImage() {

@@ -41,23 +41,29 @@
     flex: none;
     width: 58px;
     height: 58px;
-    margin-left: 48px;
+    margin-left: 30px;
     border-radius: 29px;
     background: #ea6aa4;
-    box-shadow: 0 8px 20px rgba(219, 39, 119, 0.15);
+    opacity: .9;
+    // box-shadow: 0 8px 20px rgba(219, 39, 119, 0.15);
   }
 
   &_search {
     display: flex;
     align-items: center;
     flex: 1;
-    max-width: 390px;
-    height: 62px;
+    max-width: 410px;
+    height: 59px;
     padding: 0 24px;
     border-radius: 31px;
-    background: rgba(255, 255, 255, 0.94);
-    box-shadow: 0 8px 20px rgba(232, 95, 157, 0.14);
+    background: rgba(255, 255, 255, 0.4);
+    // box-shadow: 0 8px 20px rgba(232, 95, 157, 0.14);
     box-sizing: border-box;
+    transition: background-color .3s ease;
+
+    &--solid {
+      background: rgba(255, 255, 255, 1);
+    }
   }
 
   &_search-placeholder {
@@ -65,7 +71,7 @@
     margin-left: 12px;
     color: #8e8e93;
     font-size: 23px;
-    font-weight: 600;
+    font-weight: 550;
     line-height: 1;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -74,7 +80,8 @@
 
 ._pg-hero {
   position: relative;
-  height: 360px;
+  $bannerHeight: 680px;
+  height: $bannerHeight;
   overflow: hidden;
   background: #e8edf2;
 
@@ -88,13 +95,13 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    height: 360px;
+    height: $bannerHeight;
     background: #e8edf2;
   }
 
   &_banner-image {
     width: 100%;
-    height: 360px;
+    height: $bannerHeight;
   }
 
   &_fade {
@@ -111,7 +118,7 @@
   position: relative;
   z-index: 1;
   margin-top: -76px;
-  padding: 0 32px 48px;
+  padding: 0 30px 48px;
   box-sizing: border-box;
 }
 
@@ -133,7 +140,7 @@
     display: block;
     color: #2b2f36;
     font-size: 30px;
-    font-weight: 800;
+    font-weight: 550;
     line-height: 1.2;
   }
 
@@ -149,7 +156,7 @@
     background: #f6be59;
     color: #8a4a00;
     font-size: 20px;
-    font-weight: 700;
+    font-weight: 550;
     line-height: 1;
     box-sizing: border-box;
   }
@@ -172,7 +179,7 @@
     border-radius: 22px;
     box-sizing: border-box;
     font-size: 18px;
-    font-weight: 700;
+    font-weight: 550;
     line-height: 1;
   }
 
@@ -193,7 +200,7 @@
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 26px 18px;
   margin-top: 26px;
-  padding: 28px;
+  padding: 28px 0;
   border-radius: 18px;
   background: #ffffff;
   box-sizing: border-box;
@@ -245,7 +252,7 @@
   &_time {
     color: #111111;
     font-size: 24px;
-    font-weight: 900;
+    font-weight: 550;
     line-height: 1.45;
   }
 
@@ -253,7 +260,7 @@
   &_desc {
     color: #111111;
     font-size: 20px;
-    font-weight: 700;
+    font-weight: 550;
   }
 
   &_phone {
@@ -289,7 +296,7 @@
   &_title {
     color: #3f3f46;
     font-size: 28px;
-    font-weight: 900;
+    font-weight: 550;
     line-height: 1.2;
   }
 
@@ -299,7 +306,7 @@
     flex: none;
     color: #71717a;
     font-size: 24px;
-    font-weight: 800;
+    font-weight: 550;
     line-height: 1;
   }
 
@@ -358,7 +365,7 @@
     background: #4f83ff;
     color: #ffffff;
     font-size: 18px;
-    font-weight: 800;
+    font-weight: 550;
     line-height: 1;
     box-sizing: border-box;
   }
@@ -374,7 +381,7 @@
     overflow: hidden;
     color: #27272a;
     font-size: 26px;
-    font-weight: 800;
+    font-weight: 550;
     line-height: 1.25;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -415,7 +422,7 @@
     display: block;
     color: #27272a;
     font-size: 28px;
-    font-weight: 900;
+    font-weight: 550;
     line-height: 1.25;
   }
 
@@ -424,7 +431,7 @@
     margin-top: 10px;
     color: #71717a;
     font-size: 22px;
-    font-weight: 600;
+    font-weight: 550;
     line-height: 1.35;
   }
 
@@ -435,7 +442,7 @@
     background: #fce7f3;
     color: #db2777;
     font-size: 21px;
-    font-weight: 900;
+    font-weight: 550;
     line-height: 1;
   }
 }
@@ -469,7 +476,7 @@
     overflow: hidden;
     color: #27272a;
     font-size: 26px;
-    font-weight: 800;
+    font-weight: 550;
     line-height: 1.25;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -488,7 +495,7 @@
   &_tag {
     color: #e85f9d;
     font-size: 20px;
-    font-weight: 700;
+    font-weight: 550;
     line-height: 1.2;
   }
 }
@@ -531,7 +538,7 @@
     padding: 8px 16px 12px;
     color: #f472b6;
     font-size: 34px;
-    font-weight: 900;
+    font-weight: 550;
     line-height: 1;
   }
 }

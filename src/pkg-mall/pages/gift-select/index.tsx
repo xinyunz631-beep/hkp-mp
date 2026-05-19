@@ -17,6 +17,8 @@ const GiftSelectPage = observer(function GiftSelectPage() {
       const nextData = await fetchGiftSelectData();
       setGiftData(nextData);
     },
+    loginRequired: true,
+    loginReason: '登录后可选择赠品',
   });
 
   return pageRuntime.renderPage(() => (

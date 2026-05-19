@@ -51,7 +51,7 @@
     background: rgba(255, 255, 255, 0.74);
     color: $color-primary;
     font-size: 20px;
-    font-weight: 800;
+    font-weight: 550;
     letter-spacing: 1px;
   }
 
@@ -59,7 +59,7 @@
     margin-top: 20px;
     color: $color-text-primary;
     font-size: 36px;
-    font-weight: 900;
+    font-weight: 550;
     line-height: 1.2;
   }
 
@@ -82,7 +82,7 @@
     background: #ffffff;
     color: $color-primary;
     font-size: 22px;
-    font-weight: 900;
+    font-weight: 550;
     box-shadow: 0 10px 22px rgba(219, 39, 119, 0.12);
     box-sizing: border-box;
   }
@@ -105,7 +105,7 @@
   &_stat-value {
     color: $color-text-primary;
     font-size: 32px;
-    font-weight: 900;
+    font-weight: 550;
     line-height: 1.1;
   }
 
@@ -160,7 +160,7 @@
     overflow: hidden;
     color: $color-text-primary;
     font-size: 26px;
-    font-weight: 900;
+    font-weight: 550;
     line-height: 1.25;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -199,7 +199,7 @@
   &_title {
     color: $color-text-primary;
     font-size: 30px;
-    font-weight: 900;
+    font-weight: 550;
   }
 
   &_desc {
@@ -216,7 +216,7 @@
     gap: 6px;
     color: $color-primary;
     font-size: 22px;
-    font-weight: 900;
+    font-weight: 550;
     white-space: nowrap;
   }
 
@@ -242,7 +242,7 @@
   &_title {
     color: $color-text-primary;
     font-size: 27px;
-    font-weight: 900;
+    font-weight: 550;
     line-height: 1.3;
   }
 

@@ -3,6 +3,7 @@ import { useDidHide, useDidShow } from '@tarojs/taro';
 import { PageInitLoading } from '@/core/components/loading';
 import { PageRuntimeHost } from '@/core/components/PageRuntimeHost';
 import { StatusException } from '@/core/components/status';
+import { PageRuntimeRefreshProvider } from '@/core/runtime/page-runtime-context';
 import {
   ensureLogin as ensureGlobalLogin,
   requireLogin as requireGlobalLogin,
@@ -35,7 +36,7 @@ export interface PageRuntimeOptions {
   refreshLoading?: ReactNode;
   // 首次初始化失败的自定义兜底页；不传时使用通用失败页。
   errorFallback?: (props: PageRuntimeErrorFallbackProps) => ReactNode;
-  // 页面已初始化后再次进入时是否自动刷新 initPage，默认刷新并只展示上层 loading。
+  // 页面已初始化后再次进入时是否自动刷新 initPage，默认关闭；刷新交给用户手动下拉。
   refreshOnShow?: boolean;
   // 首屏初始化是否必须先登录；未登录时会先打开登录弹窗，登录完成后才执行 initPage。
   loginRequired?: boolean;
@@ -129,7 +130,7 @@ export function usePageRuntime(options: PageRuntimeOptions = {}): PageRuntimeCon
     initialLoadingMinDuration = 300,
     refreshLoading,
     errorFallback,
-    refreshOnShow = true,
+    refreshOnShow = false,
     loginRequired = false,
     loginReason = '登录后可继续使用该服务',
     onRefreshError,
@@ -329,16 +330,21 @@ export function usePageRuntime(options: PageRuntimeOptions = {}): PageRuntimeCon
   const runtimeNode = useMemo(() => (
     <PageRuntimeHost loadingVisible={loadingVisible} loadingNode={refreshLoading} />
   ), [loadingVisible, refreshLoading]);
+  const runtimeRefreshContext = useMemo(() => ({
+    hasInitPage: Boolean(initPage),
+    refreshing: phase === 'refreshing',
+    reload,
+  }), [initPage, phase, reload]);
 
   const initialized = !initPageRef.current || initializedRef.current;
 
   // 根据初始化状态决定是否执行页面真实渲染函数，并自动挂载页面运行时节点。
   const renderPage = useCallback((renderContent: () => ReactNode) => {
     const renderWithRuntime = (content: ReactNode) => (
-      <>
+      <PageRuntimeRefreshProvider value={runtimeRefreshContext}>
         {content}
         {runtimeNode}
-      </>
+      </PageRuntimeRefreshProvider>
     );
 
     if (!initPageRef.current) return renderWithRuntime(renderContent());
@@ -374,7 +380,7 @@ export function usePageRuntime(options: PageRuntimeOptions = {}): PageRuntimeCon
     }
 
     return renderWithRuntime(renderContent());
-  }, [errorFallback, initError, initialLoading, phase, reload, runtimeNode]);
+  }, [errorFallback, initError, initialLoading, phase, reload, runtimeNode, runtimeRefreshContext]);
 
   return useMemo(() => ({
     runtimeNode,

@@ -6,6 +6,7 @@ import { AppImage } from '@/core/components/AppImage';
 import { PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
+import { navigateToMiniRoute } from '@/core/utils/navigation';
 import { previewWechatImages } from '@/core/utils/wechat-actions';
 import { fetchRoomDetailData, type HotelRoomDetailData } from '@/pkg-hotel/services/room-detail';
 import './index.scss';
@@ -37,7 +38,7 @@ const RoomDetailPage = observer(function RoomDetailPage() {
             <View className="_pg-footer">
               <View
                 className="_pg-footer_button"
-                onClick={() => Taro.navigateTo({ url: `${MINI_PACKAGE_ROUTES.hotelCheckout}?roomId=${currentRoomId}` })}
+                onClick={() => navigateToMiniRoute(`${MINI_PACKAGE_ROUTES.hotelCheckout}?roomId=${currentRoomId}`)}
               >
                 <Text>立即预订</Text>
               </View>
