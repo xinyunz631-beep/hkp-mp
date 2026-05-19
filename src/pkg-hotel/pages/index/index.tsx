@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react';
-import Taro from '@tarojs/taro';
+import Taro, { useShareAppMessage } from '@tarojs/taro';
 import { Text, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
 import { AppIcon } from '@/core/components/AppIcon';
 import { AppImage } from '@/core/components/AppImage';
+import { AppShareButton } from '@/core/components/AppShareButton';
 import { DateSelectionPopup } from '@/core/components/commerce';
 import { PageShare, PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
@@ -13,7 +14,6 @@ import {
   openWechatLocation,
   previewWechatImages,
   showWechatConfirm,
-  showWechatShareGuide,
   showWechatToast,
 } from '@/core/utils/wechat-actions';
 import { fetchHotelHomeData, type HotelHomeData } from '@/pkg-hotel/services';
@@ -80,6 +80,12 @@ const HotelIndexPage = observer(function HotelIndexPage() {
     return matchedRooms.length > 0 ? matchedRooms : activeHotel.rooms;
   }, [activeFilterLabel, activeHotel]);
 
+  useShareAppMessage(() => ({
+    title: `${activeHotel?.heroTitle || 'Hello Kitty 乐园酒店'}亲子度假`,
+    path: MINI_PACKAGE_ROUTES.hotelHome,
+    imageUrl: activeHotel?.heroImageSrc || undefined,
+  }));
+
   function handleRoomDetail(roomId: string) {
     Taro.navigateTo({ url: `${MINI_PACKAGE_ROUTES.hotelRoomDetail}?roomId=${roomId}` });
   }
@@ -115,9 +121,7 @@ const HotelIndexPage = observer(function HotelIndexPage() {
           className="_pg-shell"
           reserveTabBarSpace={false}
           navbarRight={(
-            <View className="_pg-nav-action" onClick={() => void showWechatShareGuide()}>
-              <AppIcon name="share" size={16} color="#23262f" />
-            </View>
+            <AppShareButton className="_pg-nav-action" iconColor="#23262f" />
           )}
         >
           <View className="_pg-content">

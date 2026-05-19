@@ -1,5 +1,4 @@
 import { Empty } from '@nutui/nutui-react-taro';
-import { Text, View } from '@tarojs/components';
 import classNames from 'classnames';
 import type { ReactNode } from 'react';
 import './index.scss';
@@ -7,10 +6,13 @@ import './index.scss';
 type BaseEmptyStatus = 'empty' | 'error' | 'network';
 type BaseEmptySize = 'small' | 'base';
 
+const DEFAULT_EMPTY_IMAGE = 'https://wx.qlogo.cn/mmhead/AhLk989Zrl2foUe0CrwzoKJpCozr2Kw28TVCpLBf4Ch0eicHphDdfPWkkOpyKCQmcM9ia49iac4svM/0';
+
 interface BaseEmptyProps {
   className?: string;
   title?: ReactNode;
   description?: ReactNode;
+  image?: ReactNode;
   status?: BaseEmptyStatus;
   size?: BaseEmptySize;
   actionText?: ReactNode;
@@ -23,6 +25,7 @@ export function BaseEmpty({
   className,
   title,
   description,
+  image,
   status = 'empty',
   size = 'base',
   actionText,
@@ -30,7 +33,6 @@ export function BaseEmpty({
   onAction,
 }: BaseEmptyProps) {
   const emptyClassName = classNames('base-empty', className);
-  const emptyMark = resolveEmptyMark(status);
   const actions = actionText
     ? [{
         text: actionText,
@@ -50,11 +52,7 @@ export function BaseEmpty({
   return (
     <Empty
       className={emptyClassName}
-      image={(
-        <View className={`base-empty__mark base-empty__mark--${status}`}>
-          <Text className="base-empty__mark-text">{emptyMark}</Text>
-        </View>
-      )}
+      image={image || (status === 'empty' ? DEFAULT_EMPTY_IMAGE : undefined)}
       status={status}
       size={size}
       title={title}
@@ -62,10 +60,4 @@ export function BaseEmpty({
       actions={actions}
     />
   );
-}
-
-// 生成项目内置空态标记，避免 NutUI 默认远程状态图在小程序域名限制下不显示。
-function resolveEmptyMark(status: BaseEmptyStatus) {
-  if (status === 'empty') return '空';
-  return '!';
 }

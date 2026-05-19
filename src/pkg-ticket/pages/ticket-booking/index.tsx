@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import Taro, { useShareAppMessage } from '@tarojs/taro';
-import { Button, ScrollView, Text, View } from '@tarojs/components';
+import { ScrollView, Text, View } from '@tarojs/components';
 import type { ScrollViewProps } from '@tarojs/components';
 import { Badge, Sticky } from '@nutui/nutui-react-taro';
 import { observer } from 'mobx-react';
 import { AppIcon } from '@/core/components/AppIcon';
 import { AppImage } from '@/core/components/AppImage';
+import { AppShareButton } from '@/core/components/AppShareButton';
 import { DateSelectionPopup, QuantityStepper } from '@/core/components/commerce';
 import { AppPopup } from '@/core/components/AppPopup';
 import { PageShare, PageShell } from '@/core/components/PageShell';
@@ -62,9 +63,7 @@ function getTicketSectionId(key: TicketBookingSectionKey) {
 
 function TicketShareButton() {
   return (
-    <Button className="_pg-share-button" openType="share">
-      <AppIcon name="share" size={18} color="#555" />
-    </Button>
+    <AppShareButton className="_pg-share-button" iconSize={18} iconColor="#555" />
   );
 }
 

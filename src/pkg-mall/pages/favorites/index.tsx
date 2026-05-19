@@ -1,12 +1,13 @@
 import { useMemo, useState } from 'react';
-import Taro from '@tarojs/taro';
+import Taro, { useShareAppMessage } from '@tarojs/taro';
 import { Text, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
 import { AppImage } from '@/core/components/AppImage';
+import { AppShareButton } from '@/core/components/AppShareButton';
 import { PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
-import { showWechatConfirm, showWechatShareGuide, showWechatToast } from '@/core/utils/wechat-actions';
+import { showWechatConfirm, showWechatToast } from '@/core/utils/wechat-actions';
 import { addMallCartItem } from '@/pkg-mall/services/cart';
 import { fetchFavoritesData } from '@/pkg-mall/services/favorites';
 import './index.scss';
@@ -32,6 +33,7 @@ const FavoritesPage = observer(function FavoritesPage() {
 
   const filters = favoritesData?.filters ?? [];
   const items = favoritesData?.items ?? [];
+  const selectedItem = items.find((item) => item.id === selectedItemId);
 
   const visibleItems = useMemo(() => {
     if (activeFilter === '仅看有货') {
@@ -40,6 +42,14 @@ const FavoritesPage = observer(function FavoritesPage() {
 
     return items;
   }, [activeFilter, items]);
+
+  useShareAppMessage(() => ({
+    title: selectedItem?.title || 'Hello Kitty 乐园官方商城',
+    path: selectedItem
+      ? `${MINI_PACKAGE_ROUTES.mallProductDetail}?productId=${encodeURIComponent(selectedItem.id)}`
+      : MINI_PACKAGE_ROUTES.mallFavorites,
+    imageUrl: selectedItem?.image.src || undefined,
+  }));
 
   function handleCardPress(itemId: string) {
     if (editMode) {
@@ -52,7 +62,7 @@ const FavoritesPage = observer(function FavoritesPage() {
     });
   }
 
-  async function handleEditAction(item: FavoriteItem, action: 'cart' | 'share' | 'delete') {
+  async function handleEditAction(item: FavoriteItem, action: 'cart' | 'delete') {
     if (action === 'cart') {
       if (item.invalid) {
         await showWechatToast('该收藏已失效，暂不能加入购物车');
@@ -61,11 +71,6 @@ const FavoritesPage = observer(function FavoritesPage() {
 
       await addMallCartItem(item);
       await showWechatToast('已加入购物车', 'success');
-      return;
-    }
-
-    if (action === 'share') {
-      await showWechatShareGuide();
       return;
     }
 
@@ -143,15 +148,14 @@ const FavoritesPage = observer(function FavoritesPage() {
                         >
                           <Text>加入购物车</Text>
                         </View>
-                        <View
-                          className="_pg-item_action"
+                        <AppShareButton
+                          className="_pg-item_action _pg-item_action--button"
                           onClick={(event) => {
                             event.stopPropagation();
-                            void handleEditAction(item, 'share');
                           }}
                         >
                           <Text>请分享</Text>
-                        </View>
+                        </AppShareButton>
                         <View
                           className="_pg-item_action"
                           onClick={(event) => {

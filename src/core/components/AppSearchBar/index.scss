@@ -1,28 +1,59 @@
 .app-search-bar {
   display: flex;
   align-items: center;
+  width: 100%;
   min-width: 0;
-  --nutui-searchbar-width: 100%;
-  --nutui-searchbar-padding: 0;
-  --nutui-searchbar-background: transparent;
-  --nutui-searchbar-content-padding: 0 18px;
-  --nutui-searchbar-content-background: #f5f6f8;
-  --nutui-searchbar-input-height: 62px;
-  --nutui-searchbar-content-round-border-radius: 999px;
-  --nutui-searchbar-font-size: 22px;
-  --nutui-searchbar-input-padding: 0 6px;
-  --nutui-searchbar-input-text-color: #26292f;
-  --nutui-searchbar-input-curror-color: #db2777;
-}
+  box-sizing: border-box;
 
-.app-search-bar .nut-searchbar-content {
-  min-width: 0;
-}
+  &__content {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    min-width: 0;
+    height: 62px;
+    padding: 0 18px;
+    box-sizing: border-box;
+    background: #f5f6f8;
+  }
 
-.app-search-bar .nut-searchbar-input {
-  min-width: 0;
-}
+  &--round &__content {
+    border-radius: 999px;
+  }
 
-.app-search-bar .nut-searchbar-clear {
-  color: #9da3ad;
+  &--square &__content {
+    border-radius: 12px;
+  }
+
+  &__search-icon {
+    flex: none;
+  }
+
+  &__input {
+    min-width: 0;
+    flex: 1;
+    height: 62px;
+    padding: 0 8px;
+    box-sizing: border-box;
+    color: #26292f;
+    font-size: 22px;
+    line-height: 62px;
+  }
+
+  &__placeholder {
+    color: #b0b5bd;
+    font-size: 22px;
+  }
+
+  &__clear {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    width: 40px;
+    height: 40px;
+  }
+
+  &__clear .app-icon {
+    display: block;
+  }
 }

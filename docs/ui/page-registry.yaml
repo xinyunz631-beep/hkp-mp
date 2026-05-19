@@ -170,7 +170,7 @@ pages:
         name: 商品搜索 750px 开发稿
         width: 750
         role: active-source
-        note: 已按 mall-search-keyboard.png 完成搜索头和热门搜索；顶部使用 PageHeader 统一避让微信状态栏和胶囊，并补回左侧返回；搜索输入已迁入 AppSearchBar。
+        note: 已按商用搜索链路补齐默认聚焦、微信 search 键盘确认、输入节流请求相关商品、热门搜索、历史搜索、查看全部和关键词标红；顶部使用 PageHeader 统一避让微信状态栏和胶囊，并去掉重复取消按钮。
     implementation:
       files:
         - src/pkg-mall/pages/search/index.tsx
@@ -197,7 +197,7 @@ pages:
         name: 商品列表 750px 开发稿
         width: 750
         role: active-source
-        note: 已补本地筛选、排序、商品详情跳转和本地购物车加购闭环。
+        note: 已补本地筛选、排序、商品详情跳转和本地购物车加购闭环，并承接 mall-search 的 keyword 搜索结果、关键词回显、商品过滤和命中标红。
     implementation:
       files:
         - src/pkg-mall/pages/products/index.tsx

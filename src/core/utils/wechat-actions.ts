@@ -1,5 +1,17 @@
 import Taro from '@tarojs/taro';
 
+const APP_MODAL_CONFIRM_COLOR = '#db2777';
+
+interface AppModalOptions {
+  title?: string;
+  content: string;
+  confirmText?: string;
+  cancelText?: string;
+  confirmColor?: string;
+  cancelColor?: string;
+  showCancel?: boolean;
+}
+
 interface ConfirmOptions {
   title: string;
   content: string;
@@ -40,6 +52,35 @@ export function showWechatToast(title: string, icon: 'success' | 'error' | 'load
   });
 }
 
+// 统一微信原生弹窗入口，默认确认按钮使用项目主色。
+export function showAppModal({
+  title,
+  content,
+  confirmText = '确定',
+  cancelText = '取消',
+  confirmColor = APP_MODAL_CONFIRM_COLOR,
+  cancelColor,
+  showCancel = true,
+}: AppModalOptions) {
+  const modalOptions: Parameters<typeof Taro.showModal>[0] = {
+    content,
+    confirmText,
+    cancelText,
+    confirmColor,
+    showCancel,
+  };
+
+  if (title) {
+    modalOptions.title = title;
+  }
+
+  if (cancelColor) {
+    modalOptions.cancelColor = cancelColor;
+  }
+
+  return Taro.showModal(modalOptions);
+}
+
 // 展示微信小程序原生确认弹窗，并返回用户是否确认。
 export async function showWechatConfirm({
   title,
@@ -47,7 +88,7 @@ export async function showWechatConfirm({
   confirmText = '确定',
   cancelText = '取消',
 }: ConfirmOptions) {
-  const result = await Taro.showModal({
+  const result = await showAppModal({
     title,
     content,
     confirmText,
@@ -160,18 +201,4 @@ export async function scanWechatCode(): Promise<ScanCodeResult | undefined> {
     await showWechatToast('未完成扫码');
     return undefined;
   }
-}
-
-// 打开微信分享菜单，并提示用户使用右上角完成分享。
-export async function showWechatShareGuide() {
-  try {
-    await Taro.showShareMenu({
-      withShareTicket: true,
-      showShareItems: ['shareAppMessage'],
-    });
-  } catch {
-    // 分享菜单在部分调试环境不可用时不阻断用户。
-  }
-
-  await showWechatToast('请点击右上角分享给好友');
 }

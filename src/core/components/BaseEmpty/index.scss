@@ -4,27 +4,6 @@
   box-sizing: border-box;
 }
 
-.base-empty__mark {
-  width: 120px;
-  height: 120px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 60px;
-  background: $color-primary-light;
-}
-
-.base-empty__mark--empty {
-  background: $color-surface-soft;
-}
-
-.base-empty__mark-text {
-  color: $color-primary;
-  font-size: 56px;
-  font-weight: 550;
-  line-height: 1;
-}
-
 .base-empty .nut-empty-title {
   color: $color-text-primary;
   font-weight: 550;

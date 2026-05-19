@@ -25,6 +25,7 @@ NutUI 组件补位与封装顺序，统一参见 `docs/codex/nutui-component-reg
 - 优惠券弹层：`CouponSelectionPopup`
 - 页面级弹层挂载：页面使用弹层组件时放入 `PageShell` 直接子节点 `PageShare` / `PageRoot`，避免被 header/footer/tabbar 压住。
 - 登录动作拦截：`AuthAction` 或 `usePageRuntime().ensureLogin`
+- 微信好友分享按钮：`AppShareButton`，只封装 `openType="share"` 的按钮本体和样式重置；页面自己的 `useShareAppMessage` 负责分享标题、路径和图片。
 
 ## 交易通用组件
 

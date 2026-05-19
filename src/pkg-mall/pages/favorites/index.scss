@@ -116,7 +116,7 @@
   }
 
   &_action {
-    display: inline-flex;
+    display: flex;
     align-items: center;
     justify-content: center;
     min-width: 164px;
@@ -126,5 +126,9 @@
     border-radius: 999px;
     color: #ffffff;
     font-size: 22px;
+
+    &--button {
+      line-height: 1;
+    }
   }
 }

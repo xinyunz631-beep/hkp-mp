@@ -135,6 +135,11 @@
   box-shadow: 0 12px 34px rgba(22, 32, 29, 0.08);
   box-sizing: border-box;
 
+  &--button {
+    line-height: 1.35;
+    text-align: left;
+  }
+
   &_icon {
     display: flex;
     align-items: center;

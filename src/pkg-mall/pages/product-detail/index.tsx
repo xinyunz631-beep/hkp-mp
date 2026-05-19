@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react';
-import Taro from '@tarojs/taro';
+import Taro, { useShareAppMessage } from '@tarojs/taro';
 import { Swiper, SwiperItem, Text, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
 import { AppIcon } from '@/core/components/AppIcon';
 import { AppImage } from '@/core/components/AppImage';
+import { AppShareButton } from '@/core/components/AppShareButton';
 import { SkuPopup } from '@/core/components/commerce';
 import { PageShare, PageShell } from '@/core/components/PageShell';
 import { MINI_MAIN_ROUTES, MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
@@ -14,7 +15,6 @@ import {
   callWechatPhone,
   previewWechatImages,
   showWechatConfirm,
-  showWechatShareGuide,
   showWechatToast,
 } from '@/core/utils/wechat-actions';
 import { addMallCartItem } from '@/pkg-mall/services/cart';
@@ -48,6 +48,14 @@ const ProductDetailPage = observer(function ProductDetailPage() {
   const recommendProducts = detailData?.recommendProducts ?? [];
   const detailImages = detailData?.detailImages ?? [];
   const gallery = detailData?.gallery ?? [];
+
+  useShareAppMessage(() => ({
+    title: product?.title || 'Hello Kitty 乐园官方商城',
+    path: product?.id
+      ? `${MINI_PACKAGE_ROUTES.mallProductDetail}?productId=${encodeURIComponent(product.id)}`
+      : MINI_PACKAGE_ROUTES.mallHome,
+    imageUrl: gallery.find(Boolean) || undefined,
+  }));
 
   const selectedSkuText = useMemo(() => skuGroups
     .map((group) => group.options.find((option) => option.id === group.selectedId)?.label)
@@ -221,14 +229,7 @@ const ProductDetailPage = observer(function ProductDetailPage() {
                 >
                   <AppIcon name="heart" size={16} color="#a1a1aa" />
                 </View>
-                <View
-                  className="_pg-info_icon"
-                  onClick={() => {
-                    void showWechatShareGuide();
-                  }}
-                >
-                  <AppIcon name="share" size={16} color="#a1a1aa" />
-                </View>
+                <AppShareButton className="_pg-info_icon" iconColor="#a1a1aa" />
               </View>
             </View>
             <Text className="_pg-info_title">{product?.title}</Text>

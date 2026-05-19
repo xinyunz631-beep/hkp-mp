@@ -9,8 +9,8 @@
 }
 
 ._pg-page {
-  min-height: 100vh;
-  padding: 32px 24px 40px;
+  min-height: 100%;
+  padding: 30px 30px 40px;
   box-sizing: border-box;
   background: #ffffff;
 }
@@ -18,9 +18,8 @@
 ._pg-search-row {
   display: flex;
   align-items: center;
-  gap: 18px;
-  padding: 14px 24px 18px;
-  border-bottom: 1px solid #f2f3f5;
+  gap: 14px;
+  padding: 14px 30px 16px;
   background: #ffffff;
 }
 
@@ -38,19 +37,36 @@
   min-width: 0;
 }
 
-._pg-cancel {
-  color: #8f96a3;
-  font-size: 22px;
-}
-
 ._pg-section {
-  margin-top: 64px;
+  margin-top: 38px;
 
   &_title {
     display: block;
     color: #8f96a3;
     font-size: 24px;
     font-weight: 550;
+  }
+
+  &_header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 20px;
+  }
+
+  &_hint {
+    min-width: 0;
+    flex: 1;
+    color: #b0b5bd;
+    font-size: 20px;
+    text-align: right;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &--history {
+    margin-top: 48px;
   }
 }
 
@@ -62,7 +78,7 @@
 }
 
 ._pg-tag {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: center;
   min-width: 110px;
@@ -72,4 +88,83 @@
   background: #f5f5f6;
   color: #30343b;
   font-size: 22px;
+}
+
+._pg-related-list {
+  margin-top: 24px;
+  border-top: 1px solid #f1f2f4;
+}
+
+._pg-related-status {
+  margin-top: 44px;
+  color: #98a2b3;
+  font-size: 22px;
+  text-align: center;
+}
+
+._pg-related {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 24px 0;
+  border-bottom: 1px solid #f1f2f4;
+
+  &_image {
+    flex: none;
+    width: 96px;
+    height: 96px;
+    border-radius: 14px;
+    background: #f6f7f9;
+  }
+
+  &_body {
+    min-width: 0;
+    flex: 1;
+  }
+
+  &_title {
+    display: block;
+    color: #26292f;
+    font-size: 24px;
+    line-height: 1.45;
+  }
+
+  &_meta {
+    display: block;
+    margin-top: 8px;
+    color: #98a2b3;
+    font-size: 20px;
+  }
+}
+
+._pg-highlight {
+  color: $color-primary;
+}
+
+._pg-empty {
+  margin-top: 48px;
+}
+
+._pg-history-list {
+  margin-top: 14px;
+}
+
+._pg-history-clear {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  flex: none;
+  min-height: 44px;
+  color: #98a2b3;
+  font-size: 24px;
+}
+
+._pg-history-item {
+  display: flex;
+  align-items: center;
+  min-height: 76px;
+  border-bottom: 1px solid #edf0f3;
+  color: #30343b;
+  font-size: 24px;
 }

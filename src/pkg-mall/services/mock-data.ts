@@ -38,6 +38,7 @@ export interface MallProductListData {
   discountText: string;
   discountAmount: number;
   previewAmount: number;
+  keyword?: string;
 }
 
 export interface MallReviewItem {
@@ -119,6 +120,45 @@ export const mallProducts: HkpProductSummary[] = [
     price: 99,
     marketPrice: 129,
     salesText: '已售 512',
+  },
+  {
+    id: 'kitty-park-shirt',
+    title: 'Hello Kitty乐园限定亲子T恤服装',
+    subtitle: '儿童款 / 成人款',
+    image: { src: '' },
+    price: 159,
+    marketPrice: 199,
+    tag: '乐园限定',
+    salesText: '已售 468',
+  },
+  {
+    id: 'kitty-stationery-set',
+    title: 'Hello Kitty学习文具套装礼盒',
+    subtitle: '铅笔盒+贴纸+手账本',
+    image: { src: '' },
+    price: 69,
+    marketPrice: 89,
+    tag: '新品',
+    salesText: '已售 392',
+  },
+  {
+    id: 'kitty-mug-home',
+    title: '凯蒂猫甜心马克杯家居伴手礼',
+    subtitle: '陶瓷杯 320ml',
+    image: { src: '' },
+    price: 79,
+    marketPrice: 99,
+    salesText: '已售 280',
+  },
+  {
+    id: 'kitty-kids-bag',
+    title: '凯蒂猫儿童斜挎包乐园出游包',
+    subtitle: '粉色小号',
+    image: { src: '' },
+    price: 129,
+    marketPrice: 169,
+    tag: '热卖',
+    salesText: '已售 336',
   },
 ];
 

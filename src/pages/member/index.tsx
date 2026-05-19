@@ -1,13 +1,13 @@
-import Taro from '@tarojs/taro';
+import Taro, { useShareAppMessage } from '@tarojs/taro';
 import { Text, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
 import { AppIcon, type AppIconName } from '@/core/components/AppIcon';
+import { AppShareButton } from '@/core/components/AppShareButton';
 import { AuthAction } from '@/core/components/AuthAction';
 import { PageShell } from '@/core/components/PageShell';
-import { MINI_PACKAGE_ROUTES, type MiniPackageRoute } from '@/core/constants/routes';
+import { MINI_MAIN_ROUTES, MINI_PACKAGE_ROUTES, type MiniPackageRoute } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import { rootStore } from '@/core/store';
-import { showWechatShareGuide } from '@/core/utils/wechat-actions';
 
 interface MemberTabEntry {
   key: string;
@@ -66,7 +66,7 @@ const memberEntries: MemberTabEntry[] = [
     desc: '把会员福利分享给好友',
     icon: 'share',
     action: 'share',
-    reason: '登录后可分享会员福利',
+    reason: '分享给好友',
   },
 ];
 
@@ -110,10 +110,45 @@ const MemberTabPage = observer(function MemberTabPage() {
       openRoute(entry.route);
       return;
     }
+  }
+
+  useShareAppMessage(() => ({
+    title: `${displayName}邀请你一起游玩 Hello Kitty 乐园`,
+    path: MINI_MAIN_ROUTES.member,
+  }));
+
+  function renderEntry(entry: MemberTabEntry) {
+    const entryContent = (
+      <>
+        <View className="_pg-entry_icon">
+          <AppIcon name={entry.icon} size={16} color="#db2777" />
+        </View>
+        <View className="_pg-entry_main">
+          <Text className="_pg-entry_title">{entry.title}</Text>
+          <Text className="_pg-entry_desc">{entry.desc}</Text>
+        </View>
+        <AppIcon name="arrowRight" size={14} color="#98a2b3" />
+      </>
+    );
 
     if (entry.action === 'share') {
-      void showWechatShareGuide();
+      return (
+        <AppShareButton className="_pg-entry _pg-entry--button" key={entry.key}>
+          {entryContent}
+        </AppShareButton>
+      );
     }
+
+    return (
+      <AuthAction
+        className="_pg-entry"
+        key={entry.key}
+        reason={entry.reason}
+        onAuthed={() => handleEntry(entry)}
+      >
+        {entryContent}
+      </AuthAction>
+    );
   }
 
   return pageRuntime.renderPage(() => (
@@ -165,23 +200,7 @@ const MemberTabPage = observer(function MemberTabPage() {
           </View>
 
           <View className="_pg-entry-grid">
-            {memberEntries.map((entry) => (
-              <AuthAction
-                className="_pg-entry"
-                key={entry.key}
-                reason={entry.reason}
-                onAuthed={() => handleEntry(entry)}
-              >
-                <View className="_pg-entry_icon">
-                  <AppIcon name={entry.icon} size={16} color="#db2777" />
-                </View>
-                <View className="_pg-entry_main">
-                  <Text className="_pg-entry_title">{entry.title}</Text>
-                  <Text className="_pg-entry_desc">{entry.desc}</Text>
-                </View>
-                <AppIcon name="arrowRight" size={14} color="#98a2b3" />
-              </AuthAction>
-            ))}
+            {memberEntries.map((entry) => renderEntry(entry))}
           </View>
 
           <View className="_pg-benefits">

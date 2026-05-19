@@ -14,6 +14,7 @@
 - 新建页面默认使用 `observer(function PageName() {})` 包裹，减少后续接入 MobX 状态时的返工。
 - 页面只负责渲染、交互和状态组合；接口、默认值和失败兜底放到 service。
 - 用户可见文案禁止出现 `mock`、组件库、技术栈、开发态或测试态字眼。
+- 用户可见文案必须按真实 C 端业务语境表达，不得暴露实现层、调试层或产品内部分类词；输入提示、空态、按钮和列表标题都要让普通游客能直接理解。
 - 商用级补完页面使用 `commercial-ready` 状态；必须在页面文档记录交互矩阵、状态矩阵和微信开发工具验收清单。
 
 ## 多页面流开发
@@ -88,8 +89,9 @@
 ## 微信能力规则
 
 - 当前只按微信小程序 `weapp` 实现和验收，不为 H5 或其它端写兼容分支。
-- 项目分享只允许微信好友分享：页面使用 `useShareAppMessage` / `openType="share"` / `showShareMenu({ showShareItems: ['shareAppMessage'] })`；禁止 `useShareTimeline`、`onShareTimeline`、`shareTimeline` 或朋友圈分享入口。
-- 图片预览、扫码、地图、电话、复制、确认弹窗和 toast 默认优先使用 `src/core/utils/wechat-actions.ts` 封装。
+- 项目分享只允许微信好友分享：页面使用 `useShareAppMessage` 配置分享内容，可见分享按钮统一优先使用 `AppShareButton` / `openType="share"`；分享属于公开传播能力，不校验登录态，不要把分享按钮包进 `AuthAction`、`requireLogin` 或受保护路由判断；禁止 `useShareTimeline`、`onShareTimeline`、`shareTimeline`、朋友圈分享入口，以及用 `showShareMenu` 做二级分享引导。
+- 图片预览、扫码、地图、电话、复制、确认弹窗和 toast 默认优先使用 `src/core/utils/wechat-actions.ts` 封装；确认类弹窗统一走 `showAppModal()` / `showWechatConfirm()`，不要在页面直接散写 `Taro.showModal`，确认按钮颜色默认使用项目主色。
+- 搜索、筛选、表单、交易确认等页面的业务细节必须沉淀到对应页面文档，不写进本文件；本文件只保留微信 API、文案边界、状态组件、布局安全区等跨页面通用约束。
 - 页面可见点击必须落到跳转、弹层、微信 API、本地状态变化、登录拦截或提交结果，不允许用“即将开放”作为非暂缓页面兜底。
 - 微信 canvas 生成图片时必须区分 750 设计稿 `rpx` 展示尺寸和 canvas 真实像素绘制尺寸；不要直接把 SCSS 中会被 Taro 转换的 `px` 常量复用为 JS 绘制 / 导出尺寸，避免只导出左上角局部。
 
@@ -114,6 +116,7 @@
 - NutUI 样式依赖 `designWidth=375` 和 `deviceRatio[375]=2`，缺失时会把 NutUI CSS fallback 编译成 `NaNrpx`。
 - 再查已安装 UI 库：当前优先 NutUI Taro；命中后也先封装一层项目组件，再给页面或业务代码使用。
 - 命中基础状态能力时优先使用项目封装：`BaseSkeleton`、`BaseEmpty`、`BaseException`、`src/core/components/loading`。
+- 空态、异常态、加载态等基础状态必须优先使用 NutUI 能力或项目统一封装，不允许页面或通用组件临时自造“空/!”这类文字图形、emoji、伪图标或粗糙占位；如需定制插图，必须以组件封装和真实设计资产方式接入。
 - 会被多个页面复用的能力再沉淀到 `src/core/components` 或分包 components。
 - 只有项目组件和 NutUI 都不合适，或截图高度定制、微信小程序兼容需要时，才在页面内手写。
 
