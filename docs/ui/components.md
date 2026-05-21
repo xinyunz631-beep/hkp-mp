@@ -21,8 +21,9 @@ NutUI 组件补位与封装顺序，统一参见 `docs/codex/nutui-component-reg
 - 登录弹窗：`LoginPopup`
 - 通用弹层：`AppPopup`
 - `AppPopup` 业务变体：登录、SKU、优惠券等基于 `AppPopup` 的弹层必须传入组件自有 `className`，例如 `login-popup`、`sku-popup`，并在对应组件样式里用该 class 二次定制 `AppPopup` 根节点和内容区；不要在页面 SCSS 或全局 `AppPopup` 样式里处理单个业务弹层差异。
+- 通用底部弹层：`AppBottomSheet`，基于 `AppPopup`，用于标题固定、右侧关闭、中间固定高度滚动、底部确认按钮可选的业务弹层。
 - 日期弹层：`DateSelectionPopup`，底层使用 NutUI `Calendar`，支持单日和范围选择。
-- 优惠券弹层：`CouponSelectionPopup`
+- 优惠券弹层：`CouponSelectionPopup`，支持不可用券禁选和“不使用优惠券”清空入口。
 - 页面级弹层挂载：页面使用弹层组件时放入 `PageShell` 直接子节点 `PageShare` / `PageRoot`，避免被 header/footer/tabbar 压住。
 - 登录动作拦截：`AuthAction` 或 `usePageRuntime().ensureLogin`
 - 微信好友分享按钮：`AppShareButton`，只封装 `openType="share"` 的按钮本体和样式重置；页面自己的 `useShareAppMessage` 负责分享标题、路径和图片。

@@ -6,7 +6,7 @@
 - 路由：src/pkg-order/pages/index
 - 当前设计工具（以 `page-registry.currentTool` 为准）：pencil
 - UI 图：docs/ui/source/hkp-mini-page/order-list-all.png
-- 当前版本：v0.4
+- 当前版本：v0.5-entry-query-empty
 - 页面状态：interaction-ready
 - 更新时间：2026-05-18
 - 实现文件：
@@ -25,7 +25,7 @@
 - 页面容器：`PageShell`
 - 页面运行时：`usePageRuntime`
 - 页面状态订阅：`observer`
-- 内容区域：顶部订单状态 Tab、日期/状态分组、订单商品项、底部合计文案。
+- 内容区域：顶部订单状态 Tab、日期/状态分组、订单商品项、底部合计文案、状态空态。
 
 ## 动态与静态边界
 
@@ -36,7 +36,7 @@
 ## 状态要求
 
 - loading：页面运行时统一承接。
-- empty：后续优先使用 `BaseEmpty`。
+- empty：无对应状态订单时使用 `BaseEmpty` 展示业务空态。
 - error：后续优先使用 `BaseException` 或 `StatusException`。
 - 未登录：需要身份时使用 `usePageRuntime({ loginRequired: true })` 或 `AuthAction`。
 
@@ -55,11 +55,14 @@
 - 点击“取消订单”进入取消订单页。
 - 支付成功写入的本地订单会合流展示到订单首页。
 - 未识别动作不再使用占位文案，改为业务 toast。
-- Tab 现在按 `pendingPay / pendingShip / pendingReview` 做本地过滤，后续接真实订单状态时继续细化。
+- 支持 `?tab=pendingPay|pendingShip|pendingReceive|pendingReview` 从外部入口默认选中状态。
+- Tab 现在按 `pendingPay / pendingShip / pendingReceive / pendingReview` 做本地过滤，后续接真实订单状态时继续细化。
 
 ## 微信开发工具验收清单
 
 - 切换订单 Tab，列表应按状态筛选。
+- 从“我的”页点击待支付、待收货、待评价进入订单页，应默认选中对应 Tab。
+- 进入暂无订单的状态 Tab，应展示统一空态，而不是空白页面。
 - 点击订单卡，应进入订单详情。
 - 点击去评价、查看物流、申请售后、取消订单，应进入对应页面。
 
@@ -70,6 +73,11 @@
 - `src/pkg-order/pages/index/index.config.ts`：页面骨架相关文件。
 
 ## 变更记录
+
+### v0.5-entry-query-empty
+
+- 订单首页支持外部入口通过 `tab` query 默认选中订单状态。
+- 无对应状态订单时补齐 `BaseEmpty` 空态，避免从“我的”页状态入口跳入后出现空白。
 
 ### v0.4
 

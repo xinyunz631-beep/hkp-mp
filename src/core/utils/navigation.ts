@@ -14,6 +14,7 @@ const LOGIN_REQUIRED_ROUTE_REASONS: Partial<Record<MiniRoute, string>> = {
   [MINI_PACKAGE_ROUTES.orderDetail]: '登录后可查看订单详情',
   [MINI_PACKAGE_ROUTES.orderCheckout]: '登录后可提交订单',
   [MINI_PACKAGE_ROUTES.orderAddress]: '登录后可管理地址',
+  [MINI_PACKAGE_ROUTES.orderAddressEdit]: '登录后可编辑地址',
   [MINI_PACKAGE_ROUTES.orderCancel]: '登录后可取消订单',
   [MINI_PACKAGE_ROUTES.orderAftersaleApply]: '登录后可申请售后',
   [MINI_PACKAGE_ROUTES.orderAftersaleType]: '登录后可申请售后',

@@ -2,7 +2,6 @@ export const MINI_MAIN_ROUTES = {
   home: '/pages/home/index',
   park: '/pages/park/index',
   member: '/pages/member/index',
-  profile: '/pages/profile/index',
 } as const;
 
 export const MINI_PACKAGE_ROUTES = {
@@ -33,6 +32,7 @@ export const MINI_PACKAGE_ROUTES = {
   orderDetail: '/pkg-order/pages/detail/index',
   orderCheckout: '/pkg-order/pages/checkout/index',
   orderAddress: '/pkg-order/pages/address/index',
+  orderAddressEdit: '/pkg-order/pages/address-edit/index',
   orderCancel: '/pkg-order/pages/cancel/index',
   orderAftersaleApply: '/pkg-order/pages/aftersale-apply/index',
   orderAftersaleType: '/pkg-order/pages/aftersale-type/index',

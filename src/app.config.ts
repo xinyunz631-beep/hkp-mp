@@ -3,7 +3,6 @@ export default defineAppConfig({
     'pages/home/index',
     'pages/park/index',
     'pages/member/index',
-    'pages/profile/index',
   ],
   window: {
     backgroundTextStyle: 'light',
@@ -11,6 +10,14 @@ export default defineAppConfig({
     navigationBarTitleText: '乐园',
     navigationBarTextStyle: 'black',
   },
+  permission: {
+    'scope.userLocation': {
+      desc: '用于选择收货地址位置',
+    },
+  },
+  requiredPrivateInfos: [
+    'chooseLocation',
+  ],
   tabBar: {
     custom: true,
     color: '#626a73',
@@ -28,10 +35,6 @@ export default defineAppConfig({
       },
       {
         pagePath: 'pages/member/index',
-        text: '会员',
-      },
-      {
-        pagePath: 'pages/profile/index',
         text: '我的',
       },
     ],
@@ -105,6 +108,7 @@ export default defineAppConfig({
         'pages/detail/index',
         'pages/checkout/index',
         'pages/address/index',
+        'pages/address-edit/index',
         'pages/cancel/index',
         'pages/aftersale-apply/index',
         'pages/aftersale-type/index',

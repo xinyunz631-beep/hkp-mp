@@ -4,26 +4,19 @@
 
 - 页面：酒店确认订单
 - 路由：src/pkg-hotel/pages/checkout
-- 当前设计工具（以 `page-registry.currentTool` 为准）：pencil
-- 设计文件：/Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
-- 设计节点：hotel-checkout
-- 设计稿名称：酒店确认订单 750px 开发稿
-- Figma fileKey：-
-- Figma nodeId：-
-- Pencil file：/Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
-- Pencil nodeId：hotel-checkout
-- 当前版本：v0.3
-- 页面状态：interaction-ready
-- 更新时间：2026-05-18
+- UI 图：docs/ui/source/hkp-mini-page/hotel-checkout.png
+- 当前版本：v1.0
+- 页面状态：commercial-ready
+- 更新时间：2026-05-20
 - 实现文件：
   - src/pkg-hotel/pages/checkout/index.tsx
   - src/pkg-hotel/pages/checkout/index.scss
-  - src/pkg-hotel/pages/checkout/index.config.ts
   - src/pkg-hotel/services/checkout.ts
+  - src/pkg-hotel/services/order-draft.ts
 
 ## 设计意图
 
-酒店确认订单页面按 `hotel-checkout.png` 先完成房型摘要卡、入住信息卡、优惠券/折扣/发票卡和底部支付栏，和酒店首页一起组成酒店预订首版闭环。
+确认订单页通过 `draftId` 恢复酒店预订上下文，完成房间数、入住人、联系人、金额明细和支付落单。优惠券业务当前低优先级，无券时不展示入口。
 
 ## 页面结构
 
@@ -31,100 +24,85 @@
 - 页面容器：`PageShell`
 - 页面运行时：`usePageRuntime`
 - 页面状态订阅：`observer`
-- 内容区域：房型摘要卡、入住信息表单、优惠券卡、折扣信息卡、发票卡。
+- 内容区域：产品摘要、日期和房间数、入住人 tab、联系人、政策信息、底部支付栏。
 
 ## 动态与静态边界
 
-- 接口图片：真实图片区域统一用项目封装 `AppImage`，render 内以空字符串变量预留地址，由组件承接加载中、淡入和失败态。
-- 图标资源：优先使用项目封装；NutUI 有匹配项时先封装为项目组件，找不到匹配项时用图片组件预留空地址。
-- 接口文本/数据：通过页面 service 获取。
-- 代码渲染：页面结构、状态、交互和基础样式。
-- 本地配置：页面标题、导航策略和分包注册。
+- 订单上下文：页面通过 `draftId` 读取，不从页面内拼结算信息。
+- 表单状态：入住人、联系人、手机号由页面本地维护，提交时写回订单上下文。
+- 金额：按上下文单价、晚数和房间数计算。
+- 优惠券：当前无券业务时不渲染入口。
 
 ## 状态要求
 
-- loading：页面运行时统一承接。
-- empty：优先使用 `BaseEmpty`。
-- error：优先使用 `BaseException` 或 `StatusException`。
-- 未登录：需要身份时使用 `usePageRuntime({ loginRequired: true })` 或 `AuthAction`。
-- 降级态：可降级接口在 service 内返回默认值。
+- loading：首屏由 `usePageRuntime` 承接。
+- error：上下文缺失时 service 尝试补建默认上下文，仍失败则走运行时兜底。
+- 未登录：页面使用 `loginRequired` 兜底。
+- 表单错误：使用微信 toast 给出业务提示。
 
 ## 接口与 Service
 
-| 模块 | service | 失败策略 | 是否阻断页面 |
-|---|---|---|---|
-| 页面数据 | `fetchCheckoutData()` | service 内归一和兜底 | 是 |
+| 模块 | service | 说明 |
+|---|---|---|
+| 结算数据 | `fetchCheckoutData()` | 通过 `draftId` 恢复产品、日期、房间数、价规和金额 |
+| 支付落单 | `submitHotelCheckoutOrder()` | 写入本地酒店订单并返回订单编号 |
 
 ## 交互与跳转
 
-- 通过 `roomId` 查询参数带入不同房型。
-- 房型详情：点击摘要卡右上角“房型详情”跳到 `hotel-room-detail`。
-- 房间数：点击房间数在 1-3 间循环调整，入住人字段和金额同步刷新。
-- 入住人：每间房生成一个入住人输入项，提交前必填。
-- 手机号：提交前按大陆手机号格式校验。
-- 优惠券：点击展示微信 modal 说明当前自动匹配优惠。
-- 折扣信息：点击展示微信 modal 说明优惠金额。
-- 去支付：微信 modal 模拟支付确认，确认后写入本地订单并跳转订单详情。
+- 点击产品详情回到详情页查看产品和价规。
+- 调整房间数后同步金额和入住人 tab。
+- 点击去支付前校验联系人、手机号和每间房入住人。
+- 支付成功后跳订单详情。
 
 ## 交互矩阵
 
 | 元素 | 行为 | 反馈/去向 |
 |---|---|---|
-| 房型详情 | 跳转房型详情 | `hotel-room-detail?roomId=` |
-| 房间数 | 1-3 间循环调整 | toast 反馈并刷新入住人/金额 |
-| 入住人输入 | 更新本地表单 | 提交时校验非空 |
-| 手机号输入 | 更新本地表单 | 提交时校验 `1xxxxxxxxxx` |
-| 优惠券 | 微信 modal | 展示优惠券抵扣说明 |
-| 折扣信息 | 微信 modal | 展示当前优惠金额 |
-| 去支付 | 微信 modal 二次确认 | 写入本地订单并跳 `order-detail` |
+| 产品详情 | 进入详情页 | 保留当前产品、日期和入住人数 |
+| 房间数 | 数量选择 | 使用 `QuantityStepper`，金额和入住人房间 tab 同步 |
+| 房间 tab | 切换入住人 | 展示当前房间入住人输入 |
+| 入住人输入 | 更新本地表单 | 提交时逐房间校验 |
+| 联系人姓名 | 更新本地表单 | 提交前必填 |
+| 手机号 | 更新本地表单 | 提交前校验大陆手机号 |
+| 去支付 | 微信确认弹窗 | 确认后写入本地订单中心并跳订单详情 |
 
 ## 状态矩阵
 
 | 状态 | 处理 |
 |---|---|
-| loading | `usePageRuntime` 统一承接 |
-| 房型未命中 | service 兜底第一条房型 |
-| 入住人缺失 | toast 提示补全入住人信息 |
+| 未登录 | 页面 `loginRequired` 二次兜底 |
+| 无订单上下文 | 自动用默认条件补建可用上下文 |
+| 入住人缺失 | 切到对应房间 tab 并 toast 提示 |
+| 联系人缺失 | toast 提示填写联系人姓名 |
 | 手机号错误 | toast 提示输入正确手机号 |
-| 取消支付 | 留在当前页，保留表单状态 |
-| 支付成功 | `submitHotelCheckoutOrder()` 写入本地订单 |
+| 无券业务 | 不展示优惠券和折扣卡 |
+| 支付成功 | 生成本地酒店订单并跳订单详情 |
 
 ## 微信开发工具验收清单
 
-- 从酒店首页点任一房型“预订”进入确认订单，标题、房型、金额应随房型变化。
-- 点房间数，入住人字段数量和底部金额应同步变化。
-- 留空入住人或输入错误手机号点支付，应看到业务 toast。
-- 点优惠券/折扣信息，应出现微信 modal，不再出现占位提示。
-- 补全表单后点支付并确认，应生成本地酒店订单并跳订单详情。
+- 从酒店首页或详情页预订进入，产品、日期、晚数、房间数和金额应一致。
+- 调整房间数，房间 tab 数量和底部金额同步变化。
+- 留空任一入住人提交，应切到对应房间并提示。
+- 留空联系人或手机号错误，应给出业务提示。
+- 点击去支付，弹窗文案为正式支付确认；确认后跳订单详情。
+- 订单详情和订单列表能看到新酒店订单。
 
 ## 实现映射
 
-- `src/pkg-hotel/pages/checkout/index.tsx`：页面主体。
-- `src/pkg-hotel/pages/checkout/index.scss`：页面样式。
-- `src/pkg-hotel/pages/checkout/index.config.ts`：页面配置。
-- `src/pkg-hotel/services/checkout.ts`：页面 service。
+- `src/pkg-hotel/pages/checkout/index.tsx`：页面结构、表单校验和支付入口。
+- `src/pkg-hotel/pages/checkout/index.scss`：确认订单样式。
+- `src/pkg-hotel/services/checkout.ts`：结算数据和提交入口。
+- `src/pkg-hotel/services/order-draft.ts`：酒店订单上下文与本地订单写入。
 
 ## 变更记录
 
-### v0.3
+### v1.0
 
-- 补齐房间数调整、入住人动态字段、手机号校验、优惠券/折扣说明和模拟微信支付。
-- 新增 `submitHotelCheckoutOrder()`，支付成功后写入本地订单中心并跳转订单详情。
-- 页面状态推进到 `interaction-ready`。
-
-### v0.2
-
-- 按 `hotel-checkout.png` 完成确认订单首版 UI。
-- 复用 `FixedSubmitBar` 作为底部支付栏，并通过页面自有 `_pg-submit_*` 文案节点控制金额样式。
-- `fetchCheckoutData()` 支持按 `roomId` 注入房型信息。
-
-### v0.1
-
-- 初始化页面基础实现。
+- 确认订单页改为通过 `draftId` 恢复酒店预订上下文。
+- 入住人改为房间 tab 交互，房间数和金额联动。
+- 支付成功写入本地酒店订单中心。
 
 ## 验证记录
 
 - `yarn typecheck`
 - `yarn check:page-convention`
-- `yarn check:package-boundary`
-- `yarn check:ui-contract`

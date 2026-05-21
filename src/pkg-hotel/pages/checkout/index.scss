@@ -1,6 +1,6 @@
 ._pg {
   min-height: 100vh;
-  background: $color-page-bg;
+  background: #f6f7fb;
 
   .page-shell__body {
     min-height: 100%;
@@ -15,14 +15,14 @@
 
 ._pg-content {
   min-height: 100%;
-  padding: 32px 32px 24px;
+  padding: 30px 30px 24px;
   box-sizing: border-box;
   background: #f6f7fb;
 }
 
 ._pg-card {
   margin-bottom: 24px;
-  padding: 28px 32px;
+  padding: 28px 30px;
   border-radius: 28px;
   background: #ffffff;
   box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
@@ -31,183 +31,168 @@
     padding-top: 0;
     padding-bottom: 0;
   }
+
+  &_title {
+    display: block;
+    margin-bottom: 24px;
+    color: #23262f;
+    font-size: 32px;
+    font-weight: 500;
+    line-height: 1.4;
+  }
 }
 
-._pg-room {
-  &_header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
+._pg-product {
+  position: relative;
+  display: flex;
+  min-height: 150px;
+
+  &_image {
+    flex: none;
+    width: 150px;
+    height: 150px;
+    overflow: hidden;
+    border-radius: 18px;
+  }
+
+  &_main {
+    min-width: 0;
+    flex: 1;
+    padding: 0 92px 0 22px;
   }
 
   &_title {
-    flex: 1;
+    display: block;
     color: #23262f;
     font-size: 30px;
-    font-weight: 550;
-    line-height: 1.45;
+    font-weight: 500;
+    line-height: 1.38;
+  }
+
+  &_meta,
+  &_plan {
+    display: block;
+    margin-top: 8px;
+    color: #9ca3af;
+    font-size: 24px;
+    line-height: 1.4;
+  }
+
+  &_plan {
+    color: #d94a88;
   }
 
   &_link {
+    position: absolute;
+    top: 0;
+    right: 0;
     display: flex;
     align-items: center;
-    flex: none;
-    margin-left: 24px;
     color: #6b7280;
-    font-size: 28px;
-    line-height: 1.45;
-  }
-
-  &_link-icon {
-    margin-left: 6px;
-  }
-
-  &_tags {
-    display: block;
-    margin-top: 22px;
-    color: #9ca3af;
-    font-size: 28px;
-    line-height: 1.45;
-  }
-
-  &_dates {
-    display: block;
-    margin-top: 28px;
-    color: #23262f;
-    font-size: 30px;
-    line-height: 1.45;
+    font-size: 26px;
   }
 }
 
-._pg-form {
-  &_title {
-    display: block;
-    margin-bottom: 22px;
-    color: #23262f;
-    font-size: 34px;
-    font-weight: 550;
-    line-height: 1.45;
-  }
+._pg-summary-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 96px;
+  margin-top: 18px;
+  border-top: 1px solid #edf0f4;
+  color: #23262f;
+  font-size: 28px;
+  line-height: 1.45;
+}
 
-  &_row {
-    display: flex;
-    align-items: center;
-    min-height: 108px;
-    border-top: 1px solid #edf0f4;
+._pg-room-tabs {
+  display: flex;
+  gap: 14px;
+  overflow-x: auto;
+  margin-bottom: 24px;
+  white-space: nowrap;
 
-    &--link {
-      justify-content: space-between;
+  &_item {
+    flex: none;
+    min-width: 142px;
+    height: 58px;
+    border-radius: 999px;
+    color: #6b7280;
+    font-size: 26px;
+    line-height: 58px;
+    text-align: center;
+    background: #f5f6f8;
+
+    &--active {
+      color: #d94a88;
+      background: #fff4f8;
     }
-
-    &--multi {
-      align-items: flex-start;
-      padding: 28px 0;
-    }
   }
+}
+
+._pg-form-row {
+  display: flex;
+  align-items: center;
+  min-height: 96px;
+  border-top: 1px solid #edf0f4;
 
   &_label {
     flex: none;
-    width: 120px;
-    color: #23262f;
-    font-size: 30px;
-    line-height: 1.5;
-  }
-
-  &_value {
-    display: flex;
-    align-items: center;
+    width: 132px;
     color: #23262f;
     font-size: 28px;
-  }
-
-  &_chevron {
-    flex: none;
-    margin-left: 10px;
-  }
-
-  &_column {
-    flex: 1;
+    line-height: 1.45;
   }
 
   &_input {
     flex: 1;
-    color: #9ca3af;
+    color: #23262f;
     font-size: 28px;
-    line-height: 1.5;
+    line-height: 1.45;
     text-align: right;
-  }
-}
-
-._pg-guest {
-  & + & {
-    margin-top: 28px;
-    padding-top: 24px;
-    border-top: 1px solid #edf0f4;
-  }
-
-  &_name {
-    display: block;
-    color: #6b7280;
-    font-size: 28px;
-    line-height: 1.45;
-  }
-
-  &_input {
-    margin-top: 10px;
-    color: #9ca3af;
-    font-size: 28px;
-    line-height: 1.45;
   }
 }
 
 ._pg-line-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  min-height: 108px;
+  min-height: 96px;
+  padding: 26px 0;
+  border-bottom: 1px solid #edf0f4;
+  box-sizing: border-box;
 
-  &_label,
-  &_value {
-    color: #23262f;
-    font-size: 30px;
-    line-height: 1.5;
+  &:last-child {
+    border-bottom: 0;
   }
 
-  &_value-wrap {
-    display: flex;
-    align-items: center;
-    min-width: 0;
-  }
-
-  &_coupon {
-    min-width: 176px;
-    height: 46px;
-    padding: 0 16px;
-    border: 1px solid #d94a88;
-    border-radius: 12px;
-    box-sizing: border-box;
-    color: #d94a88;
-    font-size: 26px;
-    line-height: 44px;
-    text-align: center;
-  }
-
-  &_chevron {
+  &_label {
     flex: none;
-    margin-left: 10px;
+    width: 140px;
+    color: #6b7280;
+    font-size: 28px;
+    line-height: 1.45;
+  }
+
+  &_value {
+    flex: 1;
+    color: #23262f;
+    font-size: 28px;
+    line-height: 1.45;
+    text-align: right;
   }
 }
 
 ._pg-submit_label {
   color: #23262f;
   font-size: 28px;
-  font-weight: 550;
+  font-weight: 500;
 }
 
 ._pg-submit_amount {
   color: #d94a88;
-  font-size: 56px;
-  font-weight: 550;
+  font-size: 40px;
+  font-weight: 500;
 }
 
 ._pg-submit_extra {

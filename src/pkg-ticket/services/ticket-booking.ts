@@ -139,7 +139,6 @@ const ticketBookingData: TicketBookingData = {
       validityText: '所选游玩日当天有效',
       stockText: '今日库存充足',
       limitText: '每单最多购买 6 张',
-      defaultQuantity: 1,
     },
     {
       id: 'discount-ticket',
@@ -380,12 +379,10 @@ function buildProductsForDate(sections: TicketBookingSection[], travelDate?: str
   const seed = getTravelDateSeed(travelDate);
   const ticketOffset = (seed % 4) * 5;
   const annualCardOffset = (seed % 3) * 20;
-  const firstDefaultProductId = sections.find((section) => section.type !== 'package')?.productIds?.[0];
 
   return ticketBookingData.products.map((product) => ({
     ...product,
     price: product.price + (product.category === 'annualCard' ? annualCardOffset : ticketOffset),
-    defaultQuantity: product.id === firstDefaultProductId ? 1 : undefined,
   }));
 }
 

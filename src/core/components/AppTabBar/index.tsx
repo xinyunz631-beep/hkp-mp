@@ -31,7 +31,7 @@ const tabBarItems: AppTabBarItem[] = [
     hideText: true,
   },
   { key: 'hotel', text: '酒店', path: MINI_PACKAGE_ROUTES.hotelHome, routeType: 'package', icon: 'hotel' },
-  { key: 'profile', text: '我的', path: MINI_MAIN_ROUTES.profile, routeType: 'tab', icon: 'profile' },
+  { key: 'profile', text: '我的', path: MINI_MAIN_ROUTES.member, routeType: 'tab', icon: 'profile' },
 ];
 
 // 获取当前 tab 页面路径，兼容微信页面栈里无前导斜杠的 route。

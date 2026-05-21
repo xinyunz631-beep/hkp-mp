@@ -8,6 +8,7 @@ const registryPath = resolve(rootDir, 'docs/ui/page-registry.yaml');
 const failures = [];
 const sourceDir = resolve(rootDir, 'src');
 const forbiddenTextIconPattern = /[♡♥❤💕✨✦▱›→←★☆◆×✕✖📍📞☎]/u;
+const forbiddenUserFacingInternalTextPattern = /按票种生成|实名槽位|生成\s*\{[^}]+\}\s*位实名信息/;
 
 function fail(message) {
   failures.push(message);
@@ -103,6 +104,22 @@ function checkShareTimelineForbidden() {
       if (!matched) return;
 
       fail(`${relativePath}:${index + 1} 禁止使用 ${matched[1]}，项目分享只允许微信好友分享`);
+    });
+  }
+}
+
+function checkForbiddenUserFacingInternalTexts() {
+  const sourceFiles = walkSourceFiles(sourceDir);
+
+  for (const filePath of sourceFiles) {
+    const relativePath = filePath.replace(`${rootDir}/`, '');
+    const lines = readFileSync(filePath, 'utf8').split(/\r?\n/);
+
+    lines.forEach((line, index) => {
+      const matched = line.match(forbiddenUserFacingInternalTextPattern);
+      if (!matched) return;
+
+      fail(`${relativePath}:${index + 1} 存在高风险实现层文案 "${matched[0]}"，页面可见文案必须使用游客能理解的业务话术`);
     });
   }
 }
@@ -304,7 +321,7 @@ function checkPage(page) {
 
   const pageText = readText(pageFile);
   const configText = existsSync(resolve(rootDir, configFile)) ? readText(configFile) : '';
-  const tabBarAllowedPages = new Set(['home', 'profile']);
+  const tabBarAllowedPages = new Set(['home', 'member']);
 
   if (!pageText.includes('PageShell')) {
     fail(`${page.key} 未使用 PageShell`);
@@ -332,7 +349,7 @@ function checkPage(page) {
     || /\breserveTabBarSpace\s*=\s*['"]true['"]/.test(pageText);
 
   if (enablesTabBar && !tabBarAllowedPages.has(page.key)) {
-    fail(`${page.key} 不应展示页面内 AppTabBar，仅 home 和 profile 允许开启 reserveTabBarSpace`);
+    fail(`${page.key} 不应展示页面内 AppTabBar，仅 home 和 member 允许开启 reserveTabBarSpace`);
   }
 
   checkClassNameTokens(page, pageText);
@@ -344,6 +361,7 @@ function checkPage(page) {
 function main() {
   const pages = parseRegistryPages();
   checkForbiddenTextIconGlyphs();
+  checkForbiddenUserFacingInternalTexts();
   checkFontWeightCeiling();
   checkShareTimelineForbidden();
 

@@ -1,4 +1,4 @@
 export default definePageConfig({
-  navigationBarTitleText: '我的',
+  navigationBarTitleText: '编辑地址',
   navigationStyle: 'custom',
 });

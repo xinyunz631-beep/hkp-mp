@@ -14,6 +14,9 @@ type AppImageSize = number | string;
 type AppImageStyle = ImageProps['style'];
 type AppImageEmptyState = 'placeholder' | 'error';
 
+const APP_IMAGE_DEFAULT_LOADING_SIZE = '24px';
+const APP_IMAGE_DEFAULT_ERROR_ICON_SIZE = 28;
+
 export interface AppImageProps extends Omit<ImageProps, 'className' | 'src' | 'mode' | 'style' | 'width' | 'height' | 'onLoad' | 'onError'> {
   className?: string;
   imageClassName?: string;
@@ -38,26 +41,11 @@ function formatSize(size?: AppImageSize) {
   return size;
 }
 
-function parseNumericSize(size?: AppImageSize) {
-  if (typeof size === 'number') return size;
-  if (!size) return undefined;
-
-  const matched = /^(\d+(?:\.\d+)?)(px|rpx)?$/i.exec(size.trim());
-  return matched ? Number(matched[1]) : undefined;
-}
-
-function clampSize(size: number) {
-  return Math.max(18, Math.min(42, Math.round(size)));
-}
-
-function resolveLoadingSize(width?: AppImageSize, loadingSize?: AppImageSize) {
+function resolveLoadingSize(loadingSize?: AppImageSize) {
   const explicitSize = formatSize(loadingSize);
   if (explicitSize) return explicitSize;
 
-  const imageWidth = parseNumericSize(width);
-  if (!imageWidth) return '34px';
-
-  return `${clampSize(imageWidth * 0.14)}px`;
+  return APP_IMAGE_DEFAULT_LOADING_SIZE;
 }
 
 function resolveInitialStatus(src: string, emptyState: AppImageEmptyState): AppImageStatus {
@@ -128,8 +116,12 @@ export function AppImage({
   const loaded = status === 'loaded';
   const loading = status === 'loading';
   const failed = status === 'error';
-  const resolvedLoadingSize = resolveLoadingSize(width, loadingSize);
-  const resolvedErrorIconSize = errorIconSize || resolvedLoadingSize;
+  const resolvedLoadingSize = resolveLoadingSize(loadingSize);
+  const resolvedErrorIconSize = errorIconSize || APP_IMAGE_DEFAULT_ERROR_ICON_SIZE;
+  const loadingStyle = {
+    '--nutui-loading-icon-size': resolvedLoadingSize,
+    '--app-image-loading-size': resolvedLoadingSize,
+  } as CSSProperties;
   const rootStyle = mergeRootStyle({
     style,
     width,
@@ -177,7 +169,7 @@ export function AppImage({
       ) : null}
       {loading && showLoading ? (
         <View className="app-image__state app-image__state--loading">
-          <NutLoading className="app-image__loading" type="circular" />
+          <NutLoading className="app-image__loading" type="circular" style={loadingStyle} />
         </View>
       ) : null}
       {failed && showErrorIcon ? (

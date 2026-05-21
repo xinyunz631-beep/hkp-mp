@@ -54,6 +54,11 @@ export interface HkpAddressSummary {
   region: string;
   detail: string;
   isDefault?: boolean;
+  locationName?: string;
+  locationAddress?: string;
+  latitude?: number;
+  longitude?: number;
+  tag?: string;
 }
 
 export interface HkpFilterTab {

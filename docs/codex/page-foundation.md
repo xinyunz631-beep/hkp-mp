@@ -15,6 +15,7 @@
 - 页面只负责渲染、交互和状态组合；接口、默认值和失败兜底放到 service。
 - 用户可见文案禁止出现 `mock`、组件库、技术栈、开发态或测试态字眼。
 - 用户可见文案必须按真实 C 端业务语境表达，不得暴露实现层、调试层或产品内部分类词；输入提示、空态、按钮和列表标题都要让普通游客能直接理解。
+- 用户可见文案禁止出现实现过程描述，例如“按票种生成”“实名槽位”“接口返回”“草稿”等；页面上应表达为“请补充出游人信息”“返回重新选择”“订单信息已保存”等游客可理解话术。
 - 商用级补完页面使用 `commercial-ready` 状态；必须在页面文档记录交互矩阵、状态矩阵和微信开发工具验收清单。
 
 ## 多页面流开发
@@ -67,7 +68,8 @@
 - 页面 SCSS 尽量使用嵌套写法，例如 `._pg-banner { &_container {} &_item { &--active {} } }`。
 - 已有页面只要本次修改触达 render 或 SCSS，就必须把触达区域迁到 `_pg-*`；如果本次是页面级重写、首页整体调整或重构样式文件，则整页统一迁到 `_pg-*`，不要保留页面名前缀逃逸。
 - 页面级 SCSS 禁止裸写全局组件、NutUI 或项目组件选择器影响全局，例如 `.nut-*`、`.app-popup`、`.login-popup`、`.page-*`；除非用户明确要求页面级覆盖，否则页面只能在当前 `._pg` 作用域下做局部覆盖。组件自身问题必须改对应组件文件，并用该组件自己的外层 class 收口。
-- 基于 `AppPopup` 的业务弹层必须通过 `className` 提供组件自有外层 class，例如 `login-popup`、`sku-popup`，再在对应组件样式文件里用 `.xxx-popup.app-popup` / `.xxx-popup .app-popup__content` 做二次定制；不得为了某个页面或业务弹层直接改全局 `AppPopup`、`.nut-popup`、`.nut-overlay`。
+- 基于 `AppPopup` 的业务弹层必须通过 `className` 提供可收口的外层 class：复用组件用组件自有 class，例如 `login-popup`、`sku-popup`；页面内直接声明的弹层用 `_pg-xxx-popup-shell` 这类页面级 class。二次定制必须收口到对应组件或当前页面作用域，不得为了某个业务弹层直接改全局 `AppPopup`、`.nut-popup`、`.nut-overlay`。
+- 标题固定、右侧关闭、中间滚动、底部确认按钮可选的底部业务弹层优先使用 `AppBottomSheet`；页面只传业务内容，不要重复手写弹层 header、关闭按钮、滚动容器和确认 footer；中间滚动区默认最小高度为 `300px`，未超过最大高度前随内容自适应，特殊业务只通过 `bodyMinHeight/bodyMaxHeight` 覆盖。
 - 小程序页面 SCSS 尺寸默认按 750px 设计稿原值书写，不要按 375 逻辑手动折半；只有明确在写 JS canvas 实际像素、NutUI 内部变量适配或某个组件文档要求时，才单独说明换算依据。
 - 页面级默认内容左右留白统一使用 `30px`；新页面模板和商用页主体区块不要继续默认写 `32px`，组件内部、卡片内部或弹层内部的局部 padding 按组件视觉单独决定。
 - 字体默认不加粗，正文、说明、链接、普通行文不要写 `font-weight: 500`；只有标题、名称、金额、主按钮等确实需要强调的文本才显式使用 `font-weight: 500`。
@@ -91,6 +93,7 @@
 - 当前只按微信小程序 `weapp` 实现和验收，不为 H5 或其它端写兼容分支。
 - 项目分享只允许微信好友分享：页面使用 `useShareAppMessage` 配置分享内容，可见分享按钮统一优先使用 `AppShareButton` / `openType="share"`；分享属于公开传播能力，不校验登录态，不要把分享按钮包进 `AuthAction`、`requireLogin` 或受保护路由判断；禁止 `useShareTimeline`、`onShareTimeline`、`shareTimeline`、朋友圈分享入口，以及用 `showShareMenu` 做二级分享引导。
 - 图片预览、扫码、地图、电话、复制、确认弹窗和 toast 默认优先使用 `src/core/utils/wechat-actions.ts` 封装；确认类弹窗统一走 `showAppModal()` / `showWechatConfirm()`，不要在页面直接散写 `Taro.showModal`，确认按钮颜色默认使用项目主色。
+- 新增或使用 `chooseLocation` 等微信隐私 API 时，必须同步检查 `src/app.config.ts` 的 `requiredPrivateInfos` 和 `permission` 声明，避免开发工具内接口直接 fail 后被业务 toast 误判为用户取消。
 - 搜索、筛选、表单、交易确认等页面的业务细节必须沉淀到对应页面文档，不写进本文件；本文件只保留微信 API、文案边界、状态组件、布局安全区等跨页面通用约束。
 - 页面可见点击必须落到跳转、弹层、微信 API、本地状态变化、登录拦截或提交结果，不允许用“即将开放”作为非暂缓页面兜底。
 - 微信 canvas 生成图片时必须区分 750 设计稿 `rpx` 展示尺寸和 canvas 真实像素绘制尺寸；不要直接把 SCSS 中会被 Taro 转换的 `px` 常量复用为 JS 绘制 / 导出尺寸，避免只导出左上角局部。
@@ -102,6 +105,7 @@
 - `$mp-verify` 发现空图片、灰底图片、待素材位、截图还原差异等视觉资产问题时，默认列入待确认；不得把素材占位自动改成图标、文本或新视觉方案。
 - `$mp-verify` 自动修复前必须判断影响半径和通用性：先查同类页面、共享组件、调用方和样式作用域，能确定是通用基础设施问题才修通用层，能确定是单页问题才修页面局部，不允许为了修 A 破坏 B。
 - 设计取舍、多方案交互、大范围重构、新依赖、真实账号/支付/上传权限等高风险问题，必须列入待确认清单，不自动改。
+- 用户明确说明为本地手动调试、已验收或刻意保留的视觉参数时，后续 review / `$mp-verify` 不再按通用约束反复报同一类问题；只在它造成编译失败、功能不可用、跨页面或全局组件污染、微信端兼容风险，或用户重新要求按约束收敛时才重新提出。
 - 微信开发工具验证优先使用 DevTools MCP / `miniprogram-automator` / `weapp-ide-cli` 等可重复工具；Computer Use 只作为没有自动化工具时的降级截图和低风险点击辅助。
 - 使用 Computer Use 降级验收时，结论必须基于模拟器当前可见页面、页面路径和交互结果；不要根据 Wxml 面板里的隐藏页面栈误判页面显示状态。
 - 验证报告按 `已修 / 待确认 / 通过 / 未能确认` 输出，问题必须包含页面、复现步骤、实际表现、预期和疑似代码位置；微信系统 warning 可记录但不作为业务问题优先处理。
@@ -111,6 +115,7 @@
 - 先查事实源：`docs/ui/components.md` 和 `docs/codex/nutui-component-registry.md`。
 - 先查项目内封装：`src/core/components`、当前分包组件、已有同类页面。
 - 交易类通用 UI 优先查 `src/core/components/commerce`，当前包含商品卡、订单卡、优惠券卡、地址卡、提交栏、数量选择、筛选 Tab、SKU 弹层和日期选择。
+- 通用底部弹层优先查 `src/core/components/AppBottomSheet`，适用于酒店人数、筛选、规则选择等“标题 + 滚动内容 + 可选底部按钮”的底部弹层。
 - 日期选择优先使用项目封装 `DateSelectionPopup`，底层使用 NutUI `Calendar`；门票使用单日，酒店使用范围。
 - 票务分包底部提交 / 支付固定栏优先使用 `src/pkg-ticket/components/TicketSubmitFooter`，不要在门票预定页和确认订单页分别覆写提交栏形态。
 - NutUI 样式依赖 `designWidth=375` 和 `deviceRatio[375]=2`，缺失时会把 NutUI CSS fallback 编译成 `NaNrpx`。

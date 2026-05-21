@@ -4,18 +4,28 @@ export const orderAddresses: HkpAddressSummary[] = [
   {
     id: 'addr-home',
     name: '晓晓',
-    mobile: '155****5697',
-    region: '上海市浦东新区',
-    detail: '张江镇张江路368号开文大厦22号楼',
+    mobile: '15512345697',
+    region: '上海市浦东新区张江路368号',
+    detail: '开文大厦22号楼1201室',
     isDefault: true,
+    locationName: '开文大厦',
+    locationAddress: '上海市浦东新区张江路368号',
+    latitude: 31.204318,
+    longitude: 121.595421,
+    tag: '家',
   },
   {
     id: 'addr-company',
     name: 'Chris J',
-    mobile: '133****5697',
-    region: '上海市浦东新区',
-    detail: '张江镇金苏路200号D栋4楼',
+    mobile: '13312345697',
+    region: '上海市浦东新区金苏路200号',
+    detail: 'D栋4楼前台',
     isDefault: false,
+    locationName: '金苏路园区',
+    locationAddress: '上海市浦东新区金苏路200号',
+    latitude: 31.205551,
+    longitude: 121.608102,
+    tag: '公司',
   },
 ];
 
@@ -92,6 +102,7 @@ export interface OrderCheckoutData {
 
 export interface OrderAddressData {
   addresses: HkpAddressSummary[];
+  maxCount: number;
 }
 
 export interface OrderLogisticsTraceItem {
@@ -414,7 +425,7 @@ export const orderDetailData: OrderDetailData = {
   statusText: '已发货',
   paidAmountText: '¥998',
   title: '杭州Hello Kitty 乐园平日成人票',
-  quantityText: 'X2',
+  quantityText: 'x2',
   productFields: [
     { label: '使用日期', value: '2019-11-11' },
     { label: '有效期', value: '仅入园当天有效' },
@@ -467,15 +478,14 @@ export const orderCheckoutData: OrderCheckoutData = {
     },
   ],
   shippingText: '中通快递',
-  couponText: '满¥300减¥50',
-  discountText: '无可用',
+  couponText: '',
+  discountText: '',
   amountFields: [
-    { label: '商品金额', value: '¥349.00' },
+    { label: '商品金额', value: '¥699.80' },
     { label: '运费', value: '¥0.00' },
-    { label: '立减', value: '-¥50.00' },
   ],
-  totalAmount: 299,
-  discountAmount: 50,
+  totalAmount: 699.8,
+  discountAmount: 0,
 };
 
 export const cancelData: OrderCancelData = {
@@ -614,6 +624,7 @@ export const aftersaleProgressData: OrderAftersaleProgressData = {
 
 export const addressData: OrderAddressData = {
   addresses: orderAddresses,
+  maxCount: 10,
 };
 
 export const logisticsData: OrderLogisticsData = {

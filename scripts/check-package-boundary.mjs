@@ -9,7 +9,6 @@ const requiredMainPages = [
   'pages/home/index',
   'pages/park/index',
   'pages/member/index',
-  'pages/profile/index',
 ];
 const requiredPackages = ['pkg-mall', 'pkg-member', 'pkg-hotel', 'pkg-ticket', 'pkg-dining', 'pkg-order'];
 const failures = [];

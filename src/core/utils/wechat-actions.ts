@@ -1,6 +1,7 @@
 import Taro from '@tarojs/taro';
 
 const APP_MODAL_CONFIRM_COLOR = '#db2777';
+const APP_MODAL_CANCEL_COLOR = '#666666';
 
 interface AppModalOptions {
   title?: string;
@@ -38,9 +39,21 @@ interface OpenLocationOptions {
   scale?: number;
 }
 
+export interface WechatLocationResult {
+  name: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+}
+
 interface ScanCodeResult {
   result: string;
   scanType?: string;
+}
+
+function getWechatFailMessage(error: unknown) {
+  if (!error || typeof error !== 'object' || !('errMsg' in error)) return '';
+  return String((error as { errMsg?: string }).errMsg || '');
 }
 
 // 展示微信小程序原生轻提示，页面只传业务文案。
@@ -59,7 +72,7 @@ export function showAppModal({
   confirmText = '确定',
   cancelText = '取消',
   confirmColor = APP_MODAL_CONFIRM_COLOR,
-  cancelColor,
+  cancelColor = APP_MODAL_CANCEL_COLOR,
   showCancel = true,
 }: AppModalOptions) {
   const modalOptions: Parameters<typeof Taro.showModal>[0] = {
@@ -67,15 +80,12 @@ export function showAppModal({
     confirmText,
     cancelText,
     confirmColor,
+    cancelColor,
     showCancel,
   };
 
   if (title) {
     modalOptions.title = title;
-  }
-
-  if (cancelColor) {
-    modalOptions.cancelColor = cancelColor;
   }
 
   return Taro.showModal(modalOptions);
@@ -158,6 +168,42 @@ export async function openWechatLocation({
     });
   } catch {
     await copyWechatText(address, '地址已复制，可粘贴到地图导航');
+  }
+}
+
+// 调起微信位置选择，用于地址新增/编辑等需要用户确认收货位置的场景。
+export async function chooseWechatLocation(): Promise<WechatLocationResult | undefined> {
+  try {
+    const result = await Taro.chooseLocation({});
+    const name = result.name?.trim() || '';
+    const address = result.address?.trim() || '';
+
+    if (!name && !address) {
+      await showWechatToast('未选择地址');
+      return undefined;
+    }
+
+    return {
+      name,
+      address,
+      latitude: result.latitude,
+      longitude: result.longitude,
+    };
+  } catch (error) {
+    const errMsg = getWechatFailMessage(error);
+
+    if (/cancel/i.test(errMsg)) {
+      await showWechatToast('未选择地址');
+      return undefined;
+    }
+
+    if (/auth|authorize|permission|privacy|requiredPrivateInfos/i.test(errMsg)) {
+      await showWechatToast('请允许位置权限后再选择地址');
+      return undefined;
+    }
+
+    await showWechatToast('位置选择暂不可用，请稍后再试');
+    return undefined;
   }
 }
 

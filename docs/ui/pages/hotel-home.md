@@ -4,20 +4,20 @@
 
 - 页面：酒店首页
 - 路由：src/pkg-hotel/pages/index
-- 当前设计工具（以 `page-registry.currentTool` 为准）：pencil
-- UI 图：docs/ui/source/hkp-mini-page/hotel-detail.png
-- 当前版本：v0.3
-- 页面状态：interaction-ready
-- 更新时间：2026-05-18
+- UI 图：docs/ui/source/hkp-mini-page/hotel-home-online.png
+- 当前版本：v1.0
+- 页面状态：commercial-ready
+- 更新时间：2026-05-20
 - 实现文件：
   - src/pkg-hotel/pages/index/index.tsx
   - src/pkg-hotel/pages/index/index.scss
-  - src/pkg-hotel/pages/index/index.config.ts
   - src/pkg-hotel/services/index.ts
+  - src/pkg-hotel/services/mock-data.ts
+  - src/pkg-hotel/services/order-draft.ts
 
 ## 设计意图
 
-酒店分包首页按 `hotel-detail.png` 先完成顶部酒店切换、主图、地址/介绍、入住信息、筛选胶囊、房型列表和套餐推荐，作为酒店链路的入口页。
+酒店首页以 `hotel-home-online.png` 为最终 UI 基准，承接游客查询酒店产品的第一步：看图集、看地址、了解酒店、选择入住日期和入住人数、筛选套餐/房型，并进入详情或确认订单。
 
 ## 页面结构
 
@@ -25,100 +25,94 @@
 - 页面容器：`PageShell`
 - 页面运行时：`usePageRuntime`
 - 页面状态订阅：`observer`
-- 内容区域：酒店切换 Tab、主图、地址信息、入住信息条、房型卡片、套餐卡片。
+- 页面标题：`畅‘住’HelloKittyPark`
+- 内容区域：酒店 tab、可滑动 banner、地址行、介绍行、日期/人数选择、筛选胶囊、酒店产品列表。
 
 ## 动态与静态边界
 
-- 页面图片：真实图片区域后续统一使用 `AppImage`。
-- 接口数据：通过对应分包 service 获取，页面不直接写接口 mock。
-- 本地配置：页面标题、导航策略、路由和分包注册。
+- UI 还原：页面按最终稿 `hotel-home-online.png` 实现首屏结构和主要视觉层级。
+- 接口数据：酒店、图集、筛选、产品、价规、库存和价格由分包 service 统一返回。
+- 交易上下文：页面只创建酒店订单上下文，不在页面内拼结算字段。
+- 图片资源：真实图片通过 `AppImage`，无有效图时不展示图片数量。
 
 ## 状态要求
 
-- loading：页面运行时统一承接。
-- empty：后续优先使用 `BaseEmpty`。
-- error：后续优先使用 `BaseException` 或 `StatusException`。
-- 未登录：需要身份时使用 `usePageRuntime({ loginRequired: true })` 或 `AuthAction`。
+- loading：首屏和条件刷新由 `usePageRuntime` 承接。
+- empty：产品无命中时使用 `BaseEmpty`。
+- error：初始化失败走运行时兜底。
+- 未登录：公开浏览不拦截，点击预定时由受保护路由拦截。
 
 ## 接口与 Service
 
-| 模块 | service | 失败策略 | 是否阻断页面 |
-|---|---|---|---|
-| 页面数据 | `fetchHotelHomeData()` | service 内归一和兜底 | 否 |
+| 模块 | service | 说明 |
+|---|---|---|
+| 首页数据 | `fetchHotelHomeData()` | 按日期、入住人数、筛选条件返回酒店产品 |
+| 订单草稿 | `createHotelOrderDraft()` | 预订按钮创建酒店订单上下文并进入确认订单 |
 
 ## 交互与跳转
 
-- 酒店切换：切换顶部酒店 Tab，联动主图、地址、房型和套餐数据。
-- 分享：右上角分享按钮使用 `AppShareButton` 直接触发微信好友分享，页面通过 `useShareAppMessage` 提供分享内容。
-- 主图：点击调用微信图片预览；无图时给出业务提示。
-- 地图/导航：点击调用微信地图，缺少坐标时按 `wechat-actions` 降级复制地址。
-- 酒店介绍：点击展示微信 modal 说明。
-- 入住日期：点击入住/离店日期或晚数打开 `DateSelectionPopup` 范围选择，弹层挂载在 `PageShare`。
-- 入住人数：点击“每间”区域循环切换成人/儿童组合并 toast 反馈。
-- 筛选胶囊：切换大床/含早/双床，联动房型列表。
-- 房型详情：点击房型卡跳到 `hotel-room-detail`。
-- 预订：点击房型或套餐“预订”按钮跳到 `hotel-checkout`。
+- 酒店首页公开浏览，不要求登录。
+- 点击产品卡进入房型/套餐详情。
+- 点击预定按钮创建订单上下文并进入酒店确认订单。
+- 日期、入住人数和筛选变更必须刷新产品数据。
 
 ## 交互矩阵
 
 | 元素 | 行为 | 反馈/去向 |
 |---|---|---|
-| 酒店 Tab | 切换当前酒店 | 主图、地址、房型、套餐联动刷新 |
-| 分享按钮 | 调用微信分享能力 | toast 提示右上角分享 |
-| 主图 | 图片预览 | 无图展示“暂无酒店大图” |
-| 地图/导航 | 打开微信地图 | 降级复制地址 |
-| 酒店介绍 | 微信 modal | 展示酒店说明 |
-| 入住/离店日期 | 范围日期弹层 | 确认后更新入住、离店和晚数 |
-| 每间入住人数 | 本地切换 | toast 反馈当前组合 |
-| 筛选项 | 切换筛选 | 房型列表联动 |
-| 房型卡 | 跳转详情 | `hotel-room-detail?roomId=` |
-| 预订按钮 | 跳转确认订单 | `hotel-checkout?roomId=` |
+| 酒店 tab | 切换酒店 | 锁页刷新当前酒店图集、地址、产品 |
+| banner 滑动 | 切换图片 | `Swiper` 横向滑动 |
+| banner 点击 | 图片预览 | 调用微信图片预览；无图只给业务提示 |
+| 图片数量 | 显示有效图数 | 有有效图片才展示 `图片N张` |
+| 地址行 | 地图导航 | 调用微信地图，坐标缺失时复制地址 |
+| 详情介绍 | 底部弹层 | 展示介绍、入住/退房时间、联系电话 |
+| 分享好友 | 微信好友分享 | 使用 `AppShareButton`，不校验登录 |
+| 联系电话 | 拨打电话 | 调用微信拨号，失败时复制号码 |
+| 入住日期 | 日期范围弹层 | 使用 `DateSelectionPopup`，确认后刷新产品 |
+| 房间数入口 | 底部弹层 | 页面只展示 `N间`，弹层内调整房间数、成人、儿童和儿童年龄 |
+| 筛选胶囊 | 筛选产品 | 锁页刷新/过滤产品列表，可再次点击取消 |
+| 产品卡 | 进入详情 | 跳转 `hotel-room-detail` 并带日期/入住人数 |
+| 预定按钮 | 创建订单上下文 | 登录拦截后进入 `hotel-checkout?draftId=` |
 
 ## 状态矩阵
 
 | 状态 | 处理 |
 |---|---|
-| loading | `usePageRuntime` 统一承接 |
-| 空图片 | `AppImage` 灰底占位，点击预览时给业务提示 |
-| 日期弹层 | `PageShare` 挂载，覆盖 header/footer/tabbar |
-| 酒店切换 | 默认重置筛选到第一项 |
-| 筛选无命中 | 回退展示当前酒店全部房型 |
+| 首屏 loading | `usePageRuntime` 承接 |
+| 条件刷新 | `pageRuntime.withLoading()` 锁住页面 |
+| 空图片 | `AppImage` 灰底占位，点击预览提示暂无大图 |
+| 无产品 | 使用 `BaseEmpty` 展示调整条件建议 |
+| 弹层层级 | 日期、介绍、入住人数弹层全部放入 `PageShare` |
+| 未登录预定 | 入口 `navigateToMiniRoute` 登录拦截，确认订单页二次兜底 |
 
 ## 微信开发工具验收清单
 
-- 进入酒店首页，点右上分享，应出现分享引导 toast。
-- 点酒店主图，应进入图片预览或提示暂无酒店大图。
-- 点地图/导航，应调起微信地图或复制地址。
-- 点入住/离店日期，应弹出 NutUI 日期范围选择，层级高于页面头尾。
-- 切换筛选、点房型、点预订，分别应联动列表、进入房型详情、进入确认订单。
+- 进入页面，标题应为 `畅‘住’HelloKittyPark`，首屏结构贴近 `hotel-home-online.png`。
+- banner 可左右滑动，右下角展示有效图片数量，点击能预览当前图集。
+- 点击地址应打开微信地图或复制地址。
+- 点击详情介绍应打开底部弹层，电话按钮可拨号或复制；点击分享好友应触发微信好友分享。
+- 点击日期应打开范围日历，确认后页面展示 loading 并刷新列表。
+- 点击房间数入口应打开底部弹层，页面入口只展示 `N间`，修改房间/成人/儿童后列表刷新。
+- 点击筛选胶囊应过滤列表，无匹配时展示统一空态。
+- 点击产品卡进入详情；点击预定进入确认订单，日期、产品和价格保持一致。
 
 ## 实现映射
 
-- `src/pkg-hotel/pages/index/index.tsx`：页面骨架相关文件。
-- `src/pkg-hotel/pages/index/index.scss`：页面骨架相关文件。
-- `src/pkg-hotel/pages/index/index.config.ts`：页面骨架相关文件。
+- `src/pkg-hotel/pages/index/index.tsx`：页面结构、交互和状态组合。
+- `src/pkg-hotel/pages/index/index.scss`：最终稿视觉还原。
+- `src/pkg-hotel/services/index.ts`：首页数据入口。
+- `src/pkg-hotel/services/order-draft.ts`：酒店订单上下文创建。
 
 ## 变更记录
 
-### v0.3
+### v1.0
 
-- 补齐酒店首页分享、图片预览、地图导航、酒店介绍、入住日期范围弹层、入住人数切换和筛选联动。
-- 日期弹层使用项目 `DateSelectionPopup`，并通过 `PageShare` 挂载到页面级浮层。
-- 页面状态推进到 `interaction-ready`。
-
-### v0.2
-
-- 按 `hotel-detail.png` 完成酒店首页首版 UI 和酒店链路入口。
-- 新增 `fetchHotelHomeData()`，由 service 提供酒店 Tab、主图、房型、套餐和筛选数据。
-- 页面内接入 `AppImage`、`AppIcon` 和路由跳转，形成首页 -> 房型详情 / 确认订单的最小闭环。
-
-### v0.1
-
-- Phase 1 登记页面骨架。
+- 按 `hotel-home-online.png` 重做酒店首页 UI。
+- banner 改为可滑动图集，支持图片数量和微信大图预览。
+- 入住日期、入住人数、筛选和产品列表全部接入 service 数据刷新。
+- 预定按钮改为创建酒店订单上下文，串联确认订单页。
 
 ## 验证记录
 
 - `yarn typecheck`
 - `yarn check:page-convention`
-- `yarn check:package-boundary`
-- `yarn check:ui-contract`

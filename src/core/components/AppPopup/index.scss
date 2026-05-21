@@ -131,7 +131,8 @@
 }
 
 .app-popup__safe-area {
-  height: calc(4px + env(safe-area-inset-bottom));
+  // height: calc(4px + env(safe-area-inset-bottom));
+  height: 20Px;
   pointer-events: none;
 }
 

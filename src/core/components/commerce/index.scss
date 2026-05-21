@@ -305,7 +305,7 @@
   display: flex;
   align-items: center;
   gap: 24px;
-  padding: 18px 24px;
+  padding: 18px 30px;
   box-sizing: border-box;
   background: #ffffff;
 
@@ -573,6 +573,12 @@
   }
 }
 
+.hkp-date-selection-summary-shell {
+  padding: 10px 30px 0;
+  box-sizing: border-box;
+  border-top: 1Px solid #f1f1f1;
+}
+
 .nut-calendar-popup {
   .nut-calendar-week-item:first-of-type {
     color: var(--nutui-gray-7, #1a1a1a);
@@ -643,6 +649,21 @@
   &--active {
     border-color: $color-primary;
   }
+
+  &--disabled {
+    pointer-events: none;
+  }
+}
+
+.hkp-coupon-popup__clear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 88px;
+  border-radius: 24px;
+  background: #ffffff;
+  color: $color-text-primary;
+  font-size: 28px;
 }
 
 .hkp-coupon-popup__checked {

@@ -133,16 +133,7 @@ function createTicketDates(): HkpDateOption[] {
 
 export const ticketDates: HkpDateOption[] = createTicketDates();
 
-export const ticketCoupons: HkpCouponSummary[] = [
-  {
-    id: 'ticket-30-off',
-    title: '门票优惠券',
-    amountText: '¥30',
-    thresholdText: '满 299 可用',
-    validityText: '有效期至 2026-06-30',
-    status: 'available',
-  },
-];
+export const ticketCoupons: HkpCouponSummary[] = [];
 
 export interface TicketCheckoutTicketItem {
   title: string;
@@ -194,11 +185,11 @@ export const ticketCheckoutData: TicketCheckoutData = {
     merchantTitle: '小恐龙餐厅',
     productTitle: '美食送温情精选套餐A 午餐',
     noteText: '免预约',
-    quantity: 1,
+    quantity: 0,
     price: 99,
   },
   contact: {
-    name: 'Chris J',
+    name: '',
     mobile: '',
     idCard: '',
     mobilePlaceholder: '请输入手机号',
@@ -207,8 +198,8 @@ export const ticketCheckoutData: TicketCheckoutData = {
     errorText: '请补全身份证信息',
   },
   discountText: '无可用',
-  couponText: '满¥300减¥50',
-  discountAmount: 50,
+  couponText: '',
+  discountAmount: 0,
   payButtonText: '去支付',
 };
 

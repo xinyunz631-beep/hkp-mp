@@ -6,12 +6,16 @@ import {
   type LocalOrderRecord,
 } from '@/core/services/local-order';
 import { orderCheckoutData, type OrderCheckoutData } from './mock-data';
+import { formatOrderAddress, getDefaultOrderAddress } from './address';
 
 export type { OrderCheckoutData } from './mock-data';
 
 // 获取确认订单页面数据，后续接真实接口时在这里处理字段归一和失败兜底。
 export function fetchCheckoutData() {
-  return resolveMockData<OrderCheckoutData>(orderCheckoutData);
+  return resolveMockData<OrderCheckoutData>({
+    ...orderCheckoutData,
+    address: getDefaultOrderAddress() ?? orderCheckoutData.address,
+  });
 }
 
 // 模拟商城确认订单支付成功，写入本地订单中心。
@@ -19,6 +23,7 @@ export function submitOrderCheckoutOrder(data: OrderCheckoutData) {
   const orderId = createLocalOrderId('MALL-');
   const now = createLocalOrderTime();
   const firstProduct = data.products[0];
+  const hasCouponDiscount = data.discountAmount > 0 && data.couponText.trim().length > 0;
   const record: LocalOrderRecord = {
     id: orderId,
     source: 'mall',
@@ -27,11 +32,11 @@ export function submitOrderCheckoutOrder(data: OrderCheckoutData) {
     statusText: '待发货',
     paidAmountText: `¥${data.totalAmount.toFixed(2)}`,
     title: firstProduct?.title || '乐园商城订单',
-    quantityText: `X${data.products.reduce((total, item) => total + item.quantity, 0)}`,
+    quantityText: `x${data.products.reduce((total, item) => total + item.quantity, 0)}`,
     totalText: `共${data.products.length}件商品 合计:¥${data.totalAmount.toFixed(2)}`,
     productFields: [
       { label: '收货人', value: `${data.address.name} ${data.address.mobile}` },
-      { label: '收货地址', value: `${data.address.region}${data.address.detail}` },
+      { label: '收货地址', value: formatOrderAddress(data.address) },
       { label: '配送方式', value: data.shippingText },
     ],
     ticketFields: [
@@ -45,7 +50,7 @@ export function submitOrderCheckoutOrder(data: OrderCheckoutData) {
     ],
     amountFields: [
       ...data.amountFields,
-      { label: '优惠券', value: data.couponText },
+      ...(hasCouponDiscount ? [{ label: '优惠券', value: data.couponText }] : []),
       { label: '实付款', value: `¥${data.totalAmount.toFixed(2)}` },
     ],
     orderFields: [

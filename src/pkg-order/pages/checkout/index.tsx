@@ -1,4 +1,3 @@
-import Taro from '@tarojs/taro';
 import { Text, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
 import { useState } from 'react';
@@ -8,6 +7,7 @@ import { FixedSubmitBar } from '@/core/components/commerce';
 import { PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
+import { navigateToMiniRoute } from '@/core/utils/navigation';
 import { previewWechatImages, showWechatConfirm, showWechatToast } from '@/core/utils/wechat-actions';
 import { fetchCheckoutData, submitOrderCheckoutOrder, type OrderCheckoutData } from '@/pkg-order/services/checkout';
 import './index.scss';
@@ -59,11 +59,12 @@ const CheckoutPage = observer(function CheckoutPage() {
 
     const order = submitOrderCheckoutOrder(checkoutData);
     await showWechatToast('支付成功', 'success');
-    Taro.navigateTo({ url: `${MINI_PACKAGE_ROUTES.orderDetail}?orderId=${encodeURIComponent(order.id)}` });
+    navigateToMiniRoute(`${MINI_PACKAGE_ROUTES.orderDetail}?orderId=${encodeURIComponent(order.id)}`);
   }
 
   return pageRuntime.renderPage(() => {
     if (!checkoutData) return null;
+    const hasCouponDiscount = checkoutData.discountAmount > 0 && checkoutData.couponText.trim().length > 0;
 
     return (
       <View className="_pg">
@@ -76,14 +77,14 @@ const CheckoutPage = observer(function CheckoutPage() {
               className="_pg-submit"
               label={<Text className="_pg-submit_label">金额:</Text>}
               amountText={<Text className="_pg-submit_amount">¥{checkoutData.totalAmount.toFixed(2)}</Text>}
-              extra={<Text className="_pg-submit_extra">已优惠: ¥{checkoutData.discountAmount.toFixed(2)}</Text>}
+              extra={hasCouponDiscount ? <Text className="_pg-submit_extra">已优惠: ¥{checkoutData.discountAmount.toFixed(2)}</Text> : undefined}
               buttonText="去支付"
               onSubmit={() => void handleSubmit()}
             />
           )}
         >
           <View className="_pg-content">
-            <View className="_pg-card" onClick={() => Taro.navigateTo({ url: MINI_PACKAGE_ROUTES.orderAddress })}>
+            <View className="_pg-card" onClick={() => navigateToMiniRoute(MINI_PACKAGE_ROUTES.orderAddress)}>
               <View className="_pg-address">
                 <View className="_pg-address_header">
                   <Text className="_pg-address_name">{checkoutData.address.name}</Text>
@@ -134,27 +135,31 @@ const CheckoutPage = observer(function CheckoutPage() {
               </View>
             </View>
 
-            <View className="_pg-card _pg-card--compact">
-              <View className="_pg-line-row _pg-line-row--link" onClick={() => void handleCouponPress()}>
-                <Text className="_pg-line-row_label">优惠券</Text>
-                <View className="_pg-line-row_value-wrap">
-                  <Text className="_pg-line-row_coupon">{checkoutData.couponText}</Text>
-                  <AppIcon name="arrowRight" className="_pg-line-row_chevron" size={16} color="#c0c5cf" />
+            {hasCouponDiscount ? (
+              <>
+                <View className="_pg-card _pg-card--compact">
+                  <View className="_pg-line-row _pg-line-row--link" onClick={() => void handleCouponPress()}>
+                    <Text className="_pg-line-row_label">优惠券</Text>
+                    <View className="_pg-line-row_value-wrap">
+                      <Text className="_pg-line-row_coupon">{checkoutData.couponText}</Text>
+                      <AppIcon name="arrowRight" className="_pg-line-row_chevron" size={16} color="#c0c5cf" />
+                    </View>
+                  </View>
                 </View>
-              </View>
-            </View>
 
-            <View className="_pg-card _pg-card--compact">
-              <View className="_pg-line-row _pg-line-row--link" onClick={() => void handleDiscountPress()}>
-                <Text className="_pg-line-row_label">折扣信息</Text>
-                <View className="_pg-line-row_value-wrap">
-                  <Text className="_pg-line-row_value">
-                    {checkoutData.discountText === '无可用' ? `已优惠 ¥${checkoutData.discountAmount.toFixed(2)}` : checkoutData.discountText}
-                  </Text>
-                  <AppIcon name="arrowRight" className="_pg-line-row_chevron" size={16} color="#c0c5cf" />
+                <View className="_pg-card _pg-card--compact">
+                  <View className="_pg-line-row _pg-line-row--link" onClick={() => void handleDiscountPress()}>
+                    <Text className="_pg-line-row_label">折扣信息</Text>
+                    <View className="_pg-line-row_value-wrap">
+                      <Text className="_pg-line-row_value">
+                        {checkoutData.discountText === '无可用' ? `已优惠 ¥${checkoutData.discountAmount.toFixed(2)}` : checkoutData.discountText}
+                      </Text>
+                      <AppIcon name="arrowRight" className="_pg-line-row_chevron" size={16} color="#c0c5cf" />
+                    </View>
+                  </View>
                 </View>
-              </View>
-            </View>
+              </>
+            ) : null}
 
             <View className="_pg-card">
               {checkoutData.amountFields.map((item) => (

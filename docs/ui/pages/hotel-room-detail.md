@@ -1,29 +1,22 @@
-# 房间详情页面设计说明
+# 房型/套餐详情页面设计说明
 
 ## 基本信息
 
-- 页面：房间详情
+- 页面：房型/套餐详情
 - 路由：src/pkg-hotel/pages/room-detail
-- 当前设计工具（以 `page-registry.currentTool` 为准）：pencil
-- 设计文件：/Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
-- 设计节点：hotel-room-detail
-- 设计稿名称：房间详情 750px 开发稿
-- Figma fileKey：-
-- Figma nodeId：-
-- Pencil file：/Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
-- Pencil nodeId：hotel-room-detail
-- 当前版本：v0.3
-- 页面状态：interaction-ready
-- 更新时间：2026-05-18
+- UI 图：docs/ui/source/hkp-mini-page/hotel-room-detail.png
+- 当前版本：v1.0
+- 页面状态：commercial-ready
+- 更新时间：2026-05-20
 - 实现文件：
   - src/pkg-hotel/pages/room-detail/index.tsx
   - src/pkg-hotel/pages/room-detail/index.scss
-  - src/pkg-hotel/pages/room-detail/index.config.ts
   - src/pkg-hotel/services/room-detail.ts
+  - src/pkg-hotel/services/order-draft.ts
 
 ## 设计意图
 
-房间详情页面按 `hotel-room-detail.png` 先完成主图、标题标签、规格摘要、床型和更多详情内容，作为酒店首页房型卡的详情页承接。
+详情页承接酒店首页的产品卡，展示图集、产品摘要、入住日期、入住人数、可订价规和预订须知。浏览详情不需要登录，点击预订时再进入受保护链路。
 
 ## 页面结构
 
@@ -31,84 +24,79 @@
 - 页面容器：`PageShell`
 - 页面运行时：`usePageRuntime`
 - 页面状态订阅：`observer`
-- 内容区域：房间主图、标题摘要、床型行、更多详情段落。
+- 内容区域：顶部图集、产品摘要、入住条件、价规卡、预订须知、底部提交栏。
 
 ## 动态与静态边界
 
-- 接口图片：真实图片区域统一用项目封装 `AppImage`，render 内以空字符串变量预留地址，由组件承接加载中、淡入和失败态。
-- 图标资源：优先使用项目封装；NutUI 有匹配项时先封装为项目组件，找不到匹配项时用图片组件预留空地址。
-- 接口文本/数据：通过页面 service 获取。
-- 代码渲染：页面结构、状态、交互和基础样式。
-- 本地配置：页面标题、导航策略和分包注册。
+- 查询上下文：从首页带入酒店、产品、日期和入住人数。
+- 价规数据：由 `fetchRoomDetailData()` 返回，页面不自行拼接价格。
+- 交易入口：预订时创建酒店订单上下文后进入确认订单。
+- 图片资源：真实图片使用 `AppImage`，有效图集才展示图片数量。
 
 ## 状态要求
 
-- loading：页面运行时统一承接。
-- empty：优先使用 `BaseEmpty`。
-- error：优先使用 `BaseException` 或 `StatusException`。
-- 未登录：需要身份时使用 `usePageRuntime({ loginRequired: true })` 或 `AuthAction`。
-- 降级态：可降级接口在 service 内返回默认值。
+- loading：首屏由 `usePageRuntime` 承接。
+- empty：无有效图集时保留图片占位。
+- error：初始化失败走运行时兜底。
+- 未登录：详情页公开浏览，点击预订时拦截。
 
 ## 接口与 Service
 
-| 模块 | service | 失败策略 | 是否阻断页面 |
-|---|---|---|---|
-| 页面数据 | `fetchRoomDetailData()` | service 内归一和兜底 | 否 |
+| 模块 | service | 说明 |
+|---|---|---|
+| 详情数据 | `fetchRoomDetailData()` | 按查询上下文返回产品、价规和须知 |
+| 订单上下文 | `createHotelOrderDraft()` | 按选中价规创建确认订单上下文 |
 
 ## 交互与跳转
 
-- 页面根据 `roomId` 查询参数加载对应房型详情；未命中时兜底第一条房型。
-- 主图：点击调用微信图片预览；无图时给出业务提示。
-- 立即预订：底部固定按钮跳转 `hotel-checkout?roomId=`。
+- 点击图集预览酒店产品图片。
+- 点击入住日期行回到酒店首页重新选择条件。
+- 点击价规预订进入确认订单。
 
 ## 交互矩阵
 
 | 元素 | 行为 | 反馈/去向 |
 |---|---|---|
-| 房间主图 | 图片预览 | 无图展示“暂无房型大图” |
-| 立即预订 | 跳转确认订单 | `hotel-checkout?roomId=` |
+| 顶部图集 | 滑动切换 | `Swiper` 横向滑动 |
+| 顶部图集点击 | 图片预览 | 调用微信图片预览；无图提示暂无大图 |
+| 入住日期行 | 返回选择链路 | 带当前日期和入住人数回酒店首页重新选择 |
+| 价规预订 | 创建订单上下文 | 登录拦截后跳 `hotel-checkout?draftId=` |
+| 满房价规 | 阻止提交 | 按钮置灰并提示当前房型已订满 |
+| 底部立即预订 | 使用首个可订价规 | 创建订单上下文并进入确认订单 |
 
 ## 状态矩阵
 
 | 状态 | 处理 |
 |---|---|
-| loading | `usePageRuntime` 统一承接 |
-| 房型未命中 | service 兜底第一条房型 |
-| 空图片 | `AppImage` 灰底占位，点击预览时给业务提示 |
+| 首屏 loading | `usePageRuntime` 承接 |
+| 无查询上下文 | 使用今天/明天和默认入住人数兜底 |
+| 无图片 | `AppImage` 灰底占位，图片数量不展示 |
+| 价规满房 | 不允许继续预订 |
+| 公开浏览 | 页面本身不加登录拦截 |
 
 ## 微信开发工具验收清单
 
-- 从酒店首页点房型卡进入房型详情，页面应展示对应房型信息。
-- 点房间主图，应进入图片预览或提示暂无房型大图。
-- 点底部立即预订，应进入酒店确认订单并携带当前 `roomId`。
+- 从酒店首页点产品卡进入详情，标题、日期、入住人数和价格应承接首页条件。
+- 顶部图集可滑动，点击进入微信图片预览。
+- 点击日期行返回酒店首页，带回当前日期和入住人数。
+- 点击不同价规预订，应进入确认订单且金额、政策和产品一致。
+- 满房价规不可提交。
 
 ## 实现映射
 
-- `src/pkg-hotel/pages/room-detail/index.tsx`：页面主体。
-- `src/pkg-hotel/pages/room-detail/index.scss`：页面样式。
-- `src/pkg-hotel/pages/room-detail/index.config.ts`：页面配置。
-- `src/pkg-hotel/services/room-detail.ts`：页面 service。
+- `src/pkg-hotel/pages/room-detail/index.tsx`：页面结构、价规交互和预订入口。
+- `src/pkg-hotel/pages/room-detail/index.scss`：详情页视觉样式。
+- `src/pkg-hotel/services/room-detail.ts`：详情数据入口。
+- `src/pkg-hotel/services/order-draft.ts`：酒店订单上下文创建。
 
 ## 变更记录
 
-### v0.3
+### v1.0
 
-- 房间主图接入微信图片预览。
-- 增加底部立即预订入口，串联到酒店确认订单。
-- 页面状态推进到 `interaction-ready`。
-
-### v0.2
-
-- 按 `hotel-room-detail.png` 完成房间详情首版 UI。
-- `fetchRoomDetailData()` 支持按 `roomId` 读取不同房型详情。
-
-### v0.1
-
-- 初始化页面基础实现。
+- 详情页改为承接酒店首页查询上下文。
+- 新增图集滑动、价规卡、政策说明和订单上下文创建。
 
 ## 验证记录
 
 - `yarn typecheck`
 - `yarn check:page-convention`
-- `yarn check:package-boundary`
-- `yarn check:ui-contract`

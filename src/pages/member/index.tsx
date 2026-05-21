@@ -1,237 +1,326 @@
-import Taro, { useShareAppMessage } from '@tarojs/taro';
 import { Text, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
 import { AppIcon, type AppIconName } from '@/core/components/AppIcon';
-import { AppShareButton } from '@/core/components/AppShareButton';
+import { AppImage } from '@/core/components/AppImage';
 import { AuthAction } from '@/core/components/AuthAction';
 import { PageShell } from '@/core/components/PageShell';
-import { MINI_MAIN_ROUTES, MINI_PACKAGE_ROUTES, type MiniPackageRoute } from '@/core/constants/routes';
+import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import { rootStore } from '@/core/store';
+import { navigateToMiniRoute } from '@/core/utils/navigation';
+import { callWechatPhone, showWechatConfirm } from '@/core/utils/wechat-actions';
+import './index.scss';
 
-interface MemberTabEntry {
+interface ProfileMetricItem {
   key: string;
-  title: string;
-  desc: string;
-  icon: AppIconName;
-  route?: MiniPackageRoute;
-  action?: 'share';
+  value: string | number;
+  label: string;
+  route?: string;
   reason: string;
+  action?: 'shareIncome';
 }
 
-const memberEntries: MemberTabEntry[] = [
+interface ProfileOrderItem {
+  key: string;
+  title: string;
+  icon: AppIconName;
+  route: string;
+  reason: string;
+  badge?: string;
+}
+
+interface ProfileServiceItem {
+  key: string;
+  title: string;
+  route?: string;
+  reason?: string;
+  action?: 'legacyBind' | 'invoice' | 'phone';
+}
+
+const PARK_PHONE = '4009778899';
+const DEFAULT_PROFILE_AVATAR = 'https://wx.qlogo.cn/mmhead/AhLk989Zrl2foUe0CrwzoKJpCozr2Kw28TVCpLBf4Ch0eicHphDdfPWkkOpyKCQmcM9ia49iac4svM/0';
+
+const metrics: ProfileMetricItem[] = [
   {
-    key: 'code',
-    title: '会员码',
-    desc: '入园核销与身份识别',
-    icon: 'code',
-    route: MINI_PACKAGE_ROUTES.memberCode,
-    reason: '登录后可查看会员码',
+    key: 'favorites',
+    value: 0,
+    label: '商品收藏',
+    route: MINI_PACKAGE_ROUTES.mallFavorites,
+    reason: '登录后可查看商品收藏',
   },
   {
     key: 'coupons',
-    title: '优惠券',
-    desc: '可用、已用、过期卡券',
-    icon: 'coupon',
+    value: 5,
+    label: '优惠券',
     route: MINI_PACKAGE_ROUTES.memberCoupons,
     reason: '登录后可查看优惠券',
   },
   {
-    key: 'orders',
-    title: '我的订单',
-    desc: '票务、酒店、商城订单',
-    icon: 'order',
-    route: MINI_PACKAGE_ROUTES.orderHome,
-    reason: '登录后可查看订单',
+    key: 'income',
+    value: 0,
+    label: '分销收益',
+    action: 'shareIncome',
+    reason: '登录后可查看分销收益',
+  },
+];
+
+const orderActions: ProfileOrderItem[] = [
+  {
+    key: 'pendingPay',
+    title: '待支付',
+    icon: 'coupon',
+    route: `${MINI_PACKAGE_ROUTES.orderHome}?tab=pendingPay`,
+    reason: '登录后可查看待支付订单',
+    badge: '1',
   },
   {
-    key: 'address',
-    title: '地址管理',
-    desc: '维护常用收货地址',
-    icon: 'location',
-    route: MINI_PACKAGE_ROUTES.orderAddress,
-    reason: '登录后可管理地址',
+    key: 'pendingReceive',
+    title: '待收货',
+    icon: 'gift',
+    route: `${MINI_PACKAGE_ROUTES.orderHome}?tab=pendingReceive`,
+    reason: '登录后可查看待收货订单',
+  },
+  {
+    key: 'pendingReview',
+    title: '待评价',
+    icon: 'list',
+    route: `${MINI_PACKAGE_ROUTES.orderHome}?tab=pendingReview`,
+    reason: '登录后可查看待评价订单',
   },
   {
     key: 'aftersale',
-    title: '售后记录',
-    desc: '退款、退货处理进度',
+    title: '退换/售后',
     icon: 'service',
     route: MINI_PACKAGE_ROUTES.orderAftersaleList,
     reason: '登录后可查看售后记录',
   },
   {
-    key: 'share',
-    title: '分享乐园',
-    desc: '把会员福利分享给好友',
-    icon: 'share',
-    action: 'share',
-    reason: '分享给好友',
+    key: 'orders',
+    title: '我的订单',
+    icon: 'order',
+    route: MINI_PACKAGE_ROUTES.orderHome,
+    reason: '登录后可查看订单',
   },
 ];
 
-const benefitCards = [
+const serviceActions: ProfileServiceItem[] = [
   {
-    key: 'ticket',
-    title: '生日月礼遇',
-    desc: '生日月可领取门票权益券',
-    route: MINI_PACKAGE_ROUTES.memberCoupons,
+    key: 'member',
+    title: '会员权益',
+    route: MINI_PACKAGE_ROUTES.memberHome,
+    reason: '登录后可查看会员权益',
   },
   {
-    key: 'mall',
-    title: '商城会员价',
-    desc: '官方商城周边享会员专属优惠',
-    route: MINI_PACKAGE_ROUTES.mallHome,
+    key: 'address',
+    title: '我的地址',
+    route: MINI_PACKAGE_ROUTES.orderAddress,
+    reason: '登录后可管理地址',
   },
   {
-    key: 'ticketBooking',
-    title: '优先预定',
-    desc: '热门票种与活动入口提前触达',
-    route: MINI_PACKAGE_ROUTES.ticketBooking,
+    key: 'legacyBind',
+    title: '老会员绑定',
+    action: 'legacyBind',
+    reason: '登录后可绑定老会员权益',
+  },
+  {
+    key: 'invoice',
+    title: '开发票',
+    action: 'invoice',
+    reason: '登录后可按订单申请发票',
+  },
+  {
+    key: 'phone',
+    title: '联系客服',
+    action: 'phone',
   },
 ];
 
-// 渲染会员 tab 页面，作为会员基础能力的主包聚合入口。
-const MemberTabPage = observer(function MemberTabPage() {
-  const pageRuntime = usePageRuntime();
-  const memberProfile = rootStore.member.profile;
-  const isLoggedIn = rootStore.member.isLoggedIn;
-  const displayName = memberProfile?.nickname || '乐园游客';
-  const displayLevel = memberProfile?.levelName || 'Hello Kitty Park 会员';
-  const displayPoints = memberProfile?.points ?? 1280;
+function openMiniRoute(route: string) {
+  navigateToMiniRoute(route);
+}
 
-  // 跳转会员分包，主包不 import 会员业务实现。
-  function openRoute(route: MiniPackageRoute) {
-    Taro.navigateTo({ url: route });
+async function handleLegacyBind() {
+  const confirmed = await showWechatConfirm({
+    title: '老会员绑定',
+    content: '老会员卡号或手机号需要客服协助核验，是否联系乐园客服处理？',
+    confirmText: '联系客服',
+    cancelText: '稍后再说',
+  });
+
+  if (confirmed) {
+    await callWechatPhone(PARK_PHONE);
+  }
+}
+
+async function handleInvoice() {
+  const confirmed = await showWechatConfirm({
+    title: '开发票',
+    content: '发票申请需从已完成订单发起，是否前往订单中心查看可申请订单？',
+    confirmText: '查看订单',
+    cancelText: '知道了',
+  });
+
+  if (confirmed) {
+    openMiniRoute(MINI_PACKAGE_ROUTES.orderHome);
+  }
+}
+
+async function handleShareIncome() {
+  const confirmed = await showWechatConfirm({
+    title: '分销收益',
+    content: '当前暂无可结算收益，奖励入账后会在这里展示明细。如需了解邀请奖励规则，可以联系乐园客服。',
+    confirmText: '联系客服',
+    cancelText: '知道了',
+  });
+
+  if (confirmed) {
+    await callWechatPhone(PARK_PHONE);
+  }
+}
+
+function handleServiceAction(item: ProfileServiceItem) {
+  if (item.route) {
+    openMiniRoute(item.route);
+    return;
   }
 
-  function handleEntry(entry: MemberTabEntry) {
-    if (entry.route) {
-      openRoute(entry.route);
-      return;
-    }
+  if (item.action === 'legacyBind') {
+    void handleLegacyBind();
+    return;
   }
 
-  useShareAppMessage(() => ({
-    title: `${displayName}邀请你一起游玩 Hello Kitty 乐园`,
-    path: MINI_MAIN_ROUTES.member,
-  }));
+  if (item.action === 'invoice') {
+    void handleInvoice();
+    return;
+  }
 
-  function renderEntry(entry: MemberTabEntry) {
-    const entryContent = (
-      <>
-        <View className="_pg-entry_icon">
-          <AppIcon name={entry.icon} size={16} color="#db2777" />
-        </View>
-        <View className="_pg-entry_main">
-          <Text className="_pg-entry_title">{entry.title}</Text>
-          <Text className="_pg-entry_desc">{entry.desc}</Text>
-        </View>
-        <AppIcon name="arrowRight" size={14} color="#98a2b3" />
-      </>
-    );
+  if (item.action === 'phone') {
+    void callWechatPhone(PARK_PHONE);
+  }
+}
 
-    if (entry.action === 'share') {
-      return (
-        <AppShareButton className="_pg-entry _pg-entry--button" key={entry.key}>
-          {entryContent}
-        </AppShareButton>
-      );
-    }
+function handleMetricTap(item: ProfileMetricItem) {
+  if (item.route) {
+    openMiniRoute(item.route);
+    return;
+  }
 
+  if (item.action === 'shareIncome') {
+    void handleShareIncome();
+  }
+}
+
+function renderMetric(item: ProfileMetricItem) {
+  return (
+    <AuthAction
+      className="_pg-metric"
+      key={item.key}
+      reason={item.reason}
+      onAuthed={() => handleMetricTap(item)}
+    >
+      <Text className="_pg-metric_value">{item.value}</Text>
+      <Text className="_pg-metric_label">{item.label}</Text>
+    </AuthAction>
+  );
+}
+
+function renderOrderAction(item: ProfileOrderItem) {
+  return (
+    <AuthAction
+      className="_pg-order_action"
+      key={item.key}
+      reason={item.reason}
+      onAuthed={() => openMiniRoute(item.route)}
+    >
+      <View className="_pg-order_icon-wrap">
+        <AppIcon name={item.icon} size={26} color="#ec6d9c" />
+        {item.badge ? <Text className="_pg-order_badge">{item.badge}</Text> : null}
+      </View>
+      <Text className="_pg-order_label">{item.title}</Text>
+    </AuthAction>
+  );
+}
+
+function renderServiceAction(item: ProfileServiceItem) {
+  const content = (
+    <>
+      <Text className="_pg-service_label">{item.title}</Text>
+      <AppIcon name="arrowRight" size={14} color="#b5bac1" />
+    </>
+  );
+
+  if (item.reason) {
     return (
       <AuthAction
-        className="_pg-entry"
-        key={entry.key}
-        reason={entry.reason}
-        onAuthed={() => handleEntry(entry)}
+        className="_pg-service_row"
+        key={item.key}
+        reason={item.reason}
+        onAuthed={() => handleServiceAction(item)}
       >
-        {entryContent}
+        {content}
       </AuthAction>
     );
   }
 
+  return (
+    <View className="_pg-service_row" key={item.key} onClick={() => handleServiceAction(item)}>
+      {content}
+    </View>
+  );
+}
+
+const MemberPage = observer(function MemberPage() {
+  const pageRuntime = usePageRuntime();
+  const memberProfile = rootStore.member.profile;
+  const displayName = memberProfile?.nickname || '微信用户';
+  const displayLevel = memberProfile?.levelName === 'Hello Kitty Park 会员'
+    ? '初级会员'
+    : memberProfile?.levelName || '初级会员';
+
   return pageRuntime.renderPage(() => (
     <View className="_pg">
-      <PageShell title="会员" description="会员等级、积分和权益入口。" className="_pg-shell" reserveTabBarSpace={false}>
+      <PageShell
+        title="Hello Kitty Park"
+        description="我的订单、会员权益和服务工具入口。"
+        className="_pg-shell"
+        reserveTabBarSpace
+      >
         <View className="_pg-content">
           <View className="_pg-hero">
-            <View className="_pg-hero_top">
-              <View>
-                <Text className="_pg-hero_badge">HKP MEMBER</Text>
+            <View className="_pg-hero_decor _pg-hero_decor--one" />
+            <View className="_pg-hero_decor _pg-hero_decor--two" />
+            <View className="_pg-hero_decor _pg-hero_decor--three" />
+            <AuthAction
+              className="_pg-hero_user"
+              reason="登录后可查看会员权益"
+              onAuthed={() => openMiniRoute(MINI_PACKAGE_ROUTES.memberHome)}
+            >
+              <AppImage
+                className="_pg-hero_avatar"
+                src={memberProfile?.avatarUrl || DEFAULT_PROFILE_AVATAR}
+                width={96}
+                height={96}
+              />
+              <View className="_pg-hero_info">
                 <Text className="_pg-hero_name">{displayName}</Text>
-                <Text className="_pg-hero_meta">{isLoggedIn ? displayLevel : '登录后查看等级、积分、卡券和权益'}</Text>
+                <View className="_pg-hero_level">
+                  <Text className="_pg-hero_level-no">1</Text>
+                  <Text className="_pg-hero_level-name">{displayLevel}</Text>
+                </View>
               </View>
-              <AuthAction
-                className="_pg-hero_action"
-                reason="登录后可进入会员中心"
-                onAuthed={() => openRoute(MINI_PACKAGE_ROUTES.memberHome)}
-              >
-                <Text>{isLoggedIn ? '会员中心' : '立即登录'}</Text>
-              </AuthAction>
-            </View>
+            </AuthAction>
 
-            <View className="_pg-hero_stats">
-              <AuthAction
-                className="_pg-hero_stat"
-                reason="登录后可查看积分"
-                onAuthed={() => openRoute(MINI_PACKAGE_ROUTES.memberHome)}
-              >
-                <Text className="_pg-hero_stat-value">{isLoggedIn ? displayPoints : '--'}</Text>
-                <Text className="_pg-hero_stat-label">乐园积分</Text>
-              </AuthAction>
-              <AuthAction
-                className="_pg-hero_stat"
-                reason="登录后可查看优惠券"
-                onAuthed={() => openRoute(MINI_PACKAGE_ROUTES.memberCoupons)}
-              >
-                <Text className="_pg-hero_stat-value">{isLoggedIn ? '8' : '--'}</Text>
-                <Text className="_pg-hero_stat-label">可用卡券</Text>
-              </AuthAction>
-              <AuthAction
-                className="_pg-hero_stat"
-                reason="登录后可查看会员码"
-                onAuthed={() => openRoute(MINI_PACKAGE_ROUTES.memberCode)}
-              >
-                <Text className="_pg-hero_stat-value">码</Text>
-                <Text className="_pg-hero_stat-label">会员核销</Text>
-              </AuthAction>
-            </View>
+            <View className="_pg-metrics">{metrics.map((item) => renderMetric(item))}</View>
           </View>
 
-          <View className="_pg-entry-grid">
-            {memberEntries.map((entry) => renderEntry(entry))}
+          <View className="_pg-order-card">
+            <View className="_pg-order_grid">{orderActions.map((item) => renderOrderAction(item))}</View>
+            <View className="_pg-order_line" />
           </View>
 
-          <View className="_pg-benefits">
-            <View className="_pg-benefits_header">
-              <View>
-                <Text className="_pg-benefits_title">会员权益</Text>
-                <Text className="_pg-benefits_desc">本地 mock 先提供完整可点链路，后续替换真实接口。</Text>
-              </View>
-              <AuthAction
-                className="_pg-benefits_more"
-                reason="登录后可查看全部权益"
-                onAuthed={() => openRoute(MINI_PACKAGE_ROUTES.memberHome)}
-              >
-                <Text>全部</Text>
-                <AppIcon name="arrowRight" size={14} color="#db2777" />
-              </AuthAction>
-            </View>
-
-            <View className="_pg-benefits_list">
-              {benefitCards.map((card) => (
-                <AuthAction
-                  className="_pg-benefit"
-                  key={card.key}
-                  reason="登录后可查看会员权益"
-                  onAuthed={() => openRoute(card.route)}
-                >
-                  <Text className="_pg-benefit_title">{card.title}</Text>
-                  <Text className="_pg-benefit_desc">{card.desc}</Text>
-                </AuthAction>
-              ))}
-            </View>
+          <View className="_pg-service">
+            <Text className="_pg-service_title">服务&工具</Text>
+            <View className="_pg-service_list">{serviceActions.map((item) => renderServiceAction(item))}</View>
           </View>
         </View>
       </PageShell>
@@ -239,4 +328,4 @@ const MemberTabPage = observer(function MemberTabPage() {
   ));
 });
 
-export default MemberTabPage;
+export default MemberPage;

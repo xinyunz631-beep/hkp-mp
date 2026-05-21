@@ -1,20 +1,18 @@
 import { useMemo, useState } from 'react';
-import Taro from '@tarojs/taro';
 import { Input, Text, View } from '@tarojs/components';
+import Taro from '@tarojs/taro';
 import { observer } from 'mobx-react';
 import { AppIcon } from '@/core/components/AppIcon';
-import { FixedSubmitBar } from '@/core/components/commerce';
+import { AppImage } from '@/core/components/AppImage';
+import { FixedSubmitBar, QuantityStepper } from '@/core/components/commerce';
 import { PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
+import { navigateToMiniRoute } from '@/core/utils/navigation';
 import { showWechatConfirm, showWechatToast } from '@/core/utils/wechat-actions';
 import { fetchCheckoutData, submitHotelCheckoutOrder, type HotelCheckoutData } from '@/pkg-hotel/services/checkout';
+import { serializeHotelOccupancy } from '@/pkg-hotel/services/mock-data';
 import './index.scss';
-
-function resolveRoomCount(roomCountText?: string) {
-  const matchedCount = roomCountText?.match(/\d+/)?.[0];
-  return Math.max(Number(matchedCount) || 1, 1);
-}
 
 function isValidMainlandMobile(value: string) {
   return /^1\d{10}$/.test(value.trim());
@@ -23,24 +21,29 @@ function isValidMainlandMobile(value: string) {
 const CheckoutPage = observer(function CheckoutPage() {
   const [checkoutData, setCheckoutData] = useState<HotelCheckoutData>();
   const [guestNames, setGuestNames] = useState<Record<string, string>>({});
+  const [contactName, setContactName] = useState('');
   const [mobile, setMobile] = useState('');
   const [roomCount, setRoomCount] = useState(1);
-  const [baseRoomCount, setBaseRoomCount] = useState(1);
+  const [activeRoomIndex, setActiveRoomIndex] = useState(0);
   const pageRuntime = usePageRuntime({
     initPage: async () => {
-      const roomId = Taro.getCurrentInstance().router?.params?.roomId;
-      const nextData = await fetchCheckoutData(roomId);
-      const nextRoomCount = resolveRoomCount(nextData.roomCountText);
+      const params = Taro.getCurrentInstance().router?.params ?? {};
+      const nextData = await fetchCheckoutData({
+        draftId: params.draftId,
+        productId: params.productId || params.roomId,
+        hotelId: params.hotelId,
+      });
 
       setCheckoutData(nextData);
-      setRoomCount(nextRoomCount);
-      setBaseRoomCount(nextRoomCount);
+      setRoomCount(nextData.roomCount);
+      setActiveRoomIndex(0);
       setGuestNames(
         nextData.guestFields.reduce<Record<string, string>>((result, field) => {
           result[field.id] = field.value;
           return result;
         }, {}),
       );
+      setContactName(nextData.contactNameValue);
       setMobile(nextData.mobileValue);
     },
     loginRequired: true,
@@ -52,56 +55,41 @@ const CheckoutPage = observer(function CheckoutPage() {
 
     return Array.from({ length: roomCount }, (_, index) => {
       const field = checkoutData.guestFields[index] ?? checkoutData.guestFields[checkoutData.guestFields.length - 1];
-      const roomIndexText = String(index + 1).padStart(2, '0');
-
       return {
         ...field,
         id: `guest-${index + 1}`,
-        label: `房间${roomIndexText}`,
+        label: `房间${index + 1}`,
       };
     });
   }, [checkoutData, roomCount]);
+  const activeGuestField = guestFields[activeRoomIndex] ?? guestFields[0];
+  const totalAmount = checkoutData ? Number((checkoutData.unitAmount * roomCount - checkoutData.discountAmount).toFixed(2)) : 0;
+  const hasCouponDiscount = Boolean(checkoutData && checkoutData.discountAmount > 0 && checkoutData.couponText.trim());
 
-  const unitAmount = checkoutData ? checkoutData.totalAmount / Math.max(baseRoomCount, 1) : 0;
-  const unitDiscount = checkoutData ? checkoutData.discountAmount / Math.max(baseRoomCount, 1) : 0;
-  const totalAmount = Number((unitAmount * roomCount).toFixed(2));
-  const discountAmount = Number((unitDiscount * roomCount).toFixed(2));
-
-  function handleRoomCountPress() {
-    const nextRoomCount = roomCount >= 3 ? 1 : roomCount + 1;
+  function handleRoomCountChange(nextRoomCount: number) {
     setRoomCount(nextRoomCount);
-    void showWechatToast(`已调整为${nextRoomCount}间`);
+    setActiveRoomIndex((current) => Math.min(current, nextRoomCount - 1));
   }
 
-  async function handleCouponPress() {
+  function handleDetailPress() {
     if (!checkoutData) return;
 
-    await showWechatConfirm({
-      title: '优惠券',
-      content: `${checkoutData.couponText} 已自动匹配当前房型，提交订单时同步抵扣。`,
-      confirmText: '知道了',
-      cancelText: '关闭',
-    });
-  }
+    const url = [
+      `${MINI_PACKAGE_ROUTES.hotelRoomDetail}?hotelId=${encodeURIComponent(checkoutData.hotelId)}`,
+      `productId=${encodeURIComponent(checkoutData.productId)}`,
+      `checkIn=${encodeURIComponent(checkoutData.checkIn)}`,
+      `checkOut=${encodeURIComponent(checkoutData.checkOut)}`,
+      `occupancy=${serializeHotelOccupancy(checkoutData.occupancy)}`,
+    ].join('&');
 
-  async function handleDiscountPress() {
-    if (!checkoutData) return;
-
-    await showWechatConfirm({
-      title: '折扣信息',
-      content: `当前订单已优惠 ¥${discountAmount.toFixed(2)}，最终以支付页展示金额为准。`,
-      confirmText: '知道了',
-      cancelText: '关闭',
-    });
+    navigateToMiniRoute(url);
   }
 
   async function handleSubmit() {
     if (!checkoutData) return;
 
-    const hasEmptyGuest = guestFields.some((field) => !guestNames[field.id]?.trim());
-
-    if (hasEmptyGuest) {
-      await showWechatToast('请补全入住人信息');
+    if (!contactName.trim()) {
+      await showWechatToast('请填写联系人姓名');
       return;
     }
 
@@ -110,8 +98,16 @@ const CheckoutPage = observer(function CheckoutPage() {
       return;
     }
 
+    const emptyGuestIndex = guestFields.findIndex((field) => !guestNames[field.id]?.trim());
+
+    if (emptyGuestIndex >= 0) {
+      setActiveRoomIndex(emptyGuestIndex);
+      await showWechatToast(`请填写${guestFields[emptyGuestIndex].label}入住人`);
+      return;
+    }
+
     const confirmed = await showWechatConfirm({
-      title: '模拟微信支付',
+      title: '确认支付',
       content: `确认支付 ¥${totalAmount.toFixed(2)} 预订 ${roomCount} 间？`,
       confirmText: '支付',
       cancelText: '再看看',
@@ -119,35 +115,33 @@ const CheckoutPage = observer(function CheckoutPage() {
 
     if (!confirmed) return;
 
-    const order = submitHotelCheckoutOrder({
-      hotelName: checkoutData.hotelName,
-      roomTitle: checkoutData.roomTitle,
-      roomTagsText: checkoutData.roomTagsText,
-      stayDateText: checkoutData.stayDateText,
-      nightsText: checkoutData.nightsText,
+    const order = submitHotelCheckoutOrder(checkoutData.draftId, {
       roomCount,
       guestNames: guestFields.map((field) => guestNames[field.id]?.trim()).filter(Boolean),
-      mobile,
+      contact: {
+        name: contactName.trim(),
+        mobile: mobile.trim(),
+      },
       totalAmount,
-      discountAmount,
-      couponText: checkoutData.couponText,
+      discountAmount: checkoutData.discountAmount,
     });
 
+    if (!order) {
+      await showWechatToast('订单信息已失效，请重新选择');
+      return;
+    }
+
     await showWechatToast('支付成功', 'success');
-    Taro.navigateTo({ url: `${MINI_PACKAGE_ROUTES.orderDetail}?orderId=${encodeURIComponent(order.id)}` });
+    navigateToMiniRoute(`${MINI_PACKAGE_ROUTES.orderDetail}?orderId=${encodeURIComponent(order.id)}`);
   }
 
   return pageRuntime.renderPage(() => {
     if (!checkoutData) return null;
-    const currentRoomId = Taro.getCurrentInstance().router?.params?.roomId || 'luxury-twin';
-    const discountText = checkoutData.discountText === '无可用'
-      ? `已优惠 ¥${discountAmount.toFixed(2)}`
-      : checkoutData.discountText;
 
     return (
       <View className="_pg">
         <PageShell
-          title={checkoutData.hotelName}
+          title="确认订单"
           className="_pg-shell"
           reserveTabBarSpace={false}
           footer={(
@@ -155,7 +149,7 @@ const CheckoutPage = observer(function CheckoutPage() {
               className="_pg-submit"
               label={<Text className="_pg-submit_label">金额:</Text>}
               amountText={<Text className="_pg-submit_amount">¥{totalAmount.toFixed(2)}</Text>}
-              extra={<Text className="_pg-submit_extra">已优惠: ¥{discountAmount.toFixed(2)}</Text>}
+              extra={hasCouponDiscount ? <Text className="_pg-submit_extra">已优惠: ¥{checkoutData.discountAmount.toFixed(2)}</Text> : undefined}
               buttonText="去支付"
               onSubmit={() => void handleSubmit()}
             />
@@ -163,94 +157,98 @@ const CheckoutPage = observer(function CheckoutPage() {
         >
           <View className="_pg-content">
             <View className="_pg-card">
-              <View className="_pg-room">
-                <View className="_pg-room_header">
-                  <Text className="_pg-room_title">{checkoutData.roomTitle}</Text>
-                  <View
-                    className="_pg-room_link"
-                    onClick={() => Taro.navigateTo({ url: `${MINI_PACKAGE_ROUTES.hotelRoomDetail}?roomId=${currentRoomId}` })}
-                  >
-                    <Text>房型详情</Text>
-                    <AppIcon name="arrowRight" className="_pg-room_link-icon" size={16} color="#6b7280" />
-                  </View>
+              <View className="_pg-product">
+                <AppImage className="_pg-product_image" src={checkoutData.productImageSrc} mode="aspectFill" />
+                <View className="_pg-product_main">
+                  <Text className="_pg-product_title">{checkoutData.productTitle}</Text>
+                  <Text className="_pg-product_meta">{checkoutData.productSubtitle}</Text>
+                  <Text className="_pg-product_plan">{checkoutData.ratePlanTitle}</Text>
                 </View>
-                <Text className="_pg-room_tags">{checkoutData.roomTagsText}</Text>
-                <Text className="_pg-room_dates">
-                  {checkoutData.stayDateText} {checkoutData.nightsText}
-                </Text>
+                <View className="_pg-product_link" onClick={handleDetailPress}>
+                  <Text>详情</Text>
+                  <AppIcon name="arrowRight" size={16} color="#9ca3af" />
+                </View>
+              </View>
+              <View className="_pg-summary-row">
+                <Text>入住日期</Text>
+                <Text>{checkoutData.stayDateText} {checkoutData.nightsText}</Text>
+              </View>
+              <View className="_pg-summary-row">
+                <Text>房间数</Text>
+                <QuantityStepper
+                  value={roomCount}
+                  min={1}
+                  max={checkoutData.maxRoomCount}
+                  onChange={handleRoomCountChange}
+                />
               </View>
             </View>
 
             <View className="_pg-card">
-              <View className="_pg-form">
-                <Text className="_pg-form_title">入住信息</Text>
-
-                <View className="_pg-form_row _pg-form_row--link" onClick={handleRoomCountPress}>
-                  <Text className="_pg-form_label">房间数</Text>
-                  <View className="_pg-form_value">
-                    <Text>{roomCount}间</Text>
-                    <AppIcon name="arrowRight" className="_pg-form_chevron" size={16} color="#c0c5cf" />
+              <Text className="_pg-card_title">入住人信息</Text>
+              <View className="_pg-room-tabs">
+                {guestFields.map((field, index) => (
+                  <View
+                    className={`_pg-room-tabs_item ${activeRoomIndex === index ? '_pg-room-tabs_item--active' : ''}`}
+                    key={field.id}
+                    onClick={() => setActiveRoomIndex(index)}
+                  >
+                    <Text>{field.label}</Text>
                   </View>
-                </View>
-
-                <View className="_pg-form_row _pg-form_row--multi">
-                  <Text className="_pg-form_label">入住人</Text>
-                  <View className="_pg-form_column">
-                    {guestFields.map((field) => (
-                      <View className="_pg-guest" key={field.id}>
-                        <Text className="_pg-guest_name">{field.label}</Text>
-                        <Input
-                          className="_pg-guest_input"
-                          value={guestNames[field.id] ?? ''}
-                          placeholder={field.placeholder}
-                          onInput={(event) => {
-                            const nextValue = event.detail.value;
-                            setGuestNames((current) => ({
-                              ...current,
-                              [field.id]: nextValue,
-                            }));
-                          }}
-                        />
-                      </View>
-                    ))}
-                  </View>
-                </View>
-
-                <View className="_pg-form_row">
-                  <Text className="_pg-form_label">手机</Text>
+                ))}
+              </View>
+              {activeGuestField ? (
+                <View className="_pg-form-row">
+                  <Text className="_pg-form-row_label">入住人</Text>
                   <Input
-                    className="_pg-form_input"
-                    value={mobile}
-                    placeholder={checkoutData.mobilePlaceholder}
-                    type="number"
-                    maxlength={11}
-                    onInput={(event) => setMobile(event.detail.value)}
+                    className="_pg-form-row_input"
+                    value={guestNames[activeGuestField.id] ?? ''}
+                    placeholder={activeGuestField.placeholder}
+                    onInput={(event) => {
+                      const nextValue = event.detail.value;
+                      setGuestNames((current) => ({
+                        ...current,
+                        [activeGuestField.id]: nextValue,
+                      }));
+                    }}
                   />
                 </View>
+              ) : null}
+            </View>
+
+            <View className="_pg-card">
+              <Text className="_pg-card_title">联系人</Text>
+              <View className="_pg-form-row">
+                <Text className="_pg-form-row_label">姓名</Text>
+                <Input
+                  className="_pg-form-row_input"
+                  value={contactName}
+                  placeholder={checkoutData.contactNamePlaceholder}
+                  onInput={(event) => setContactName(event.detail.value)}
+                />
+              </View>
+              <View className="_pg-form-row">
+                <Text className="_pg-form-row_label">手机</Text>
+                <Input
+                  className="_pg-form-row_input"
+                  value={mobile}
+                  placeholder={checkoutData.mobilePlaceholder}
+                  type="number"
+                  maxlength={11}
+                  onInput={(event) => setMobile(event.detail.value)}
+                />
               </View>
             </View>
 
             <View className="_pg-card _pg-card--compact">
-              <View className="_pg-line-row _pg-line-row--link" onClick={() => void handleCouponPress()}>
-                <Text className="_pg-line-row_label">优惠券</Text>
-                <View className="_pg-line-row_value-wrap">
-                  <Text className="_pg-line-row_coupon">{checkoutData.couponText}</Text>
-                  <AppIcon name="arrowRight" className="_pg-line-row_chevron" size={16} color="#c0c5cf" />
-                </View>
+              <View className="_pg-line-row">
+                <Text className="_pg-line-row_label">取消规则</Text>
+                <Text className="_pg-line-row_value">{checkoutData.cancelRule}</Text>
               </View>
-            </View>
-
-            <View className="_pg-card _pg-card--compact">
-              <View className="_pg-line-row _pg-line-row--link" onClick={() => void handleDiscountPress()}>
-                <Text className="_pg-line-row_label">折扣信息</Text>
-                <View className="_pg-line-row_value-wrap">
-                  <Text className="_pg-line-row_value">{discountText}</Text>
-                  <AppIcon name="arrowRight" className="_pg-line-row_chevron" size={16} color="#c0c5cf" />
-                </View>
+              <View className="_pg-line-row">
+                <Text className="_pg-line-row_label">入住时间</Text>
+                <Text className="_pg-line-row_value">{checkoutData.checkInTimeText}，{checkoutData.checkOutTimeText}</Text>
               </View>
-            </View>
-
-            <View className="_pg-card _pg-card--compact">
               <View className="_pg-line-row">
                 <Text className="_pg-line-row_label">发票</Text>
                 <Text className="_pg-line-row_value">{checkoutData.invoiceText}</Text>

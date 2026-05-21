@@ -1,9 +1,9 @@
 version: 1
-updatedAt: "2026-05-17"
+updatedAt: "2026-05-19"
 hkpMiniBuild:
   phase: phase-commercial-pilot-ticket
-  branch: feature/hkp-mini-phase-7-polish-verify
-  baselineCommit: "36b7517"
+  branch: feature/hkp-mini-phase-9-ticket-checkout
+  baselineCommit: "8c32509"
   prd: docs/ui/pages/hkp-mini-prd.md
   checkpoint: docs/codex/current-hkp-mini-page.md
   sourceDir: docs/ui/source/hkp-mini-page
@@ -86,7 +86,7 @@ pages:
         name: 门票预定 750px 开发稿
         width: 750
         role: active-source
-        note: 已升级为商用级样板页；图片预览、分享、须知、电话、地图、单日日期、优惠券、登录拦截和订单草稿已闭环。
+        note: 已升级为商用级样板页；图片预览、分享、须知、电话、地图、单日日期、登录拦截和订单草稿已闭环。优惠券能力仅预留，当前无券业务时隐藏入口。
     implementation:
       files:
         - src/pkg-ticket/pages/ticket-booking/index.tsx
@@ -405,7 +405,7 @@ pages:
         name: 门票确认订单 750px 开发稿
         width: 750
         role: active-source
-        note: 已升级为商用级样板页；读取门票草稿、改日期、选优惠券、表单校验、支付确认、本地订单写入和订单详情跳转已闭环。
+        note: 已升级为商用级样板页；读取门票草稿、草稿缺失态、改日期、加购数量持久化、联系人校验、支付确认、本地订单写入和订单详情跳转已闭环。优惠券能力仅预留，当前无券业务时隐藏入口。
     implementation:
       files:
         - src/pkg-ticket/pages/checkout/index.tsx
@@ -422,7 +422,7 @@ pages:
   hotel-checkout:
     title: 酒店确认订单
     route: src/pkg-hotel/pages/checkout
-    status: interaction-ready
+    status: commercial-ready
     spec: docs/ui/pages/hotel-checkout.md
     design:
       currentTool: pencil
@@ -433,22 +433,23 @@ pages:
         name: 酒店确认订单 750px 开发稿
         width: 750
         role: active-source
-        note: 已按 hotel-checkout.png 完成确认订单，并补房间数调整、优惠/折扣弹窗、入住人/手机号校验、本地支付生成订单闭环。
+        note: 确认订单页已改为通过酒店订单上下文恢复产品、日期、房间数、价规和金额；入住人按房间 tab 填写，支付成功写入本地订单中心。优惠券能力暂缓，当前无券业务时隐藏入口。
     implementation:
       files:
         - src/pkg-hotel/pages/checkout/index.tsx
         - src/pkg-hotel/pages/checkout/index.scss
         - src/pkg-hotel/pages/checkout/index.config.ts
         - src/pkg-hotel/services/checkout.ts
+        - src/pkg-hotel/services/order-draft.ts
       verification:
         - yarn typecheck
         - yarn check:page-convention
         - yarn check:package-boundary
         - yarn check:ui-contract
   hotel-room-detail:
-    title: 房间详情
+    title: 房型/套餐详情
     route: src/pkg-hotel/pages/room-detail
-    status: interaction-ready
+    status: commercial-ready
     spec: docs/ui/pages/hotel-room-detail.md
     design:
       currentTool: pencil
@@ -459,13 +460,14 @@ pages:
         name: 房间详情 750px 开发稿
         width: 750
         role: active-source
-        note: 已按 hotel-room-detail.png 完成房间详情，主图支持预览，底部立即预订跳转酒店确认订单。
+        note: 详情页已承接酒店首页日期和入住人数上下文，支持图集预览、价规展示、满房拦截和创建酒店订单上下文。
     implementation:
       files:
         - src/pkg-hotel/pages/room-detail/index.tsx
         - src/pkg-hotel/pages/room-detail/index.scss
         - src/pkg-hotel/pages/room-detail/index.config.ts
         - src/pkg-hotel/services/room-detail.ts
+        - src/pkg-hotel/services/order-draft.ts
       verification:
         - yarn typecheck
         - yarn check:page-convention
@@ -563,7 +565,7 @@ pages:
         name: 确认订单 750px 开发稿
         width: 750
         role: active-source
-        note: 已按 order-checkout-address.png 完成确认订单，补商品图预览、优惠/折扣说明、模拟微信支付和本地订单写入。
+        note: 已按 order-checkout-address.png 完成确认订单，补商品图预览、模拟微信支付和本地订单写入；优惠券能力暂缓，当前无券业务时隐藏入口。
     implementation:
       files:
         - src/pkg-order/pages/checkout/index.tsx
@@ -578,7 +580,7 @@ pages:
   order-address:
     title: 地址管理
     route: src/pkg-order/pages/address
-    status: interaction-ready
+    status: commercial-ready
     spec: docs/ui/pages/order-address.md
     design:
       currentTool: pencil
@@ -589,12 +591,33 @@ pages:
         name: 地址管理 750px 开发稿
         width: 750
         role: active-source
-        note: 已按 address-list.png 完成地址管理，补默认地址、新增、编辑、删除本地状态闭环。
+        note: 地址列表隐藏最多 10 个提示板块，仅保留新增拦截和 service 上限；支持默认地址、编辑、删除和新增入口。
     implementation:
       files:
         - src/pkg-order/pages/address/index.tsx
         - src/pkg-order/pages/address/index.scss
         - src/pkg-order/pages/address/index.config.ts
+        - src/pkg-order/services/address.ts
+      verification:
+        - yarn typecheck
+        - yarn check:page-convention
+        - yarn check:package-boundary
+        - yarn check:ui-contract
+  order-address-edit:
+    title: 新增/编辑地址
+    route: src/pkg-order/pages/address-edit
+    status: commercial-ready
+    spec: docs/ui/pages/order-address-edit.md
+    design:
+      currentTool: code
+      approval: code-first-draft
+      code:
+        note: 电商地址新增/编辑页，所在位置使用微信 chooseLocation，门牌号手动填写，最多 10 条地址。
+    implementation:
+      files:
+        - src/pkg-order/pages/address-edit/index.tsx
+        - src/pkg-order/pages/address-edit/index.scss
+        - src/pkg-order/pages/address-edit/index.config.ts
         - src/pkg-order/services/address.ts
       verification:
         - yarn typecheck
@@ -1017,50 +1040,25 @@ pages:
         - yarn check:package-boundary
         - yarn check:ui-contract
   member:
-    title: 会员
+    title: 我的
     route: src/pages/member
     status: interaction-ready
     spec: docs/ui/pages/member.md
     design:
       currentTool: pencil
-      approval: phase-1-shell-draft
+      approval: tabbar-my-online-screenshot
       pencil:
         file: /Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
         nodeId: member
-        name: 会员 750px 开发稿
+        name: 我的 750px 开发稿
         width: 750
         role: active-source
-        note: 主包会员聚合入口，已补齐会员码、优惠券、订单、地址、售后、分享和权益卡入口；不展示页面内 tabbar。
+        note: 主包我的入口，按 docs/ui/source/hkp-mini-page/tabbar-my-online.png 重做会员资料、资产入口、订单快捷入口、服务工具和页面内 tabbar；所有可见入口已接登录守卫、跳转、弹窗或微信电话反馈。原 pages/profile 路径已合并到 pages/member。
     implementation:
       files:
         - src/pages/member/index.tsx
         - src/pages/member/index.scss
         - src/pages/member/index.config.ts
-      verification:
-        - yarn typecheck
-        - yarn check:page-convention
-        - yarn check:package-boundary
-        - yarn check:ui-contract
-  profile:
-    title: 我的
-    route: src/pages/profile
-    status: interaction-ready
-    spec: docs/ui/pages/profile.md
-    design:
-      currentTool: pencil
-      approval: phase-1-shell-draft
-      pencil:
-        file: /Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
-        nodeId: profile
-        name: 我的 750px 开发稿
-        width: 750
-        role: active-source
-        note: 主包我的入口，已补齐账户卡、积分卡券、订单/地址/售后/优惠券/会员中心、常用游客、客服和退出登录交互，并显式开启页面内 tabbar。
-    implementation:
-      files:
-        - src/pages/profile/index.tsx
-        - src/pages/profile/index.scss
-        - src/pages/profile/index.config.ts
       verification:
         - yarn typecheck
         - yarn check:page-convention
@@ -1120,7 +1118,7 @@ pages:
   hotel-home:
     title: 酒店首页
     route: src/pkg-hotel/pages/index
-    status: interaction-ready
+    status: commercial-ready
     spec: docs/ui/pages/hotel-home.md
     design:
       currentTool: pencil
@@ -1131,13 +1129,14 @@ pages:
         name: 酒店首页 750px 开发稿
         width: 750
         role: active-source
-        note: 已按 hotel-detail.png 完成酒店切换、主图、入住信息、房型列表和套餐推荐，并补范围日期弹层、地图、分享、介绍、入住人数交互。
+        note: 已按最终稿 hotel-home-online.png 重做酒店首页，补齐滑动 banner、图片数量、预览、地图、介绍弹层、日期范围、入住人数弹层、筛选刷新和预定上下文。
     implementation:
       files:
         - src/pkg-hotel/pages/index/index.tsx
         - src/pkg-hotel/pages/index/index.scss
         - src/pkg-hotel/pages/index/index.config.ts
         - src/pkg-hotel/services/index.ts
+        - src/pkg-hotel/services/order-draft.ts
       verification:
         - yarn typecheck
         - yarn check:page-convention

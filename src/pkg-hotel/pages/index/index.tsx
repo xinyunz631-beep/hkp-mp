@@ -1,66 +1,139 @@
 import { useMemo, useState } from 'react';
 import Taro, { useShareAppMessage } from '@tarojs/taro';
-import { Text, View } from '@tarojs/components';
+import { Swiper, SwiperItem, Text, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
+import { AppBottomSheet } from '@/core/components/AppBottomSheet';
 import { AppIcon } from '@/core/components/AppIcon';
 import { AppImage } from '@/core/components/AppImage';
+import { AppPopup } from '@/core/components/AppPopup';
 import { AppShareButton } from '@/core/components/AppShareButton';
-import { DateSelectionPopup } from '@/core/components/commerce';
+import { BaseEmpty } from '@/core/components/BaseEmpty';
+import { DateSelectionPopup, QuantityStepper } from '@/core/components/commerce';
 import { PageShare, PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import { navigateToMiniRoute } from '@/core/utils/navigation';
 import {
+  callWechatPhone,
   openWechatLocation,
   previewWechatImages,
-  showWechatConfirm,
   showWechatToast,
 } from '@/core/utils/wechat-actions';
 import { fetchHotelHomeData, type HotelHomeData } from '@/pkg-hotel/services';
+import {
+  addHotelDays,
+  createDefaultHotelOccupancy,
+  createDefaultHotelStayRange,
+  formatHotelDateKey,
+  normalizeHotelOccupancy,
+  parseHotelOccupancy,
+  serializeHotelOccupancy,
+  type HotelOccupancy,
+  type HotelProductCardData,
+  type HotelStayRange,
+} from '@/pkg-hotel/services/mock-data';
+import { createHotelOrderDraft } from '@/pkg-hotel/services/order-draft';
 import './index.scss';
 
-const HOTEL_LOCATION = {
-  latitude: 30.6386,
-  longitude: 119.684,
-  name: '银润锦江城堡酒店',
-  address: '安吉县天使大道8号',
-};
-
-const stayRangeDefault = ['2026-10-25', '2026-10-26'];
-const guestOptions = ['每间 2成人 0儿童', '每间 2成人 1儿童', '每间 1成人 1儿童'];
+const HOTEL_PAGE_TITLE = '畅‘住’HelloKittyPark';
+const LOGIN_REASON = '登录后可提交酒店订单';
 
 function formatDateLabel(dateText: string) {
   const date = new Date(`${dateText}T00:00:00`);
-  if (Number.isNaN(date.getTime())) return { week: '周日', date: '10月25日' };
+  if (Number.isNaN(date.getTime())) return { week: '周三', date: '05.20' };
 
   const weeks = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
   return {
     week: weeks[date.getDay()],
-    date: `${date.getMonth() + 1}月${date.getDate()}日`,
+    date: `${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`,
   };
 }
 
-function resolveNights(range: string[]) {
-  const [start, end] = range;
-  const startDate = new Date(`${start}T00:00:00`);
-  const endDate = new Date(`${end}T00:00:00`);
-  const nights = Math.max(1, Math.round((endDate.getTime() - startDate.getTime()) / 86400000));
-  return `${nights}晚`;
+function formatCalendarSummaryDate(dateText?: string) {
+  if (!dateText) return '请选择';
+
+  const date = new Date(`${dateText}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return '请选择';
+
+  const todayKey = formatHotelDateKey(new Date());
+  const tomorrowKey = addHotelDays(todayKey, 1);
+  const weeks = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+  const suffix = dateText === todayKey
+    ? ' 今天'
+    : dateText === tomorrowKey
+      ? ' 明天'
+      : ` ${weeks[date.getDay()]}`;
+
+  return `${String(date.getMonth() + 1).padStart(2, '0')}月${String(date.getDate()).padStart(2, '0')}日${suffix}`;
+}
+
+function summarizeStayOccupancy(occupancy?: HotelOccupancy) {
+  const normalizedOccupancy = normalizeHotelOccupancy(occupancy);
+  const adultCount = normalizedOccupancy.rooms.reduce((sum, room) => sum + room.adults, 0);
+  const childCount = normalizedOccupancy.rooms.reduce((sum, room) => sum + room.childAges.length, 0);
+  return `${normalizedOccupancy.roomCount}间·${adultCount}成人·${childCount}儿童`;
+}
+
+function resolveNights(range: HotelStayRange) {
+  const startDate = new Date(`${range.checkIn}T00:00:00`);
+  const endDate = new Date(`${range.checkOut}T00:00:00`);
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) return 1;
+  return Math.max(1, Math.round((endDate.getTime() - startDate.getTime()) / 86400000));
+}
+
+function createDetailUrl({
+  hotelId,
+  productId,
+  stayRange,
+  occupancy,
+}: {
+  hotelId: string;
+  productId: string;
+  stayRange: HotelStayRange;
+  occupancy: HotelOccupancy;
+}) {
+  const query = [
+    `hotelId=${encodeURIComponent(hotelId)}`,
+    `productId=${encodeURIComponent(productId)}`,
+    `checkIn=${encodeURIComponent(stayRange.checkIn)}`,
+    `checkOut=${encodeURIComponent(stayRange.checkOut)}`,
+    `occupancy=${serializeHotelOccupancy(occupancy)}`,
+  ].join('&');
+
+  return `${MINI_PACKAGE_ROUTES.hotelRoomDetail}?${query}`;
 }
 
 const HotelIndexPage = observer(function HotelIndexPage() {
   const [pageData, setPageData] = useState<HotelHomeData>();
   const [activeHotelId, setActiveHotelId] = useState('');
-  const [activeFilterKey, setActiveFilterKey] = useState('queen');
-  const [stayRange, setStayRange] = useState<string[]>(stayRangeDefault);
+  const [activeFilterKey, setActiveFilterKey] = useState('');
+  const [stayRange, setStayRange] = useState<HotelStayRange>(() => createDefaultHotelStayRange());
+  const [occupancy, setOccupancy] = useState<HotelOccupancy>(() => createDefaultHotelOccupancy());
+  const [guestDraft, setGuestDraft] = useState<HotelOccupancy>(() => createDefaultHotelOccupancy());
   const [datePopupVisible, setDatePopupVisible] = useState(false);
-  const [guestOptionIndex, setGuestOptionIndex] = useState(0);
+  const [guestPopupVisible, setGuestPopupVisible] = useState(false);
+  const [introPopupVisible, setIntroPopupVisible] = useState(false);
+  const [bannerIndex, setBannerIndex] = useState(0);
   const pageRuntime = usePageRuntime({
     initPage: async () => {
-      const nextData = await fetchHotelHomeData();
+      const params = Taro.getCurrentInstance().router?.params ?? {};
+      const defaultRange = createDefaultHotelStayRange();
+      const initialRange = params.checkIn && params.checkOut
+        ? { checkIn: params.checkIn, checkOut: params.checkOut }
+        : defaultRange;
+      const defaultOccupancy = params.occupancy ? parseHotelOccupancy(params.occupancy) : createDefaultHotelOccupancy();
+      const nextData = await fetchHotelHomeData({
+        stayRange: initialRange,
+        occupancy: defaultOccupancy,
+      });
+
+      setStayRange(initialRange);
+      setOccupancy(defaultOccupancy);
+      setGuestDraft(defaultOccupancy);
       setPageData(nextData);
       setActiveHotelId(nextData.hotels[0]?.id ?? '');
-      setActiveFilterKey(nextData.filterOptions[0]?.key ?? '');
+      setActiveFilterKey('');
+      setBannerIndex(0);
     },
   });
 
@@ -68,61 +141,222 @@ const HotelIndexPage = observer(function HotelIndexPage() {
     () => pageData?.hotels.find((hotel) => hotel.id === activeHotelId) ?? pageData?.hotels[0],
     [activeHotelId, pageData],
   );
-  const activeFilterLabel = pageData?.filterOptions.find((item) => item.key === activeFilterKey)?.label;
-  const checkInLabel = formatDateLabel(stayRange[0]);
-  const checkOutLabel = formatDateLabel(stayRange[1]);
-  const roomGuestText = guestOptions[guestOptionIndex] || guestOptions[0];
-  const visibleRooms = useMemo(() => {
-    if (!activeHotel) return [];
-    if (!activeFilterLabel) return activeHotel.rooms;
+  const products = activeHotel?.products ?? [];
+  const validBannerImages = activeHotel?.galleryImages.filter((item) => Boolean(item.src)) ?? [];
+  const checkInLabel = formatDateLabel(stayRange.checkIn);
+  const checkOutLabel = formatDateLabel(stayRange.checkOut);
+  const occupancyLabel = summarizeStayOccupancy(occupancy);
+  const todayKey = formatHotelDateKey(new Date());
+  const dateEndKey = addHotelDays(todayKey, pageData?.bookingWindowDays ?? 90);
 
-    const matchedRooms = activeHotel.rooms.filter((room) => room.tagsText.includes(activeFilterLabel));
-    return matchedRooms.length > 0 ? matchedRooms : activeHotel.rooms;
-  }, [activeFilterLabel, activeHotel]);
+  function resolveCalendarRange(nextValue: string | string[]) {
+    const dates = Array.isArray(nextValue) ? nextValue : nextValue ? [nextValue] : [];
+    const hasPickedDate = dates.length > 0;
+
+    return {
+      checkIn: dates[0] || stayRange.checkIn,
+      checkOut: dates[1] || (hasPickedDate ? '' : stayRange.checkOut),
+    };
+  }
+
+  function renderHotelCalendarSummary(nextValue: string | string[]) {
+    const nextRange = resolveCalendarRange(nextValue);
+
+    return (
+      <View className="_pg-calendar-summary">
+        <View className="_pg-calendar-summary_item">
+          <Text className="_pg-calendar-summary_label">入住</Text>
+          <Text className="_pg-calendar-summary_value">{formatCalendarSummaryDate(nextRange.checkIn)}</Text>
+        </View>
+        <Text className="_pg-calendar-summary_dash">-</Text>
+        <View className="_pg-calendar-summary_item _pg-calendar-summary_item--end">
+          <Text className="_pg-calendar-summary_label">离店</Text>
+          <Text className="_pg-calendar-summary_value">{formatCalendarSummaryDate(nextRange.checkOut)}</Text>
+        </View>
+      </View>
+    );
+  }
+
+  function renderHotelCalendarConfirmText(nextValue: string | string[]) {
+    const nextRange = resolveCalendarRange(nextValue);
+    if (!nextRange.checkOut) return '请选择离店日期';
+
+    return `确认${resolveNights(nextRange)}晚`;
+  }
 
   useShareAppMessage(() => ({
-    title: `${activeHotel?.heroTitle || 'Hello Kitty 乐园酒店'}亲子度假`,
+    title: `${activeHotel?.heroTitle || 'Hello Kitty Park 酒店'}亲子度假`,
     path: MINI_PACKAGE_ROUTES.hotelHome,
-    imageUrl: activeHotel?.heroImageSrc || undefined,
+    imageUrl: validBannerImages[0]?.src || undefined,
   }));
 
-  function handleRoomDetail(roomId: string) {
-    Taro.navigateTo({ url: `${MINI_PACKAGE_ROUTES.hotelRoomDetail}?roomId=${roomId}` });
+  async function refreshHotelData(nextParams: {
+    nextStayRange?: HotelStayRange;
+    nextOccupancy?: HotelOccupancy;
+    nextFilterKey?: string;
+    nextHotelId?: string;
+  }) {
+    const nextStayRange = nextParams.nextStayRange ?? stayRange;
+    const nextOccupancy = nextParams.nextOccupancy ?? occupancy;
+    const nextFilterKey = nextParams.nextFilterKey ?? activeFilterKey;
+    const nextData = await fetchHotelHomeData({
+      stayRange: nextStayRange,
+      occupancy: nextOccupancy,
+      filterKey: nextFilterKey,
+    });
+
+    setPageData(nextData);
+    setStayRange(nextStayRange);
+    setOccupancy(nextOccupancy);
+    setGuestDraft(nextOccupancy);
+    setActiveFilterKey(nextFilterKey);
+    setActiveHotelId(nextParams.nextHotelId ?? nextData.hotels[0]?.id ?? '');
+    setBannerIndex(0);
   }
 
-  function handleRoomBooking(roomId: string) {
-    navigateToMiniRoute(`${MINI_PACKAGE_ROUTES.hotelCheckout}?roomId=${roomId}`);
+  function handleHotelChange(hotelId: string) {
+    void pageRuntime.withLoading(() => refreshHotelData({
+      nextHotelId: hotelId,
+      nextFilterKey: '',
+    }));
   }
 
-  async function handleIntroPress() {
-    await showWechatConfirm({
-      title: activeHotel?.heroTitle || '酒店介绍',
-      content: `${activeHotel?.heroSubtitle || '亲子度假酒店'}，位于${activeHotel?.address || HOTEL_LOCATION.address}，适合乐园游玩前后入住。`,
-      confirmText: '知道了',
-      cancelText: '关闭',
+  function handleFilterPress(filterKey: string) {
+    const nextFilterKey = activeFilterKey === filterKey ? '' : filterKey;
+    void pageRuntime.withLoading(() => refreshHotelData({ nextFilterKey }));
+  }
+
+  async function handleDateConfirm(nextValue: string | string[]) {
+    const nextRange = Array.isArray(nextValue) ? nextValue : [nextValue];
+    if (nextRange.length < 2) {
+      await showWechatToast('请选择入住和离店日期');
+      return;
+    }
+
+    setDatePopupVisible(false);
+    await pageRuntime.withLoading(() => refreshHotelData({
+      nextStayRange: {
+        checkIn: nextRange[0],
+        checkOut: nextRange[1],
+      },
+    }));
+  }
+
+  function openGuestPopup() {
+    setGuestDraft(occupancy);
+    setGuestPopupVisible(true);
+  }
+
+  function updateGuestDraftRoomCount(nextRoomCount: number) {
+    setGuestDraft((current) => {
+      const rooms = Array.from({ length: nextRoomCount }, (_, index) => current.rooms[index] ?? {
+        id: `room-${index + 1}`,
+        adults: 2,
+        childAges: [],
+      });
+
+      return normalizeHotelOccupancy({
+        roomCount: nextRoomCount,
+        rooms,
+      });
     });
   }
 
-  async function handleGuestPress() {
-    const nextIndex = (guestOptionIndex + 1) % guestOptions.length;
-    setGuestOptionIndex(nextIndex);
-    await showWechatToast(`已切换为${guestOptions[nextIndex]}`);
+  function updateGuestDraftRoom(index: number, patch: Partial<{ adults: number; childCount: number; childAge: number; childIndex: number }>) {
+    setGuestDraft((current) => {
+      const rooms = current.rooms.map((room, roomIndex) => {
+        if (roomIndex !== index) return room;
+
+        if (typeof patch.childCount === 'number') {
+          return {
+            ...room,
+            childAges: Array.from({ length: patch.childCount }, (_, childIndex) => room.childAges[childIndex] ?? 6),
+          };
+        }
+
+        if (typeof patch.childAge === 'number' && typeof patch.childIndex === 'number') {
+          const nextChildAge = patch.childAge;
+          const nextChildIndex = patch.childIndex;
+
+          return {
+            ...room,
+            childAges: room.childAges.map((age, childIndex) => (
+              childIndex === nextChildIndex ? nextChildAge : age
+            )),
+          };
+        }
+
+        return {
+          ...room,
+          adults: patch.adults ?? room.adults,
+        };
+      });
+
+      return normalizeHotelOccupancy({
+        roomCount: current.roomCount,
+        rooms,
+      });
+    });
+  }
+
+  async function handleGuestConfirm() {
+    setGuestPopupVisible(false);
+    await pageRuntime.withLoading(() => refreshHotelData({
+      nextOccupancy: guestDraft,
+    }));
+  }
+
+  function handlePreviewBanner() {
+    const urls = validBannerImages.map((item) => item.src);
+    void previewWechatImages({
+      urls,
+      current: urls[bannerIndex],
+      emptyText: '暂无酒店大图',
+    });
+  }
+
+  function handleProductDetail(product: HotelProductCardData) {
+    Taro.navigateTo({
+      url: createDetailUrl({
+        hotelId: activeHotel?.id ?? '',
+        productId: product.id,
+        stayRange,
+        occupancy,
+      }),
+    });
+  }
+
+  async function handleProductBooking(product: HotelProductCardData) {
+    const authed = await pageRuntime.ensureLogin(LOGIN_REASON);
+    if (!authed) return;
+
+    const draft = createHotelOrderDraft({
+      hotelId: activeHotel?.id ?? '',
+      productId: product.id,
+      ratePlanId: product.ratePlans[0]?.id,
+      stayRange,
+      occupancy,
+    });
+
+    if (!draft) {
+      void showWechatToast('当前产品暂不可预订');
+      return;
+    }
+
+    navigateToMiniRoute(`${MINI_PACKAGE_ROUTES.hotelCheckout}?draftId=${encodeURIComponent(draft.id)}`, {
+      loginReason: LOGIN_REASON,
+    });
   }
 
   return pageRuntime.renderPage(() => {
     if (!pageData || !activeHotel) return null;
 
-    const heroImageSrc = activeHotel.heroImageSrc;
-
     return (
       <View className="_pg">
         <PageShell
-          title={pageData.title}
+          title={HOTEL_PAGE_TITLE}
           className="_pg-shell"
           reserveTabBarSpace={false}
-          navbarRight={(
-            <AppShareButton className="_pg-nav-action" iconColor="#23262f" />
-          )}
         >
           <View className="_pg-content">
             <View className="_pg-tabs">
@@ -133,10 +367,7 @@ const HotelIndexPage = observer(function HotelIndexPage() {
                   <View
                     className={`_pg-tabs_item ${active ? '_pg-tabs_item--active' : ''}`}
                     key={hotel.id}
-                    onClick={() => {
-                      setActiveHotelId(hotel.id);
-                      setActiveFilterKey(pageData.filterOptions[0]?.key ?? '');
-                    }}
+                    onClick={() => handleHotelChange(hotel.id)}
                   >
                     <Text>{hotel.label}</Text>
                     {active ? <View className="_pg-tabs_indicator" /> : null}
@@ -145,31 +376,31 @@ const HotelIndexPage = observer(function HotelIndexPage() {
               })}
             </View>
 
-            <View className="_pg-hero">
-              <AppImage
-                className="_pg-hero_image"
-                src={heroImageSrc}
-                mode="aspectFill"
-                onClick={() => previewWechatImages({ urls: [heroImageSrc], emptyText: '暂无酒店大图' })}
-              />
-              <View className="_pg-hero_mask" />
-              <View className="_pg-hero_caption">
-                <Text className="_pg-hero_title">{activeHotel.heroTitle}</Text>
-                <Text className="_pg-hero_subtitle">{activeHotel.heroSubtitle}</Text>
-              </View>
-              <Text className="_pg-hero_count">{activeHotel.galleryCountText}</Text>
-              <View className="_pg-hero_dots">
-                <View className="_pg-hero_dot" />
-                <View className="_pg-hero_dot" />
-                <View className="_pg-hero_dot _pg-hero_dot--active" />
-                <View className="_pg-hero_dot" />
+            <View className='_pg-bannerroot'>
+              <View className="_pg-banner" onClick={handlePreviewBanner}>
+                <Swiper
+                  className="_pg-banner_swiper"
+                  circular={validBannerImages.length > 1}
+                  current={bannerIndex}
+                  onChange={(event) => setBannerIndex(event.detail.current)}
+                >
+                  {(validBannerImages.length > 0 ? validBannerImages : [{ id: 'empty', src: '' }]).map((image) => (
+                    <SwiperItem className="_pg-banner_item" key={image.id}>
+                      <AppImage className="_pg-banner_image" src={image.src} mode="aspectFill" />
+                    </SwiperItem>
+                  ))}
+                </Swiper>
+                <View className="_pg-banner_mask" />
+                <Text className="_pg-banner_title">{activeHotel.heroTitle}</Text>
+                {validBannerImages.length > 0 ? (
+                  <Text className="_pg-banner_count">图片{validBannerImages.length}张</Text>
+                ) : null}
               </View>
             </View>
 
-            <View className="_pg-info-row" onClick={() => void openWechatLocation({ ...HOTEL_LOCATION, name: activeHotel.heroTitle, address: activeHotel.address })}>
+            <View className="_pg-info-row" onClick={() => void openWechatLocation(activeHotel.location)}>
               <View className="_pg-info-row_main">
                 <Text className="_pg-info-row_address">{activeHotel.address}</Text>
-                <Text className="_pg-info-row_area">{activeHotel.areaText}</Text>
               </View>
               <View className="_pg-info-row_action">
                 <Text>地图/导航</Text>
@@ -177,29 +408,36 @@ const HotelIndexPage = observer(function HotelIndexPage() {
               </View>
             </View>
 
-            <View className="_pg-info-row" onClick={() => void handleIntroPress()}>
+            <View className="_pg-info-row">
               <Text className="_pg-info-row_label">酒店介绍</Text>
-              <View className="_pg-info-row_action">
-                <Text>详情</Text>
-                <AppIcon name="arrowRight" className="_pg-info-row_arrow" size={16} color="#23262f" />
+              <View className="_pg-info-row_actions">
+                <View className="_pg-info-row_detail" onClick={() => setIntroPopupVisible(true)}>
+                  <Text>详情介绍</Text>
+                  <AppIcon name="arrowRight" className="_pg-info-row_arrow" size={16} color="#4b5563" />
+                </View>
+                <Text className="_pg-info-row_split">｜</Text>
+                <AppShareButton className="_pg-info-row_share" iconColor="#6b7280" />
               </View>
             </View>
 
             <View className="_pg-stay">
-              <View className="_pg-stay_item" onClick={() => setDatePopupVisible(true)}>
-                <Text className="_pg-stay_week">{checkInLabel.week}</Text>
-                <Text className="_pg-stay_date">{checkInLabel.date}</Text>
+              <View className="_pg-stay_dates" onClick={() => setDatePopupVisible(true)}>
+                <View className="_pg-stay_date-block">
+                  <Text className="_pg-stay_date">{checkInLabel.date}</Text>
+                  <Text className="_pg-stay_tag">住</Text>
+                </View>
+                <View className="_pg-stay_dash" />
+                <View className="_pg-stay_date-block">
+                  <Text className="_pg-stay_date">{checkOutLabel.date}</Text>
+                  <Text className="_pg-stay_tag">离</Text>
+                </View>
+                <Text className="_pg-stay_night">共{resolveNights(stayRange)}晚</Text>
+                <AppIcon name="arrowRight" className="_pg-stay_dates-arrow" size={14} color="#c8cdd6" />
               </View>
-              <View className="_pg-stay_middle" onClick={() => setDatePopupVisible(true)}>
-                <Text className="_pg-stay_night">{resolveNights(stayRange)}</Text>
-              </View>
-              <View className="_pg-stay_item" onClick={() => setDatePopupVisible(true)}>
-                <Text className="_pg-stay_week">{checkOutLabel.week}</Text>
-                <Text className="_pg-stay_date">{checkOutLabel.date}</Text>
-              </View>
-              <View className="_pg-stay_guest" onClick={() => void handleGuestPress()}>
-                <Text className="_pg-stay_guest-top">每间</Text>
-                <Text className="_pg-stay_guest-bottom">{roomGuestText.replace('每间 ', '')}</Text>
+              <View className="_pg-stay_split" />
+              <View className="_pg-stay_guest" onClick={openGuestPopup}>
+                <Text className="_pg-stay_guest-text">{occupancyLabel}</Text>
+                <AppIcon name="arrowRight" size={14} color="#c8cdd6" />
               </View>
             </View>
 
@@ -208,7 +446,7 @@ const HotelIndexPage = observer(function HotelIndexPage() {
                 <View
                   className={`_pg-filters_item ${filter.key === activeFilterKey ? '_pg-filters_item--active' : ''}`}
                   key={filter.key}
-                  onClick={() => setActiveFilterKey(filter.key)}
+                  onClick={() => handleFilterPress(filter.key)}
                 >
                   <Text>{filter.label}</Text>
                 </View>
@@ -216,50 +454,34 @@ const HotelIndexPage = observer(function HotelIndexPage() {
             </View>
 
             <View className="_pg-section">
-              {visibleRooms.map((room) => (
-                <View className="_pg-room-card" key={room.id} onClick={() => handleRoomDetail(room.id)}>
-                  <AppImage className="_pg-room-card_image" src={room.imageSrc} mode="aspectFill" />
-                  <View className="_pg-room-card_main">
-                    <Text className="_pg-room-card_title">{room.title}</Text>
-                    <Text className="_pg-room-card_tags">{room.tagsText}</Text>
-                    <AppIcon name="arrowRight" className="_pg-room-card_arrow" size={16} color="#9ca3af" />
-                  </View>
-                  <View className="_pg-room-card_aside">
-                    <Text className="_pg-room-card_price">¥{room.price.toFixed(2)}</Text>
-                    <View
-                      className="_pg-room-card_button"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        handleRoomBooking(room.id);
-                      }}
-                    >
-                      预订
+              {products.length > 0 ? products.map((product) => (
+                <View className="_pg-product-card" key={product.id} onClick={() => handleProductDetail(product)}>
+                  <AppImage className="_pg-product-card_image" src={product.imageSrc} mode="aspectFill" />
+                  <View className="_pg-product-card_main">
+                    <Text className="_pg-product-card_title">{product.title}</Text>
+                    <Text className="_pg-product-card_meta">{product.subtitle}</Text>
+                    <View className="_pg-product-card_footer">
+                      <Text className="_pg-product-card_price">¥{product.price}</Text>
+                      <View
+                        className="_pg-product-card_button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          void handleProductBooking(product);
+                        }}
+                      >
+                        <Text>预定</Text>
+                      </View>
                     </View>
                   </View>
                 </View>
-              ))}
-            </View>
-
-            <View className="_pg-section-title">
-              <Text>套餐推荐</Text>
-            </View>
-
-            <View className="_pg-section">
-              {activeHotel.packages.map((item) => (
-                <View className="_pg-room-card _pg-room-card--package" key={item.id}>
-                  <AppImage className="_pg-room-card_image" src={item.imageSrc} mode="aspectFill" />
-                  <View className="_pg-room-card_main">
-                    <Text className="_pg-room-card_title">{item.title}</Text>
-                    <Text className="_pg-room-card_sales">{item.salesText}</Text>
-                  </View>
-                  <View className="_pg-room-card_aside">
-                    <Text className="_pg-room-card_price">¥{item.price.toFixed(2)}</Text>
-                    <View className="_pg-room-card_button" onClick={() => handleRoomBooking(activeHotel.rooms[0]?.id ?? '')}>
-                      预订
-                    </View>
-                  </View>
-                </View>
-              ))}
+              )) : (
+                <BaseEmpty
+                  className="_pg-empty"
+                  size="small"
+                  title="当前条件暂无可订产品"
+                  description="可调整日期、人数或筛选条件后再试"
+                />
+              )}
             </View>
           </View>
 
@@ -268,16 +490,99 @@ const HotelIndexPage = observer(function HotelIndexPage() {
               visible={datePopupVisible}
               mode="range"
               title="选择入住日期"
-              value={stayRange}
-              startDate="2026-01-01"
-              endDate="2026-12-31"
+              value={[stayRange.checkIn, stayRange.checkOut]}
+              startDate={todayKey}
+              endDate={dateEndKey}
+              startText="入住"
+              endText="离店"
+              confirmText={renderHotelCalendarConfirmText}
+              footerSummary={renderHotelCalendarSummary}
               onClose={() => setDatePopupVisible(false)}
-              onConfirm={(nextValue) => {
-                const nextRange = Array.isArray(nextValue) ? nextValue : [nextValue];
-                if (nextRange.length >= 2) setStayRange(nextRange.slice(0, 2));
-                setDatePopupVisible(false);
-              }}
+              onConfirm={(nextValue) => void handleDateConfirm(nextValue)}
             />
+
+            <AppPopup
+              visible={introPopupVisible}
+              className="_pg-intro-popup-shell"
+              contentClassName="_pg-intro-popup"
+              onClose={() => setIntroPopupVisible(false)}
+            >
+              <View className="_pg-intro-popup_header">
+                <Text className="_pg-intro-popup_title">酒店介绍</Text>
+                <View className="_pg-intro-popup_close" onClick={() => setIntroPopupVisible(false)}>
+                  <AppIcon name="close" size={16} color="#667085" />
+                </View>
+              </View>
+              <Text className="_pg-intro-popup_desc">{activeHotel.introText}</Text>
+              <View className="_pg-intro-popup_line">
+                <Text>入住时间</Text>
+                <Text>{activeHotel.checkInTimeText}</Text>
+              </View>
+              <View className="_pg-intro-popup_line">
+                <Text>退房时间</Text>
+                <Text>{activeHotel.checkOutTimeText}</Text>
+              </View>
+              <View className="_pg-intro-popup_line" onClick={() => void callWechatPhone(activeHotel.phoneNumber)}>
+                <Text>联系电话</Text>
+                <View className="_pg-intro-popup_phone">
+                  <Text>{activeHotel.phoneNumber}</Text>
+                  <AppIcon name="phone" size={16} color="#d94a88" />
+                </View>
+              </View>
+            </AppPopup>
+
+            <AppBottomSheet
+              visible={guestPopupVisible}
+              className="_pg-guest-popup-shell"
+              title="选择房间和入住人数"
+              confirmText="确定"
+              onClose={() => setGuestPopupVisible(false)}
+              onConfirm={() => void handleGuestConfirm()}
+            >
+              <View className="_pg-guest-popup_row">
+                <Text className="_pg-guest-popup_label">房间数</Text>
+                <QuantityStepper
+                  value={guestDraft.roomCount}
+                  min={1}
+                  max={pageData.maxRooms}
+                  onChange={updateGuestDraftRoomCount}
+                />
+              </View>
+              {guestDraft.rooms.map((room, roomIndex) => (
+                <View className="_pg-guest-room" key={room.id}>
+                  <Text className="_pg-guest-room_title">房间{roomIndex + 1}</Text>
+                  <View className="_pg-guest-popup_row">
+                    <Text className="_pg-guest-popup_label">成人</Text>
+                    <QuantityStepper
+                      value={room.adults}
+                      min={1}
+                      max={4}
+                      onChange={(value) => updateGuestDraftRoom(roomIndex, { adults: value })}
+                    />
+                  </View>
+                  <View className="_pg-guest-popup_row">
+                    <Text className="_pg-guest-popup_label">儿童</Text>
+                    <QuantityStepper
+                      value={room.childAges.length}
+                      min={0}
+                      max={3}
+                      onChange={(value) => updateGuestDraftRoom(roomIndex, { childCount: value })}
+                    />
+                  </View>
+                  {room.childAges.map((age, childIndex) => (
+                    <View className="_pg-guest-popup_row _pg-guest-popup_row--sub" key={`${room.id}-${childIndex}`}>
+                      <Text className="_pg-guest-popup_label">儿童{childIndex + 1}年龄</Text>
+                      <QuantityStepper
+                        value={age}
+                        min={0}
+                        max={17}
+                        onChange={(value) => updateGuestDraftRoom(roomIndex, { childIndex, childAge: value })}
+                      />
+                    </View>
+                  ))}
+                </View>
+              ))}
+            </AppBottomSheet>
           </PageShare>
         </PageShell>
       </View>

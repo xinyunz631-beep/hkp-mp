@@ -1,6 +1,7 @@
 import { Text, View } from '@tarojs/components';
 import { Calendar, InputNumber } from '@nutui/nutui-react-taro';
 import classNames from 'classnames';
+import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { AppIcon } from '@/core/components/AppIcon';
 import { AppImage } from '@/core/components/AppImage';
@@ -68,6 +69,8 @@ interface QuantityStepperProps {
 }
 
 type DateSelectionMode = 'single' | 'range';
+type DateSelectionValue = string | string[];
+type DateSelectionRenderNode = ReactNode | ((value: DateSelectionValue) => ReactNode);
 
 interface FilterTabsProps {
   tabs: HkpFilterTab[];
@@ -107,6 +110,10 @@ interface DateSelectionPopupProps {
   value?: string | string[];
   startDate?: string;
   endDate?: string;
+  startText?: ReactNode;
+  endText?: ReactNode;
+  confirmText?: DateSelectionRenderNode;
+  footerSummary?: DateSelectionRenderNode;
   onClose: () => void;
   onConfirm: (value: string | string[]) => void;
 }
@@ -116,7 +123,9 @@ interface CouponSelectionPopupProps {
   title?: string;
   coupons: HkpCouponSummary[];
   selectedCouponId?: string;
+  clearText?: string;
   onClose: () => void;
+  onClear?: () => void;
   onSelect: (coupon: HkpCouponSummary) => void;
 }
 
@@ -166,6 +175,20 @@ function normalizeCalendarValue(value: unknown, mode: DateSelectionMode): string
 
   const singleDate = normalizeCalendarDate(value);
   return singleDate ? [singleDate] : [];
+}
+
+function resolveDateSelectionNode(content: DateSelectionRenderNode | undefined, value: DateSelectionValue) {
+  if (typeof content === 'function') return content(value);
+  return content;
+}
+
+// 渲染提交栏文案，外部传入自定义节点时直接使用调用方样式。
+function renderSubmitBarNode(content: ReactNode, className: string) {
+  if (typeof content === 'string' || typeof content === 'number') {
+    return <Text className={className}>{content}</Text>;
+  }
+
+  return content;
 }
 
 export function ProductCard({
@@ -309,10 +332,8 @@ export function FixedSubmitBar({
     <View className={classNames('hkp-submit-bar', className)}>
       <View className="hkp-submit-bar__main">
         <View className="hkp-submit-bar__price-wrap">
-          <Text className="hkp-submit-bar__label">{label}</Text>
-          <Text className="hkp-submit-bar__amount">
-            {amountText ?? formatCurrency(amount ?? 0)}
-          </Text>
+          {renderSubmitBarNode(label, 'hkp-submit-bar__label')}
+          {renderSubmitBarNode(amountText ?? formatCurrency(amount ?? 0), 'hkp-submit-bar__amount')}
         </View>
         {extra ? <View className="hkp-submit-bar__extra">{extra}</View> : null}
       </View>
@@ -392,7 +413,7 @@ export function SkuPopup({
   onQuantityChange,
 }: SkuPopupProps) {
   return (
-    <AppPopup visible={visible} onClose={onClose}>
+    <AppPopup visible={visible} className="sku-popup" onClose={onClose}>
       <View className="hkp-sku-popup">
         <View className="hkp-sku-popup__summary">
           <AppImage
@@ -473,10 +494,21 @@ export function DateSelectionPopup({
   value,
   startDate,
   endDate,
+  startText,
+  endText,
+  confirmText,
+  footerSummary,
   onClose,
   onConfirm,
 }: DateSelectionPopupProps) {
+  const [selectedValue, setSelectedValue] = useState<DateSelectionValue>(() => normalizeCalendarValue(value, mode));
   const calendarValue = typeof value === 'string' ? value : undefined;
+  const resolvedConfirmText = resolveDateSelectionNode(confirmText, selectedValue) || '确定';
+  const footerSummaryNode = resolveDateSelectionNode(footerSummary, selectedValue);
+
+  useEffect(() => {
+    setSelectedValue(normalizeCalendarValue(value, mode));
+  }, [mode, value, visible]);
 
   return (
     <Calendar
@@ -493,12 +525,25 @@ export function DateSelectionPopup({
       showToday
       showTitle
       showSubTitle
-      confirmText="确定"
+      startText={startText}
+      endText={endText}
+      confirmText={resolvedConfirmText}
       onClose={onClose}
-      onConfirm={(nextValue) => {
-        onConfirm(normalizeCalendarValue(nextValue, mode));
+      onDayClick={(nextValue) => {
+        setSelectedValue(normalizeCalendarValue(nextValue, mode));
       }}
-    />
+      onConfirm={(nextValue) => {
+        const normalizedValue = normalizeCalendarValue(nextValue, mode);
+        setSelectedValue(normalizedValue);
+        onConfirm(normalizedValue);
+      }}
+    >
+      {footerSummaryNode ? (
+        <View className="hkp-date-selection-summary-shell">
+          {footerSummaryNode}
+        </View>
+      ) : null}
+    </Calendar>
   );
 }
 
@@ -507,11 +552,13 @@ export function CouponSelectionPopup({
   title = '选择优惠券',
   coupons,
   selectedCouponId,
+  clearText,
   onClose,
+  onClear,
   onSelect,
 }: CouponSelectionPopupProps) {
   return (
-    <AppPopup visible={visible} contentClassName="hkp-coupon-popup" onClose={onClose}>
+    <AppPopup visible={visible} className="coupon-popup" contentClassName="hkp-coupon-popup" onClose={onClose}>
       <View className="hkp-coupon-popup__header">
         <Text className="hkp-coupon-popup__title">{title}</Text>
         <View className="hkp-coupon-popup__close" onClick={onClose}>
@@ -519,14 +566,25 @@ export function CouponSelectionPopup({
         </View>
       </View>
       <View className="hkp-coupon-popup__list">
+        {onClear ? (
+          <View
+            className="hkp-coupon-popup__clear"
+            onClick={onClear}
+          >
+            <Text>{clearText || '不使用优惠券'}</Text>
+          </View>
+        ) : null}
         {coupons.map((coupon) => (
           <View
             className={classNames(
               'hkp-coupon-popup__item',
               selectedCouponId === coupon.id && 'hkp-coupon-popup__item--active',
+              coupon.status !== 'available' && 'hkp-coupon-popup__item--disabled',
             )}
             key={coupon.id}
-            onClick={() => onSelect(coupon)}
+            onClick={() => {
+              if (coupon.status === 'available') onSelect(coupon);
+            }}
           >
             <CouponCard coupon={coupon} />
             {selectedCouponId === coupon.id ? <Text className="hkp-coupon-popup__checked">已选</Text> : null}
