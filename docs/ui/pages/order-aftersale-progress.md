@@ -12,9 +12,9 @@
 - Figma nodeId：-
 - Pencil file：/Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
 - Pencil nodeId：order-aftersale-progress
-- 当前版本：v0.3
+- 当前版本：v0.4-mall-commercial-flow
 - 页面状态：interaction-ready
-- 更新时间：2026-05-18
+- 更新时间：2026-05-21
 - 实现文件：
   - src/pkg-order/pages/aftersale-progress/index.tsx
   - src/pkg-order/pages/aftersale-progress/index.scss
@@ -23,7 +23,7 @@
 
 ## 设计意图
 
-售后进度页面负责展示售后单状态和处理轨迹，当前已补齐状态头图、订单摘要、售后信息、时间线和列表返回动作。
+售后进度页面负责展示售后单状态和处理轨迹，当前已补齐状态头图、订单摘要、售后信息、时间线和列表返回动作。商城售后申请提交后会携带 `orderId`、售后类型和原因，进度页按当前订单展示售后信息。
 
 ## 页面结构
 
@@ -58,11 +58,11 @@
 
 | 模块 | service | 失败策略 | 是否阻断页面 |
 |---|---|---|---|
-| 页面数据 | `fetchAftersaleProgressData()` | service 内归一和兜底 | 按业务决定 |
+| 页面数据 | `fetchAftersaleProgressData({ orderId, typeText, reasonText })` | service 内归一和兜底，本地订单优先 | 按业务决定 |
 
 ## 交互与跳转
 
-- 从售后申请提交后进入本页，也可从售后列表点击记录进入。
+- 从售后申请提交后进入本页，也可从售后列表点击记录进入；有 `orderId` 时按当前订单生成售后单号、金额、类型和原因。
 - 点击底部按钮跳转到售后列表。
 
 ## 实现映射
@@ -73,6 +73,11 @@
 - `src/pkg-order/services/aftersale-progress.ts`：页面 service。
 
 ## 变更记录
+
+### v0.4-mall-commercial-flow
+
+- 售后进度页支持读取 `orderId`、售后类型和原因，按当前订单展示售后信息。
+- 底部返回售后列表改为统一保护导航。
 
 ### v0.2
 

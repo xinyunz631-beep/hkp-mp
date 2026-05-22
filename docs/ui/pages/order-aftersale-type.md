@@ -12,9 +12,9 @@
 - Figma nodeId：-
 - Pencil file：/Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
 - Pencil nodeId：order-aftersale-type
-- 当前版本：v0.3
+- 当前版本：v0.4-mall-commercial-flow
 - 页面状态：interaction-ready
-- 更新时间：2026-05-18
+- 更新时间：2026-05-21
 - 实现文件：
   - src/pkg-order/pages/aftersale-type/index.tsx
   - src/pkg-order/pages/aftersale-type/index.scss
@@ -23,7 +23,7 @@
 
 ## 设计意图
 
-售后类型页面负责承接订单详情或订单列表的售后入口，当前已补齐订单摘要、类型卡片和金额说明，用来分发到不同售后申请路径。
+售后类型页面负责承接订单详情或订单列表的售后入口，当前已补齐订单摘要、类型卡片和金额说明，用来分发到不同售后申请路径。商城订单会按 `orderId` 恢复当前订单，并根据订单状态生成可选售后类型。
 
 ## 页面结构
 
@@ -55,12 +55,13 @@
 
 | 模块 | service | 失败策略 | 是否阻断页面 |
 |---|---|---|---|
-| 页面数据 | `fetchAftersaleTypeData()` | service 内归一和兜底 | 按业务决定 |
+| 页面数据 | `fetchAftersaleTypeData(orderId)` | service 内归一和兜底，本地订单优先 | 按业务决定 |
 
 ## 交互与跳转
 
 - 从订单详情“申请退款”或订单列表“申请售后”动作进入本页。
-- 点击任一售后类型后跳转到售后申请页，并通过路由参数传递当前类型。
+- 待发货商城订单只展示“仅退款”；已发货/完成类订单展示“退货退款 / 换货”等售后能力。
+- 点击任一售后类型后跳转到售后申请页，并通过路由参数传递当前类型和 `orderId`。
 
 ## 实现映射
 
@@ -70,6 +71,11 @@
 - `src/pkg-order/services/aftersale-type.ts`：页面 service。
 
 ## 变更记录
+
+### v0.4-mall-commercial-flow
+
+- 售后类型页支持读取 `orderId`，本地订单优先、静态订单兜底。
+- 商城订单按状态生成售后类型：待发货优先仅退款，已发货/完成类展示退货退款和换货。
 
 ### v0.2
 

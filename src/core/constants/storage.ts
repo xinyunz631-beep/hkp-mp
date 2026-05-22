@@ -2,6 +2,10 @@ export const MINI_STORAGE_KEYS = {
   member: 'hkitty-mini-member',
   ticketOrderDrafts: 'hkitty-mini-ticket-order-drafts',
   hotelOrderDrafts: 'hkitty-mini-hotel-order-drafts',
+  mallCheckoutDrafts: 'hkitty-mini-mall-checkout-drafts',
+  mallCheckoutAddressSelections: 'hkitty-mini-mall-checkout-address-selections',
+  mallCartGroups: 'hkitty-mini-mall-cart-groups',
+  mallFavorites: 'hkitty-mini-mall-favorites',
   localOrders: 'hkitty-mini-local-orders',
   orderAddresses: 'hkitty-mini-order-addresses',
 } as const;

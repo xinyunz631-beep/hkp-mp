@@ -12,9 +12,9 @@
 - Figma nodeId：-
 - Pencil file：/Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
 - Pencil nodeId：order-aftersale-apply
-- 当前版本：v0.3
+- 当前版本：v0.4-mall-commercial-flow
 - 页面状态：interaction-ready
-- 更新时间：2026-05-18
+- 更新时间：2026-05-21
 - 实现文件：
   - src/pkg-order/pages/aftersale-apply/index.tsx
   - src/pkg-order/pages/aftersale-apply/index.scss
@@ -23,7 +23,7 @@
 
 ## 设计意图
 
-售后申请页面承接售后类型选择后的表单提交场景，当前已补齐订单摘要、售后类型、原因、补充说明、凭证上传占位和联系人信息。
+售后申请页面承接售后类型选择后的表单提交场景，当前已补齐订单摘要、售后类型、原因、补充说明、凭证上传占位和联系人信息。商城订单会按售后类型和 `orderId` 生成当前订单、退款金额和原因列表。
 
 ## 页面结构
 
@@ -58,11 +58,12 @@
 
 | 模块 | service | 失败策略 | 是否阻断页面 |
 |---|---|---|---|
-| 页面数据 | `fetchAftersaleApplyData()` | service 内归一和兜底 | 按业务决定 |
+| 页面数据 | `fetchAftersaleApplyData({ orderId, typeText })` | service 内归一和兜底，本地订单优先 | 按业务决定 |
 
 ## 交互与跳转
 
 - 从售后类型页点击类型卡片进入本页，并通过路由参数带入所选类型。
+- 页面按 `orderId` 恢复当前订单；退款金额跟随订单金额，原因列表跟随售后类型切换。
 - 上传凭证：调用微信图片选择，支持预览和删除。
 - 选择原因后可提交；未选原因时给出 toast 提示。
 - 提交后跳转到售后进度页。
@@ -81,6 +82,11 @@
 - `src/pkg-order/services/aftersale-apply.ts`：页面 service。
 
 ## 变更记录
+
+### v0.4-mall-commercial-flow
+
+- 售后申请页支持读取 `orderId` 和售后类型，动态展示当前订单、退款金额和原因列表。
+- 提交售后进度跳转改为统一保护导航。
 
 ### v0.3
 

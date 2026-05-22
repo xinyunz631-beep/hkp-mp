@@ -1,4 +1,4 @@
-import { PropsWithChildren, ReactNode, useCallback, useEffect, useState } from 'react';
+import { CSSProperties, PropsWithChildren, ReactNode, useCallback, useEffect, useState } from 'react';
 import classNames from 'classnames';
 import Taro, { useDidHide, useDidShow, useResize } from '@tarojs/taro';
 import { ScrollView, View } from '@tarojs/components';
@@ -23,9 +23,22 @@ export interface PageLayoutProps extends PropsWithChildren {
   tabBar?: ReactNode;
   runtimeNode?: ReactNode;
   scrollViewProps?: PageLayoutScrollViewProps;
+  chromeCacheKey?: string;
+  chromeCacheSignature?: string;
 }
 
 let pageLayoutIdSeed = 0;
+interface PageLayoutChromeCacheEntry {
+  headerHeight: number;
+  footerHeight: number;
+  hasHeader: boolean;
+  hasFooter: boolean;
+  hasTabBar: boolean;
+  bottomSafeAreaNeeded: boolean;
+  signature?: string;
+}
+
+const pageLayoutChromeCache = new Map<string, PageLayoutChromeCacheEntry>();
 
 // 生成页面布局节点 ID，避免多个页面实例 selector query 互相命中。
 function createPageLayoutId() {
@@ -43,21 +56,38 @@ export function PageLayout({
   runtimeNode,
   scrollViewProps,
   className,
+  chromeCacheKey,
+  chromeCacheSignature,
   children,
 }: PageLayoutProps) {
+  const footerNode = footer ?? bottom;
+  const hasHeaderContent = Boolean(header);
+  const hasFooterContent = Boolean(footerNode);
+  const hasTabBar = Boolean(tabBar);
+  const hasScrollView = Boolean(scrollViewProps);
   const [layoutId] = useState(createPageLayoutId);
-  const [viewportHeight, setViewportHeight] = useState(() => resolveWindowHeight());
-  const [headerHeight, setHeaderHeight] = useState(0);
-  const [footerHeight, setFooterHeight] = useState(0);
-  const [layoutActive, setLayoutActive] = useState(true);
-  const [chromeMeasured, setChromeMeasured] = useState(false);
-  const [measureCoverVisible, setMeasureCoverVisible] = useState(true);
   const [bottomSafeAreaNeeded] = useState(shouldReserveBottomSafeArea);
+  const [initialChrome] = useState(() => {
+    if (!chromeCacheKey) return undefined;
+
+    const cachedChrome = pageLayoutChromeCache.get(chromeCacheKey);
+    if (!cachedChrome) return undefined;
+    if (cachedChrome.signature !== chromeCacheSignature) return undefined;
+    if (cachedChrome.hasHeader !== hasHeaderContent) return undefined;
+    if (cachedChrome.hasFooter !== hasFooterContent) return undefined;
+    if (cachedChrome.hasTabBar !== hasTabBar) return undefined;
+    if (cachedChrome.bottomSafeAreaNeeded !== bottomSafeAreaNeeded) return undefined;
+
+    return cachedChrome;
+  });
+  const [viewportHeight, setViewportHeight] = useState(() => resolveWindowHeight());
+  const [headerHeight, setHeaderHeight] = useState(() => initialChrome?.headerHeight ?? 0);
+  const [footerHeight, setFooterHeight] = useState(() => initialChrome?.footerHeight ?? 0);
+  const [layoutActive, setLayoutActive] = useState(true);
+  const [chromeMeasured, setChromeMeasured] = useState(Boolean(initialChrome));
+  const [measureCoverVisible, setMeasureCoverVisible] = useState(!initialChrome);
   const headerId = `${layoutId}-header`;
   const footerId = `${layoutId}-footer`;
-  const hasScrollView = Boolean(scrollViewProps);
-  const footerNode = footer ?? bottom;
-  const hasFooterContent = Boolean(footerNode);
 
   // 重新测量顶部和底部固定区域高度，供中间占位和滚动容器使用。
   const measureLayoutChrome = useCallback(() => {
@@ -71,6 +101,17 @@ export function PageLayout({
         const nextHeaderHeight = resolveRectHeight(headerRect);
         const nextFooterHeight = resolveRectHeight(footerRect);
 
+        if (chromeCacheKey) {
+          pageLayoutChromeCache.set(chromeCacheKey, {
+            headerHeight: nextHeaderHeight,
+            footerHeight: nextFooterHeight,
+            hasHeader: hasHeaderContent,
+            hasFooter: hasFooterContent,
+            hasTabBar,
+            bottomSafeAreaNeeded,
+            signature: chromeCacheSignature,
+          });
+        }
         setViewportHeight((currentHeight) => (
           Math.abs(currentHeight - nextViewportHeight) > 0.5 ? nextViewportHeight : currentHeight
         ));
@@ -83,7 +124,16 @@ export function PageLayout({
         setChromeMeasured(true);
       });
     });
-  }, [footerId, headerId]);
+  }, [
+    bottomSafeAreaNeeded,
+    chromeCacheKey,
+    chromeCacheSignature,
+    footerId,
+    hasFooterContent,
+    hasHeaderContent,
+    hasTabBar,
+    headerId,
+  ]);
 
   useResize(() => {
     if (layoutActive) {
@@ -124,7 +174,16 @@ export function PageLayout({
     };
   }, [chromeMeasured]);
 
-  const scrollContentHeight = Math.max(viewportHeight - headerHeight, 0);
+  const resolvedHeaderHeight = hasHeaderContent ? headerHeight : 0;
+  const resolvedFooterHeight = hasFooterContent ? footerHeight : 0;
+  const scrollContentHeight = Math.max(viewportHeight - resolvedHeaderHeight, 0);
+  const plainContentHeight = Math.max(viewportHeight - resolvedHeaderHeight - resolvedFooterHeight, 0);
+  const layoutStyle = {
+    '--page-layout-header-height': `${resolvedHeaderHeight}px`,
+    '--page-layout-footer-height': `${resolvedFooterHeight}px`,
+    '--page-layout-content-height': `${scrollContentHeight}px`,
+    '--page-layout-body-height': `${plainContentHeight}px`,
+  } as CSSProperties;
   const scrollViewStyle: ScrollViewProps['style'] = hasScrollView
     ? typeof scrollViewProps?.style === 'string'
       ? `${scrollViewProps.style};height:${scrollContentHeight}px;`
@@ -142,7 +201,7 @@ export function PageLayout({
   );
 
   return (
-    <View className={layoutClassName}>
+    <View className={layoutClassName} style={layoutStyle}>
       {header ? (
         <View className="page-layout__header" id={headerId}>
           {header}
@@ -150,8 +209,8 @@ export function PageLayout({
       ) : null}
       {hasScrollView ? (
         <>
-          {headerHeight > 0 ? (
-            <View className="page-layout__content-spacer page-layout__content-spacer--header" style={{ height: `${headerHeight}px` }} />
+          {resolvedHeaderHeight > 0 ? (
+            <View className="page-layout__content-spacer page-layout__content-spacer--header" style={{ height: `${resolvedHeaderHeight}px` }} />
           ) : null}
           <ScrollView
             {...scrollViewProps}
@@ -164,8 +223,8 @@ export function PageLayout({
           >
             <View className="page-layout__content">
               {children}
-              {footerHeight > 0 ? (
-                <View className="page-layout__content-spacer page-layout__content-spacer--footer" style={{ height: `${footerHeight}px` }} />
+              {resolvedFooterHeight > 0 ? (
+                <View className="page-layout__content-spacer page-layout__content-spacer--footer" style={{ height: `${resolvedFooterHeight}px` }} />
               ) : null}
               {tabBar ? <View className="page-layout__content-spacer page-layout__content-spacer--tabbar" /> : null}
               {bottomSafeAreaNeeded ? <View className="page-layout__content-spacer page-layout__content-spacer--safe-bottom" /> : null}
@@ -174,12 +233,12 @@ export function PageLayout({
         </>
       ) : (
         <View className="page-layout__content">
-          {headerHeight > 0 ? (
-            <View className="page-layout__content-spacer page-layout__content-spacer--header" style={{ height: `${headerHeight}px` }} />
+          {resolvedHeaderHeight > 0 ? (
+            <View className="page-layout__content-spacer page-layout__content-spacer--header" style={{ height: `${resolvedHeaderHeight}px` }} />
           ) : null}
           {children}
-          {footerHeight > 0 ? (
-            <View className="page-layout__content-spacer page-layout__content-spacer--footer" style={{ height: `${footerHeight}px` }} />
+          {resolvedFooterHeight > 0 ? (
+            <View className="page-layout__content-spacer page-layout__content-spacer--footer" style={{ height: `${resolvedFooterHeight}px` }} />
           ) : null}
           {tabBar ? <View className="page-layout__content-spacer page-layout__content-spacer--tabbar" /> : null}
           {bottomSafeAreaNeeded ? <View className="page-layout__content-spacer page-layout__content-spacer--safe-bottom" /> : null}

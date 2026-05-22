@@ -17,6 +17,11 @@
   background: #ffffff;
 }
 
+._pg-header {
+  padding: 14px 30px 18px;
+  background: #ffffff;
+}
+
 ._pg-search {
   display: flex;
   align-items: center;
@@ -332,6 +337,13 @@
 
   &_icon {
     flex: none;
+  }
+
+  &_icon-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   &_text {

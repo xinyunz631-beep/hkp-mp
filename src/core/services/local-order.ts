@@ -8,6 +8,7 @@ export interface LocalOrderField {
 
 export interface LocalOrderHomeItem {
   id: string;
+  orderId?: string;
   title: string;
   subtitle?: string;
   extraText?: string;
@@ -15,12 +16,19 @@ export interface LocalOrderHomeItem {
   quantity: number;
   priceText: string;
   actionText: string;
+  actions?: Array<{
+    text: string;
+    tone?: 'default' | 'primary' | 'danger';
+  }>;
 }
 
 export interface LocalOrderRecord {
   id: string;
   source: 'ticket' | 'mall' | 'hotel' | 'dining';
   tabKey: string;
+  paymentStatus?: 'pending' | 'paid';
+  payExpireAt?: string;
+  primaryActionType?: 'pay' | 'aftersale' | 'refund' | 'none';
   dateText: string;
   statusText: string;
   paidAmountText: string;
@@ -87,4 +95,16 @@ export function saveLocalOrder(record: LocalOrderRecord) {
   const orders = listLocalOrders().filter((order) => order.id !== record.id);
   setCache(MINI_STORAGE_KEYS.localOrders, [record, ...orders]);
   return record;
+}
+
+export function updateLocalOrder(orderId: string, updater: (order: LocalOrderRecord) => LocalOrderRecord) {
+  const currentOrders = listLocalOrders();
+  const currentOrder = currentOrders.find((order) => order.id === orderId);
+  if (!currentOrder) return undefined;
+
+  const nextOrder = updater(currentOrder);
+  setCache(MINI_STORAGE_KEYS.localOrders, currentOrders.map((order) => (
+    order.id === orderId ? nextOrder : order
+  )));
+  return nextOrder;
 }

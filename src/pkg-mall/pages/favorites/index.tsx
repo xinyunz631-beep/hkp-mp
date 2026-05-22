@@ -8,7 +8,6 @@ import { PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import { showWechatConfirm, showWechatToast } from '@/core/utils/wechat-actions';
-import { addMallCartItem } from '@/pkg-mall/services/cart';
 import { fetchFavoritesData } from '@/pkg-mall/services/favorites';
 import './index.scss';
 
@@ -65,12 +64,13 @@ const FavoritesPage = observer(function FavoritesPage() {
   async function handleEditAction(item: FavoriteItem, action: 'cart' | 'delete') {
     if (action === 'cart') {
       if (item.invalid) {
-        await showWechatToast('该收藏已失效，暂不能加入购物车');
+        await showWechatToast('该收藏已失效，暂不能选择规格');
         return;
       }
 
-      await addMallCartItem(item);
-      await showWechatToast('已加入购物车', 'success');
+      Taro.navigateTo({
+        url: `${MINI_PACKAGE_ROUTES.mallProductDetail}?productId=${encodeURIComponent(item.id)}`,
+      });
       return;
     }
 
@@ -146,7 +146,7 @@ const FavoritesPage = observer(function FavoritesPage() {
                             void handleEditAction(item, 'cart');
                           }}
                         >
-                          <Text>加入购物车</Text>
+                          <Text>选规格</Text>
                         </View>
                         <AppShareButton
                           className="_pg-item_action _pg-item_action--button"

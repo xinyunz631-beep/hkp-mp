@@ -324,7 +324,7 @@ const AddressEditPage = observer(function AddressEditPage() {
                 onClick={() => patchForm({ isDefault: !form.isDefault })}
               >
                 <View className={`_pg-default_check ${form.isDefault ? '_pg-default_check--active' : ''}`}>
-                  {form.isDefault ? <AppIcon name="check" size={14} color="#ffffff" /> : null}
+                  {form.isDefault ? <AppIcon name="check" size={10} color="#ffffff" /> : null}
                 </View>
                 <View className="_pg-default_main">
                   <Text className="_pg-default_title">设为默认地址</Text>

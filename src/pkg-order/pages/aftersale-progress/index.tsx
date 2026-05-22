@@ -6,6 +6,7 @@ import { OrderCard } from '@/core/components/commerce';
 import { PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
+import { navigateToMiniRoute } from '@/core/utils/navigation';
 import { fetchAftersaleProgressData, type OrderAftersaleProgressData } from '@/pkg-order/services/aftersale-progress';
 import './index.scss';
 
@@ -13,7 +14,12 @@ const AftersaleProgressPage = observer(function AftersaleProgressPage() {
   const [pageData, setPageData] = useState<OrderAftersaleProgressData>();
   const pageRuntime = usePageRuntime({
     initPage: async () => {
-      const nextData = await fetchAftersaleProgressData();
+      const params = Taro.getCurrentInstance().router?.params ?? {};
+      const nextData = await fetchAftersaleProgressData({
+        orderId: params.orderId,
+        typeText: params.type ? decodeURIComponent(params.type) : undefined,
+        reasonText: params.reason ? decodeURIComponent(params.reason) : undefined,
+      });
       setPageData(nextData);
     },
     loginRequired: true,
@@ -33,7 +39,7 @@ const AftersaleProgressPage = observer(function AftersaleProgressPage() {
             <View className="_pg-footer">
               <View
                 className="_pg-footer_button"
-                onClick={() => Taro.navigateTo({ url: MINI_PACKAGE_ROUTES.orderAftersaleList })}
+                onClick={() => navigateToMiniRoute(MINI_PACKAGE_ROUTES.orderAftersaleList)}
               >
                 {pageData.primaryButtonText}
               </View>

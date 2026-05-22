@@ -9,12 +9,18 @@ import {
   useMemo,
   useState,
 } from 'react';
+import Taro from '@tarojs/taro';
 import { View } from '@tarojs/components';
 import { AppTabBar } from '@/core/components/AppTabBar';
 import { PageLayout, type PageLayoutProps } from '@/core/components/PageLayout';
 import { PageNavbar } from '@/core/components/PageNavbar';
 import { usePageRuntimeRefresh } from '@/core/runtime/page-runtime-context';
-import { resolvePageChromeMetrics, type PageChromeMetrics } from '@/core/utils/style';
+import {
+  resolvePageChromeMetrics,
+  resolveWindowHeight,
+  resolveWindowWidth,
+  type PageChromeMetrics,
+} from '@/core/utils/style';
 import './PageShell.scss';
 
 type PageShellScrollViewProps = NonNullable<PageLayoutProps['scrollViewProps']>;
@@ -157,6 +163,26 @@ function resolvePageShellSlots(children: ReactNode): PageShellSlots {
   };
 }
 
+function resolvePageShellChromeCacheKey(title: string) {
+  return Taro.getCurrentInstance().router?.path || title;
+}
+
+function normalizeChromeMetricValue(value: number) {
+  return Math.round(value * 100) / 100;
+}
+
+function resolvePageShellChromeCacheSignature(chromeMetrics: PageChromeMetrics) {
+  return [
+    resolveWindowWidth(),
+    resolveWindowHeight(),
+    chromeMetrics.statusBarHeight,
+    chromeMetrics.headerHeight,
+    chromeMetrics.headerContentHeight,
+    chromeMetrics.headerContentTopGap,
+    chromeMetrics.menuRightReserve,
+  ].map(normalizeChromeMetricValue).join('|');
+}
+
 // 渲染轻量页面壳。默认不展示页面内 tabbar，仅主包指定页面显式开启。
 export function PageShell({
   title,
@@ -192,6 +218,8 @@ export function PageShell({
     navbarRight,
     navbarRefreshing,
   );
+  const chromeCacheKey = resolvePageShellChromeCacheKey(title);
+  const chromeCacheSignature = resolvePageShellChromeCacheSignature(chromeMetrics);
   const layoutFooter = slots.hasFooter ? slots.footer : footer ?? bottom;
   const layoutShare = slots.hasShare ? slots.share : share;
   const handleRefresherRefresh = useCallback<PageShellRefresherRefreshHandler>((event) => {
@@ -238,6 +266,8 @@ export function PageShell({
       tabBar={reserveTabBarSpace ? <AppTabBar /> : undefined}
       runtimeNode={runtimeNode}
       scrollViewProps={resolvedScrollViewProps}
+      chromeCacheKey={chromeCacheKey}
+      chromeCacheSignature={chromeCacheSignature}
     >
       <View className="page-shell">
         {slots.content.length > 0 ? <View className="page-shell__body">{slots.content}</View> : null}

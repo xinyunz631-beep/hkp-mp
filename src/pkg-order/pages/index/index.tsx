@@ -4,20 +4,43 @@ import { Text, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
 import { BaseEmpty } from '@/core/components/BaseEmpty';
 import { AppImage } from '@/core/components/AppImage';
-import { PageShell } from '@/core/components/PageShell';
+import { PageHeader, PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
+import { navigateToMiniRoute } from '@/core/utils/navigation';
 import { showWechatToast } from '@/core/utils/wechat-actions';
 import { fetchOrderHomeData, type OrderHomeData } from '@/pkg-order/services';
+import type { OrderHomeActionData, OrderHomeItemData } from '@/pkg-order/services/mock-data';
 import './index.scss';
 
 function resolveOrderActionRoute(actionText: string) {
   if (actionText === '去评价') return MINI_PACKAGE_ROUTES.orderReviewCreate;
   if (actionText === '查看物流') return MINI_PACKAGE_ROUTES.orderLogistics;
   if (actionText === '申请售后') return MINI_PACKAGE_ROUTES.orderAftersaleType;
+  if (actionText === '继续支付') return MINI_PACKAGE_ROUTES.orderDetail;
   if (actionText === '取消订单') return MINI_PACKAGE_ROUTES.orderCancel;
   if (actionText === '查看详情') return MINI_PACKAGE_ROUTES.orderDetail;
   return '';
+}
+
+function navigateToOrderAction(route: string, orderId: string, withOrderId: boolean) {
+  const nextUrl = withOrderId ? `${route}?orderId=${encodeURIComponent(orderId)}` : route;
+  navigateToMiniRoute(nextUrl);
+}
+
+function resolveOrderItemActions(item: OrderHomeItemData): OrderHomeActionData[] {
+  if (item.actions?.length) return item.actions;
+  return [{ text: item.actionText, tone: 'primary' }];
+}
+
+function shouldPassOrderId(actionText: string) {
+  return ['查看详情', '继续支付', '申请售后', '查看物流'].includes(actionText);
+}
+
+function resolveOrderActionClassName(action: OrderHomeActionData) {
+  if (action.tone === 'default') return '_pg-order-item_button _pg-order-item_button--default';
+  if (action.tone === 'danger') return '_pg-order-item_button _pg-order-item_button--danger';
+  return '_pg-order-item_button _pg-order-item_button--primary';
 }
 
 function resolveOrderEmptyCopy(activeTabKey: string) {
@@ -84,7 +107,7 @@ const OrderIndexPage = observer(function OrderIndexPage() {
     return (
       <View className="_pg">
         <PageShell title="我的订单" className="_pg-shell" reserveTabBarSpace={false}>
-          <View className="_pg-content">
+          <PageHeader>
             <View className="_pg-tabs">
               {pageData.tabs.map((tab) => {
                 const active = tab.key === activeTabKey;
@@ -101,6 +124,9 @@ const OrderIndexPage = observer(function OrderIndexPage() {
                 );
               })}
             </View>
+          </PageHeader>
+
+          <View className="_pg-content">
 
             {visibleSections.length > 0 ? (
               visibleSections.map((section) => (
@@ -114,7 +140,9 @@ const OrderIndexPage = observer(function OrderIndexPage() {
                     <View
                       className="_pg-order-item"
                       key={item.id}
-                      onClick={() => Taro.navigateTo({ url: `${MINI_PACKAGE_ROUTES.orderDetail}?orderId=${item.id}` })}
+                      onClick={() => {
+                        navigateToOrderAction(MINI_PACKAGE_ROUTES.orderDetail, item.orderId ?? item.id, true);
+                      }}
                     >
                       <AppImage className="_pg-order-item_image" src={item.imageSrc} mode="aspectFill" />
                       <View className="_pg-order-item_main">
@@ -125,22 +153,31 @@ const OrderIndexPage = observer(function OrderIndexPage() {
                       </View>
                       <View className="_pg-order-item_aside">
                         <Text className="_pg-order-item_quantity">x{item.quantity}</Text>
-                        <View
-                          className="_pg-order-item_button"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            const nextRoute = resolveOrderActionRoute(item.actionText);
+                        <View className="_pg-order-item_actions">
+                          {resolveOrderItemActions(item).map((action) => (
+                            <View
+                              className={resolveOrderActionClassName(action)}
+                              key={action.text}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                const nextRoute = resolveOrderActionRoute(action.text);
 
-                            if (nextRoute) {
-                              const nextUrl = item.actionText === '查看详情' ? `${nextRoute}?orderId=${item.id}` : nextRoute;
-                              Taro.navigateTo({ url: nextUrl });
-                              return;
-                            }
+                                if (nextRoute) {
+                                  const orderId = item.orderId ?? item.id;
+                                  navigateToOrderAction(
+                                    nextRoute,
+                                    orderId,
+                                    shouldPassOrderId(action.text),
+                                  );
+                                  return;
+                                }
 
-                            void showWechatToast(`已选择${item.actionText}`);
-                          }}
-                        >
-                          {item.actionText}
+                                void showWechatToast(`已选择${action.text}`);
+                              }}
+                            >
+                              {action.text}
+                            </View>
+                          ))}
                         </View>
                       </View>
                     </View>

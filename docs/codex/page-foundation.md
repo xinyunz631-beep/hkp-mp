@@ -34,6 +34,7 @@
 - 使用 `PageShell` 默认 navbar 的页面，必须在页面 `config.ts` 声明 `navigationStyle: 'custom'`。
 - 使用系统导航栏的页面，传 `navbar={false}`，且 `config.ts` 只保留系统标题。
 - `navbar={false}` 且自定义顶部栏的页面，顶部内容必须放入 `PageHeader`，由 `PageShell` 统一注入微信状态栏高度和右侧胶囊避让；不要把搜索栏、返回栏直接放进滚动内容顶部。
+- 使用 `PageHeader` 声明固定顶部内容时，页面不得传手写固定高度、不得自行写 spacer 或 JS 估算 header 高度；顶部高度由 `PageLayout` 真实 selector 测量，并且只在当前 header/footer/tabbar 存在状态、底部安全区和设备 chrome 指纹一致时复用路由缓存值，避免进入页面或从子页面返回时滚动区等待测量造成跳动。若仍有跳动，优先修 `PageShell/PageLayout` 的测量和缓存机制，不在页面层硬编码高度。
 - `navbar={false}` 的非全屏业务页必须在 `PageHeader` 内保留显式返回入口，并统一调用 `navigateBackOrHome()`；搜索、筛选、分类等自定义顶部栏不能只保留输入框或取消按钮。
 - `PageShell` 默认 navbar 如果存在 `navbarRight`，标题必须左对齐，右侧操作按钮必须在微信胶囊内容高度内垂直居中；没有右侧操作时标题保持居中。
 - `PageShell` 默认 navbar 且存在标题时，下拉刷新或 `usePageRuntime` 刷新 loading 期间，标题区域统一切换为 NutUI `Loading` + “刷新中”，刷新完成后恢复原标题；自定义 navbar、`navbar={false}` 或无标题页面不受影响。
@@ -57,6 +58,7 @@
 - 页面首屏完成后的非下拉刷新请求必须走 `pageRuntime.withLoading()` 或同等页面级 loading 封装锁住页面，例如切换日期、筛选、tab 条件导致当前商品区重载时；只有用户手动下拉刷新才使用系统下拉刷新态，避免用户在旧数据刷新期间继续点击旧按钮。
 - 全局 loading、popup、runtime host、toast bridge、页面级 overlay 等全局状态组件，最外层 host 节点必须常驻渲染；显示隐藏只控制下一层真实节点或 class，避免 `PageLayout` / `ScrollView` 周边节点增删导致滚动回到顶部。
 - `ScrollView` 本体只负责滚动能力、高度和横纵向参数，不要在 `scroll-view` class 上写业务 padding；页面需要内边距时，在 `ScrollView` 内嵌一层 `View` 承接 padding，避免微信 webview 渲染告警和端内差异。
+- 商城分类、餐饮点单等左右双栏页面不要复用 `PageShell` 外层主滚动；应显式传 `scrollView={false}`，由页面内部左右两个 `ScrollView` 分别承接分类和商品/菜品列表滚动；右侧优先连续渲染所有分类分区并联动左侧高亮，不要只渲染当前分类导致滚动到底断层。
 - 横向 tabs / 分类栏使用 `ScrollView scrollX` 时，外层只负责横向滚动，内层用 `white-space: nowrap` 或 `inline-flex` 撑开内容宽度；每个 tab item 必须按 750px 设计稿尺寸显式写 `width`、`flex: none`、`flex-shrink: 0`，不要把设计稿尺寸折半，也不要只依赖 `flex-basis`，避免微信端把所有 tab 压缩到一屏。
 - 分包默认不要开启 `independent: true`；独立分包不会继承主包 `app.scss -> app.wxss/app-origin.wxss` 的全局样式，只有明确需要独立启动能力时才单独评估开启。
 
@@ -72,6 +74,7 @@
 - 标题固定、右侧关闭、中间滚动、底部确认按钮可选的底部业务弹层优先使用 `AppBottomSheet`；页面只传业务内容，不要重复手写弹层 header、关闭按钮、滚动容器和确认 footer；中间滚动区默认最小高度为 `300px`，未超过最大高度前随内容自适应，特殊业务只通过 `bodyMinHeight/bodyMaxHeight` 覆盖。
 - 小程序页面 SCSS 尺寸默认按 750px 设计稿原值书写，不要按 375 逻辑手动折半；只有明确在写 JS canvas 实际像素、NutUI 内部变量适配或某个组件文档要求时，才单独说明换算依据。
 - 页面级默认内容左右留白统一使用 `30px`；新页面模板和商用页主体区块不要继续默认写 `32px`，组件内部、卡片内部或弹层内部的局部 padding 按组件视觉单独决定。
+- 小程序交互控件边框（按钮、操作按钮、筛选项、可选项、checkbox、可点击/可选择胶囊 tag 等）如果需要 1px 视觉发丝线，统一写 `1Px`，例如 `border: 1Px solid ...`；不要把这类控件边框写成 `1px`，否则按 750px 设计稿转换成 rpx 后真机显示不稳定。`Px` / `PX` 大写是刻意规避转换的项目约定，不要改回 `px`。分割线、下划线、结构性 `border-top/bottom/right: 1px` 以及纯展示型卡片/标签边框可继续保留 `1px`。
 - 字体默认不加粗，正文、说明、链接、普通行文不要写 `font-weight: 500`；只有标题、名称、金额、主按钮等确实需要强调的文本才显式使用 `font-weight: 500`。
 - 项目源码内 `font-weight` 数值不得超过 `550`；新增或触达样式优先使用 `normal` / `500`，不要写 `600/700/800/900`。
 
@@ -93,6 +96,7 @@
 - 当前只按微信小程序 `weapp` 实现和验收，不为 H5 或其它端写兼容分支。
 - 项目分享只允许微信好友分享：页面使用 `useShareAppMessage` 配置分享内容，可见分享按钮统一优先使用 `AppShareButton` / `openType="share"`；分享属于公开传播能力，不校验登录态，不要把分享按钮包进 `AuthAction`、`requireLogin` 或受保护路由判断；禁止 `useShareTimeline`、`onShareTimeline`、`shareTimeline`、朋友圈分享入口，以及用 `showShareMenu` 做二级分享引导。
 - 图片预览、扫码、地图、电话、复制、确认弹窗和 toast 默认优先使用 `src/core/utils/wechat-actions.ts` 封装；确认类弹窗统一走 `showAppModal()` / `showWechatConfirm()`，不要在页面直接散写 `Taro.showModal`，确认按钮颜色默认使用项目主色。
+- 微信支付默认优先使用 `src/core/utils/wechat-actions.ts` 的 `requestWechatPayment()`，无真实支付参数时由封装函数完成本地支付 / 暂不支付闭环；页面不要直接散写 `Taro.requestPayment` 或临时支付 modal。
 - 新增或使用 `chooseLocation` 等微信隐私 API 时，必须同步检查 `src/app.config.ts` 的 `requiredPrivateInfos` 和 `permission` 声明，避免开发工具内接口直接 fail 后被业务 toast 误判为用户取消。
 - 搜索、筛选、表单、交易确认等页面的业务细节必须沉淀到对应页面文档，不写进本文件；本文件只保留微信 API、文案边界、状态组件、布局安全区等跨页面通用约束。
 - 页面可见点击必须落到跳转、弹层、微信 API、本地状态变化、登录拦截或提交结果，不允许用“即将开放”作为非暂缓页面兜底。
@@ -115,6 +119,8 @@
 - 先查事实源：`docs/ui/components.md` 和 `docs/codex/nutui-component-registry.md`。
 - 先查项目内封装：`src/core/components`、当前分包组件、已有同类页面。
 - 交易类通用 UI 优先查 `src/core/components/commerce`，当前包含商品卡、订单卡、优惠券卡、地址卡、提交栏、数量选择、筛选 Tab、SKU 弹层和日期选择。
+- 商城多层级 SKU 必须复用 `src/core/utils/sku.ts` 的选择引擎和 `SkuPopup`：页面不得散写规格联动、库存禁用和层级联动逻辑；SKU 遵循“上层决定下层”，下层选择不得反向改动上层，当前上层下不可售的下层项直接置灰禁点；有组合但无库存显示“售罄”，没有对应组合才显示“暂不可选”；真实接口接入时先在 service/adapter 转成 `HkpSkuGroup` + `HkpSkuVariantBase` 兼容结构。
+- 商城首页、商品列表、商城分类右侧商品列表的快捷加购必须先判断是否需要 SKU 弹层：无可售规格提示无货，只有 1 个可售组合时直接加车，存在多个可售组合时才在当前页通过 `PageShare` 弹 `SkuPopup`；其它加购入口默认跳商品详情，由详情页承接完整规格和商品信息，不要直接写购物车。
 - 通用底部弹层优先查 `src/core/components/AppBottomSheet`，适用于酒店人数、筛选、规则选择等“标题 + 滚动内容 + 可选底部按钮”的底部弹层。
 - 日期选择优先使用项目封装 `DateSelectionPopup`，底层使用 NutUI `Calendar`；门票使用单日，酒店使用范围。
 - 票务分包底部提交 / 支付固定栏优先使用 `src/pkg-ticket/components/TicketSubmitFooter`，不要在门票预定页和确认订单页分别覆写提交栏形态。

@@ -13,6 +13,7 @@
 }
 
 ._pg-navbar_action {
+  padding-right: 30px;
   color: #2e3138;
   font-size: 24px;
   font-weight: 550;
@@ -22,9 +23,14 @@
   background: #f5f6fa;
 }
 
+._pg-empty {
+  margin: 24px 0px 0;
+  background: #ffffff;
+}
+
 ._pg-group {
   margin-top: 16px;
-  padding: 0 32px 24px;
+  padding: 0 30px 24px;
   background: #ffffff;
 
   &_title {
@@ -72,7 +78,7 @@
     justify-content: center;
     width: 36px;
     height: 36px;
-    border: 1px solid #d7d9df;
+    border: 1Px solid #d7d9df;
     border-radius: 999px;
     color: transparent;
     font-size: 22px;
@@ -138,6 +144,31 @@
     margin-top: 18px;
     color: #4b5563;
     font-size: 20px;
+  }
+
+  &_edit-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 16px;
+    margin-top: 18px;
+  }
+
+  &_edit-action {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 52px;
+    padding: 0 20px;
+    border: 1Px solid #d9dde5;
+    border-radius: 999px;
+    color: #4b5563;
+    font-size: 22px;
+    line-height: 1;
+
+    &--danger {
+      border-color: rgba(219, 39, 119, 0.45);
+      color: $color-primary;
+    }
   }
 }
 
@@ -241,7 +272,7 @@
     justify-content: center;
     width: 36px;
     height: 36px;
-    border: 1px solid #d7d9df;
+    border: 1Px solid #d7d9df;
     border-radius: 999px;
     color: transparent;
     font-size: 22px;
@@ -260,7 +291,7 @@
 
   &_summary {
     display: flex;
-    align-items: baseline;
+    align-items: center;
     gap: 8px;
     min-width: 0;
     flex: 1;
@@ -277,6 +308,19 @@
     font-weight: 550;
   }
 
+  &_summary-count {
+    color: $color-primary;
+    font-size: 34px;
+    font-weight: 550;
+  }
+
+  &_actions {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding-right: 24px;
+  }
+
   &_button {
     display: flex;
     align-items: center;
@@ -287,5 +331,24 @@
     color: #ffffff;
     font-size: 30px;
     font-weight: 550;
+
+    &--ghost,
+    &--danger {
+      min-width: 148px;
+      min-height: 68px;
+      border-radius: 999px;
+      font-size: 24px;
+    }
+
+    &--ghost {
+      border: 1Px solid #d9dde5;
+      background: #ffffff;
+      color: #4b5563;
+    }
+
+    &--danger {
+      background: $color-primary;
+      color: #ffffff;
+    }
   }
 }

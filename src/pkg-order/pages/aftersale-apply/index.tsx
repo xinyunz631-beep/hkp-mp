@@ -8,6 +8,7 @@ import { OrderCard } from '@/core/components/commerce';
 import { PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
+import { navigateToMiniRoute } from '@/core/utils/navigation';
 import {
   chooseWechatImages,
   previewWechatImages,
@@ -21,16 +22,18 @@ const AftersaleApplyPage = observer(function AftersaleApplyPage() {
   const [selectedReason, setSelectedReason] = useState('');
   const [remarkText, setRemarkText] = useState('');
   const [proofImages, setProofImages] = useState<string[]>([]);
+  const [routeOrderId, setRouteOrderId] = useState('');
   const pageRuntime = usePageRuntime({
     initPage: async () => {
-      const nextData = await fetchAftersaleApplyData();
       const selectedType = decodeURIComponent(Taro.getCurrentInstance().router?.params?.type || '');
+      const orderId = Taro.getCurrentInstance().router?.params?.orderId;
+      const nextData = await fetchAftersaleApplyData({ orderId, typeText: selectedType });
 
       setPageData({
         ...nextData,
-        selectedTypeText: selectedType || nextData.selectedTypeText,
       });
       setSelectedReason(nextData.defaultReason);
+      setRouteOrderId(orderId || '');
     },
     loginRequired: true,
     loginReason: '登录后可申请售后',
@@ -44,13 +47,21 @@ const AftersaleApplyPage = observer(function AftersaleApplyPage() {
   }
 
   async function handleSubmit() {
+    const currentPageData = pageData;
+    if (!currentPageData) return;
+
     if (!selectedReason) {
       await showWechatToast('请选择售后原因');
       return;
     }
 
     await showWechatToast('售后申请已提交', 'success');
-    Taro.navigateTo({ url: MINI_PACKAGE_ROUTES.orderAftersaleProgress });
+    const query = [
+      routeOrderId ? `orderId=${encodeURIComponent(routeOrderId)}` : '',
+      currentPageData.selectedTypeText ? `type=${encodeURIComponent(currentPageData.selectedTypeText)}` : '',
+      selectedReason ? `reason=${encodeURIComponent(selectedReason)}` : '',
+    ].filter(Boolean).join('&');
+    navigateToMiniRoute(`${MINI_PACKAGE_ROUTES.orderAftersaleProgress}${query ? `?${query}` : ''}`);
   }
 
   return pageRuntime.renderPage(() => {

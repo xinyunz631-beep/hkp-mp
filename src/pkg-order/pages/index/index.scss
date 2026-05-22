@@ -144,7 +144,7 @@
     align-items: flex-end;
     justify-content: space-between;
     flex: none;
-    width: 120px;
+    width: 150px;
     margin-left: 18px;
   }
 
@@ -154,15 +154,32 @@
     line-height: 1.45;
   }
 
+  &_actions {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 12px;
+  }
+
   &_button {
-    width: 124px;
+    width: 136px;
     height: 54px;
-    border: 1px solid #d94a88;
+    border: 1Px solid #d94a88;
     border-radius: 999px;
     box-sizing: border-box;
     color: #d94a88;
     font-size: 26px;
     line-height: 52px;
     text-align: center;
+
+    &--default {
+      border-color: #d0d5dd;
+      color: #4b5563;
+    }
+
+    &--danger {
+      border-color: #ef4444;
+      color: #ef4444;
+    }
   }
 }

@@ -1,6 +1,12 @@
 import { resolveMockData } from '@/core/services/mock';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 
+const categoryListImageAssets = {
+  camera: 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&w=600&q=80',
+  audio: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=600&q=80',
+  travel: 'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?auto=format&fit=crop&w=600&q=80',
+};
+
 export interface MallCategoryBrandItem {
   id: string;
   title: string;
@@ -35,9 +41,9 @@ export function fetchCategoryListData() {
     activeCategoryId: 'digital-home',
     sectionTitle: '数码家电',
     brands: [
-      { id: 'canon', title: '佳能', imageSrc: '', path: MINI_PACKAGE_ROUTES.mallProducts },
-      { id: 'sony', title: '宾得', imageSrc: '', path: MINI_PACKAGE_ROUTES.mallProducts },
-      { id: 'nikon', title: '尼康', imageSrc: '', path: MINI_PACKAGE_ROUTES.mallProducts },
+      { id: 'canon', title: '影像周边', imageSrc: categoryListImageAssets.camera, path: MINI_PACKAGE_ROUTES.mallProducts },
+      { id: 'sony', title: '音频周边', imageSrc: categoryListImageAssets.audio, path: MINI_PACKAGE_ROUTES.mallProducts },
+      { id: 'nikon', title: '出游配件', imageSrc: categoryListImageAssets.travel, path: MINI_PACKAGE_ROUTES.mallProducts },
     ],
   });
 }

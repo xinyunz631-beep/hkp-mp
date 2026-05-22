@@ -118,7 +118,7 @@ pages:
         name: 商城分类 750px 开发稿
         width: 750
         role: active-source
-        note: 已按 mall-category-home.png 完成左侧类目、推荐 Banner、快捷入口和底部商城导航，功能 icon 尺寸已统一收口。
+        note: 分类页已改为左右双栏独立滚动，右侧连续渲染所有分类商品分区并联动左侧高亮，右侧加购复用 SKU 快捷加购规则。
     implementation:
       files:
         - src/pkg-mall/pages/category/index.tsx
@@ -144,7 +144,7 @@ pages:
         name: 分类商品 750px 开发稿
         width: 750
         role: active-source
-        note: 已按 mall-category-list.png 完成左侧类目、品牌区和查看更多入口，功能 icon 尺寸已统一收口。
+        note: 旧分类商品路由保留为兼容入口，进入后重定向到统一商城分类页，避免两套分类体验并存。
     implementation:
       files:
         - src/pkg-mall/pages/category-list/index.tsx
@@ -197,7 +197,7 @@ pages:
         name: 商品列表 750px 开发稿
         width: 750
         role: active-source
-        note: 已补本地筛选、排序、商品详情跳转和本地购物车加购闭环，并承接 mall-search 的 keyword 搜索结果、关键词回显、商品过滤和命中标红。
+        note: 已补本地筛选、排序、商品详情跳转和本地购物车加购闭环，并承接搜索 keyword 与分类 categoryId 的商品过滤。
     implementation:
       files:
         - src/pkg-mall/pages/products/index.tsx
@@ -249,7 +249,7 @@ pages:
         name: 商品详情 750px 开发稿
         width: 750
         role: active-source
-        note: 已补图片预览、客服、分享、收藏、优惠券、参数、SKU 弹层层级和本地购物车闭环。
+        note: 已补图片预览、客服、分享、收藏、优惠券、参数、富文本详情、多级 SKU 联动、购物车和立即购买结算草稿闭环。
     implementation:
       files:
         - src/pkg-mall/pages/product-detail/index.tsx
@@ -275,7 +275,7 @@ pages:
         name: 购物车 750px 开发稿
         width: 750
         role: active-source
-        note: 已补本地加购商品读取、删除确认、空选择提示和结算入口。
+        note: 已补本地加购商品读取、删除确认、空选择提示；结算按选中商品生成商城结算草稿并进入确认订单。
     implementation:
       files:
         - src/pkg-mall/pages/cart/index.tsx
@@ -301,7 +301,7 @@ pages:
         name: 我的收藏 750px 开发稿
         width: 750
         role: active-source
-        note: 已按 mall-favorites.png 完成筛选、编辑遮罩、本地加购、微信分享和删除确认。
+        note: 已按 mall-favorites.png 完成筛选、编辑遮罩、详情选规格、微信分享和删除确认。
     implementation:
       files:
         - src/pkg-mall/pages/favorites/index.tsx
@@ -539,7 +539,7 @@ pages:
         name: 订单详情 750px 开发稿
         width: 750
         role: active-source
-        note: 已按 order-detail-paid.png 完成订单详情，退款按钮可进入售后类型页，本地订单可按 orderId 读取。
+        note: 已按 order-detail-paid.png 完成订单详情，退款/售后按钮可进入售后类型页，本地订单可按 orderId 读取，商城待付款订单支持继续支付并显示收货信息。
     implementation:
       files:
         - src/pkg-order/pages/detail/index.tsx
@@ -565,7 +565,7 @@ pages:
         name: 确认订单 750px 开发稿
         width: 750
         role: active-source
-        note: 已按 order-checkout-address.png 完成确认订单，补商品图预览、模拟微信支付和本地订单写入；优惠券能力暂缓，当前无券业务时隐藏入口。
+        note: 确认订单接入商城结算草稿、地址选择、配送校验和全局微信支付封装；支持暂不支付生成待付款订单并在订单详情继续支付。
     implementation:
       files:
         - src/pkg-order/pages/checkout/index.tsx
@@ -1078,7 +1078,7 @@ pages:
         name: 商城首页 750px 开发稿
         width: 750
         role: active-source
-        note: 商城分包首页，已补搜索、Banner、分类、活动、商品加购、本地购物车和底部导航交互。 UI 参考 docs/ui/source/hkp-mini-page/mall-home.png。
+        note: 商城分包首页，搜索已放入 PageHeader 固定区；已补 Banner、分类、活动、商品加购、本地购物车和底部导航交互。
     implementation:
       files:
         - src/pkg-mall/pages/index/index.tsx

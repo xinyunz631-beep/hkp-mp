@@ -1,4 +1,6 @@
+import Taro from '@tarojs/taro';
 import { Text, View } from '@tarojs/components';
+import classNames from 'classnames';
 import { observer } from 'mobx-react';
 import { useState } from 'react';
 import { AppIcon } from '@/core/components/AppIcon';
@@ -8,17 +10,27 @@ import { PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import { navigateToMiniRoute } from '@/core/utils/navigation';
-import { previewWechatImages, showWechatConfirm, showWechatToast } from '@/core/utils/wechat-actions';
+import { previewWechatImages, requestWechatPayment, showWechatConfirm, showWechatToast } from '@/core/utils/wechat-actions';
 import { fetchCheckoutData, submitOrderCheckoutOrder, type OrderCheckoutData } from '@/pkg-order/services/checkout';
 import './index.scss';
+
+function resolveCheckoutRouteParams() {
+  const params = Taro.getCurrentInstance().router?.params ?? {};
+
+  return {
+    draftId: params.draftId,
+    addressId: params.addressId,
+  };
+}
 
 const CheckoutPage = observer(function CheckoutPage() {
   const [checkoutData, setCheckoutData] = useState<OrderCheckoutData>();
   const pageRuntime = usePageRuntime({
     initPage: async () => {
-      const nextData = await fetchCheckoutData();
+      const nextData = await fetchCheckoutData(resolveCheckoutRouteParams());
       setCheckoutData(nextData);
     },
+    refreshOnShow: true,
     loginRequired: true,
     loginReason: '登录后可提交订单',
   });
@@ -48,23 +60,42 @@ const CheckoutPage = observer(function CheckoutPage() {
   async function handleSubmit() {
     if (!checkoutData) return;
 
-    const confirmed = await showWechatConfirm({
-      title: '模拟微信支付',
-      content: `确认支付 ¥${checkoutData.totalAmount.toFixed(2)}？`,
-      confirmText: '支付',
-      cancelText: '再看看',
+    if (checkoutData.canSubmit === false) {
+      await showWechatToast(checkoutData.deliveryErrors?.[0] || '当前订单暂不可提交');
+      return;
+    }
+
+    const paymentStatus = await requestWechatPayment({
+      title: '微信支付',
+      amount: checkoutData.totalAmount,
+      allowPending: true,
     });
 
-    if (!confirmed) return;
+    if (paymentStatus === 'failed') return;
 
-    const order = submitOrderCheckoutOrder(checkoutData);
-    await showWechatToast('支付成功', 'success');
+    const order = submitOrderCheckoutOrder(checkoutData, {
+      paymentStatus: paymentStatus === 'success' ? 'paid' : 'pending',
+    });
+    await showWechatToast(paymentStatus === 'success' ? '支付成功' : '订单已提交，可稍后继续支付', 'success');
     navigateToMiniRoute(`${MINI_PACKAGE_ROUTES.orderDetail}?orderId=${encodeURIComponent(order.id)}`);
+  }
+
+  function handleAddressPress() {
+    if (!checkoutData?.draftId) {
+      navigateToMiniRoute(MINI_PACKAGE_ROUTES.orderAddress);
+      return;
+    }
+
+    navigateToMiniRoute(
+      `${MINI_PACKAGE_ROUTES.orderAddress}?mode=select&draftId=${encodeURIComponent(checkoutData.draftId)}&selectedId=${encodeURIComponent(checkoutData.address.id)}`,
+    );
   }
 
   return pageRuntime.renderPage(() => {
     if (!checkoutData) return null;
     const hasCouponDiscount = checkoutData.discountAmount > 0 && checkoutData.couponText.trim().length > 0;
+    const deliveryErrors = checkoutData.deliveryErrors ?? [];
+    const deliveryUnavailable = checkoutData.canSubmit === false;
 
     return (
       <View className="_pg">
@@ -79,12 +110,21 @@ const CheckoutPage = observer(function CheckoutPage() {
               amountText={<Text className="_pg-submit_amount">¥{checkoutData.totalAmount.toFixed(2)}</Text>}
               extra={hasCouponDiscount ? <Text className="_pg-submit_extra">已优惠: ¥{checkoutData.discountAmount.toFixed(2)}</Text> : undefined}
               buttonText="去支付"
+              disabled={deliveryUnavailable}
               onSubmit={() => void handleSubmit()}
+              onDisabledClick={() => void handleSubmit()}
             />
           )}
         >
           <View className="_pg-content">
-            <View className="_pg-card" onClick={() => navigateToMiniRoute(MINI_PACKAGE_ROUTES.orderAddress)}>
+            <View className="_pg-card _pg-card--address" onClick={handleAddressPress}>
+              <View className="_pg-address_topline">
+                <View className="_pg-address_title">
+                  <AppIcon name="location" size={16} color="#d94a88" />
+                  <Text>收货地址</Text>
+                </View>
+                <Text className="_pg-address_action">更换</Text>
+              </View>
               <View className="_pg-address">
                 <View className="_pg-address_header">
                   <Text className="_pg-address_name">{checkoutData.address.name}</Text>
@@ -101,6 +141,22 @@ const CheckoutPage = observer(function CheckoutPage() {
               </View>
             </View>
 
+            {deliveryUnavailable ? (
+              <View className="_pg-delivery-alert">
+                <View className="_pg-delivery-alert_header">
+                  <AppIcon name="ask" size={16} color="#d97706" />
+                  <Text>当前订单暂不可提交</Text>
+                </View>
+                {deliveryErrors.map((errorText) => (
+                  <Text className="_pg-delivery-alert_item" key={errorText}>{errorText}</Text>
+                ))}
+                <View className="_pg-delivery-alert_action" onClick={handleAddressPress}>
+                  <Text>更换收货地址</Text>
+                  <AppIcon name="arrowRight" size={14} color="#d97706" />
+                </View>
+              </View>
+            ) : null}
+
             <View className="_pg-card _pg-card--compact">
               <View className="_pg-line-row">
                 <Text className="_pg-line-row_label">支付方法</Text>
@@ -108,9 +164,19 @@ const CheckoutPage = observer(function CheckoutPage() {
               </View>
             </View>
 
-            <View className="_pg-card">
+            <View className="_pg-card _pg-card--products">
+              <View className="_pg-products-header">
+                <View className="_pg-products-header_title">
+                  <AppIcon name="shop" size={16} color="#23262f" />
+                  <Text>Hello Kitty 官方商城</Text>
+                </View>
+                <Text className="_pg-products-header_count">共{checkoutData.products.reduce((total, item) => total + item.quantity, 0)}件</Text>
+              </View>
               {checkoutData.products.map((item) => (
-                <View className="_pg-product" key={item.id}>
+                <View
+                  className={classNames('_pg-product', deliveryUnavailable && '_pg-product--disabled')}
+                  key={item.id}
+                >
                   <AppImage
                     className="_pg-product_image"
                     src={item.imageSrc}
@@ -128,10 +194,12 @@ const CheckoutPage = observer(function CheckoutPage() {
               ))}
             </View>
 
-            <View className="_pg-card _pg-card--compact">
+            <View className={classNames('_pg-card', '_pg-card--compact', deliveryUnavailable && '_pg-card--delivery-error')}>
               <View className="_pg-line-row">
                 <Text className="_pg-line-row_label">配送</Text>
-                <Text className="_pg-line-row_value">{checkoutData.shippingText}</Text>
+                <Text className={classNames('_pg-line-row_value', deliveryUnavailable && '_pg-line-row_value--error')}>
+                  {checkoutData.shippingText}
+                </Text>
               </View>
             </View>
 

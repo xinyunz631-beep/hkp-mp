@@ -65,8 +65,16 @@
     }
   }
 
-  &_tab-indicator {
-    font-size: 18px;
+  &_tab-sort {
+    transition: transform 0.2s ease;
+
+    &--asc {
+      transform: rotate(-90deg);
+    }
+
+    &--desc {
+      transform: rotate(90deg);
+    }
   }
 }
 

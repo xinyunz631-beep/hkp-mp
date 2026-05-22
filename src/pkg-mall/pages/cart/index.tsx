@@ -1,15 +1,20 @@
 import { useMemo, useState } from 'react';
 import Taro from '@tarojs/taro';
 import { Text, View } from '@tarojs/components';
+import classNames from 'classnames';
 import { observer } from 'mobx-react';
+import { BaseEmpty } from '@/core/components/BaseEmpty';
+import { AppIcon } from '@/core/components/AppIcon';
 import { AppImage } from '@/core/components/AppImage';
 import { QuantityStepper } from '@/core/components/commerce';
 import { PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
+import { createMallCheckoutDraft } from '@/core/services/mall-checkout-draft';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import { navigateToMiniRoute } from '@/core/utils/navigation';
-import { showWechatConfirm, showWechatToast } from '@/core/utils/wechat-actions';
-import { fetchCartData } from '@/pkg-mall/services/cart';
+import { previewWechatImages, showWechatConfirm, showWechatToast } from '@/core/utils/wechat-actions';
+import { fetchCartData, replaceMallCartGroups } from '@/pkg-mall/services/cart';
+import { addMallFavoriteItem } from '@/pkg-mall/services/favorites';
 import type { MallCartData, MallCartMerchantGroup, MallCartItem } from '@/pkg-mall/services/mock-data';
 import './index.scss';
 
@@ -33,11 +38,26 @@ const CartPage = observer(function CartPage() {
   const flatItems = useMemo(() => groups.flatMap((group) => group.items), [groups]);
   const checkedItems = flatItems.filter((item) => item.checked);
   const selectedCount = checkedItems.length;
+  const selectedQuantity = checkedItems.reduce((sum, item) => sum + item.quantity, 0);
   const totalAmount = checkedItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const allChecked = flatItems.length > 0 && checkedItems.length === flatItems.length;
+  const hasCartItems = flatItems.length > 0;
+
+  function commitGroups(nextGroups: MallCartMerchantGroup[]) {
+    setGroups(nextGroups);
+    replaceMallCartGroups(nextGroups);
+  }
+
+  function updateGroups(updater: (currentGroups: MallCartMerchantGroup[]) => MallCartMerchantGroup[]) {
+    setGroups((currentGroups) => {
+      const nextGroups = updater(currentGroups);
+      replaceMallCartGroups(nextGroups);
+      return nextGroups;
+    });
+  }
 
   function updateItem(productId: string, updater: (item: MallCartItem) => MallCartItem) {
-    setGroups((currentGroups) => currentGroups
+    updateGroups((currentGroups) => currentGroups
       .map((group) => ({
         ...group,
         items: group.items.map((item) => (item.id === productId ? updater(item) : item)),
@@ -49,16 +69,78 @@ const CartPage = observer(function CartPage() {
     updateItem(productId, (item) => ({ ...item, checked: !item.checked }));
   }
 
-  function handleQuantityChange(productId: string, value: number) {
-    updateItem(productId, (item) => ({ ...item, quantity: value }));
+  async function handleQuantityChange(item: MallCartItem, value: number) {
+    if (value <= 0) {
+      await handleDeleteSingleItem(item);
+      return;
+    }
+
+    updateItem(item.id, (currentItem) => ({ ...currentItem, quantity: value }));
+  }
+
+  function resolveCartProductId(item: MallCartItem) {
+    return item.id.split(':')[0] || item.id;
+  }
+
+  function handleProductPress(item: MallCartItem) {
+    navigateToMiniRoute(`${MINI_PACKAGE_ROUTES.mallProductDetail}?productId=${encodeURIComponent(resolveCartProductId(item))}`);
+  }
+
+  function handlePreviewItemImage(item: MallCartItem) {
+    void previewWechatImages({
+      urls: [item.image.src],
+      current: item.image.src,
+      emptyText: '暂无商品大图',
+    });
   }
 
   function handleToggleAll() {
     const nextChecked = !allChecked;
-    setGroups((currentGroups) => currentGroups.map((group) => ({
+    updateGroups((currentGroups) => currentGroups.map((group) => ({
       ...group,
       items: group.items.map((item) => ({ ...item, checked: nextChecked })),
     })));
+  }
+
+  function removeCheckedItems(itemIds: string[]) {
+    const idSet = new Set(itemIds);
+    updateGroups((currentGroups) => currentGroups
+      .map((group) => ({
+        ...group,
+        items: group.items.filter((item) => !idSet.has(item.id)),
+      }))
+      .filter((group) => group.items.length > 0));
+  }
+
+  async function handleDeleteSingleItem(item: MallCartItem) {
+    const confirmed = await showWechatConfirm({
+      title: '删除商品',
+      content: `确定从购物车删除「${item.title}」吗？`,
+      confirmText: '删除',
+      cancelText: '取消',
+    });
+
+    if (!confirmed) return;
+
+    removeCheckedItems([item.id]);
+    await showWechatToast('已删除商品', 'success');
+  }
+
+  async function handleMoveToFavorite(item: MallCartItem) {
+    addMallFavoriteItem(item);
+    removeCheckedItems([item.id]);
+    await showWechatToast(`已将「${item.title.slice(0, 8)}」移入收藏`, 'success');
+  }
+
+  async function handleBatchMoveToFavorite() {
+    if (!selectedCount) {
+      await showWechatToast('请先选择商品');
+      return;
+    }
+
+    checkedItems.forEach((item) => addMallFavoriteItem(item));
+    removeCheckedItems(checkedItems.map((item) => item.id));
+    await showWechatToast('已移入收藏', 'success');
   }
 
   async function handlePrimaryAction() {
@@ -76,12 +158,7 @@ const CartPage = observer(function CartPage() {
       });
       if (!confirmed) return;
 
-      setGroups((currentGroups) => currentGroups
-        .map((group) => ({
-          ...group,
-          items: group.items.filter((item) => !item.checked),
-        }))
-        .filter((group) => group.items.length > 0));
+      removeCheckedItems(checkedItems.map((item) => item.id));
       await showWechatToast('已删除选中商品', 'success');
       return;
     }
@@ -91,7 +168,29 @@ const CartPage = observer(function CartPage() {
       return;
     }
 
-    navigateToMiniRoute(MINI_PACKAGE_ROUTES.orderCheckout);
+    const draft = createMallCheckoutDraft({
+      products: checkedItems.map((item) => ({
+        id: item.id,
+        productId: item.id.split(':')[0] || item.id,
+        title: item.title,
+        specText: item.skuText || item.subtitle || '默认规格',
+        quantity: item.quantity,
+        unitPrice: item.price,
+        imageSrc: item.image.src,
+        merchantName: item.merchantName,
+        giftText: item.giftText,
+        canRefund: item.canRefund ?? true,
+        canAfterSale: item.canAfterSale ?? true,
+        shippingRule: item.shippingRule ?? { mode: 'express', freightAmount: 0, supportedRegionKeywords: ['上海', '浙江', '江苏'] },
+      })),
+    });
+
+    if (!draft) {
+      await showWechatToast('当前商品暂不可结算');
+      return;
+    }
+
+    navigateToMiniRoute(`${MINI_PACKAGE_ROUTES.orderCheckout}?draftId=${encodeURIComponent(draft.id)}`);
   }
 
   return pageRuntime.renderPage(() => (
@@ -101,68 +200,134 @@ const CartPage = observer(function CartPage() {
         className="_pg-shell"
         reserveTabBarSpace={false}
         scrollViewProps={{}}
-        navbarRight={(
-          <Text className="_pg-navbar_action" onClick={() => setEditMode((currentValue) => !currentValue)}>
+        navbarRight={hasCartItems ? (
+          <Text
+            className="_pg-navbar_action"
+            onClick={() => {
+              setEditMode((currentValue) => {
+                const nextEditMode = !currentValue;
+                if (!nextEditMode) commitGroups(groups);
+                return nextEditMode;
+              });
+            }}
+          >
             {editMode ? '完成' : '编辑'}
           </Text>
-        )}
-        footer={(
+        ) : undefined}
+        footer={hasCartItems ? (
           <View className="_pg-footer">
             <View className="_pg-footer_select" onClick={handleToggleAll}>
               <View className={`_pg-footer_checkbox ${allChecked ? '_pg-footer_checkbox--checked' : ''}`}>
-                {allChecked ? <Text>✓</Text> : null}
+                {allChecked ? <AppIcon name="check" size={10} color="#ffffff" /> : null}
               </View>
               <Text className="_pg-footer_select-text">全选</Text>
             </View>
 
-            <View className="_pg-footer_summary">
-              <Text className="_pg-footer_summary-label">合计:</Text>
-              <Text className="_pg-footer_summary-amount">¥{totalAmount.toFixed(0)}</Text>
-            </View>
+            {editMode ? (
+              <>
+                <View className="_pg-footer_summary">
+                  <Text className="_pg-footer_summary-label">已选</Text>
+                  <Text className="_pg-footer_summary-count">{selectedQuantity}</Text>
+                  <Text className="_pg-footer_summary-label">件</Text>
+                </View>
+                <View className="_pg-footer_actions">
+                  <View
+                    className={classNames('_pg-footer_button', '_pg-footer_button--ghost')}
+                    onClick={() => void handleBatchMoveToFavorite()}
+                  >
+                    <Text>移入收藏</Text>
+                  </View>
+                  <View
+                    className={classNames('_pg-footer_button', '_pg-footer_button--danger')}
+                    onClick={() => void handlePrimaryAction()}
+                  >
+                    <Text>删除</Text>
+                  </View>
+                </View>
+              </>
+            ) : (
+              <>
+                <View className="_pg-footer_summary">
+                  <Text className="_pg-footer_summary-label">合计:</Text>
+                  <Text className="_pg-footer_summary-amount">¥{totalAmount.toFixed(0)}</Text>
+                </View>
 
-            <View className="_pg-footer_button" onClick={() => void handlePrimaryAction()}>
-              <Text>{editMode ? '删除' : '结算'}</Text>
-            </View>
+                <View className="_pg-footer_button" onClick={() => void handlePrimaryAction()}>
+                  <Text>结算</Text>
+                </View>
+              </>
+            )}
           </View>
-        )}
+        ) : undefined}
       >
         <View className="_pg-page">
-          {groups.map((group) => (
-            <View className="_pg-group" key={group.id}>
-              <Text className="_pg-group_title">{group.merchantName}</Text>
-              {group.promotionTags.length > 0 ? (
-                <View className="_pg-group_tags">
-                  {group.promotionTags.map((tag) => (
-                    <View className="_pg-group_tag" key={tag}>
-                      <Text>{tag}</Text>
-                    </View>
-                  ))}
-                </View>
-              ) : null}
+          {hasCartItems ? (
+            groups.map((group) => (
+              <View className="_pg-group" key={group.id}>
+                <Text className="_pg-group_title">{group.merchantName}</Text>
+                {group.promotionTags.length > 0 ? (
+                  <View className="_pg-group_tags">
+                    {group.promotionTags.map((tag) => (
+                      <View className="_pg-group_tag" key={tag}>
+                        <Text>{tag}</Text>
+                      </View>
+                    ))}
+                  </View>
+                ) : null}
 
-              {group.items.map((item) => (
-                <View className="_pg-item" key={item.id}>
-                  <View className="_pg-item_check" onClick={() => handleToggleItem(item.id)}>
-                    <View className={`_pg-item_checkbox ${item.checked ? '_pg-item_checkbox--checked' : ''}`}>
-                      {item.checked ? <Text>✓</Text> : null}
+                {group.items.map((item) => (
+                  <View className="_pg-item" key={item.id}>
+                    <View className="_pg-item_check" onClick={() => handleToggleItem(item.id)}>
+                      <View className={`_pg-item_checkbox ${item.checked ? '_pg-item_checkbox--checked' : ''}`}>
+                        {item.checked ? <AppIcon name="check" size={10} color="#ffffff" /> : null}
+                      </View>
+                    </View>
+                    <AppImage
+                      className="_pg-item_image"
+                      src={item.image.src}
+                      mode="aspectFill"
+                      emptyState="error"
+                      onClick={() => handlePreviewItemImage(item)}
+                    />
+                    <View className="_pg-item_body">
+                      <Text className="_pg-item_title" onClick={() => handleProductPress(item)}>{item.title}</Text>
+                      <View className="_pg-item_sku">
+                        <Text>{item.skuText}</Text>
+                      </View>
+                      <View className="_pg-item_footer">
+                        <Text className="_pg-item_price">¥ {item.price}</Text>
+                        <QuantityStepper value={item.quantity} min={0} onChange={(value) => void handleQuantityChange(item, value)} />
+                      </View>
+                      {item.giftText ? <Text className="_pg-item_gift">{item.giftText}</Text> : null}
+                      {editMode ? (
+                        <View className="_pg-item_edit-actions">
+                          <View className="_pg-item_edit-action" onClick={() => void handleMoveToFavorite(item)}>
+                            <Text>移入收藏</Text>
+                          </View>
+                          <View
+                            className="_pg-item_edit-action _pg-item_edit-action--danger"
+                            onClick={() => void handleDeleteSingleItem(item)}
+                          >
+                            <Text>删除</Text>
+                          </View>
+                        </View>
+                      ) : null}
                     </View>
                   </View>
-                  <AppImage className="_pg-item_image" src={item.image.src} mode="aspectFill" emptyState="error" />
-                  <View className="_pg-item_body">
-                    <Text className="_pg-item_title">{item.title}</Text>
-                    <View className="_pg-item_sku">
-                      <Text>{item.skuText}</Text>
-                    </View>
-                    <View className="_pg-item_footer">
-                      <Text className="_pg-item_price">¥ {item.price}</Text>
-                      <QuantityStepper value={item.quantity} min={1} onChange={(value) => handleQuantityChange(item.id, value)} />
-                    </View>
-                    {item.giftText ? <Text className="_pg-item_gift">{item.giftText}</Text> : null}
-                  </View>
-                </View>
-              ))}
-            </View>
-          ))}
+                ))}
+              </View>
+            ))
+          ) : (
+            <BaseEmpty
+              className="_pg-empty"
+              title="购物车空空的"
+              description="去挑选喜欢的乐园好物，加入后可一起结算。"
+              actionText="去逛逛"
+              onAction={() => {
+                void navigateToMiniRoute(MINI_PACKAGE_ROUTES.mallHome);
+              }}
+            />
+          )}
 
           <View className="_pg-recommend">
             <View className="_pg-recommend_header">

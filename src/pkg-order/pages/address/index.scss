@@ -26,6 +26,10 @@
   background: #ffffff;
   box-shadow: 0 12px 28px rgba(17, 24, 39, 0.04);
 
+  &--selected {
+    box-shadow: 0 0 0 2px rgba(219, 39, 119, 0.18), 0 12px 28px rgba(17, 24, 39, 0.04);
+  }
+
   & + & {
     margin-top: 24px;
   }
@@ -68,6 +72,10 @@
       background: #f3f4f6;
       color: #8b909a;
     }
+  }
+
+  &_selected-icon {
+    margin-left: auto;
   }
 
   &_location {

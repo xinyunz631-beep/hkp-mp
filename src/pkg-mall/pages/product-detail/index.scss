@@ -161,7 +161,7 @@
     min-width: 156px;
     height: 46px;
     padding: 0 18px;
-    border: 1px solid #ff7ea8;
+    border: 1Px solid #ff7ea8;
     border-radius: 10px;
     color: #ff5f94;
     font-size: 20px;
@@ -329,7 +329,14 @@
   padding-bottom: 32px;
 
   &_card {
-    padding: 24px 32px 0;
+    padding: 24px 30px 0;
+  }
+
+  &_rich-text {
+    display: block;
+    color: #3a3d44;
+    font-size: 26px;
+    line-height: 1.8;
   }
 
   &_image {
@@ -340,7 +347,8 @@
 
     &--extra {
       display: block;
-      margin: 20px 32px 0;
+      width: calc(100% - 60px);
+      margin: 20px 30px 0;
     }
   }
 
@@ -390,6 +398,13 @@
     justify-content: center;
     gap: 8px;
     min-height: 104px;
+  }
+
+  &_icon-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   &_action-text {

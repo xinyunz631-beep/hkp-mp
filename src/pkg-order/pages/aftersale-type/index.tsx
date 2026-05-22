@@ -7,14 +7,16 @@ import { OrderCard } from '@/core/components/commerce';
 import { PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
+import { navigateToMiniRoute } from '@/core/utils/navigation';
 import { fetchAftersaleTypeData, type OrderAftersaleTypeData } from '@/pkg-order/services/aftersale-type';
 import './index.scss';
 
 const AftersaleTypePage = observer(function AftersaleTypePage() {
   const [pageData, setPageData] = useState<OrderAftersaleTypeData>();
+  const orderId = Taro.getCurrentInstance().router?.params?.orderId;
   const pageRuntime = usePageRuntime({
     initPage: async () => {
-      const nextData = await fetchAftersaleTypeData();
+      const nextData = await fetchAftersaleTypeData(orderId);
       setPageData(nextData);
     },
     loginRequired: true,
@@ -22,9 +24,11 @@ const AftersaleTypePage = observer(function AftersaleTypePage() {
   });
 
   function openApplyPage(typeTitle: string) {
-    Taro.navigateTo({
-      url: `${MINI_PACKAGE_ROUTES.orderAftersaleApply}?type=${encodeURIComponent(typeTitle)}`,
-    });
+    const query = [
+      `type=${encodeURIComponent(typeTitle)}`,
+      orderId ? `orderId=${encodeURIComponent(orderId)}` : '',
+    ].filter(Boolean).join('&');
+    navigateToMiniRoute(`${MINI_PACKAGE_ROUTES.orderAftersaleApply}?${query}`);
   }
 
   return pageRuntime.renderPage(() => {

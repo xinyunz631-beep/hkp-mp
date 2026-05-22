@@ -1,5 +1,13 @@
 import type { HkpAddressSummary, HkpFilterTab, HkpOrderSummary } from '@/core/types/hkp';
 
+const orderImageAssets = {
+  plush: 'https://images.unsplash.com/photo-1596461404969-9ae70f2830c1?auto=format&fit=crop&w=900&q=80',
+  gift: 'https://images.unsplash.com/photo-1513201099705-a9746e1e201f?auto=format&fit=crop&w=900&q=80',
+  ticket: 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=900&q=80',
+  hotel: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=900&q=80',
+  mug: 'https://images.unsplash.com/photo-1514228742587-6b1558fcca3d?auto=format&fit=crop&w=900&q=80',
+};
+
 export const orderAddresses: HkpAddressSummary[] = [
   {
     id: 'addr-home',
@@ -34,8 +42,14 @@ export interface OrderHomeTabData {
   text: string;
 }
 
+export interface OrderHomeActionData {
+  text: string;
+  tone?: 'default' | 'primary' | 'danger';
+}
+
 export interface OrderHomeItemData {
   id: string;
+  orderId?: string;
   title: string;
   subtitle?: string;
   extraText?: string;
@@ -43,6 +57,7 @@ export interface OrderHomeItemData {
   quantity: number;
   priceText: string;
   actionText: string;
+  actions?: OrderHomeActionData[];
 }
 
 export interface OrderHomeSectionData {
@@ -68,6 +83,8 @@ export interface OrderDetailData {
   id: string;
   statusText: string;
   paidAmountText: string;
+  primaryActionType?: 'pay' | 'aftersale' | 'refund' | 'none';
+  payExpireAt?: string;
   title: string;
   quantityText: string;
   productFields: OrderDetailFieldData[];
@@ -86,13 +103,18 @@ export interface OrderCheckoutProductData {
   priceText: string;
   imageSrc: string;
   giftText?: string;
+  canRefund?: boolean;
+  canAfterSale?: boolean;
 }
 
 export interface OrderCheckoutData {
+  draftId?: string;
   address: HkpAddressSummary;
   paymentMethodText: string;
   products: OrderCheckoutProductData[];
   shippingText: string;
+  canSubmit?: boolean;
+  deliveryErrors?: string[];
   couponText: string;
   discountText: string;
   amountFields: OrderDetailFieldData[];
@@ -247,7 +269,7 @@ export const orderList: HkpOrderSummary[] = [
       {
         id: 'pending-plush',
         title: 'Hello Kitty 毛绒公仔',
-        image: { src: '' },
+        image: { src: orderImageAssets.plush },
         skuText: '粉色限定款',
         price: 199,
         quantity: 1,
@@ -255,7 +277,7 @@ export const orderList: HkpOrderSummary[] = [
     ],
     totalAmount: 199,
     countText: '共1件',
-    primaryActionText: '取消订单',
+    primaryActionText: '继续支付',
   },
   {
     id: 'order-ticket-001',
@@ -266,7 +288,7 @@ export const orderList: HkpOrderSummary[] = [
         id: 'adult-ticket',
         title: '成人票',
         subtitle: '指定游玩日当天有效',
-        image: { src: '' },
+        image: { src: orderImageAssets.ticket },
         skuText: '2026-05-16',
         price: 299,
         quantity: 1,
@@ -284,7 +306,7 @@ export const orderList: HkpOrderSummary[] = [
       {
         id: 'sanrio-icebox-sticker',
         title: '新国风冰箱贴盲盒',
-        image: { src: '' },
+        image: { src: orderImageAssets.gift },
         skuText: 'Hello Kitty',
         price: 59,
         quantity: 2,
@@ -317,7 +339,7 @@ export const orderHomeData: OrderHomeData = {
           id: 'order-home-item-1',
           title: 'Hello Kitty凯蒂猫情人节生日礼物毛绒玩玩公仔玩偶毛绒玩具',
           subtitle: '尺寸：20cm',
-          imageSrc: '',
+          imageSrc: orderImageAssets.plush,
           quantity: 1,
           priceText: '¥ 189.9',
           actionText: '去评价',
@@ -327,7 +349,7 @@ export const orderHomeData: OrderHomeData = {
           title: '多彩曲奇饼干',
           subtitle: '四合一口味 280g',
           extraText: '赠品  精美钥匙扣一个',
-          imageSrc: '',
+          imageSrc: orderImageAssets.gift,
           quantity: 2,
           priceText: '¥ 88',
           actionText: '去评价',
@@ -336,7 +358,7 @@ export const orderHomeData: OrderHomeData = {
           id: 'order-home-item-3',
           title: 'Hello Kitty凯蒂猫情人节生日礼物毛绒玩玩公仔玩偶毛绒玩具',
           subtitle: '尺寸：50cm',
-          imageSrc: '',
+          imageSrc: orderImageAssets.plush,
           quantity: 1,
           priceText: '¥ 189.9',
           actionText: '去评价',
@@ -354,7 +376,7 @@ export const orderHomeData: OrderHomeData = {
           id: 'order-home-item-4',
           title: 'Hello Kitty 乐园门票',
           subtitle: '出行日期：2019-11-09',
-          imageSrc: '',
+          imageSrc: orderImageAssets.ticket,
           quantity: 3,
           priceText: '¥ 299.9',
           actionText: '去评价',
@@ -373,7 +395,7 @@ export const orderHomeData: OrderHomeData = {
           title: '锦江银润城堡酒店豪华家庭房',
           subtitle: '豪华家庭房-1间-3晚',
           extraText: '入住日期：2019-11-11\n离店日期：2019-11-14',
-          imageSrc: '',
+          imageSrc: orderImageAssets.hotel,
           quantity: 1,
           priceText: '¥ 299.9',
           actionText: '去评价',
@@ -389,12 +411,13 @@ export const orderHomeData: OrderHomeData = {
       items: [
         {
           id: 'order-home-item-6',
+          orderId: 'order-pending-001',
           title: 'Hello Kitty 毛绒公仔',
           subtitle: '粉色限定款',
-          imageSrc: '',
+          imageSrc: orderImageAssets.plush,
           quantity: 1,
           priceText: '¥ 199',
-          actionText: '取消订单',
+          actionText: '继续支付',
         },
       ],
     },
@@ -407,13 +430,18 @@ export const orderHomeData: OrderHomeData = {
       items: [
         {
           id: 'order-home-item-7',
+          orderId: 'order-mall-001',
           title: '新国风冰箱贴盲盒',
           subtitle: 'Hello Kitty / Melody',
           extraText: '未拆封可申请退款，发货后支持退货退款',
-          imageSrc: '',
+          imageSrc: orderImageAssets.gift,
           quantity: 2,
           priceText: '¥ 118',
           actionText: '申请售后',
+          actions: [
+            { text: '查看物流', tone: 'default' },
+            { text: '申请售后', tone: 'primary' },
+          ],
         },
       ],
     },
@@ -465,7 +493,7 @@ export const orderCheckoutData: OrderCheckoutData = {
       specText: '规格：30cm',
       quantity: 1,
       priceText: '¥ 349.9',
-      imageSrc: '',
+      imageSrc: orderImageAssets.plush,
       giftText: '赠品  精美钥匙扣一个',
     },
     {
@@ -474,7 +502,7 @@ export const orderCheckoutData: OrderCheckoutData = {
       specText: '规格：40cm',
       quantity: 1,
       priceText: '¥ 349.9',
-      imageSrc: '',
+      imageSrc: orderImageAssets.gift,
     },
   ],
   shippingText: '中通快递',

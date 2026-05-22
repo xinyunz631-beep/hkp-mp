@@ -1,16 +1,36 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import Taro from '@tarojs/taro';
 import { Swiper, SwiperItem, Text, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
 import { AppIcon } from '@/core/components/AppIcon';
 import { AppImage } from '@/core/components/AppImage';
-import { PageShell } from '@/core/components/PageShell';
+import { SkuPopup } from '@/core/components/commerce';
+import { PageHeader, PageShare, PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES, type MiniPackageRoute } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
+import type { HkpSkuGroup } from '@/core/types/hkp';
+import { navigateToMiniRoute } from '@/core/utils/navigation';
+import {
+  clampSkuQuantity,
+  getSalableSkuVariants,
+  resolveInitialSkuGroups,
+  resolveNextSkuGroupsAfterSelect,
+  resolveSkuState,
+  shouldOpenQuickSkuPopup,
+} from '@/core/utils/sku';
 import { showWechatToast } from '@/core/utils/wechat-actions';
+import { MallCartBadge } from '@/pkg-mall/components/MallCartBadge';
+import { useMallCartCount } from '@/pkg-mall/hooks/use-mall-cart-count';
 import { fetchMallHomeData } from '@/pkg-mall/services';
 import { addMallCartItem } from '@/pkg-mall/services/cart';
-import type { MallCategoryItem, MallHomeData, MallPromoCard } from '@/pkg-mall/services/mock-data';
+import { fetchProductDetailData } from '@/pkg-mall/services/product-detail';
+import type {
+  MallCategoryItem,
+  MallHomeData,
+  MallProductDetailData,
+  MallPromoCard,
+  MallSkuVariant,
+} from '@/pkg-mall/services/mock-data';
 import './index.scss';
 
 interface MallFooterItem {
@@ -36,6 +56,11 @@ const promoAccentClassMap = {
 const MallIndexPage = observer(function MallIndexPage() {
   const [homeData, setHomeData] = useState<MallHomeData>();
   const [activeBannerIndex, setActiveBannerIndex] = useState(0);
+  const [skuVisible, setSkuVisible] = useState(false);
+  const [skuDetailData, setSkuDetailData] = useState<MallProductDetailData>();
+  const [skuGroups, setSkuGroups] = useState<HkpSkuGroup[]>([]);
+  const [skuQuantity, setSkuQuantity] = useState(1);
+  const { cartCount } = useMallCartCount();
   const pageRuntime = usePageRuntime({
     initPage: async () => {
       const nextData = await fetchMallHomeData();
@@ -47,10 +72,24 @@ const MallIndexPage = observer(function MallIndexPage() {
   const categories = homeData?.categories ?? [];
   const promos = homeData?.promos ?? [];
   const products = homeData?.products ?? [];
+  const skuVariants = skuDetailData?.skuVariants ?? [];
+  const skuState = useMemo(
+    () => resolveSkuState<MallSkuVariant>(skuGroups, skuVariants),
+    [skuGroups, skuVariants],
+  );
+  const selectedVariant = skuState.selectedVariant;
+  const skuProduct = skuDetailData?.product && selectedVariant
+    ? {
+        ...skuDetailData.product,
+        image: { src: selectedVariant.imageSrc || skuDetailData.product.image.src },
+        price: selectedVariant.price,
+        subtitle: selectedVariant.skuText,
+      }
+    : skuDetailData?.product;
 
   function openPackagePage(path: MiniPackageRoute) {
     if (path === MINI_PACKAGE_ROUTES.mallHome) return;
-    Taro.navigateTo({ url: path });
+    navigateToMiniRoute(path);
   }
 
   function handleSearch() {
@@ -71,9 +110,72 @@ const MallIndexPage = observer(function MallIndexPage() {
     });
   }
 
-  async function handleAddToCart(product: MallHomeData['products'][number]) {
-    await addMallCartItem(product);
+  async function addDetailSkuToCart(detailData: MallProductDetailData, variant?: MallSkuVariant, quantity = 1) {
+    const authed = await pageRuntime.ensureLogin('登录后可加入购物车');
+    if (!authed) return;
+
+    await addMallCartItem(variant ? {
+      ...detailData.product,
+      image: { src: variant.imageSrc || detailData.product.image.src },
+      price: variant.price,
+      subtitle: variant.skuText,
+    } : detailData.product, {
+      quantity,
+      skuText: variant?.skuText || detailData.product.subtitle || '默认规格',
+      giftText: variant?.giftText,
+      shippingRule: variant?.shippingRule,
+    });
     await showWechatToast('已加入购物车', 'success');
+  }
+
+  async function handleAddToCart(product: MallHomeData['products'][number]) {
+    let nextDetailData: MallProductDetailData | undefined;
+
+    await pageRuntime.withLoading(async () => {
+      nextDetailData = await fetchProductDetailData(product.id);
+    });
+
+    if (!nextDetailData) return;
+
+    const availableVariants = getSalableSkuVariants(nextDetailData.skuVariants);
+
+    if (nextDetailData.skuVariants.length > 0 && availableVariants.length === 0) {
+      await showWechatToast('当前商品暂时无货');
+      return;
+    }
+
+    if (!shouldOpenQuickSkuPopup(nextDetailData.skuVariants)) {
+      await addDetailSkuToCart(nextDetailData, availableVariants[0], 1);
+      return;
+    }
+
+    setSkuDetailData(nextDetailData);
+    setSkuGroups(resolveInitialSkuGroups(nextDetailData.skuGroups, nextDetailData.skuVariants));
+    setSkuQuantity(1);
+    setSkuVisible(true);
+  }
+
+  function handleSelectSku(groupId: string, optionId: string) {
+    const nextGroups = resolveNextSkuGroupsAfterSelect(skuGroups, skuVariants, groupId, optionId);
+    const nextSkuState = resolveSkuState<MallSkuVariant>(nextGroups, skuVariants);
+
+    setSkuGroups(nextGroups);
+    setSkuQuantity((currentQuantity) => clampSkuQuantity(currentQuantity, 1, nextSkuState.maxQuantity));
+  }
+
+  async function handleSkuSubmit() {
+    if (skuState.submitTip) {
+      await showWechatToast(skuState.submitTip);
+      return;
+    }
+
+    if (!skuDetailData || !selectedVariant) {
+      await showWechatToast('当前规格暂时无货，请更换规格');
+      return;
+    }
+
+    await addDetailSkuToCart(skuDetailData, selectedVariant, skuQuantity);
+    setSkuVisible(false);
   }
 
   function handleFooterPress(item: MallFooterItem) {
@@ -98,12 +200,15 @@ const MallIndexPage = observer(function MallIndexPage() {
                   key={item.key}
                   onClick={() => handleFooterPress(item)}
                 >
-                  <AppIcon
-                    name={item.icon}
-                    className="_pg-footer_icon"
-                    size={16}
-                    color={active ? '#db2777' : '#222222'}
-                  />
+                  <View className="_pg-footer_icon-wrap">
+                    <AppIcon
+                      name={item.icon}
+                      className="_pg-footer_icon"
+                      size={16}
+                      color={active ? '#db2777' : '#222222'}
+                    />
+                    {item.key === 'cart' ? <MallCartBadge count={cartCount} /> : null}
+                  </View>
                   <Text className="_pg-footer_text">{item.title}</Text>
                 </View>
               );
@@ -111,12 +216,16 @@ const MallIndexPage = observer(function MallIndexPage() {
           </View>
         )}
       >
-        <View className="_pg-page">
-          <View className="_pg-search" onClick={handleSearch}>
-            <AppIcon name="search" className="_pg-search_icon" size={16} color="#c0c4cc" />
-            <Text className="_pg-search_placeholder">Hello Kitty公仔</Text>
+        <PageHeader>
+          <View className="_pg-header">
+            <View className="_pg-search" onClick={handleSearch}>
+              <AppIcon name="search" className="_pg-search_icon" size={16} color="#c0c4cc" />
+              <Text className="_pg-search_placeholder">搜索乐园好物</Text>
+            </View>
           </View>
+        </PageHeader>
 
+        <View className="_pg-page">
           <View className="_pg-hero">
             <Swiper
               className="_pg-hero_swiper"
@@ -214,6 +323,26 @@ const MallIndexPage = observer(function MallIndexPage() {
             </View>
           </View>
         </View>
+        <PageShare>
+          {skuProduct ? (
+            <SkuPopup
+              visible={skuVisible}
+              product={skuProduct}
+              skuGroups={skuState.groups}
+              quantity={skuQuantity}
+              totalAmount={(selectedVariant?.price ?? skuProduct.price) * skuQuantity}
+              selectionText={skuState.missingSelectionText || (skuState.selectedText ? `已选 ${skuState.selectedText}` : '')}
+              stockText={skuState.stockText}
+              maxQuantity={skuState.maxQuantity}
+              submitDisabled={!skuState.isPurchasable}
+              submitText="加入购物车"
+              onClose={() => setSkuVisible(false)}
+              onSubmit={() => void handleSkuSubmit()}
+              onSelectSku={handleSelectSku}
+              onQuantityChange={setSkuQuantity}
+            />
+          ) : null}
+        </PageShare>
       </PageShell>
     </View>
   ));

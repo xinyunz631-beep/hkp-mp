@@ -65,6 +65,7 @@ export type AppIconName =
   | 'search'
   | 'service'
   | 'share'
+  | 'shop'
   | 'ticket';
 
 interface AppIconProps {
@@ -111,6 +112,7 @@ const nutIconMap: Record<AppIconName, NutIconComponent | undefined> = {
   search: Search,
   service: Service,
   share: Share,
+  shop: Shop,
   ticket: Ticket,
 };
 

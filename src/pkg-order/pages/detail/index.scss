@@ -36,6 +36,14 @@
     line-height: 1.4;
   }
 
+  &_deadline {
+    display: block;
+    margin-top: 12px;
+    color: #8b909a;
+    font-size: 26px;
+    line-height: 1.45;
+  }
+
   &_amount {
     display: flex;
     align-items: baseline;
@@ -135,7 +143,7 @@
   width: 196px;
   height: 68px;
   margin: 26px 0 0 auto;
-  border: 1px solid #d94a88;
+  border: 1Px solid #d94a88;
   border-radius: 999px;
   box-sizing: border-box;
   color: #d94a88;

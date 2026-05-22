@@ -1,10 +1,12 @@
 import { useState } from 'react';
+import Taro from '@tarojs/taro';
 import { Text, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
 import { BaseEmpty } from '@/core/components/BaseEmpty';
 import { AppIcon } from '@/core/components/AppIcon';
 import { PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
+import { setMallCheckoutSelectedAddressId } from '@/core/services/mall-checkout-draft';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import { navigateToMiniRoute } from '@/core/utils/navigation';
 import { showWechatConfirm, showWechatToast } from '@/core/utils/wechat-actions';
@@ -22,8 +24,19 @@ function openAddressEditor(addressId?: string) {
   navigateToMiniRoute(`${MINI_PACKAGE_ROUTES.orderAddressEdit}${query}`);
 }
 
+function resolveAddressRouteParams() {
+  const params = Taro.getCurrentInstance().router?.params ?? {};
+
+  return {
+    mode: params.mode,
+    draftId: params.draftId,
+    selectedId: params.selectedId,
+  };
+}
+
 const AddressPage = observer(function AddressPage() {
   const [pageData, setPageData] = useState<OrderAddressData>();
+  const [routeParams] = useState(resolveAddressRouteParams);
   const pageRuntime = usePageRuntime({
     initPage: async () => {
       const nextData = await fetchAddressData();
@@ -69,6 +82,14 @@ const AddressPage = observer(function AddressPage() {
     await showWechatToast('地址已删除', 'success');
   }
 
+  async function handleSelectAddress(addressId: string) {
+    if (routeParams.mode !== 'select' || !routeParams.draftId) return;
+
+    setMallCheckoutSelectedAddressId(routeParams.draftId, addressId);
+    await showWechatToast('已选择收货地址', 'success');
+    Taro.navigateBack({ delta: 1 });
+  }
+
   return pageRuntime.renderPage(() => {
     if (!pageData) return null;
 
@@ -96,38 +117,67 @@ const AddressPage = observer(function AddressPage() {
           <View className="_pg-content">
             {addressCount > 0 ? (
               <View className="_pg-list">
-                {pageData.addresses.map((address) => (
-                  <View className="_pg-card" key={address.id}>
+                {pageData.addresses.map((address) => {
+                  const selected = routeParams.mode === 'select' && (
+                    address.id === routeParams.selectedId || address.isDefault && !routeParams.selectedId
+                  );
+
+                  return (
+                    <View
+                      className={`_pg-card ${selected ? '_pg-card--selected' : ''}`}
+                      key={address.id}
+                      onClick={() => void handleSelectAddress(address.id)}
+                    >
                     <View className="_pg-card_header">
                       <Text className="_pg-card_name">{address.name}</Text>
                       <Text className="_pg-card_mobile">{address.mobile}</Text>
                       {address.isDefault ? <Text className="_pg-card_tag">默认</Text> : null}
                       {address.tag ? <Text className="_pg-card_tag _pg-card_tag--soft">{address.tag}</Text> : null}
+                      {selected ? <AppIcon name="check" className="_pg-card_selected-icon" size={16} color="#db2777" /> : null}
                     </View>
                     {address.locationName ? <Text className="_pg-card_location">{address.locationName}</Text> : null}
                     <Text className="_pg-card_detail">{formatOrderAddress(address)}</Text>
                     <View className="_pg-card_footer">
-                      <View className="_pg-card_default" onClick={() => void handleSetDefault(address.id)}>
+                      <View
+                        className="_pg-card_default"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          void handleSetDefault(address.id);
+                        }}
+                      >
                         <View className={`_pg-card_check ${address.isDefault ? '_pg-card_check--active' : ''}`}>
-                          {address.isDefault ? <AppIcon name="check" size={14} color="#ffffff" /> : null}
+                          {address.isDefault ? <AppIcon name="check" size={10} color="#ffffff" /> : null}
                         </View>
                         <Text className={`_pg-card_default-text ${address.isDefault ? '_pg-card_default-text--active' : ''}`}>
                           默认地址
                         </Text>
                       </View>
                       <View className="_pg-card_actions">
-                        <View className="_pg-card_action" onClick={() => openAddressEditor(address.id)}>
+                        <View
+                          className="_pg-card_action"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            openAddressEditor(address.id);
+                          }}
+                        >
                           <AppIcon name="edit" size={16} color="#23262f" />
                           <Text>编辑</Text>
                         </View>
-                        <View className="_pg-card_action" onClick={() => void handleDeleteAddress(address.id)}>
+                        <View
+                          className="_pg-card_action"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            void handleDeleteAddress(address.id);
+                          }}
+                        >
                           <AppIcon name="delete" size={16} color="#23262f" />
                           <Text>删除</Text>
                         </View>
                       </View>
                     </View>
-                  </View>
-                ))}
+                    </View>
+                  );
+                })}
               </View>
             ) : (
               <BaseEmpty

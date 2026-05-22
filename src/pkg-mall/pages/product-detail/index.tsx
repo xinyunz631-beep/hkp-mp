@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import Taro, { useShareAppMessage } from '@tarojs/taro';
-import { Swiper, SwiperItem, Text, View } from '@tarojs/components';
+import { RichText, Swiper, SwiperItem, Text, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
 import { AppIcon } from '@/core/components/AppIcon';
 import { AppImage } from '@/core/components/AppImage';
@@ -8,23 +8,37 @@ import { AppShareButton } from '@/core/components/AppShareButton';
 import { SkuPopup } from '@/core/components/commerce';
 import { PageShare, PageShell } from '@/core/components/PageShell';
 import { MINI_MAIN_ROUTES, MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
+import { createMallCheckoutDraft } from '@/core/services/mall-checkout-draft';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import type { HkpSkuGroup } from '@/core/types/hkp';
 import { navigateToMiniRoute } from '@/core/utils/navigation';
+import {
+  clampSkuQuantity,
+  resolveInitialSkuGroups,
+  resolveNextSkuGroupsAfterSelect,
+  resolveSkuState,
+} from '@/core/utils/sku';
 import {
   callWechatPhone,
   previewWechatImages,
   showWechatConfirm,
   showWechatToast,
 } from '@/core/utils/wechat-actions';
+import { MallCartBadge } from '@/pkg-mall/components/MallCartBadge';
+import { useMallCartCount } from '@/pkg-mall/hooks/use-mall-cart-count';
 import { addMallCartItem } from '@/pkg-mall/services/cart';
+import { addMallFavoriteItem } from '@/pkg-mall/services/favorites';
 import { fetchProductDetailData } from '@/pkg-mall/services/product-detail';
-import type { MallProductDetailData } from '@/pkg-mall/services/mock-data';
+import type { MallProductDetailData, MallSkuVariant } from '@/pkg-mall/services/mock-data';
 import './index.scss';
 
 type MallSkuAction = 'cart' | 'buy';
 
 const MALL_SERVICE_PHONE = '4009778899';
+
+function resolveProductRouteId() {
+  return Taro.getCurrentInstance().router?.params?.productId;
+}
 
 // 商品详情首版按截图补齐图集、价格、优惠、评价、推荐和购买底栏，并复用 SKU 弹层闭环。
 const ProductDetailPage = observer(function ProductDetailPage() {
@@ -34,11 +48,13 @@ const ProductDetailPage = observer(function ProductDetailPage() {
   const [skuVisible, setSkuVisible] = useState(false);
   const [skuAction, setSkuAction] = useState<MallSkuAction>('cart');
   const [skuGroups, setSkuGroups] = useState<HkpSkuGroup[]>([]);
+  const { cartCount } = useMallCartCount();
   const pageRuntime = usePageRuntime({
     initPage: async () => {
-      const nextData = await fetchProductDetailData();
+      const nextData = await fetchProductDetailData(resolveProductRouteId());
       setDetailData(nextData);
-      setSkuGroups(nextData.skuGroups);
+      setSkuGroups(resolveInitialSkuGroups(nextData.skuGroups, nextData.skuVariants));
+      setQuantity(1);
     },
   });
 
@@ -48,6 +64,21 @@ const ProductDetailPage = observer(function ProductDetailPage() {
   const recommendProducts = detailData?.recommendProducts ?? [];
   const detailImages = detailData?.detailImages ?? [];
   const gallery = detailData?.gallery ?? [];
+  const skuVariants = detailData?.skuVariants ?? [];
+  const skuState = useMemo(
+    () => resolveSkuState<MallSkuVariant>(skuGroups, skuVariants),
+    [skuGroups, skuVariants],
+  );
+  const selectedVariant = skuState.selectedVariant;
+  const skuProduct = product && selectedVariant
+    ? {
+        ...product,
+        image: { src: selectedVariant.imageSrc || product.image.src },
+        price: selectedVariant.price,
+        subtitle: selectedVariant.skuText,
+      }
+    : product;
+  const displayPrice = selectedVariant?.price ?? product?.price;
 
   useShareAppMessage(() => ({
     title: product?.title || 'Hello Kitty 乐园官方商城',
@@ -57,10 +88,7 @@ const ProductDetailPage = observer(function ProductDetailPage() {
     imageUrl: gallery.find(Boolean) || undefined,
   }));
 
-  const selectedSkuText = useMemo(() => skuGroups
-    .map((group) => group.options.find((option) => option.id === group.selectedId)?.label)
-    .filter(Boolean)
-    .join('、'), [skuGroups]);
+  const selectedSkuText = skuState.selectedText;
 
   function openSkuPopup(nextAction: MallSkuAction) {
     setSkuAction(nextAction);
@@ -68,26 +96,66 @@ const ProductDetailPage = observer(function ProductDetailPage() {
   }
 
   function handleSelectSku(groupId: string, optionId: string) {
-    setSkuGroups((currentGroups) => currentGroups.map((group) => (
-      group.id === groupId
-        ? { ...group, selectedId: optionId }
-        : group
-    )));
+    const nextGroups = resolveNextSkuGroupsAfterSelect(skuGroups, skuVariants, groupId, optionId);
+    const nextSkuState = resolveSkuState<MallSkuVariant>(nextGroups, skuVariants);
+
+    setSkuGroups(nextGroups);
+    setQuantity((currentQuantity) => clampSkuQuantity(currentQuantity, 1, nextSkuState.maxQuantity));
   }
 
   async function handleSkuSubmit() {
-    if (!product) return;
+    if (skuState.submitTip) {
+      await showWechatToast(skuState.submitTip);
+      return;
+    }
+
+    if (!product || !selectedVariant) {
+      await showWechatToast('当前规格暂时无货，请更换规格');
+      return;
+    }
+
+    const authed = await pageRuntime.ensureLogin(skuAction === 'buy' ? '登录后可购买商品' : '登录后可加入购物车');
+    if (!authed) return;
 
     setSkuVisible(false);
 
     if (skuAction === 'buy') {
-      navigateToMiniRoute(MINI_PACKAGE_ROUTES.orderCheckout);
+      const draft = createMallCheckoutDraft({
+        products: [{
+          id: selectedVariant.id,
+          productId: product.id,
+          title: product.title,
+          specText: selectedVariant.skuText,
+          quantity,
+          unitPrice: selectedVariant.price,
+          imageSrc: selectedVariant.imageSrc || product.image.src,
+          merchantName: 'Hello Kitty 官方商城',
+          giftText: selectedVariant.giftText,
+          canRefund: true,
+          canAfterSale: true,
+          shippingRule: selectedVariant.shippingRule,
+        }],
+      });
+
+      if (!draft) {
+        await showWechatToast('当前商品暂不可购买');
+        return;
+      }
+
+      navigateToMiniRoute(`${MINI_PACKAGE_ROUTES.orderCheckout}?draftId=${encodeURIComponent(draft.id)}`);
       return;
     }
 
-    await addMallCartItem(product, {
+    await addMallCartItem({
+      ...product,
+      image: { src: selectedVariant.imageSrc || product.image.src },
+      price: selectedVariant.price,
+      subtitle: selectedVariant.skuText,
+    }, {
       quantity,
-      skuText: selectedSkuText || product.subtitle || '默认规格',
+      skuText: selectedVariant.skuText,
+      giftText: selectedVariant.giftText,
+      shippingRule: selectedVariant.shippingRule,
     });
     await showWechatToast('已加入购物车', 'success');
   }
@@ -138,6 +206,16 @@ const ProductDetailPage = observer(function ProductDetailPage() {
     });
   }
 
+  async function handleFavoritePress() {
+    if (!product) return;
+
+    const authed = await pageRuntime.ensureLogin('登录后可收藏商品');
+    if (!authed) return;
+
+    addMallFavoriteItem(product);
+    await showWechatToast('已收藏', 'success');
+  }
+
   return pageRuntime.renderPage(() => (
     <View className="_pg">
       <PageShell
@@ -172,7 +250,10 @@ const ProductDetailPage = observer(function ProductDetailPage() {
                   navigateToMiniRoute(MINI_PACKAGE_ROUTES.mallCart);
                 }}
               >
-                <AppIcon name="cart" size={16} color="#6b7280" />
+                <View className="_pg-footer_icon-wrap">
+                  <AppIcon name="cart" size={16} color="#6b7280" />
+                  <MallCartBadge count={cartCount} />
+                </View>
                 <Text className="_pg-footer_action-text">购物车</Text>
               </View>
             </View>
@@ -217,15 +298,13 @@ const ProductDetailPage = observer(function ProductDetailPage() {
           <View className="_pg-info">
             <View className="_pg-info_price-row">
               <View className="_pg-info_price">
-                <Text className="_pg-info_price-current">¥{product?.price}</Text>
+                <Text className="_pg-info_price-current">¥{displayPrice}</Text>
                 <Text className="_pg-info_price-origin">¥{product?.marketPrice}</Text>
               </View>
               <View className="_pg-info_icons">
                 <View
                   className="_pg-info_icon"
-                  onClick={() => {
-                    void showWechatToast('已收藏', 'success');
-                  }}
+                  onClick={() => void handleFavoritePress()}
                 >
                   <AppIcon name="heart" size={16} color="#a1a1aa" />
                 </View>
@@ -268,7 +347,7 @@ const ProductDetailPage = observer(function ProductDetailPage() {
 
           <View className="_pg-review">
             <View className="_pg-section_header">
-              <Text className="_pg-section_title">评论（5236）</Text>
+              <Text className="_pg-section_title">评论（{detailData?.reviewCountText || reviews.length}）</Text>
               <View className="_pg-section_more" onClick={() => Taro.navigateTo({ url: MINI_PACKAGE_ROUTES.orderReviewList })}>
                 <Text>查看更多</Text>
                 <AppIcon name="arrowRight" className="_pg-section_more-icon" size={14} color="#a1a1aa" />
@@ -327,16 +406,7 @@ const ProductDetailPage = observer(function ProductDetailPage() {
               <Text className="_pg-section_title">商品详情</Text>
             </View>
             <View className="_pg-detail_card">
-              <AppImage
-                className="_pg-detail_image"
-                src={detailImages[0]}
-                mode="aspectFill"
-                emptyState="error"
-                onClick={() => handlePreviewDetailImages(detailImages[0])}
-              />
-              <Text className="_pg-detail_brand">创意品牌Hello Kitty</Text>
-              <Text className="_pg-detail_summary">让您的小朋友尽情享受独自的快乐时光</Text>
-              <Text className="_pg-detail_desc">产品采用柔软毛绒面料制作，亲肤棉柔手感顺滑，享您居家公仔不错的选择</Text>
+              <RichText className="_pg-detail_rich-text" nodes={detailData?.detailHtml || ''} />
             </View>
             {detailImages.slice(1).map((imageSrc, index) => (
               <AppImage
@@ -352,12 +422,17 @@ const ProductDetailPage = observer(function ProductDetailPage() {
         </View>
 
         <PageShare>
-          {product ? (
+          {skuProduct ? (
             <SkuPopup
               visible={skuVisible}
-              product={product}
-              skuGroups={skuGroups}
+              product={skuProduct}
+              skuGroups={skuState.groups}
               quantity={quantity}
+              totalAmount={(selectedVariant?.price ?? skuProduct.price) * quantity}
+              selectionText={skuState.missingSelectionText || (skuState.selectedText ? `已选 ${skuState.selectedText}` : '')}
+              stockText={skuState.stockText}
+              maxQuantity={skuState.maxQuantity}
+              submitDisabled={!skuState.isPurchasable}
               submitText={skuAction === 'buy' ? '立即购买' : '加入购物车'}
               onClose={() => setSkuVisible(false)}
               onSubmit={() => void handleSkuSubmit()}

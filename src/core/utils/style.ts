@@ -16,6 +16,7 @@ const FALLBACK_STATUS_BAR_HEIGHT = 24;
 const FALLBACK_HEADER_HEIGHT = 44;
 const FALLBACK_HEADER_CONTENT_HEIGHT = 32;
 const FALLBACK_MENU_RIGHT_RESERVE = 112;
+const FALLBACK_WINDOW_WIDTH = 375;
 const FALLBACK_WINDOW_HEIGHT = 667;
 
 export const SAFE_BOTTOM_SPACER_HEIGHT = 20;
@@ -72,6 +73,12 @@ export function resolvePageChromeMetrics(): PageChromeMetrics {
 export function resolveWindowHeight() {
   const windowInfo = getWindowInfo();
   return windowInfo?.windowHeight ?? windowInfo?.screenHeight ?? FALLBACK_WINDOW_HEIGHT;
+}
+
+// 读取当前窗口宽度，用于页面 chrome 缓存指纹，避免切换设备后复用旧高度。
+export function resolveWindowWidth() {
+  const windowInfo = getWindowInfo();
+  return windowInfo?.windowWidth ?? windowInfo?.screenWidth ?? FALLBACK_WINDOW_WIDTH;
 }
 
 // 从 selector query 结果中读取节点高度，节点不存在时按 0 处理。

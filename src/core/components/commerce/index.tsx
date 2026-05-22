@@ -1,4 +1,4 @@
-import { Text, View } from '@tarojs/components';
+import { ScrollView, Text, View } from '@tarojs/components';
 import { Calendar, InputNumber } from '@nutui/nutui-react-taro';
 import classNames from 'classnames';
 import { useEffect, useState } from 'react';
@@ -57,6 +57,7 @@ interface FixedSubmitBarProps {
   disabled?: boolean;
   extra?: ReactNode;
   onSubmit?: () => void;
+  onDisabledClick?: () => void;
 }
 
 interface QuantityStepperProps {
@@ -89,6 +90,10 @@ interface SkuPopupProps {
   skuGroups: HkpSkuGroup[];
   quantity: number;
   totalAmount?: number;
+  selectionText?: ReactNode;
+  stockText?: ReactNode;
+  maxQuantity?: number;
+  submitDisabled?: boolean;
   submitText?: ReactNode;
   onClose: () => void;
   onSubmit?: () => void;
@@ -327,6 +332,7 @@ export function FixedSubmitBar({
   disabled = false,
   extra,
   onSubmit,
+  onDisabledClick,
 }: FixedSubmitBarProps) {
   return (
     <View className={classNames('hkp-submit-bar', className)}>
@@ -340,7 +346,12 @@ export function FixedSubmitBar({
       <View
         className={classNames('hkp-submit-bar__button', disabled && 'hkp-submit-bar__button--disabled')}
         onClick={() => {
-          if (!disabled) onSubmit?.();
+          if (disabled) {
+            onDisabledClick?.();
+            return;
+          }
+
+          onSubmit?.();
         }}
       >
         <Text>{buttonText}</Text>
@@ -406,6 +417,10 @@ export function SkuPopup({
   skuGroups,
   quantity,
   totalAmount,
+  selectionText,
+  stockText,
+  maxQuantity = 99,
+  submitDisabled = false,
   submitText = '确定',
   onClose,
   onSubmit,
@@ -425,38 +440,52 @@ export function SkuPopup({
           <View className="hkp-sku-popup__summary-body">
             <Text className="hkp-sku-popup__price">{formatCurrency(totalAmount ?? product.price * quantity)}</Text>
             <Text className="hkp-sku-popup__title">{product.title}</Text>
+            {selectionText ? <Text className="hkp-sku-popup__selected">{selectionText}</Text> : null}
+            {stockText ? <Text className="hkp-sku-popup__stock">{stockText}</Text> : null}
           </View>
           <View className="hkp-sku-popup__close" onClick={onClose}>
             <AppIcon name="close" size={16} color="#667085" />
           </View>
         </View>
-        {skuGroups.map((group) => (
-          <View className="hkp-sku-popup__group" key={group.id}>
-            <Text className="hkp-sku-popup__group-title">{group.title}</Text>
-            <View className="hkp-sku-popup__options">
-              {group.options.map((option) => (
-                <View
-                  className={classNames(
-                    'hkp-sku-popup__option',
-                    group.selectedId === option.id && 'hkp-sku-popup__option--active',
-                    option.disabled && 'hkp-sku-popup__option--disabled',
-                  )}
-                  key={option.id}
-                  onClick={() => {
-                    if (!option.disabled) onSelectSku?.(group.id, option.id);
-                  }}
-                >
-                  <Text>{option.label}</Text>
-                </View>
-              ))}
+        <ScrollView className="hkp-sku-popup__body" scrollY>
+          {skuGroups.map((group) => (
+            <View className="hkp-sku-popup__group" key={group.id}>
+              <Text className="hkp-sku-popup__group-title">{group.title}</Text>
+              <View className="hkp-sku-popup__options">
+                {group.options.map((option) => (
+                  <View
+                    className={classNames(
+                      'hkp-sku-popup__option',
+                      group.selectedId === option.id && 'hkp-sku-popup__option--active',
+                      option.disabled && 'hkp-sku-popup__option--disabled',
+                    )}
+                    key={option.id}
+                    onClick={() => {
+                      if (!option.disabled) onSelectSku?.(group.id, option.id);
+                    }}
+                  >
+                    <Text>{option.label}</Text>
+                    {option.disabledReason ? <Text className="hkp-sku-popup__option-tip">{option.disabledReason}</Text> : null}
+                  </View>
+                ))}
+              </View>
             </View>
+          ))}
+          <View className="hkp-sku-popup__quantity">
+            <Text>数量</Text>
+            <QuantityStepper
+              value={quantity}
+              min={1}
+              max={maxQuantity}
+              disabled={submitDisabled}
+              onChange={onQuantityChange}
+            />
           </View>
-        ))}
-        <View className="hkp-sku-popup__quantity">
-          <Text>数量</Text>
-          <QuantityStepper value={quantity} min={1} onChange={onQuantityChange} />
-        </View>
-        <View className="hkp-sku-popup__submit" onClick={onSubmit}>
+        </ScrollView>
+        <View
+          className={classNames('hkp-sku-popup__submit', submitDisabled && 'hkp-sku-popup__submit--disabled')}
+          onClick={onSubmit}
+        >
           <Text>{submitText}</Text>
         </View>
       </View>

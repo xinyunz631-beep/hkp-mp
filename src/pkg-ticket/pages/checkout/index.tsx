@@ -485,7 +485,7 @@ const CheckoutPage = observer(function CheckoutPage() {
                   <Text className="_pg-form_progress">{completedTravelerCount}/{travelerCount} 已完善</Text>
                 </View>
                 <View className="_pg-form_notice">
-                  <AppIcon name="check" size={14} color="#d94a88" />
+                  <AppIcon name="check" size={10} color="#d94a88" />
                   <Text>一票一实名，儿童票、优待票和年卡资格以园区现场核验为准。</Text>
                 </View>
 

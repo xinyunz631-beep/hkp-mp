@@ -99,7 +99,14 @@ const RecommendPage = observer(function RecommendPage() {
                     onClick={() => handleTabChange(tabKey)}
                   >
                     <Text>{tab.text}</Text>
-                    {tabKey === 'price' ? <Text className="_pg-header_tab-indicator">{priceAscending ? '↑' : '↓'}</Text> : null}
+                    {tabKey === 'price' ? (
+                      <AppIcon
+                        name="arrowRight"
+                        className={`_pg-header_tab-sort ${priceAscending ? '_pg-header_tab-sort--asc' : '_pg-header_tab-sort--desc'}`}
+                        size={13}
+                        color={active ? '#2a2d34' : '#9ea4ad'}
+                      />
+                    ) : null}
                     {tabKey === 'filter' ? <AppIcon name="filter" className="_pg-header_tab-icon" size={16} color="#9ea4ad" /> : null}
                   </View>
                 );

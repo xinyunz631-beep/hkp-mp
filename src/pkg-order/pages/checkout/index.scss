@@ -27,13 +27,51 @@
   background: #ffffff;
   box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
 
+  &--address {
+    padding-top: 24px;
+  }
+
   &--compact {
     padding-top: 0;
     padding-bottom: 0;
   }
+
+  &--products {
+    padding-top: 24px;
+  }
+
+  &--delivery-error {
+    border: 1px solid rgba(217, 119, 6, 0.18);
+    background: #fffaf2;
+  }
 }
 
 ._pg-address {
+  &_topline,
+  &_title {
+    display: flex;
+    align-items: center;
+  }
+
+  &_topline {
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }
+
+  &_title {
+    gap: 8px;
+    color: #23262f;
+    font-size: 26px;
+    font-weight: 550;
+    line-height: 1.4;
+  }
+
+  &_action {
+    color: #d94a88;
+    font-size: 24px;
+    line-height: 1.4;
+  }
+
   &_header {
     display: flex;
     align-items: center;
@@ -80,12 +118,79 @@
   }
 }
 
+._pg-delivery-alert {
+  margin-bottom: 24px;
+  padding: 22px 24px;
+  border: 1px solid rgba(217, 119, 6, 0.2);
+  border-radius: 24px;
+  background: #fff7ed;
+
+  &_header,
+  &_action {
+    display: flex;
+    align-items: center;
+  }
+
+  &_header {
+    gap: 8px;
+    color: #92400e;
+    font-size: 26px;
+    font-weight: 550;
+    line-height: 1.45;
+  }
+
+  &_item {
+    display: block;
+    margin-top: 10px;
+    color: #b45309;
+    font-size: 24px;
+    line-height: 1.5;
+  }
+
+  &_action {
+    justify-content: flex-end;
+    gap: 6px;
+    margin-top: 14px;
+    color: #d97706;
+    font-size: 24px;
+    line-height: 1.4;
+  }
+}
+
+._pg-products-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 18px;
+  border-bottom: 1px solid #edf0f4;
+
+  &_title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #23262f;
+    font-size: 28px;
+    font-weight: 550;
+    line-height: 1.4;
+  }
+
+  &_count {
+    color: #9ca3af;
+    font-size: 24px;
+    line-height: 1.4;
+  }
+}
+
 ._pg-product {
   display: flex;
   padding: 18px 0;
 
   & + & {
     border-top: 1px solid #edf0f4;
+  }
+
+  &--disabled {
+    opacity: 0.62;
   }
 
   &_image {
@@ -159,7 +264,7 @@
     min-width: 174px;
     height: 46px;
     padding: 0 16px;
-    border: 1px solid #d94a88;
+    border: 1Px solid #d94a88;
     border-radius: 12px;
     box-sizing: border-box;
     color: #d94a88;
@@ -175,6 +280,13 @@
 
   &_value--amount {
     color: #d94a88;
+  }
+
+  &_value--error {
+    max-width: 420px;
+    color: #d97706;
+    font-size: 26px;
+    text-align: right;
   }
 }
 

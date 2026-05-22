@@ -51,6 +51,16 @@ interface ScanCodeResult {
   scanType?: string;
 }
 
+type AppPaymentStatus = 'success' | 'pending' | 'failed';
+type WechatPaymentParams = Parameters<typeof Taro.requestPayment>[0];
+
+interface AppPaymentOptions {
+  title?: string;
+  amount: number;
+  paymentParams?: WechatPaymentParams;
+  allowPending?: boolean;
+}
+
 function getWechatFailMessage(error: unknown) {
   if (!error || typeof error !== 'object' || !('errMsg' in error)) return '';
   return String((error as { errMsg?: string }).errMsg || '');
@@ -106,6 +116,36 @@ export async function showWechatConfirm({
   });
 
   return result.confirm;
+}
+
+// 统一微信支付入口；无真实支付参数时用原生确认弹窗完成本地闭环，后续可直接替换为 requestPayment 参数。
+export async function requestWechatPayment({
+  title = '微信支付',
+  amount,
+  paymentParams,
+  allowPending = false,
+}: AppPaymentOptions): Promise<AppPaymentStatus> {
+  if (paymentParams) {
+    try {
+      await Taro.requestPayment(paymentParams);
+      return 'success';
+    } catch (error) {
+      const errMsg = getWechatFailMessage(error);
+      if (allowPending && /cancel/i.test(errMsg)) return 'pending';
+
+      await showWechatToast('支付未完成');
+      return 'failed';
+    }
+  }
+
+  const result = await showAppModal({
+    title,
+    content: `确认支付 ¥${amount.toFixed(2)}？`,
+    confirmText: '微信支付',
+    cancelText: allowPending ? '暂不支付' : '取消',
+  });
+
+  return result.confirm ? 'success' : allowPending ? 'pending' : 'failed';
 }
 
 // 预览图片；没有可用图片时给出业务反馈，避免空点击。

@@ -71,6 +71,7 @@ export interface HkpSkuOption {
   id: string;
   label: string;
   disabled?: boolean;
+  disabledReason?: string;
 }
 
 export interface HkpSkuGroup {
@@ -78,6 +79,14 @@ export interface HkpSkuGroup {
   title: string;
   options: HkpSkuOption[];
   selectedId?: string;
+}
+
+export interface HkpSkuVariantBase {
+  id: string;
+  optionIds: Record<string, string>;
+  stock: number;
+  skuText?: string;
+  imageSrc?: string;
 }
 
 export interface HkpDateOption {
