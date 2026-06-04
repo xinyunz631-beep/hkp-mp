@@ -3,7 +3,10 @@ export interface LoginUserProfile {
   nickname: string;
   avatarUrl?: string;
   mobile: string;
+  levelId?: string;
+  levelNo?: number;
   levelName: string;
+  growthValue?: number;
   points: number;
 }
 

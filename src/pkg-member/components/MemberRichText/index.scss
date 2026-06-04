@@ -1,0 +1,46 @@
+.member-rich-text {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  color: #111111;
+  font-size: 30px;
+  line-height: 1.65;
+  word-break: break-word;
+
+  &_content {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    color: inherit;
+    font-size: inherit;
+    line-height: inherit;
+    word-break: inherit;
+  }
+
+  div,
+  p,
+  text,
+  span {
+    max-width: 100%;
+    box-sizing: border-box;
+    color: inherit;
+    font-size: 30px;
+    line-height: 1.65;
+    word-break: break-word;
+  }
+
+  p {
+    margin: 0 0 24px;
+  }
+
+  img {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    margin: 18px 0;
+    border: 0;
+  }
+}

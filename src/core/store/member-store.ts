@@ -6,11 +6,15 @@ import type { LoginUserProfile } from '@/core/types/auth';
 
 export interface MemberSnapshot {
   csession: string;
+  refreshToken?: string;
+  signSecret?: string;
   profile?: LoginUserProfile;
 }
 
 export class MemberStore {
   csession = '';
+  refreshToken = '';
+  signSecret = '';
   profile?: LoginUserProfile;
 
   // 初始化会员全局状态，承载后端会话和会员资料。
@@ -38,9 +42,19 @@ export class MemberStore {
     this.persistMember();
   }
 
+  // 同步后端完整认证会话，包含后续刷新令牌和高风险写接口签名密钥。
+  setAuthSession(payload: { accessToken: string; refreshToken?: string; signSecret?: string }) {
+    this.csession = payload.accessToken;
+    this.refreshToken = payload.refreshToken || '';
+    this.signSecret = payload.signSecret || '';
+    this.persistMember();
+  }
+
   // 仅清空后端请求凭证，不替页面决定手机号登录态。
   clearCsession() {
     this.csession = '';
+    this.refreshToken = '';
+    this.signSecret = '';
     this.persistMember();
   }
 
@@ -60,6 +74,8 @@ export class MemberStore {
   // 同步完整会员资料，用于手机号授权或后续会员信息接口刷新。
   setMember(csession: string, profile: LoginUserProfile) {
     this.csession = csession;
+    this.refreshToken = '';
+    this.signSecret = '';
     this.profile = profile;
     this.persistMember();
   }
@@ -73,6 +89,8 @@ export class MemberStore {
   // 清空会员登录态，用于用户主动退出登录后的全局状态回收。
   clearMember() {
     this.csession = '';
+    this.refreshToken = '';
+    this.signSecret = '';
     this.profile = undefined;
     removeCache(MINI_STORAGE_KEYS.member);
   }
@@ -83,6 +101,8 @@ export class MemberStore {
     if (!snapshot) return;
 
     this.csession = snapshot.csession;
+    this.refreshToken = snapshot.refreshToken || '';
+    this.signSecret = snapshot.signSecret || '';
     this.profile = snapshot.profile;
   }
 
@@ -90,6 +110,8 @@ export class MemberStore {
   private persistMember() {
     setCache<MemberSnapshot>(MINI_STORAGE_KEYS.member, {
       csession: this.csession,
+      refreshToken: this.refreshToken,
+      signSecret: this.signSecret,
       profile: this.profile,
     });
   }

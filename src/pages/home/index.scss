@@ -45,7 +45,6 @@
     border-radius: 29px;
     background: #ea6aa4;
     opacity: .9;
-    // box-shadow: 0 8px 20px rgba(219, 39, 119, 0.15);
   }
 
   &_search {
@@ -57,7 +56,6 @@
     padding: 0 24px;
     border-radius: 31px;
     background: rgba(255, 255, 255, 0.4);
-    // box-shadow: 0 8px 20px rgba(232, 95, 157, 0.14);
     box-sizing: border-box;
     transition: background-color .3s ease;
 
@@ -70,7 +68,7 @@
     overflow: hidden;
     margin-left: 12px;
     color: #8e8e93;
-    font-size: 23px;
+    font-size: 24px;
     line-height: 1;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -123,7 +121,7 @@
 
 ._pg-member-card {
   padding: 28px;
-  border: 1px solid #f1dfe8;
+  border: 1px solid #e5e7eb;
   border-radius: 22px;
   background: rgba(255, 255, 255, 0.96);
   box-shadow: 0 12px 32px rgba(15, 23, 42, 0.08);
@@ -139,7 +137,7 @@
     display: block;
     color: #2b2f36;
     font-size: 30px;
-    font-weight: 550;
+    font-weight: 500;
     line-height: 1.2;
   }
 
@@ -154,8 +152,8 @@
     border-radius: 20px;
     background: #f6be59;
     color: #8a4a00;
-    font-size: 20px;
-    font-weight: 550;
+    font-size: 24px;
+    font-weight: 500;
     line-height: 1;
     box-sizing: border-box;
   }
@@ -164,33 +162,34 @@
     display: flex;
     flex-direction: column;
     align-items: flex-end;
-    gap: 10px;
-  }
-
-  &_coupon,
-  &_points {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 184px;
-    height: 44px;
-    padding: 0 18px;
-    border-radius: 22px;
-    box-sizing: border-box;
-    font-size: 18px;
-    font-weight: 550;
-    line-height: 1;
   }
 
   &_coupon {
-    background: #fce7f3;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    // min-width: 210px;
+    height: 58px;
+    padding: 0 0px 0 22px;
+    border-radius: 29px;
+    background: transparent;
     color: #db2777;
+    box-sizing: border-box;
+    font-size: 24px;
+    font-weight: 500;
+    line-height: 1;
+    gap: 8px;
   }
 
-  &_points {
-    border: 1px solid #f3c6dc;
-    background: #ffffff;
-    color: #db2777;
+  &_coupon-text {
+    color: inherit;
+    font-size: inherit;
+    font-weight: inherit;
+    line-height: inherit;
+  }
+
+  &_coupon-arrow {
+    flex: none;
   }
 }
 
@@ -251,15 +250,15 @@
   &_time {
     color: #111111;
     font-size: 24px;
-    font-weight: 550;
+    font-weight: 500;
     line-height: 1.45;
   }
 
   &_phone,
   &_desc {
     color: #111111;
-    font-size: 20px;
-    font-weight: 550;
+    font-size: 24px;
+    font-weight: 500;
   }
 
   &_phone {
@@ -295,7 +294,7 @@
   &_title {
     color: #3f3f46;
     font-size: 28px;
-    font-weight: 550;
+    font-weight: 500;
     line-height: 1.2;
   }
 
@@ -305,7 +304,7 @@
     flex: none;
     color: #71717a;
     font-size: 24px;
-    font-weight: 550;
+    font-weight: 500;
     line-height: 1;
   }
 
@@ -333,7 +332,7 @@
 ._pg-rank-card {
   position: relative;
   overflow: hidden;
-  border: 1px solid #f0d9e4;
+  border: 1px solid #e5e7eb;
   border-radius: 18px;
   background: #ffffff;
   box-shadow: 0 8px 18px rgba(17, 24, 39, 0.06);
@@ -363,8 +362,8 @@
     border-radius: 17px;
     background: #4f83ff;
     color: #ffffff;
-    font-size: 18px;
-    font-weight: 550;
+    font-size: 24px;
+    font-weight: 500;
     line-height: 1;
     box-sizing: border-box;
   }
@@ -380,7 +379,7 @@
     overflow: hidden;
     color: #27272a;
     font-size: 26px;
-    font-weight: 550;
+    font-weight: 500;
     line-height: 1.25;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -389,7 +388,7 @@
   &_desc {
     overflow: hidden;
     color: #71717a;
-    font-size: 21px;
+    font-size: 24px;
     font-weight: 500;
     line-height: 1.35;
     text-overflow: ellipsis;
@@ -400,7 +399,7 @@
 ._pg-feature-card {
   overflow: hidden;
   margin-top: 18px;
-  border: 1px solid #f0d9e4;
+  border: 1px solid #e5e7eb;
   border-radius: 20px;
   background: #ffffff;
   box-shadow: 0 8px 18px rgba(17, 24, 39, 0.06);
@@ -421,7 +420,7 @@
     display: block;
     color: #27272a;
     font-size: 28px;
-    font-weight: 550;
+    font-weight: 500;
     line-height: 1.25;
   }
 
@@ -429,8 +428,8 @@
     display: block;
     margin-top: 10px;
     color: #71717a;
-    font-size: 22px;
-    font-weight: 550;
+    font-size: 24px;
+    font-weight: 500;
     line-height: 1.35;
   }
 
@@ -440,8 +439,8 @@
     border-radius: 21px;
     background: #fce7f3;
     color: #db2777;
-    font-size: 21px;
-    font-weight: 550;
+    font-size: 24px;
+    font-weight: 500;
     line-height: 1;
   }
 }
@@ -455,7 +454,7 @@
 
 ._pg-guide-card {
   overflow: hidden;
-  border: 1px solid #f0d9e4;
+  border: 1px solid #e5e7eb;
   border-radius: 18px;
   background: #ffffff;
   box-shadow: 0 8px 18px rgba(17, 24, 39, 0.06);
@@ -475,7 +474,7 @@
     overflow: hidden;
     color: #27272a;
     font-size: 26px;
-    font-weight: 550;
+    font-weight: 500;
     line-height: 1.25;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -484,7 +483,7 @@
   &_desc {
     overflow: hidden;
     color: #71717a;
-    font-size: 21px;
+    font-size: 24px;
     font-weight: 500;
     line-height: 1.35;
     text-overflow: ellipsis;
@@ -493,8 +492,8 @@
 
   &_tag {
     color: #e85f9d;
-    font-size: 20px;
-    font-weight: 550;
+    font-size: 24px;
+    font-weight: 500;
     line-height: 1.2;
   }
 }
@@ -523,7 +522,7 @@
 
 ._pg-play-card {
   overflow: hidden;
-  border: 3px solid #f3a5cd;
+  border: 3px solid #e5e7eb;
   border-radius: 20px;
   background: #ffffff;
   box-shadow: 0 8px 14px rgba(17, 24, 39, 0.05);
@@ -537,7 +536,7 @@
     padding: 8px 16px 12px;
     color: #f472b6;
     font-size: 34px;
-    font-weight: 550;
+    font-weight: 500;
     line-height: 1;
   }
 }

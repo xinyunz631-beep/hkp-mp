@@ -1,4 +1,4 @@
-import { CSSProperties, PropsWithChildren, ReactNode, useCallback, useEffect, useState } from 'react';
+import { CSSProperties, PropsWithChildren, ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import classNames from 'classnames';
 import Taro, { useDidHide, useDidShow, useResize } from '@tarojs/taro';
 import { ScrollView, View } from '@tarojs/components';
@@ -39,6 +39,71 @@ interface PageLayoutChromeCacheEntry {
 }
 
 const pageLayoutChromeCache = new Map<string, PageLayoutChromeCacheEntry>();
+const ZERO_HEIGHT_MEASURE_RETRY_LIMIT = 3;
+const ZERO_HEIGHT_MEASURE_RETRY_DELAY_MS = 48;
+
+interface ChromeSlotMeasurementOptions {
+  hasContent: boolean;
+  measuredHeight: number;
+  currentHeight: number;
+  zeroMeasureCountRef: {
+    current: number;
+  };
+}
+
+interface ChromeSlotMeasurement {
+  height: number;
+  ready: boolean;
+  cacheable: boolean;
+  shouldRetry: boolean;
+}
+
+function resolveChromeSlotMeasurement({
+  hasContent,
+  measuredHeight,
+  currentHeight,
+  zeroMeasureCountRef,
+}: ChromeSlotMeasurementOptions): ChromeSlotMeasurement {
+  if (!hasContent) {
+    zeroMeasureCountRef.current = 0;
+    return {
+      height: 0,
+      ready: true,
+      cacheable: true,
+      shouldRetry: false,
+    };
+  }
+
+  if (measuredHeight > 0) {
+    zeroMeasureCountRef.current = 0;
+    return {
+      height: measuredHeight,
+      ready: true,
+      cacheable: true,
+      shouldRetry: false,
+    };
+  }
+
+  zeroMeasureCountRef.current += 1;
+
+  if (currentHeight > 0) {
+    return {
+      height: currentHeight,
+      ready: true,
+      cacheable: false,
+      shouldRetry: zeroMeasureCountRef.current < ZERO_HEIGHT_MEASURE_RETRY_LIMIT,
+    };
+  }
+
+  const zeroMeasurementSettled = zeroMeasureCountRef.current >= ZERO_HEIGHT_MEASURE_RETRY_LIMIT;
+
+  return {
+    height: 0,
+    ready: zeroMeasurementSettled,
+    cacheable: false,
+    shouldRetry: !zeroMeasurementSettled,
+  };
+}
 
 // 生成页面布局节点 ID，避免多个页面实例 selector query 互相命中。
 function createPageLayoutId() {
@@ -77,6 +142,8 @@ export function PageLayout({
     if (cachedChrome.hasFooter !== hasFooterContent) return undefined;
     if (cachedChrome.hasTabBar !== hasTabBar) return undefined;
     if (cachedChrome.bottomSafeAreaNeeded !== bottomSafeAreaNeeded) return undefined;
+    if (hasHeaderContent && cachedChrome.headerHeight <= 0) return undefined;
+    if (hasFooterContent && cachedChrome.footerHeight <= 0) return undefined;
 
     return cachedChrome;
   });
@@ -86,8 +153,46 @@ export function PageLayout({
   const [layoutActive, setLayoutActive] = useState(true);
   const [chromeMeasured, setChromeMeasured] = useState(Boolean(initialChrome));
   const [measureCoverVisible, setMeasureCoverVisible] = useState(!initialChrome);
+  const headerHeightRef = useRef(headerHeight);
+  const footerHeightRef = useRef(footerHeight);
+  const headerZeroMeasureCountRef = useRef(0);
+  const footerZeroMeasureCountRef = useRef(0);
+  const layoutActiveRef = useRef(true);
+  const measureRetryTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const measureLayoutChromeRef = useRef<() => void>(() => undefined);
   const headerId = `${layoutId}-header`;
   const footerId = `${layoutId}-footer`;
+
+  const clearMeasureRetryTimer = useCallback(() => {
+    if (!measureRetryTimerRef.current) return;
+
+    clearTimeout(measureRetryTimerRef.current);
+    measureRetryTimerRef.current = undefined;
+  }, []);
+
+  const scheduleMeasureRetry = useCallback(() => {
+    clearMeasureRetryTimer();
+    measureRetryTimerRef.current = setTimeout(() => {
+      measureRetryTimerRef.current = undefined;
+      if (!layoutActiveRef.current) return;
+
+      measureLayoutChromeRef.current();
+    }, ZERO_HEIGHT_MEASURE_RETRY_DELAY_MS);
+  }, [clearMeasureRetryTimer]);
+
+  const commitHeaderHeight = useCallback((nextHeight: number) => {
+    headerHeightRef.current = nextHeight;
+    setHeaderHeight((currentHeight) => (
+      Math.abs(currentHeight - nextHeight) > 0.5 ? nextHeight : currentHeight
+    ));
+  }, []);
+
+  const commitFooterHeight = useCallback((nextHeight: number) => {
+    footerHeightRef.current = nextHeight;
+    setFooterHeight((currentHeight) => (
+      Math.abs(currentHeight - nextHeight) > 0.5 ? nextHeight : currentHeight
+    ));
+  }, []);
 
   // 重新测量顶部和底部固定区域高度，供中间占位和滚动容器使用。
   const measureLayoutChrome = useCallback(() => {
@@ -98,13 +203,27 @@ export function PageLayout({
       query.exec((results: Array<LayoutRect | null | undefined>) => {
         const [headerRect, footerRect] = results;
         const nextViewportHeight = resolveWindowHeight();
-        const nextHeaderHeight = resolveRectHeight(headerRect);
-        const nextFooterHeight = resolveRectHeight(footerRect);
+        const measuredHeaderHeight = resolveRectHeight(headerRect);
+        const measuredFooterHeight = resolveRectHeight(footerRect);
+        const headerMeasurement = resolveChromeSlotMeasurement({
+          hasContent: hasHeaderContent,
+          measuredHeight: measuredHeaderHeight,
+          currentHeight: headerHeightRef.current,
+          zeroMeasureCountRef: headerZeroMeasureCountRef,
+        });
+        const footerMeasurement = resolveChromeSlotMeasurement({
+          hasContent: hasFooterContent,
+          measuredHeight: measuredFooterHeight,
+          currentHeight: footerHeightRef.current,
+          zeroMeasureCountRef: footerZeroMeasureCountRef,
+        });
+        const nextChromeMeasured = headerMeasurement.ready && footerMeasurement.ready;
+        const nextChromeCacheable = headerMeasurement.cacheable && footerMeasurement.cacheable;
 
-        if (chromeCacheKey) {
+        if (chromeCacheKey && nextChromeMeasured && nextChromeCacheable) {
           pageLayoutChromeCache.set(chromeCacheKey, {
-            headerHeight: nextHeaderHeight,
-            footerHeight: nextFooterHeight,
+            headerHeight: headerMeasurement.height,
+            footerHeight: footerMeasurement.height,
             hasHeader: hasHeaderContent,
             hasFooter: hasFooterContent,
             hasTabBar,
@@ -115,25 +234,31 @@ export function PageLayout({
         setViewportHeight((currentHeight) => (
           Math.abs(currentHeight - nextViewportHeight) > 0.5 ? nextViewportHeight : currentHeight
         ));
-        setHeaderHeight((currentHeight) => (
-          Math.abs(currentHeight - nextHeaderHeight) > 0.5 ? nextHeaderHeight : currentHeight
-        ));
-        setFooterHeight((currentHeight) => (
-          Math.abs(currentHeight - nextFooterHeight) > 0.5 ? nextFooterHeight : currentHeight
-        ));
-        setChromeMeasured(true);
+        commitHeaderHeight(headerMeasurement.height);
+        commitFooterHeight(footerMeasurement.height);
+        if (nextChromeMeasured) {
+          setChromeMeasured(true);
+        }
+        if (headerMeasurement.shouldRetry || footerMeasurement.shouldRetry) {
+          scheduleMeasureRetry();
+        }
       });
     });
   }, [
     bottomSafeAreaNeeded,
     chromeCacheKey,
     chromeCacheSignature,
+    commitFooterHeight,
+    commitHeaderHeight,
     footerId,
     hasFooterContent,
     hasHeaderContent,
     hasTabBar,
     headerId,
+    scheduleMeasureRetry,
   ]);
+
+  measureLayoutChromeRef.current = measureLayoutChrome;
 
   useResize(() => {
     if (layoutActive) {
@@ -142,11 +267,14 @@ export function PageLayout({
   });
 
   useDidShow(() => {
+    layoutActiveRef.current = true;
     setLayoutActive(true);
     measureLayoutChrome();
   });
 
   useDidHide(() => {
+    layoutActiveRef.current = false;
+    clearMeasureRetryTimer();
     setLayoutActive(false);
   });
 
@@ -173,6 +301,10 @@ export function PageLayout({
       clearTimeout(coverTimer);
     };
   }, [chromeMeasured]);
+
+  useEffect(() => () => {
+    clearMeasureRetryTimer();
+  }, [clearMeasureRetryTimer]);
 
   const resolvedHeaderHeight = hasHeaderContent ? headerHeight : 0;
   const resolvedFooterHeight = hasFooterContent ? footerHeight : 0;

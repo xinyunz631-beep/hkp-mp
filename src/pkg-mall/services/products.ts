@@ -1,10 +1,12 @@
 import { resolveMockData } from '@/core/services/mock';
+import { fetchCouponApplicableProductsData } from './coupon-products';
 import { mallProductListData } from './mock-data';
 import { filterMallProductsByKeyword } from './search';
 
 interface FetchProductsDataOptions {
   keyword?: string;
   categoryId?: string;
+  couponId?: string;
 }
 
 const mallProductCategoryMap: Record<string, string[]> = {
@@ -29,11 +31,24 @@ function filterMallProductsByCategory(products: typeof mallProductListData.produ
   return products.filter((product) => productIds.includes(product.id));
 }
 
+function filterMallProductsByProductIds(products: typeof mallProductListData.products, productIds?: string[]) {
+  if (!productIds) return products;
+  if (productIds.length === 0) return [];
+
+  const productIdSet = new Set(productIds);
+
+  return products.filter((product) => productIdSet.has(product.id));
+}
+
 // 获取商品列表页面数据，后续接真实接口时在这里处理字段归一和失败兜底。
-export function fetchProductsData(options: FetchProductsDataOptions = {}) {
+export async function fetchProductsData(options: FetchProductsDataOptions = {}) {
   const keyword = (options.keyword || '').trim();
+  const couponProductsData = options.couponId
+    ? await fetchCouponApplicableProductsData(options.couponId)
+    : undefined;
   const categoryProducts = filterMallProductsByCategory(mallProductListData.products, options.categoryId);
-  const products = filterMallProductsByKeyword(categoryProducts, keyword);
+  const couponProducts = filterMallProductsByProductIds(categoryProducts, couponProductsData?.productIds);
+  const products = filterMallProductsByKeyword(couponProducts, keyword);
 
   return resolveMockData({
     ...mallProductListData,

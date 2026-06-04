@@ -152,10 +152,14 @@ const HotelIndexPage = observer(function HotelIndexPage() {
   function resolveCalendarRange(nextValue: string | string[]) {
     const dates = Array.isArray(nextValue) ? nextValue : nextValue ? [nextValue] : [];
     const hasPickedDate = dates.length > 0;
+    const nextCheckIn = dates[0] || stayRange.checkIn;
+    const nextCheckOut = dates[1] && dates[1] !== nextCheckIn
+      ? dates[1]
+      : (hasPickedDate ? '' : stayRange.checkOut);
 
     return {
-      checkIn: dates[0] || stayRange.checkIn,
-      checkOut: dates[1] || (hasPickedDate ? '' : stayRange.checkOut),
+      checkIn: nextCheckIn,
+      checkOut: nextCheckOut,
     };
   }
 
@@ -227,17 +231,20 @@ const HotelIndexPage = observer(function HotelIndexPage() {
   }
 
   async function handleDateConfirm(nextValue: string | string[]) {
-    const nextRange = Array.isArray(nextValue) ? nextValue : [nextValue];
-    if (nextRange.length < 2) {
-      await showWechatToast('请选择入住和离店日期');
+    const nextRange = (Array.isArray(nextValue) ? nextValue : [nextValue]).filter(Boolean);
+    const nextCheckIn = nextRange[0];
+    const nextCheckOut = nextRange[1];
+    if (!nextCheckIn || !nextCheckOut || nextCheckIn === nextCheckOut) {
+      setDatePopupVisible(true);
+      await showWechatToast('请选择离店日期');
       return;
     }
 
     setDatePopupVisible(false);
     await pageRuntime.withLoading(() => refreshHotelData({
       nextStayRange: {
-        checkIn: nextRange[0],
-        checkOut: nextRange[1],
+        checkIn: nextCheckIn,
+        checkOut: nextCheckOut,
       },
     }));
   }

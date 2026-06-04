@@ -164,27 +164,27 @@ function repeatSlotRules(rule: TicketTravelerSlotRule, count: number) {
 
 // 根据产品结构准备出游人填写项，不把各平台 UI 照搬到页面层。
 function resolveTravelerSlotRules(product: TicketOrderDraftProduct) {
-  if (product.id === 'parent-child-ticket') {
+  if (product.id === '4000000000001004') {
     return Array.from({ length: product.quantity }).flatMap(() => [adultSlotRule, childSlotRule]);
   }
 
-  if (product.id === 'discount-ticket') {
+  if (product.id === '4000000000001002') {
     return repeatSlotRules(seniorSlotRule, product.quantity);
   }
 
-  if (product.id === 'child-ticket') {
+  if (product.id === '4000000000001003') {
     return repeatSlotRules(childSlotRule, product.quantity);
   }
 
-  if (product.id === 'child-annual-card') {
+  if (product.id === '4000000000002002') {
     return repeatSlotRules(annualChildSlotRule, product.quantity);
   }
 
-  if (product.id === 'adult-annual-card') {
+  if (product.id === '4000000000002001') {
     return repeatSlotRules(annualAdultSlotRule, product.quantity);
   }
 
-  if (product.id === 'family-annual-card-a') {
+  if (product.id === '4000000000002003') {
     return Array.from({ length: product.quantity }).flatMap(() => [
       annualAdultSlotRule,
       annualAdultSlotRule,
@@ -192,7 +192,7 @@ function resolveTravelerSlotRules(product: TicketOrderDraftProduct) {
     ]);
   }
 
-  if (product.id === 'family-annual-card-b') {
+  if (product.id === '4000000000002004') {
     return Array.from({ length: product.quantity }).flatMap(() => [
       annualAdultSlotRule,
       annualAdultSlotRule,
@@ -201,7 +201,7 @@ function resolveTravelerSlotRules(product: TicketOrderDraftProduct) {
     ]);
   }
 
-  if (product.id === 'family-annual-card-c') {
+  if (product.id === '4000000000002005') {
     return Array.from({ length: product.quantity }).flatMap(() => [
       annualAdultSlotRule,
       annualChildSlotRule,

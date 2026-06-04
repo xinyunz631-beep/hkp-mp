@@ -76,7 +76,7 @@ function checkForbiddenTextIconGlyphs() {
 
 function checkFontWeightCeiling() {
   const styleFiles = walkStyleFiles(sourceDir);
-  const overweightPattern = /font-weight:\s*(55[1-9]|5[6-9]\d|[6-9]\d{2}|[1-9]\d{3,})\s*;/;
+  const overweightPattern = /font-weight:\s*(50[1-9]|5[1-9]\d|[6-9]\d{2}|[1-9]\d{3,})\s*;/;
 
   for (const filePath of styleFiles) {
     const relativePath = filePath.replace(`${rootDir}/`, '');
@@ -86,7 +86,7 @@ function checkFontWeightCeiling() {
       const matched = line.match(overweightPattern);
       if (!matched) return;
 
-      fail(`${relativePath}:${index + 1} font-weight ${matched[1]} 超过 550，正文默认 normal，强调文本优先使用 font-weight: 500`);
+      fail(`${relativePath}:${index + 1} font-weight ${matched[1]} 超过 500，正文默认 normal，强调文本优先使用 font-weight: 500`);
     });
   }
 }

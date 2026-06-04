@@ -54,7 +54,7 @@
 
     &--active {
       color: #2a2d34;
-      font-weight: 550;
+      font-weight: 500;
     }
   }
 
@@ -148,7 +148,7 @@
     margin-top: 16px;
     color: $color-primary;
     font-size: 28px;
-    font-weight: 550;
+    font-weight: 500;
   }
 
   &_cart {
@@ -208,7 +208,7 @@
     display: block;
     color: #23262f;
     font-size: 28px;
-    font-weight: 550;
+    font-weight: 500;
     line-height: 1.4;
   }
 
@@ -263,13 +263,13 @@
   &_label {
     color: #34363b;
     font-size: 20px;
-    font-weight: 550;
+    font-weight: 500;
   }
 
   &_amount {
     color: $color-primary;
     font-size: 34px;
-    font-weight: 550;
+    font-weight: 500;
   }
 
   &_discount {
@@ -289,7 +289,7 @@
     background: $color-primary;
     color: #ffffff;
     font-size: 30px;
-    font-weight: 550;
+    font-weight: 500;
   }
 
   &_cart-badge {

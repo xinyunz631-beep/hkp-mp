@@ -1,136 +1,161 @@
 import { useState } from 'react';
-import Taro from '@tarojs/taro';
 import { Text, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
 import { BaseEmpty } from '@/core/components/BaseEmpty';
-import { CouponCard, FilterTabs } from '@/core/components/commerce';
-import { PageShell } from '@/core/components/PageShell';
+import { PageFooter, PageHeader, PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
+import { navigateToMiniRoute } from '@/core/utils/navigation';
 import { showWechatConfirm } from '@/core/utils/wechat-actions';
-import { fetchCouponsData, type MemberCouponsData } from '@/pkg-member/services/coupons';
+import {
+  MEMBER_COUPON_USE_TYPE_ONLINE,
+  fetchCouponsData,
+  type MemberCouponItem,
+  type MemberCouponStatus,
+  type MemberCouponsData,
+} from '@/pkg-member/services/coupons';
 import './index.scss';
 
-// 根据当前筛选标签生成优惠券空态文案，避免页面散写条件文案。
-function resolveEmptyStateCopy(activeTabKey: string) {
-  if (activeTabKey === 'used') {
-    return {
-      title: '还没有已使用卡券',
-      description: '完成一次乐园、酒店或商城下单后，再回来这里查看使用记录。',
-    };
-  }
+function resolveEmptyStateCopy(activeTabKey: MemberCouponStatus) {
+  if (activeTabKey === 'used') return '暂无已使用优惠券';
+  if (activeTabKey === 'expired') return '暂无已过期优惠券';
 
-  if (activeTabKey === 'expired') {
-    return {
-      title: '还没有过期卡券',
-      description: '已失效卡券会自动归档到这里，方便你回看领取记录。',
-    };
-  }
-
-  return {
-    title: '当前暂无可用优惠券',
-    description: '关注会员福利和活动中心，新的卡券到账后会第一时间展示在这里。',
-  };
+  return '暂无已领取优惠券';
 }
 
-// 渲染优惠券页面，收口筛选、卡券列表和空态反馈首版。
+function resolveCouponClassName(coupon: MemberCouponItem) {
+  return [
+    '_pg-coupon',
+    `_pg-coupon--${coupon.status}`,
+  ].join(' ');
+}
+
+function resolveCouponUseRoute(coupon: MemberCouponItem) {
+  if (coupon.useType === MEMBER_COUPON_USE_TYPE_ONLINE) {
+    return `${MINI_PACKAGE_ROUTES.mallProducts}?couponId=${encodeURIComponent(coupon.id)}`;
+  }
+
+  return MINI_PACKAGE_ROUTES.memberCode;
+}
+
+function resolveCouponSideTextColumns(sideText: string) {
+  const chars = Array.from(sideText.trim());
+  if (chars.length <= 1) return [sideText];
+
+  const columnSize = Math.ceil(chars.length / 2);
+
+  return [
+    chars.slice(0, columnSize).join(''),
+    chars.slice(columnSize).join(''),
+  ].filter(Boolean);
+}
+
+// 渲染我的优惠券页，页面只按接口字段承载券面信息和状态切换。
 const CouponsPage = observer(function CouponsPage() {
   const [pageData, setPageData] = useState<MemberCouponsData>();
-  const [activeTabKey, setActiveTabKey] = useState('available');
+  const [activeTabKey, setActiveTabKey] = useState<MemberCouponStatus>('claimed');
   const pageRuntime = usePageRuntime({
     initPage: async () => {
       const nextData = await fetchCouponsData();
       setPageData(nextData);
-      setActiveTabKey(nextData.tabs[0]?.key ?? 'available');
+      setActiveTabKey(nextData.tabs[0]?.key ?? 'claimed');
     },
     loginRequired: true,
     loginReason: '登录后可查看优惠券',
   });
 
-  async function handleCouponPress(coupon: MemberCouponsData['coupons'][number]) {
-    if (coupon.status !== 'available') {
+  async function handleCouponPress(coupon: MemberCouponItem) {
+    if (coupon.status !== 'claimed') {
       await showWechatConfirm({
         title: coupon.title,
-        content: `${coupon.amountText} ${coupon.thresholdText}，${coupon.validityText}。该卡券仅作为记录展示。`,
+        content: `${coupon.validityText}，该优惠券仅作为记录展示。`,
         confirmText: '知道了',
         cancelText: '关闭',
       });
       return;
     }
 
-    const confirmed = await showWechatConfirm({
-      title: coupon.title,
-      content: `${coupon.amountText} ${coupon.thresholdText}，${coupon.validityText}。是否现在去可用业务页使用？`,
-      confirmText: '去使用',
-      cancelText: '稍后',
-    });
-    if (!confirmed) return;
+    navigateToMiniRoute(resolveCouponUseRoute(coupon));
+  }
 
-    if (coupon.title.includes('酒店')) {
-      Taro.navigateTo({ url: MINI_PACKAGE_ROUTES.hotelHome });
-      return;
-    }
+  function handleMoreCouponPress() {
+    navigateToMiniRoute(MINI_PACKAGE_ROUTES.memberCouponCenter);
+  }
 
-    if (coupon.title.includes('商城')) {
-      Taro.navigateTo({ url: MINI_PACKAGE_ROUTES.mallHome });
-      return;
-    }
-
-    Taro.navigateTo({ url: MINI_PACKAGE_ROUTES.ticketBooking });
+  function renderCoupon(coupon: MemberCouponItem) {
+    return (
+      <View className={resolveCouponClassName(coupon)} key={coupon.id}>
+        <View className="_pg-coupon_side">
+          <View className="_pg-coupon_side-columns">
+            {resolveCouponSideTextColumns(coupon.sideText).map((columnText, index) => (
+              <Text className="_pg-coupon_side-text" key={`${coupon.id}-${index}`}>{columnText}</Text>
+            ))}
+          </View>
+        </View>
+        <View className="_pg-coupon_main">
+          <View className="_pg-coupon_amount-row">
+            <Text className="_pg-coupon_amount">{coupon.amountText}</Text>
+            <View className="_pg-coupon_type">
+              <Text>{coupon.couponTypeText}</Text>
+              <Text>{coupon.currencyText}</Text>
+            </View>
+          </View>
+          <View className="_pg-coupon_line" />
+          <Text className="_pg-coupon_validity">{coupon.validityText}</Text>
+          <Text className="_pg-coupon_title">{coupon.title}</Text>
+        </View>
+        <View className="_pg-coupon_cut _pg-coupon_cut--top" />
+        <View className="_pg-coupon_cut _pg-coupon_cut--bottom" />
+        <View className="_pg-coupon_dashed" />
+        <View className="_pg-coupon_action" onClick={() => void handleCouponPress(coupon)}>
+          <Text>{coupon.actionText}</Text>
+        </View>
+      </View>
+    );
   }
 
   return pageRuntime.renderPage(() => {
     if (!pageData) return null;
 
     const visibleCoupons = pageData.coupons.filter((coupon) => coupon.status === activeTabKey);
-    const activeTab = pageData.tabs.find((tab) => tab.key === activeTabKey);
-    const emptyStateCopy = resolveEmptyStateCopy(activeTabKey);
 
     return (
       <View className="_pg">
-        <PageShell title="优惠券" className="_pg-shell" reserveTabBarSpace={false} scrollViewProps={{}}>
-          <View className="_pg-content">
-            <View className="_pg-summary">
-              <Text className="_pg-summary_title">我的卡券</Text>
-              <Text className="_pg-summary_desc">
-                当前
-                {activeTab?.count ?? 0}
-                张
-                {activeTab?.text || '可用'}
-                卡券，出行和下单前记得先挑一张合适的权益。
-              </Text>
+        <PageShell title="我的优惠券" className="_pg-shell" reserveTabBarSpace={false} scrollViewProps={{}}>
+          <PageHeader>
+            <View className="_pg-tabs">
+              {pageData.tabs.map((tab) => (
+                <View
+                  className={`_pg-tab ${tab.key === activeTabKey ? '_pg-tab--active' : ''}`}
+                  key={tab.key}
+                  onClick={() => setActiveTabKey(tab.key)}
+                >
+                  <Text>{tab.text}</Text>
+                  <View className="_pg-tab_line" />
+                </View>
+              ))}
             </View>
+          </PageHeader>
 
-            <FilterTabs
-              tabs={pageData.tabs}
-              activeKey={activeTabKey}
-              className="_pg-tabs"
-              onChange={setActiveTabKey}
-            />
-
+          <View className="_pg-content">
             {visibleCoupons.length > 0 ? (
               <View className="_pg-list">
-                {visibleCoupons.map((coupon) => (
-                  <CouponCard
-                    className="_pg-list_item"
-                    coupon={coupon}
-                    key={coupon.id}
-                    onClick={() => void handleCouponPress(coupon)}
-                  />
-                ))}
+                {visibleCoupons.map(renderCoupon)}
               </View>
             ) : (
-              <BaseEmpty
-                className="_pg-empty"
-                title={emptyStateCopy.title}
-                description={emptyStateCopy.description}
-              />
+              <View className="_pg-empty">
+                <BaseEmpty title={resolveEmptyStateCopy(activeTabKey)} description="更多会员好券敬请期待" />
+              </View>
             )}
-
-            <Text className="_pg-tip">
-              卡券使用规则以对应下单页结算说明为准，已失效卡券仅保留记录展示。
-            </Text>
           </View>
+
+          <PageFooter>
+            <View className="_pg-footer">
+              <View className="_pg-more-button" onClick={handleMoreCouponPress}>
+                <Text>{pageData.moreButtonText}</Text>
+              </View>
+            </View>
+          </PageFooter>
         </PageShell>
       </View>
     );

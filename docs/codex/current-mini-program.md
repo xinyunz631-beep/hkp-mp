@@ -2,9 +2,9 @@
 
 ## 更新时间
 
-- 更新时间：`2026-05-17`
+- 更新时间：`2026-06-03 21:40 CST`
 - 当前状态：登录、请求、会员状态、页面初始化闸门、页面显式 runtime hook、页面单例 loading、统一 loading 组件入口和白色渐变淡出蒙层、全局登录态弹窗、webpack5 prebundle/cache 关闭、NutUI 按需样式、`@tarojs/plugin-html` 和 `@nutui/icons-react-taro` 显式依赖、BaseSkeleton/BaseEmpty/BaseException、中性页面底色+粉色品牌点缀、自定义 tabbar、独立 PageNavbar 和页面级 header/layout 已完成代码收口并通过本地校验；系统 custom-tab-bar 已压成 0 高度占位，可见 tabbar 已下沉到页面内 fixed 底部容器；首页已按最新 Pencil 画板重排为透明固定导航、高 banner、会员信息卡、上图下文开园时间卡、横滑热玩榜单、精选活动、精彩推荐、会员专享福利和玩转乐园九宫格，优惠券数量放在首页 `initPage` 中直接 await，服务层 catch 兜底返回 0，异常不进入首页失败态；新增 `docs/ui` 小程序 UI 工程事实源和 `check:ui-contract` 校验，用于 Pencil/Figma 设计、页面 MD、Codex 开发之间保持同步。
-- 恢复优先级：下一步优先在微信开发工具中验证真实 V2 响应、首页优惠券数量、首页新视觉还原、登录弹窗交互、页面内自定义 tabbar 跳转/选中态、弹层覆盖关系和自定义 navbar 安全区表现。
+- 恢复优先级：下一步优先在微信开发工具中验证真实 BFF 授权响应、首页优惠券数量、首页新视觉还原、登录弹窗交互、页面内自定义 tabbar 跳转/选中态、弹层覆盖关系和自定义 navbar 安全区表现。
 
 ## 恢复时先看
 
@@ -28,13 +28,18 @@
 
 ## 真实接口
 
-- AppID：`wx00261f550fdbc7ea`
-- UAT host：`https://pre-weapp.hefunoodles.com`
-- V2 授权地址：`https://pre-weapp.hefunoodles.com/hll-auth-client/oauth2/login/V2`
-- 首页优惠券数量接口：`https://pre-weapp.hefunoodles.com/coupon/applet/used/count`
+- AppID fallback：`wx72b9e08ce45d3e79`
+- UAT host：`https://hellokitty-uat.yoursite.xin`
+- BFF 授权地址：`https://hellokitty-uat.yoursite.xin/api/bff/auth/mini-program/login`
+- 首页优惠券数量接口：`https://hellokitty-uat.yoursite.xin/coupon/applet/used/count`
+- 门票预定列表接口：`GET https://hellokitty-uat.yoursite.xin/api/bff/purchase/menus?sceneType=TICKET`
+- 购票页 CMS 资源位接口：`GET https://hellokitty-uat.yoursite.xin/api/bff/cms/resources?sceneType=TICKET&pageCode=PURCHASE_HOME`
 - 业务成功码：`200`
-- 普通业务接口 header 只默认带 `CSESSION`。
-- 授权相关接口不带 `CSESSION`。
+- 普通业务接口 header 只默认带 `Authorization: Bearer <token>`。
+- 授权登录/刷新不带业务访问令牌；高风险 BFF 写接口通过 `sign: true` 自动携带 HMAC 签名头。
+- Feishu 主文档 13 个 BFF 对外入口已落到 `src/core/services/bff-api.ts` 和请求/登录层；购票列表和购票页 CMS 资源位是公开展示 GET，`src/pkg-ticket/services/ticket-booking.ts` 显式使用 `auth: 'none'`，失败时兜底本地数据；最近辅助 commit 为 `b40c8ed`，字段和鉴权以 Feishu 主文档、OpenAPI 和 uat 后续变更记录为准。
+- CRM/P1 已新增 `src/core/services/bff-crm-api.ts`，会员首页、资料、会员码、地址、领券中心和兑换专区服务已做真实接口优先 + 本地兜底接入；资料保存、地址写操作和老会员绑定走 request `sign: true`，待微信开发工具真实登录态验证。
+- 订单已新增 `src/core/services/bff-order-api.ts`，覆盖订单提交、详情、列表 BFF 入口；页面交易链路暂未强切，后续按票务/商城/订单中心工作包逐步替换。
 
 ## 登录体系目标
 
@@ -47,13 +52,13 @@
 - 页面 loading 由页面 hook 本地维护，一个页面同时只展示一个 loading。
 - request 不自动维护页面 loading；业务请求需要 loading 时用 `usePageRuntime().withLoading(...)` 包裹。
 - 首屏依赖初始化接口、页面级 loading 或初始化登录拦截的页面默认用 `usePageRuntime({ initPage })` + `pageRuntime.renderPage(...)`；静态页不强制。
-- 有 `CSESSION` 只代表后端会话可用。
-- V2 返回 `mobile` 且有值才代表用户已登录。
+- 有后端访问令牌只代表后端会话可用。
+- BFF 授权返回 `mobile` 且有值才代表用户已登录。
 - 登录判断只走封装方法，不允许页面散写字段判断。
 
 目标文件职责：
 
-- `src/core/store/member-store.ts`：会员状态、`CSESSION`、手机号、昵称、头像、等级、积分、是否登录。
+- `src/core/store/member-store.ts`：会员状态、后端访问令牌、手机号、昵称、头像、等级、积分、是否登录。
 - `src/core/store/app-store.ts`：登录弹窗可见态、登录原因、登录后续执行。
 - `src/core/auth/identity.ts`：唯一登录身份判断来源。
 - `src/core/services/auth.ts`：`isLoggedIn`、`ensureLogin`、`runAfterLogin`、`requireLogin`、`withLoginGuard`、`logout`。
@@ -88,15 +93,10 @@
 ## 当前已做
 
 - 根目录已新增 `ROOT-013`、`ROOT-014` 和 `codex/rules/rules-context-maintenance.md`，约束进行中任务高频更新和文档体积治理。
-- `yarn dev:weapp` watch 当前仍在运行，最近一次 webpack 显示 compiled successfully。
-- 已新增源码环境文件 `src/core/config/env.ts`。
-- 已设置 UAT host 和 V2 token path。
-- 已设置微信 AppID。
-- 已删除本地 mock API 文件。
-- 已开始实现 V2 授权 Promise 队列。
-- 已开始实现业务请求统一等待 V2 授权。
-- 已开始从 V2 响应中提取 `mobile`。
-- request 不再自动维护页面 loading。
+- `src/core/config/env.ts` 已设置 UAT host、BFF 授权路径和微信 AppID fallback，已删除本地 mock API 文件。
+- request 已实现 BFF 授权 Promise 队列、业务请求等待授权、提取访问令牌、持久化 `refreshToken/signSecret`、高风险写接口 HMAC 签名，且不再自动维护页面 loading。
+- 已新增 `src/core/services/bff-api.ts` 覆盖 Feishu 主文档 13 个 BFF 对外入口；已有交易链路未成熟的接口先以 service 入口落地，页面级接入跟随订单/支付/促销功能推进。
+- 已新增 `src/pkg-ticket/services/purchase-api.ts`，并让门票预定页优先读取后端购票列表和 CMS 资源位，失败兜底本地数据。
 - NutUI 小程序组件依赖 HTML 模板运行时；新增 NutUI 组件时必须确认 `babel-plugin-import`、`@tarojs/plugin-html`、prebundle/cache 和 NutUI `designWidth=375` 配置链路完整；新增图标相关 UI 默认优先使用 `@nutui/icons-react-taro`。
 - 已新增 `member-store`、`app-store` 和 `identity.ts` 登录身份判断。
 - 已新增 `usePageRuntime()`、`PageRuntimeHost` 和统一 `src/core/components/loading`，页面显式接入 runtime 并维护本页单例 loading。
@@ -120,30 +120,19 @@
 - 已将主包 tab 页面导航栏切到 `navigationStyle: 'custom'`，由 `PageLayout` 统一处理状态栏和微信胶囊避让。
 - 已新增 `yarn check:main-package:build`，通过 `HKITTY_MP_OUTPUT_ROOT=.dist-check/main-package` 隔离构建并检测主包体积，不覆盖 `dist/`。
 - 已新增 `pkg-member/pages/member-code` 会员码页面，使用 `weapp-qrcode` 生成二维码，服务层先 mock 返回会员码字符串，页面按 30 秒自动刷新；页面内底部 tabbar 中间会员码按钮已跳转到该分包页。
+- 已新增 `pkg-member/pages/coupon-center` 领券中心页面，首页第二个快捷入口登录后进入该页；页面顶部“好券推荐 / K币兑换”放入 `PageHeader`，当前 mock 返回空券列表并展示无可领取或可兑换优惠券空态。
+- `pkg-member/pages/coupons` 已改为“我的优惠券”页，顶部“已领取 / 已使用 / 已过期”放入 `PageHeader`，券面按接口字段渲染，底部固定“获取更多好券”跳领券中心，mock id 已改为数字字符串，券使用类型使用数字枚举 `useType`。线上券点击进入 `mallProducts?couponId=...`，商品列表通过 `fetchCouponApplicableProductsData(couponId)` mock 独立“券适用商品”接口，线下或未知类型兜底进入会员码。
+- 已新增 `pkg-member/pages/member-growth` 和 `pkg-member/pages/member-growth-detail` 会员权益 / 成长值独立页面；首页、我的页、会员中心和权益/成长值页统一读取会员资料中的 `levelId / levelNo / levelName / growthValue / avatarUrl`，头像通过 `resolveMemberAvatar()` 统一兜底，主包“我的”页会员卡、会员等级标签和“会员权益”服务行，首页会员 banner / 会员福利卡，以及会员分包首页“会员权益”分区项均进入会员权益页，会员权益按等级数据渲染 swiper 权益图，权益页成长值按钮进入独立明细页，成长值页展示 mock 记录或统一空态，两个页面分别承载对应规则弹层，复杂视觉图用 `AppImage` 空图占位等待接口或素材替换。
 - 当前主包体积：未触发预警。
 
 ## 当前待验证
 
-- 在微信开发工具中确认 V2 响应结构，尤其是 `CSESSION` 和 `mobile` 实际位置。
-- 验证首页优惠券接口成功时展示数量徽章，失败时服务层返回 0 且不触发首页失败态。
-- 验证签到、会员类快捷入口和会员福利入口触发的登录弹窗与续执行。
-- 验证使用 `withLoading` 包裹的业务请求只显示当前页面唯一 loading，不跨页面残留或重叠。
-- 在微信开发工具中确认会员码页面的二维码 canvas 渲染、30 秒刷新和登录中断引导。
-- 在微信开发工具中目视确认首页新视觉、会员入口、登录弹窗、页面 loading 和 tabBar 选中态的粉色主题表现。
-- 在微信开发工具中确认页面内自定义 tabbar 四个入口可跳转、选中态正确，登录弹窗/loading 能盖住 tabbar，且自定义 navbar 在不同机型胶囊和状态栏下不遮挡。
-- 用微信开发工具做验收时以模拟器可见画面为准；辅助树会同时列出隐藏 webview，不能只靠辅助树判断页面是否叠层。
-- 如果 V2 字段结构与当前兼容逻辑不一致，调整 `src/core/request/index.ts`。
-
-## 首页登录触发入口
-
-首页已不再展示内部验证区，登录能力通过业务入口覆盖这些场景：
-
-- 签到：未登录时先打开登录弹窗，登录后继续签到。
-- 会员类快捷入口：未登录时先打开登录弹窗，登录后继续进入或展示业务提示。
-- 会员福利横幅：未登录时先打开登录弹窗，登录后进入会员权益方向。
-- 普通入口：不展示内部技术文案，只做业务跳转或业务提示。
-
-用户可见文案禁止出现：`mock`、`CSESSION`、`V2`、`Taro`、技术栈名、组件库名、开发态或测试态等内部字眼。
+- 在微信开发工具中确认 BFF 授权响应结构，尤其是访问令牌和 `mobile` 实际位置；如字段不一致，调整 `src/core/request/index.ts`。
+- 在微信开发工具中用真实登录态验证登出、支付预下单、促销试算等签名写接口 header 和后端响应。
+- 在微信开发工具网络面板确认购票列表和购票页 CMS 资源位公开 GET 不带 `Authorization` 也能返回，并目视确认门票预定页展示。
+- 验证首页优惠券数量、签到/会员入口登录弹窗续执行、会员码二维码 canvas 和 30 秒刷新。
+- 验证 `withLoading` 只显示当前页面唯一 loading，不跨页面残留或重叠。
+- 目视确认首页新视觉、会员入口、登录弹窗、页面 loading、tabBar 选中态、自定义 navbar 胶囊避让和弹层覆盖；验收以模拟器可见画面为准。
 
 ## 恢复命令
 
@@ -166,5 +155,5 @@ yarn check:main-package:build
 - 用户已经在微信开发工具里打开了项目。
 - 不要再把登录弹窗当作 H5 全局 DOM 使用。
 - 不要再把 loading 计数放进全局 store，也不要用 pageKey 注册表；页面通过 `usePageRuntime()` 控制本页唯一 loading，展示组件统一维护在 `src/core/components/loading`。
-- 不要让本地 mock 地址、示例地址或内部技术字眼出现在界面里。
+- 不要让本地 mock 地址、示例地址或 `mock`、`CSESSION`、`V2`、`Taro`、技术栈名、开发态等内部字眼出现在界面里。
 - 当前半改代码先不要提交，等编译和微信开发工具验证通过后再提交。

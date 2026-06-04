@@ -84,7 +84,7 @@ export const ticketParkData: TicketParkData = {
 
 export const ticketProducts: HkpProductSummary[] = [
   {
-    id: 'adult-ticket',
+    id: '4000000000001001',
     title: '成人票',
     subtitle: '指定游玩日当天有效',
     image: { src: '' },
@@ -92,7 +92,7 @@ export const ticketProducts: HkpProductSummary[] = [
     tag: '门票',
   },
   {
-    id: 'anniversary-card',
+    id: '4000000000002006',
     title: '十周年限定单人年卡',
     subtitle: '限1名身高1.0米（含）以上人员使用',
     image: { src: '' },

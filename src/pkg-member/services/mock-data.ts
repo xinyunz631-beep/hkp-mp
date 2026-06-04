@@ -12,7 +12,7 @@ export interface MemberHomeSectionItem {
   key: string;
   title: string;
   desc: string;
-  action: 'coupons' | 'orders' | 'parkGuide' | 'ticketBooking' | 'shareDeferred' | 'withdrawDeferred';
+  action: 'memberGrowth' | 'coupons' | 'orders' | 'parkGuide' | 'ticketBooking' | 'shareDeferred' | 'withdrawDeferred';
   disabled?: boolean;
 }
 
@@ -35,7 +35,7 @@ export interface MemberCouponsData {
 
 export const memberCoupons: HkpCouponSummary[] = [
   {
-    id: 'member-park-50',
+    id: '7000000000002001',
     title: '乐园门票优惠券',
     amountText: '¥50',
     thresholdText: '满 399 可用',
@@ -44,7 +44,7 @@ export const memberCoupons: HkpCouponSummary[] = [
     tag: '会员专享',
   },
   {
-    id: 'member-used',
+    id: '7000000000002002',
     title: '商城优惠券',
     amountText: '¥20',
     thresholdText: '满 199 可用',
@@ -52,7 +52,7 @@ export const memberCoupons: HkpCouponSummary[] = [
     status: 'used',
   },
   {
-    id: 'member-expired',
+    id: '7000000000002003',
     title: '酒店早餐抵扣券',
     amountText: '¥30',
     thresholdText: '满 299 可用',
@@ -101,13 +101,13 @@ export const memberHomeData: MemberHomeData = {
           key: 'birthday',
           title: '生日礼遇',
           desc: '生日月券包到账后在优惠券页领取',
-          action: 'coupons',
+          action: 'memberGrowth',
         },
         {
           key: 'parking',
           title: '停车权益',
           desc: '酒店住客与年卡会员可享受停车优惠',
-          action: 'parkGuide',
+          action: 'memberGrowth',
         },
       ],
     },
@@ -151,7 +151,7 @@ export const shareSummaryData = {
 
 export const incomeRecords = [
   {
-    id: 'income-001',
+    id: '7000000000003001',
     title: '门票分享奖励',
     amount: 18.8,
     time: '2026-05-16 10:00',
@@ -161,7 +161,7 @@ export const incomeRecords = [
 
 export const inviteRecords = [
   {
-    id: 'invite-001',
+    id: '7000000000004001',
     nickname: '微信用户',
     time: '2026-05-16 09:30',
     statusText: '已消费',
@@ -170,7 +170,7 @@ export const inviteRecords = [
 
 export const withdrawRecords = [
   {
-    id: 'withdraw-001',
+    id: '7000000000005001',
     amount: 50,
     time: '2026-05-16 11:00',
     statusText: '处理中',

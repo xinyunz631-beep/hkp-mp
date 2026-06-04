@@ -285,7 +285,7 @@ export const orderList: HkpOrderSummary[] = [
     statusText: '待使用',
     products: [
       {
-        id: 'adult-ticket',
+        id: '4000000000001001',
         title: '成人票',
         subtitle: '指定游玩日当天有效',
         image: { src: orderImageAssets.ticket },

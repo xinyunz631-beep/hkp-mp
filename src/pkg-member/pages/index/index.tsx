@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import Taro from '@tarojs/taro';
 import { Text, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
 import { AppIcon } from '@/core/components/AppIcon';
@@ -8,6 +7,8 @@ import { PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import { rootStore } from '@/core/store';
+import { resolveMemberAvatar, resolveMemberLevel } from '@/core/utils/member-profile';
+import { navigateToMiniRoute } from '@/core/utils/navigation';
 import { showWechatToast } from '@/core/utils/wechat-actions';
 import {
   fetchMemberHomeData,
@@ -35,6 +36,7 @@ function resolveShortcutRoute(action: MemberHomeShortcut['action']) {
 
 // 解析会员服务区的跳转目标，后续真实页面补齐时只改这里。
 function resolveSectionRoute(action: MemberHomeSectionItem['action']) {
+  if (action === 'memberGrowth') return MINI_PACKAGE_ROUTES.memberGrowth;
   if (action === 'coupons') return MINI_PACKAGE_ROUTES.memberCoupons;
   if (action === 'orders') return MINI_PACKAGE_ROUTES.orderHome;
   if (action === 'parkGuide') return MINI_PACKAGE_ROUTES.ticketParkGuide;
@@ -67,40 +69,45 @@ const MemberIndexPage = observer(function MemberIndexPage() {
   // 处理会员首页快捷入口跳转，未开放能力统一走轻提示兜底。
   function handleShortcutTap(shortcut: MemberHomeShortcut) {
     if (shortcut.disabled) {
-      void showWechatToast('该服务按计划暂缓到核心板块完成后处理');
+      void showWechatToast('服务准备中，请稍后再试');
       return;
     }
 
     const nextRoute = resolveShortcutRoute(shortcut.action);
     if (!nextRoute) {
-      void showWechatToast('该服务按计划暂缓到核心板块完成后处理');
+      void showWechatToast('服务准备中，请稍后再试');
       return;
     }
 
-    Taro.navigateTo({ url: nextRoute });
+    navigateToMiniRoute(nextRoute);
   }
 
   // 处理会员权益和更多服务区动作，避免 render 内散写业务分支。
   function handleSectionTap(item: MemberHomeSectionItem) {
     if (item.disabled) {
-      void showWechatToast('分销和提现按当前计划暂缓到最后处理');
+      void showWechatToast('服务准备中，请稍后再试');
       return;
     }
 
     const nextRoute = resolveSectionRoute(item.action);
     if (!nextRoute) {
-      void showWechatToast('该服务按计划暂缓到核心板块完成后处理');
+      void showWechatToast('服务准备中，请稍后再试');
       return;
     }
 
-    Taro.navigateTo({ url: nextRoute });
+    navigateToMiniRoute(nextRoute);
+  }
+
+  function handleProfileTap() {
+    navigateToMiniRoute(MINI_PACKAGE_ROUTES.memberProfile);
   }
 
   return pageRuntime.renderPage(() => {
     if (!pageData) return null;
 
     const displayName = memberProfile?.nickname || '乐园会员';
-    const displayLevel = memberProfile?.levelName || 'Hello Kitty Park 会员';
+    const displayLevel = resolveMemberLevel(memberProfile);
+    const displayAvatar = resolveMemberAvatar(memberProfile);
     const displayPoints = memberProfile?.points ?? pageData.points;
     const displayMobile = maskMobile(memberProfile?.mobile);
 
@@ -110,16 +117,16 @@ const MemberIndexPage = observer(function MemberIndexPage() {
           <View className="_pg-content">
             <View className="_pg-hero">
               <Text className="_pg-hero_badge">Hello Kitty Park Member</Text>
-              <View className="_pg-hero_profile">
+              <View className="_pg-hero_profile" onClick={handleProfileTap}>
                 <AppImage
                   className="_pg-hero_avatar"
-                  src={memberProfile?.avatarUrl}
+                  src={displayAvatar}
                   width={88}
                   height={88}
                 />
                 <View className="_pg-hero_profile-main">
                   <Text className="_pg-hero_name">{displayName}</Text>
-                  <Text className="_pg-hero_meta">{displayLevel}</Text>
+                  <Text className="_pg-hero_meta">{displayLevel.levelNo} {displayLevel.levelName}</Text>
                   <Text className="_pg-hero_mobile">{displayMobile}</Text>
                 </View>
                 <View className="_pg-hero_status">
@@ -149,7 +156,7 @@ const MemberIndexPage = observer(function MemberIndexPage() {
                 </View>
                 <View
                   className="_pg-summary_link"
-                  onClick={() => Taro.navigateTo({ url: MINI_PACKAGE_ROUTES.memberCoupons })}
+                  onClick={() => navigateToMiniRoute(MINI_PACKAGE_ROUTES.memberCoupons)}
                 >
                   <Text>查看卡券</Text>
                   <AppIcon name="arrowRight" size={14} color="#db2777" />
@@ -193,7 +200,7 @@ const MemberIndexPage = observer(function MemberIndexPage() {
                         <Text className="_pg-section_item-desc">{item.desc}</Text>
                       </View>
                       <View className="_pg-section_item-action">
-                        <Text className="_pg-section_item-tag">{item.disabled ? '暂缓' : '查看'}</Text>
+                        <Text className="_pg-section_item-tag">{item.disabled ? '敬请期待' : '查看'}</Text>
                         <AppIcon name="arrowRight" size={14} color={item.disabled ? '#98a2b3' : '#db2777'} />
                       </View>
                     </View>

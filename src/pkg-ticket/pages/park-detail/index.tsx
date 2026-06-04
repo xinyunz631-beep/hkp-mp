@@ -1,128 +1,134 @@
 import { useState } from 'react';
-import Taro from '@tarojs/taro';
-import { Text, View } from '@tarojs/components';
+import Taro, { useShareAppMessage } from '@tarojs/taro';
+import { Swiper, SwiperItem, Text, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
 import { AppIcon } from '@/core/components/AppIcon';
-import { PageShell } from '@/core/components/PageShell';
-import { HKP_PARK_LOCATION } from '@/core/constants/park-location';
+import { AppImage } from '@/core/components/AppImage';
+import { AppShareButton } from '@/core/components/AppShareButton';
+import { PageFooter, PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
-import { callWechatPhone, openWechatLocation, showWechatConfirm } from '@/core/utils/wechat-actions';
+import { previewWechatImages } from '@/core/utils/wechat-actions';
+import { TicketRichText } from '@/pkg-ticket/components/TicketRichText';
 import { fetchParkDetailData, type TicketParkDetailData } from '@/pkg-ticket/services/park-detail';
 import './index.scss';
 
-interface DetailSectionProps {
-  title: string;
-  children: React.ReactNode;
+function resolveProjectId() {
+  return Taro.getCurrentInstance().router?.params?.id || '';
 }
 
-function DetailSection({ title, children }: DetailSectionProps) {
-  return (
-    <View className="_pg-section">
-      <Text className="_pg-section_title">{title}</Text>
-      {children}
-    </View>
-  );
-}
-
+// 渲染热玩项目详情页，项目数据按路由参数从接口获取，详情内容由富文本承载。
 const ParkDetailPage = observer(function ParkDetailPage() {
   const [detailData, setDetailData] = useState<TicketParkDetailData>();
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [liked, setLiked] = useState(false);
   const pageRuntime = usePageRuntime({
     initPage: async () => {
-      const nextData = await fetchParkDetailData();
+      const nextData = await fetchParkDetailData(resolveProjectId());
       setDetailData(nextData);
+      setLiked(nextData.project.liked);
+      setActiveIndex(0);
     },
   });
 
-  function handleBookingEntry() {
-    Taro.navigateTo({ url: MINI_PACKAGE_ROUTES.ticketBooking });
-  }
+  const project = detailData?.project;
+  const heroImages = (project?.heroImages ?? []).filter(Boolean);
 
-  async function handleInfoPress(label: string, value: string) {
-    if (label.includes('客服')) {
-      await callWechatPhone(value);
-      return;
-    }
+  useShareAppMessage(() => ({
+    title: project?.name || 'Hello Kitty Park',
+    path: project?.id
+      ? `${MINI_PACKAGE_ROUTES.ticketParkDetail}?id=${encodeURIComponent(project.id)}`
+      : MINI_PACKAGE_ROUTES.ticketParkDetail,
+    imageUrl: heroImages.find(Boolean) || undefined,
+  }));
 
-    if (label.includes('地址')) {
-      await openWechatLocation({
-        ...HKP_PARK_LOCATION,
-        address: value,
-      });
-      return;
-    }
-
-    await showWechatConfirm({
-      title: label,
-      content: value,
-      confirmText: '知道了',
-      cancelText: '关闭',
+  function handlePreviewImage() {
+    void previewWechatImages({
+      urls: heroImages,
+      current: heroImages[activeIndex],
+      emptyText: '暂无项目图片',
     });
   }
 
-  return pageRuntime.renderPage(() => {
-    if (!detailData) return null;
+  function handleLikePress() {
+    setLiked((nextLiked) => !nextLiked);
+  }
 
-    const { park } = detailData;
+  function handleTicketPress() {
+    Taro.navigateTo({ url: MINI_PACKAGE_ROUTES.ticketBooking });
+  }
+
+  function handleHotelPress() {
+    Taro.navigateTo({ url: MINI_PACKAGE_ROUTES.hotelHome });
+  }
+
+  return pageRuntime.renderPage(() => {
+    if (!project) return null;
+
+    const likeCount = project.likeCount + (liked && !project.liked ? 1 : 0) - (!liked && project.liked ? 1 : 0);
+    const likeText = `${likeCount}人喜欢`;
 
     return (
       <View className="_pg">
-        <PageShell title={park.name} className="_pg-shell" reserveTabBarSpace={false}>
+        <PageShell title="热玩项目" className="_pg-shell">
           <View className="_pg-content">
-            <DetailSection title="介绍">
-              <Text className="_pg-intro">{park.intro}</Text>
-            </DetailSection>
-
-            <DetailSection title="开放时间">
-              <View className="_pg-schedule">
-                {park.schedules.map((schedule) => (
-                  <View className="_pg-schedule_item" key={schedule.dateRange}>
-                    <Text className="_pg-schedule_range">{schedule.dateRange}</Text>
-                    <View className="_pg-schedule_meta">
-                      <Text className="_pg-schedule_days">{schedule.daysLabel}</Text>
-                      <Text className="_pg-schedule_hours">{schedule.openHours}</Text>
-                    </View>
-                  </View>
-                ))}
+            {heroImages.length > 0 ? (
+              <View className="_pg-hero">
+                <Swiper
+                  className="_pg-hero_swiper"
+                  circular
+                  onChange={(event) => setActiveIndex(event.detail.current)}
+                >
+                  {heroImages.map((imageSrc, index) => (
+                    <SwiperItem key={`${imageSrc}-${index}`}>
+                      <View className="_pg-hero_slide" onClick={handlePreviewImage}>
+                        <AppImage className="_pg-hero_image" src={imageSrc} mode="aspectFill" emptyState="error" />
+                      </View>
+                    </SwiperItem>
+                  ))}
+                </Swiper>
               </View>
-            </DetailSection>
+            ) : null}
 
-            <DetailSection title="优惠政策">
-              <View className="_pg-policy">
-                {park.policies.map((policy) => (
-                  <View className="_pg-policy_row" key={policy.label}>
-                    <Text className="_pg-policy_label">{policy.label}</Text>
-                    <Text className="_pg-policy_value">{policy.value}</Text>
-                  </View>
-                ))}
-              </View>
-            </DetailSection>
-
-            <DetailSection title="其他信息">
-              <View className="_pg-info">
-                {park.otherInfo.map((item) => (
-                  <View
-                    className="_pg-info_row _pg-info_row--link"
-                    key={item.label}
-                    onClick={() => void handleInfoPress(item.label, item.value)}
-                  >
-                    <Text className="_pg-info_label">{item.label}</Text>
-                    <View className="_pg-info_value-wrap">
-                      <Text className="_pg-info_value">{item.value}</Text>
-                      <AppIcon name="arrowRight" className="_pg-info_chevron" size={16} color="#c0c5cf" />
-                    </View>
-                  </View>
-                ))}
-                <View className="_pg-info_row _pg-info_row--link" onClick={handleBookingEntry}>
-                  <Text className="_pg-info_label">在线购票</Text>
-                  <View className="_pg-info_action">
-                    <Text>前往预定</Text>
-                    <AppIcon name="arrowRight" className="_pg-info_action-icon" size={16} color="#d94a88" />
-                  </View>
+            <View className="_pg-summary">
+              <View className="_pg-summary_main">
+                <Text className="_pg-summary_title">{project.name}</Text>
+                <View className="_pg-summary_meta">
+                  <AppIcon name="location" className="_pg-summary_meta-icon" size={13} color="#626a73" />
+                  <Text>{project.locationText}</Text>
+                </View>
+                <View className="_pg-summary_meta">
+                  <AppIcon name="ask" className="_pg-summary_meta-icon" size={13} color="#626a73" />
+                  <Text>{project.statusText}</Text>
                 </View>
               </View>
-            </DetailSection>
+              <View className="_pg-summary_actions">
+                <AppShareButton className="_pg-summary_action" iconColor="#18181b">
+                  <AppIcon name="share" size={22} color="#18181b" />
+                  <Text>分享</Text>
+                </AppShareButton>
+                <View className="_pg-summary_action" onClick={handleLikePress}>
+                  <AppIcon name="heart" size={22} color={liked ? '#e5004f' : '#18181b'} />
+                  <Text>{likeText}</Text>
+                </View>
+              </View>
+            </View>
+
+            <View className="_pg-detail">
+              <TicketRichText className="_pg-detail_rich-text" nodes={project.detailHtml} />
+            </View>
           </View>
+
+          <PageFooter>
+            <View className="_pg-footer">
+              <View className="_pg-footer_button" onClick={handleTicketPress}>
+                <Text>购买门票</Text>
+              </View>
+              <View className="_pg-footer_button" onClick={handleHotelPress}>
+                <Text>酒店预定</Text>
+              </View>
+            </View>
+          </PageFooter>
         </PageShell>
       </View>
     );

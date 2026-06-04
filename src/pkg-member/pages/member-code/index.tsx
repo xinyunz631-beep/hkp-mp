@@ -6,7 +6,9 @@ import { observer } from 'mobx-react';
 import drawQrcode from 'weapp-qrcode';
 import { AppImage } from '@/core/components/AppImage';
 import { PageShell } from '@/core/components/PageShell';
+import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
+import { navigateToMiniRoute } from '@/core/utils/navigation';
 import { fetchMemberCode } from '@/pkg-member/services/member-code';
 import './index.scss';
 
@@ -120,10 +122,22 @@ const MemberCodePage = observer(function MemberCodePage() {
   return pageRuntime.renderPage(() => (
     <View className="_pg">
       <PageShell title="会员码" reserveTabBarSpace={false} className="_pg-shell">
+        <AppImage
+          className="_pg-bg"
+          src=""
+          mode="aspectFill"
+          placeholderColor="#f5f7fa"
+          showErrorIcon={false}
+        />
         <View className="_pg-scene">
+          <AppImage
+            className="_pg-logo"
+            src=""
+            mode="aspectFit"
+            placeholderColor="#d9e0e8"
+            showErrorIcon={false}
+          />
           <View className="_pg-card">
-            <View className="_pg-card_halo _pg-card_halo--left" />
-            <View className="_pg-card_halo _pg-card_halo--right" />
             <View className="_pg-qrcode_shell">
               {memberCodeImageSrc ? (
                 <AppImage
@@ -140,7 +154,12 @@ const MemberCodePage = observer(function MemberCodePage() {
               )}
             </View>
           </View>
-          <Text className="_pg-hint">老会员需要绑定，请至“我的”-“老会员绑定”</Text>
+          <Text
+            className="_pg-hint"
+            onClick={() => navigateToMiniRoute(MINI_PACKAGE_ROUTES.memberLegacyBind)}
+          >
+            老会员需要绑定，请至“我的”-“老会员绑定”
+          </Text>
         </View>
         <View className="_pg-qrcode_canvas-host" style={hiddenCanvasStyle}>
           <Canvas canvasId={MEMBER_CODE_CANVAS_ID} className="_pg-qrcode_canvas" style={hiddenCanvasStyle} />

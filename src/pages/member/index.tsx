@@ -1,4 +1,4 @@
-import { Text, View } from '@tarojs/components';
+import { Text, View, type ITouchEvent } from '@tarojs/components';
 import { observer } from 'mobx-react';
 import { AppIcon, type AppIconName } from '@/core/components/AppIcon';
 import { AppImage } from '@/core/components/AppImage';
@@ -7,6 +7,7 @@ import { PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import { rootStore } from '@/core/store';
+import { resolveMemberAvatar, resolveMemberLevel } from '@/core/utils/member-profile';
 import { navigateToMiniRoute } from '@/core/utils/navigation';
 import { callWechatPhone, showWechatConfirm } from '@/core/utils/wechat-actions';
 import './index.scss';
@@ -38,8 +39,6 @@ interface ProfileServiceItem {
 }
 
 const PARK_PHONE = '4009778899';
-const DEFAULT_PROFILE_AVATAR = 'https://wx.qlogo.cn/mmhead/AhLk989Zrl2foUe0CrwzoKJpCozr2Kw28TVCpLBf4Ch0eicHphDdfPWkkOpyKCQmcM9ia49iac4svM/0';
-
 const metrics: ProfileMetricItem[] = [
   {
     key: 'favorites',
@@ -107,7 +106,7 @@ const serviceActions: ProfileServiceItem[] = [
   {
     key: 'member',
     title: '会员权益',
-    route: MINI_PACKAGE_ROUTES.memberHome,
+    route: MINI_PACKAGE_ROUTES.memberGrowth,
     reason: '登录后可查看会员权益',
   },
   {
@@ -139,17 +138,8 @@ function openMiniRoute(route: string) {
   navigateToMiniRoute(route);
 }
 
-async function handleLegacyBind() {
-  const confirmed = await showWechatConfirm({
-    title: '老会员绑定',
-    content: '老会员卡号或手机号需要客服协助核验，是否联系乐园客服处理？',
-    confirmText: '联系客服',
-    cancelText: '稍后再说',
-  });
-
-  if (confirmed) {
-    await callWechatPhone(PARK_PHONE);
-  }
+function handleLegacyBind() {
+  navigateToMiniRoute(MINI_PACKAGE_ROUTES.memberLegacyBind);
 }
 
 async function handleInvoice() {
@@ -208,6 +198,11 @@ function handleMetricTap(item: ProfileMetricItem) {
   if (item.action === 'shareIncome') {
     void handleShareIncome();
   }
+}
+
+function handleLevelTap(event: ITouchEvent) {
+  event.stopPropagation();
+  navigateToMiniRoute(MINI_PACKAGE_ROUTES.memberGrowth);
 }
 
 function renderMetric(item: ProfileMetricItem) {
@@ -272,10 +267,9 @@ function renderServiceAction(item: ProfileServiceItem) {
 const MemberPage = observer(function MemberPage() {
   const pageRuntime = usePageRuntime();
   const memberProfile = rootStore.member.profile;
+  const memberLevel = resolveMemberLevel(memberProfile);
+  const memberAvatar = resolveMemberAvatar(memberProfile);
   const displayName = memberProfile?.nickname || '微信用户';
-  const displayLevel = memberProfile?.levelName === 'Hello Kitty Park 会员'
-    ? '初级会员'
-    : memberProfile?.levelName || '初级会员';
 
   return pageRuntime.renderPage(() => (
     <View className="_pg">
@@ -292,20 +286,20 @@ const MemberPage = observer(function MemberPage() {
             <View className="_pg-hero_decor _pg-hero_decor--three" />
             <AuthAction
               className="_pg-hero_user"
-              reason="登录后可查看会员权益"
-              onAuthed={() => openMiniRoute(MINI_PACKAGE_ROUTES.memberHome)}
+              reason="登录后可查看个人信息"
+              onAuthed={() => openMiniRoute(MINI_PACKAGE_ROUTES.memberProfile)}
             >
               <AppImage
                 className="_pg-hero_avatar"
-                src={memberProfile?.avatarUrl || DEFAULT_PROFILE_AVATAR}
+                src={memberAvatar}
                 width={96}
                 height={96}
               />
               <View className="_pg-hero_info">
                 <Text className="_pg-hero_name">{displayName}</Text>
-                <View className="_pg-hero_level">
-                  <Text className="_pg-hero_level-no">1</Text>
-                  <Text className="_pg-hero_level-name">{displayLevel}</Text>
+                <View className="_pg-hero_level" onClick={handleLevelTap}>
+                  <Text className="_pg-hero_level-no">{memberLevel.levelNo}</Text>
+                  <Text className="_pg-hero_level-name">{memberLevel.levelName}</Text>
                 </View>
               </View>
             </AuthAction>

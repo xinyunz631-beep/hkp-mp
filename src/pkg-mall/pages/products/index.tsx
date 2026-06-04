@@ -74,6 +74,10 @@ function resolveProductsRouteCategoryId() {
   return Taro.getCurrentInstance().router?.params?.categoryId || '';
 }
 
+function resolveProductsRouteCouponId() {
+  return Taro.getCurrentInstance().router?.params?.couponId || '';
+}
+
 function isDefaultFilterState(filterState: MallProductsFilterState) {
   return filterState.priceRange === 'all' && filterState.tag === 'all';
 }
@@ -135,6 +139,7 @@ const ProductsPage = observer(function ProductsPage() {
   const [filterDraft, setFilterDraft] = useState<MallProductsFilterState>(defaultFilterState);
   const [keyword, setKeyword] = useState('');
   const [categoryId, setCategoryId] = useState('');
+  const [couponId, setCouponId] = useState('');
   const [skuVisible, setSkuVisible] = useState(false);
   const [skuDetailData, setSkuDetailData] = useState<MallProductDetailData>();
   const [skuGroups, setSkuGroups] = useState<HkpSkuGroup[]>([]);
@@ -144,10 +149,16 @@ const ProductsPage = observer(function ProductsPage() {
     initPage: async () => {
       const nextKeyword = resolveProductsRouteKeyword();
       const nextCategoryId = resolveProductsRouteCategoryId();
-      const nextData = await fetchProductsData({ keyword: nextKeyword, categoryId: nextCategoryId });
+      const nextCouponId = resolveProductsRouteCouponId();
+      const nextData = await fetchProductsData({
+        keyword: nextKeyword,
+        categoryId: nextCategoryId,
+        couponId: nextCouponId,
+      });
       setListData(nextData);
       setKeyword(nextKeyword);
       setCategoryId(nextCategoryId);
+      setCouponId(nextCouponId);
     },
   });
 
@@ -191,7 +202,7 @@ const ProductsPage = observer(function ProductsPage() {
   }, [activeTab, filterState, priceAscending, products]);
 
   async function loadProducts(nextKeyword: string) {
-    const nextData = await fetchProductsData({ keyword: nextKeyword, categoryId });
+    const nextData = await fetchProductsData({ keyword: nextKeyword, categoryId, couponId });
     setListData(nextData);
     setKeyword(nextKeyword);
   }

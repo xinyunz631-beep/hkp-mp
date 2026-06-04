@@ -1,6 +1,14 @@
 import Taro from '@tarojs/taro';
 import { bootstrapCsession } from '@/core/request';
+import { logoutBffAuthSession } from '@/core/services/bff-api';
 import { rootStore } from '@/core/store';
+import {
+  DEFAULT_MEMBER_AVATAR_URL,
+  DEFAULT_MEMBER_GROWTH_VALUE,
+  DEFAULT_MEMBER_LEVEL_ID,
+  DEFAULT_MEMBER_LEVEL_NAME,
+  DEFAULT_MEMBER_LEVEL_NO,
+} from '@/core/utils/member-profile';
 import type { WechatPhoneCredential } from '@/core/wechat/auth';
 import { getWechatUserProfile } from '@/core/wechat/auth';
 
@@ -90,9 +98,12 @@ export function loginWithLocalMember() {
   rootStore.member.setMember('local-hkitty-session', {
     id: 'local-member-001',
     nickname: '乐园会员',
-    avatarUrl: '',
+    avatarUrl: DEFAULT_MEMBER_AVATAR_URL,
     mobile: '13800000000',
-    levelName: 'Hello Kitty Park 会员',
+    levelId: DEFAULT_MEMBER_LEVEL_ID,
+    levelNo: DEFAULT_MEMBER_LEVEL_NO,
+    levelName: DEFAULT_MEMBER_LEVEL_NAME,
+    growthValue: DEFAULT_MEMBER_GROWTH_VALUE,
     points: 1280,
   });
 
@@ -126,8 +137,16 @@ export function withLoginGuard<TArgs extends unknown[]>(
   };
 }
 
-// 退出当前登录态，用于个人中心和调试环境切换账号。
-export function logout() {
-  rootStore.member.clearMember();
-  rootStore.app.closeLogin();
+// 退出当前登录态；服务端登出失败不阻塞用户本地退出。
+export async function logout() {
+  try {
+    if (rootStore.member.csession && rootStore.member.signSecret) {
+      await logoutBffAuthSession();
+    }
+  } catch {
+    // 用户退出以本地状态清理为准，服务端失效失败由下次授权刷新兜底。
+  } finally {
+    rootStore.member.clearMember();
+    rootStore.app.closeLogin();
+  }
 }

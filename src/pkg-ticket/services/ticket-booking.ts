@@ -1,6 +1,12 @@
 import { HKP_PARK_LOCATION } from '@/core/constants/park-location';
-import { resolveMockData } from '@/core/services/mock';
+import { withServiceFallback } from '@/core/services/mock';
 import { ticketCoupons, ticketDates } from './mock-data';
+import {
+  fetchPurchaseMenus,
+  fetchPurchaseResources,
+  type CmsResourceSlotApiItem,
+  type PurchaseMenuApiItem,
+} from './purchase-api';
 import type { HkpCouponSummary } from '@/core/types/hkp';
 
 export interface TicketBookingMapLocation {
@@ -85,6 +91,8 @@ export interface FetchTicketBookingDataOptions {
   travelDate?: string;
 }
 
+const ENABLED_STATUS = 'ENABLED';
+
 const ticketBookingData: TicketBookingData = {
   parkInfo: {
     name: '杭州 Hello Kitty 乐园',
@@ -128,7 +136,7 @@ const ticketBookingData: TicketBookingData = {
   })),
   products: [
     {
-      id: 'adult-ticket',
+      id: '4000000000001001',
       category: 'ticket',
       title: '当日成人票',
       description: '1.4米（含1.4米）以上儿童及成人',
@@ -141,7 +149,7 @@ const ticketBookingData: TicketBookingData = {
       limitText: '每单最多购买 6 张',
     },
     {
-      id: 'discount-ticket',
+      id: '4000000000001002',
       category: 'ticket',
       title: '当日优惠票',
       description: '70周岁以上长者及符合园区优待政策游客',
@@ -154,7 +162,7 @@ const ticketBookingData: TicketBookingData = {
       limitText: '入园需出示有效证件',
     },
     {
-      id: 'child-ticket',
+      id: '4000000000001003',
       category: 'ticket',
       title: '当日儿童票',
       description: '1米（含1米）-1.4米（不含1.4米）儿童',
@@ -167,7 +175,7 @@ const ticketBookingData: TicketBookingData = {
       limitText: '入园需成人陪同',
     },
     {
-      id: 'adult-annual-card',
+      id: '4000000000002001',
       category: 'annualCard',
       title: '成人年卡',
       description: '1.4米以上儿童以及成人',
@@ -180,7 +188,7 @@ const ticketBookingData: TicketBookingData = {
       limitText: '每个身份证限购 1 张',
     },
     {
-      id: 'child-annual-card',
+      id: '4000000000002002',
       category: 'annualCard',
       title: '儿童年卡',
       description: '1-1.4米（不含1.4米）以上儿童',
@@ -193,7 +201,7 @@ const ticketBookingData: TicketBookingData = {
       limitText: '实名年卡，入园需核验证件',
     },
     {
-      id: 'family-annual-card-a',
+      id: '4000000000002003',
       category: 'annualCard',
       title: '家庭年卡A',
       description: '2名成人携带1名身高1米（含1米）-1.4米的儿童或2名成人携带1名优待者',
@@ -206,7 +214,7 @@ const ticketBookingData: TicketBookingData = {
       limitText: '每单最多购买 1 套',
     },
     {
-      id: 'family-annual-card-b',
+      id: '4000000000002004',
       category: 'annualCard',
       title: '家庭年卡B',
       description: '2名成人携带2名身高1米（含1米）-1.4米的儿童或2名成人携带2名优待者',
@@ -219,7 +227,7 @@ const ticketBookingData: TicketBookingData = {
       limitText: '每单最多购买 1 套',
     },
     {
-      id: 'family-annual-card-c',
+      id: '4000000000002005',
       category: 'annualCard',
       title: '家庭年卡C',
       description: '1名成人携带1名身高1米（含1米）-1.4米的儿童或1名成人携带1名优待者',
@@ -232,7 +240,7 @@ const ticketBookingData: TicketBookingData = {
       limitText: '每单最多购买 1 套',
     },
     {
-      id: 'parent-child-ticket',
+      id: '4000000000001004',
       category: 'ticket',
       title: '亲子畅玩票',
       description: '1名成人携带1名1米-1.4米儿童',
@@ -245,7 +253,7 @@ const ticketBookingData: TicketBookingData = {
       limitText: '每单最多购买 3 套',
     },
     {
-      id: 'afternoon-ticket',
+      id: '4000000000001005',
       category: 'ticket',
       title: '午后入园票',
       description: '14:00后入园，适合半日轻游玩',
@@ -258,7 +266,7 @@ const ticketBookingData: TicketBookingData = {
       limitText: '每单最多购买 6 张',
     },
     {
-      id: 'limited-adult-ticket',
+      id: '4000000000001006',
       category: 'ticket',
       title: '限时成人特惠票',
       description: '指定日期限量发售，售完即止',
@@ -273,28 +281,28 @@ const ticketBookingData: TicketBookingData = {
   ],
   packages: [
     {
-      id: 'single-ticket-dining',
+      id: '4000000000003001',
       title: '任意日单人票+日料餐厅抵用券',
       soldText: '已售200',
       priceText: '¥110起',
       imageSrc: '',
     },
     {
-      id: 'child-ticket-dino-dining',
+      id: '4000000000001003-dino-dining',
       title: '儿童票及优待票+小恐龙餐厅抵用券',
       soldText: '已售200',
       priceText: '¥188起',
       imageSrc: '',
     },
     {
-      id: 'family-ticket-dining',
+      id: '4000000000003003',
       title: '家庭票+园区餐饮抵用券',
       soldText: '已售126',
       priceText: '¥299起',
       imageSrc: '',
     },
     {
-      id: 'annual-card-gift',
+      id: '4000000000003004',
       title: '年卡+限定周边礼包',
       soldText: '已售86',
       priceText: '¥660起',
@@ -308,49 +316,49 @@ const ticketSectionCatalog: TicketBookingSection[] = [
     key: 'ticket',
     type: 'ticket',
     title: '门票',
-    productIds: ['adult-ticket', 'discount-ticket', 'child-ticket'],
+    productIds: ['4000000000001001', '4000000000001002', '4000000000001003'],
   },
   {
     key: 'annual-card',
     type: 'annualCard',
     title: '年卡',
     badge: { text: 'hot', color: 'red' },
-    productIds: ['adult-annual-card', 'child-annual-card'],
+    productIds: ['4000000000002001', '4000000000002002'],
   },
   {
     key: 'family-card',
     type: 'annualCard',
     title: '家庭年卡',
     badge: { text: 'hot', color: 'red' },
-    productIds: ['family-annual-card-a', 'family-annual-card-b', 'family-annual-card-c'],
+    productIds: ['4000000000002003', '4000000000002004', '4000000000002005'],
   },
   {
     key: 'parent-child',
     type: 'ticket',
     title: '亲子票',
     badge: { text: '亲子', color: 'red' },
-    productIds: ['parent-child-ticket'],
+    productIds: ['4000000000001004'],
   },
   {
     key: 'package',
     type: 'package',
     title: '门票套餐',
-    packageIds: ['single-ticket-dining', 'child-ticket-dino-dining'],
+    packageIds: ['4000000000003001', '4000000000001003-dino-dining'],
   },
   {
     key: 'limited-ticket',
     type: 'ticket',
     title: '限时特惠',
     badge: { text: '限时', color: 'red' },
-    productIds: ['afternoon-ticket', 'limited-adult-ticket'],
+    productIds: ['4000000000001005', '4000000000001006'],
   },
 ];
 
 const packageBasePrices: Record<string, number> = {
-  'single-ticket-dining': 110,
-  'child-ticket-dino-dining': 188,
-  'family-ticket-dining': 299,
-  'annual-card-gift': 660,
+  '4000000000003001': 110,
+  '4000000000001003-dino-dining': 188,
+  '4000000000003003': 299,
+  '4000000000003004': 660,
 };
 
 function getTravelDateSeed(travelDate?: string) {
@@ -412,7 +420,120 @@ function buildTicketBookingData(options: FetchTicketBookingDataOptions = {}): Ti
   };
 }
 
-// 获取门票预定页面数据，接真实接口时保留这里做字段归一和失败兜底。
+// 判断后端展示项是否处于可见状态，缺省状态按可展示处理。
+function isEnabledApiItem(status?: string) {
+  return !status || status === ENABLED_STATUS;
+}
+
+// 按后端 menuNo 和标题粗分票种类型，后续后端补分类字段后只改这里。
+function resolveProductCategory(item: PurchaseMenuApiItem): TicketProduct['category'] {
+  const categoryText = `${item.menuNo || ''} ${item.menuName || ''}`.toLowerCase();
+  return categoryText.includes('annual') || categoryText.includes('年卡') ? 'annualCard' : 'ticket';
+}
+
+// 将后端分为单位的价格转为页面使用的元单位价格。
+function resolvePrice(priceCent?: number) {
+  if (!Number.isFinite(priceCent)) return 0;
+  return Math.max(0, Number(priceCent) / 100);
+}
+
+// 将购票列表 BFF 字段归一为页面票种模型。
+function normalizePurchaseMenuItem(item: PurchaseMenuApiItem): TicketProduct | undefined {
+  if (!item.menuNo || !item.menuName || !isEnabledApiItem(item.status)) return undefined;
+  const holidayUnavailable = item.holidayAvailable === false;
+
+  return {
+    id: item.menuNo,
+    category: resolveProductCategory(item),
+    title: item.menuName,
+    description: item.subtitle || item.description || '官方直营票种',
+    priceLabel: '网购价',
+    price: resolvePrice(item.priceCent),
+    noticeText: '预定须知',
+    tags: item.badgeText ? [item.badgeText] : [],
+    validityText: '所选游玩日当天有效',
+    stockText: holidayUnavailable ? '节假日不可用' : '当前可订',
+    limitText: item.description || '请以下单页实名和库存规则为准',
+  };
+}
+
+// 根据真实票种生成页面分区，套餐能力暂沿用本地兜底数据。
+function buildSectionsFromProducts(products: TicketProduct[], fallback: TicketBookingData) {
+  const ticketProductIds = products.filter((product) => product.category === 'ticket').map((product) => product.id);
+  const annualCardProductIds = products.filter((product) => product.category === 'annualCard').map((product) => product.id);
+  const sections: TicketBookingSection[] = [];
+
+  if (ticketProductIds.length) {
+    sections.push({
+      key: 'ticket',
+      type: 'ticket',
+      title: '门票',
+      productIds: ticketProductIds,
+    });
+  }
+
+  if (annualCardProductIds.length) {
+    sections.push({
+      key: 'annual-card',
+      type: 'annualCard',
+      title: '年卡',
+      badge: { text: 'hot', color: 'red' },
+      productIds: annualCardProductIds,
+    });
+  }
+
+  const packageSection = ticketSectionCatalog.find((section) => section.type === 'package');
+  if (packageSection && fallback.packages.length) sections.push(packageSection);
+
+  return sections.length ? sections : fallback.sections;
+}
+
+// 从购票页 CMS 资源位中提取可用图片，优先使用移动端图片。
+function resolveHeroImages(resources: CmsResourceSlotApiItem[], fallback: TicketBookingData) {
+  const images = resources
+    .filter((item) => isEnabledApiItem(item.status))
+    .map((item) => item.mobileImageUrl || item.imageUrl || '')
+    .filter(Boolean);
+
+  return images.length ? images : fallback.parkInfo.heroImages;
+}
+
+// 将真实接口数据和本地静态兜底内容合并为页面数据。
+function buildTicketBookingDataFromApi(
+  fallback: TicketBookingData,
+  menus: PurchaseMenuApiItem[],
+  resources: CmsResourceSlotApiItem[],
+) {
+  const products = menus
+    .map(normalizePurchaseMenuItem)
+    .filter((item): item is TicketProduct => Boolean(item));
+
+  if (!products.length) return fallback;
+
+  const heroImages = resolveHeroImages(resources, fallback);
+
+  return {
+    ...fallback,
+    parkInfo: {
+      ...fallback.parkInfo,
+      heroImages,
+      imageCount: heroImages.filter(Boolean).length || fallback.parkInfo.imageCount,
+    },
+    sections: buildSectionsFromProducts(products, fallback),
+    products,
+  };
+}
+
+// 获取门票预定页面数据，优先使用后端公开 GET，失败时回落到本地兜底。
 export function fetchTicketBookingData(options: FetchTicketBookingDataOptions = {}) {
-  return resolveMockData<TicketBookingData>(buildTicketBookingData(options));
+  const fallback = buildTicketBookingData(options);
+
+  return withServiceFallback(async () => {
+    const [menus, resources] = await Promise.all([
+      fetchPurchaseMenus(),
+      fetchPurchaseResources(),
+    ]);
+
+    return buildTicketBookingDataFromApi(fallback, menus, resources);
+  }, fallback);
 }

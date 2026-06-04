@@ -1,5 +1,13 @@
 import { MINI_STORAGE_KEYS } from '@/core/constants/storage';
-import { cloneMockData, resolveMockData } from '@/core/services/mock';
+import {
+  deleteBffCrmAddress,
+  fetchBffCrmAddresses,
+  saveBffCrmAddress,
+  setDefaultBffCrmAddress,
+  type BffCrmAddress,
+  type BffCrmAddressSaveRequest,
+} from '@/core/services/bff-crm-api';
+import { cloneMockData, withServiceFallback } from '@/core/services/mock';
 import type { HkpAddressSummary } from '@/core/types/hkp';
 import { getCache, setCache } from '@/core/utils/cache';
 import { orderAddresses, type OrderAddressData } from './mock-data';
@@ -52,6 +60,35 @@ function normalizeAddressList(addresses: HkpAddressSummary[]) {
     ...address,
     isDefault: defaultAddressIndex >= 0 ? index === defaultAddressIndex : index === 0,
   }));
+}
+
+function joinRegion(address: BffCrmAddress) {
+  return [address.provinceName, address.cityName, address.districtName]
+    .filter(Boolean)
+    .join('');
+}
+
+function toAddressSummary(address: BffCrmAddress): HkpAddressSummary {
+  return normalizeAddress({
+    id: address.addressNo,
+    name: address.contactName,
+    mobile: address.phone,
+    region: joinRegion(address),
+    detail: address.detailAddress,
+    isDefault: Boolean(address.defaultAddress),
+    locationAddress: joinRegion(address),
+  });
+}
+
+function toBffAddressPayload(payload: SaveOrderAddressPayload): BffCrmAddressSaveRequest {
+  return {
+    addressNo: payload.id,
+    contactName: payload.name,
+    phone: payload.mobile,
+    provinceName: payload.region,
+    detailAddress: payload.detail,
+    defaultAddress: Boolean(payload.isDefault),
+  };
 }
 
 function readStoredAddresses() {
@@ -115,6 +152,15 @@ export function saveOrderAddress(payload: SaveOrderAddressPayload) {
     isDefault: nextAddress.isDefault ? address.id === nextAddress.id : address.isDefault,
   })));
 
+  void saveBffCrmAddress(toBffAddressPayload(payload))
+    .then((address) => {
+      const savedAddress = toAddressSummary(address);
+      writeStoredAddresses(normalizedAddresses.map((item) => (
+        item.id === nextAddress.id || item.id === savedAddress.id ? savedAddress : item
+      )));
+    })
+    .catch(() => undefined);
+
   return {
     address: normalizedAddresses.find((address) => address.id === nextAddress.id) ?? nextAddress,
     addresses: normalizedAddresses,
@@ -122,10 +168,12 @@ export function saveOrderAddress(payload: SaveOrderAddressPayload) {
 }
 
 export function setDefaultOrderAddress(addressId: string) {
-  return writeStoredAddresses(listOrderAddresses().map((address) => ({
+  const addresses = writeStoredAddresses(listOrderAddresses().map((address) => ({
     ...address,
     isDefault: address.id === addressId,
   })));
+  void setDefaultBffCrmAddress(addressId).catch(() => undefined);
+  return addresses;
 }
 
 export function deleteOrderAddress(addressId: string) {
@@ -134,10 +182,12 @@ export function deleteOrderAddress(addressId: string) {
   const nextAddresses = currentAddresses.filter((address) => address.id !== addressId);
   const shouldResetDefault = deletedAddress?.isDefault && nextAddresses.length > 0;
 
-  return writeStoredAddresses(nextAddresses.map((address, index) => ({
+  const addresses = writeStoredAddresses(nextAddresses.map((address, index) => ({
     ...address,
     isDefault: shouldResetDefault ? index === 0 : address.isDefault,
   })));
+  void deleteBffCrmAddress(addressId).catch(() => undefined);
+  return addresses;
 }
 
 export function formatOrderAddress(address: HkpAddressSummary) {
@@ -147,8 +197,17 @@ export function formatOrderAddress(address: HkpAddressSummary) {
 
 // 获取地址管理页面数据，后续接真实接口时在这里处理字段归一和失败兜底。
 export function fetchAddressData() {
-  return resolveMockData<OrderAddressData>({
+  const fallbackData: OrderAddressData = {
     addresses: listOrderAddresses(),
     maxCount: ORDER_ADDRESS_MAX_COUNT,
-  });
+  };
+
+  return withServiceFallback(async () => {
+    const records = await fetchBffCrmAddresses();
+    const addresses = writeStoredAddresses(records.map(toAddressSummary));
+    return {
+      addresses,
+      maxCount: ORDER_ADDRESS_MAX_COUNT,
+    };
+  }, fallbackData);
 }

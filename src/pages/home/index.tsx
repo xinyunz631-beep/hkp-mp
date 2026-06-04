@@ -11,6 +11,8 @@ import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import { fetchCouponUsedCount } from '@/core/services/home';
 import { rootStore } from '@/core/store';
+import { resolveMemberLevel } from '@/core/utils/member-profile';
+import { navigateToMiniRoute } from '@/core/utils/navigation';
 import { resolvePageChromeMetrics } from '@/core/utils/style';
 import {
   callWechatPhone,
@@ -33,7 +35,7 @@ interface HomeShortcutEntry {
 }
 
 interface HomeSectionCard {
-  key: string;
+  id: string;
   title: string;
   description: string;
   tag?: string;
@@ -43,7 +45,7 @@ interface HomeSectionCard {
 }
 
 interface HomePlayCategory {
-  key: string;
+  id: string;
   title: string;
   path?: MiniPackageRoute;
   action?: 'location' | 'phone' | 'deferred';
@@ -52,14 +54,15 @@ interface HomePlayCategory {
 interface HomeBannerEntry {
   key: string;
   path: MiniPackageRoute;
+  imageSrc?: string;
   requireLogin?: boolean;
 }
 
 type HomeScrollHandler = NonNullable<ScrollViewProps['onScroll']>;
 
 const shortcutEntries: HomeShortcutEntry[] = [
-  { key: 'exchange', title: '兑换专区', path: MINI_PACKAGE_ROUTES.memberHome, requireLogin: true },
-  { key: 'coupon', title: '领券中心', path: MINI_PACKAGE_ROUTES.memberCoupons, requireLogin: true },
+  { key: 'exchange', title: '兑换专区', path: MINI_PACKAGE_ROUTES.memberExchange, requireLogin: true },
+  { key: 'coupon', title: '领券中心', path: MINI_PACKAGE_ROUTES.memberCouponCenter, requireLogin: true },
   { key: 'service', title: '服务专区', path: MINI_PACKAGE_ROUTES.ticketHome },
   { key: 'mall', title: '官方商城', path: MINI_PACKAGE_ROUTES.mallHome },
   { key: 'contact', title: '联系客服', action: 'phone' },
@@ -69,35 +72,35 @@ const shortcutEntries: HomeShortcutEntry[] = [
 ];
 
 const hotCards: HomeSectionCard[] = [
-  { key: 'wheel', title: '缤纷摩天轮', description: '日间游览人气路线', rank: 'top1', path: MINI_PACKAGE_ROUTES.ticketParkDetail },
-  { key: 'river', title: '欢乐漂流', description: '亲子轻刺激项目', rank: 'top2', path: MINI_PACKAGE_ROUTES.ticketParkGuide },
+  { id: '1000000000001001', title: '欢乐漂流', description: '日间游览人气路线', rank: 'top1', path: MINI_PACKAGE_ROUTES.ticketParkDetail },
+  { id: '1000000000001002', title: '缤纷摩天轮', description: '亲子高空观景项目', rank: 'top2', path: MINI_PACKAGE_ROUTES.ticketParkDetail },
 ];
 
 const activityCards: HomeSectionCard[] = [
-  { key: 'event', title: '限定主题活动', description: '活动时间、地点与预约状态实时更新', tag: '进行中', path: MINI_PACKAGE_ROUTES.ticketHome },
+  { id: '2000000000001003', title: '乐园助力，嗨吃玩乐', description: '为世界杯喝彩', tag: '进行中', path: MINI_PACKAGE_ROUTES.ticketActivityDetail },
 ];
 
 const recommendCards: HomeSectionCard[] = [
-  { key: 'traffic', title: '交通动线', description: '入园、停车与接驳指引', tag: '快速查看', action: 'location' },
-  { key: 'queue', title: '项目排队', description: '热门项目开放与等待', tag: '实时提醒', path: MINI_PACKAGE_ROUTES.ticketParkGuide },
+  { id: '3000000000001001', title: '交通动线', description: '入园、停车与接驳指引', tag: '快速查看', path: MINI_PACKAGE_ROUTES.ticketActivityDetail },
+  { id: '3000000000001002', title: '项目排队', description: '热门项目开放与等待', tag: '实时提醒', path: MINI_PACKAGE_ROUTES.ticketActivityDetail },
 ];
 
 const playCategories: HomePlayCategory[] = [
-  { key: 'eat', title: '吃', action: 'deferred' },
-  { key: 'stay', title: '住', path: MINI_PACKAGE_ROUTES.hotelHome },
-  { key: 'go', title: '行', action: 'location' },
-  { key: 'play', title: '游', path: MINI_PACKAGE_ROUTES.ticketHome },
-  { key: 'shop', title: '购', path: MINI_PACKAGE_ROUTES.mallHome },
-  { key: 'fun', title: '娱', path: MINI_PACKAGE_ROUTES.ticketParkGuide },
-  { key: 'biz', title: '商', action: 'phone' },
-  { key: 'learn', title: '学', action: 'phone' },
-  { key: 'news', title: '情', path: MINI_PACKAGE_ROUTES.ticketHome },
+  { id: '5000000000001001', title: '吃', path: MINI_PACKAGE_ROUTES.ticketActivityDetail },
+  { id: '5000000000001002', title: '住', path: MINI_PACKAGE_ROUTES.ticketActivityDetail },
+  { id: '5000000000001003', title: '行', path: MINI_PACKAGE_ROUTES.ticketActivityDetail },
+  { id: '5000000000001004', title: '游', path: MINI_PACKAGE_ROUTES.ticketActivityDetail },
+  { id: '5000000000001005', title: '购', path: MINI_PACKAGE_ROUTES.ticketActivityDetail },
+  { id: '5000000000001006', title: '娱', path: MINI_PACKAGE_ROUTES.ticketActivityDetail },
+  { id: '5000000000001007', title: '商', path: MINI_PACKAGE_ROUTES.ticketActivityDetail },
+  { id: '5000000000001008', title: '学', path: MINI_PACKAGE_ROUTES.ticketActivityDetail },
+  { id: '5000000000001009', title: '情', path: MINI_PACKAGE_ROUTES.ticketActivityDetail },
 ];
 
 const heroBannerEntries: HomeBannerEntry[] = [
-  { key: 'main', path: MINI_PACKAGE_ROUTES.ticketBooking },
+  { key: 'main', path: MINI_PACKAGE_ROUTES.ticketBooking, imageSrc: 'https://hellokitty-uat.yoursite.xin/ng/2f87c96ee684f066feab967a35f2ef9b.jpg' },
   { key: 'event', path: MINI_PACKAGE_ROUTES.ticketHome },
-  { key: 'member', path: MINI_PACKAGE_ROUTES.memberHome, requireLogin: true },
+  { key: 'member', path: MINI_PACKAGE_ROUTES.memberGrowth, requireLogin: true },
 ];
 
 function renderHomeImage(className: string, src: string) {
@@ -117,10 +120,9 @@ const HomePage = observer(function HomePage() {
     },
   });
   const memberProfile = rootStore.member.profile;
+  const memberLevel = resolveMemberLevel(memberProfile);
   const memberName = memberProfile?.nickname || '微信用户';
-  const memberLevel = memberProfile?.levelName || '初级会员';
-  const memberPoints = memberProfile?.points ?? 1280;
-  const couponBadgeText = typeof couponCount === 'number' ? `优惠券 ${couponCount}张` : '优惠券 8张';
+  const couponBadgeText = `优惠券${couponCount ?? 0}张`;
   const heroBannerImageSrc = '';
   const shortcutImageSrc = '';
   const openTimeImageSrc = '';
@@ -136,7 +138,7 @@ const HomePage = observer(function HomePage() {
 
   // 跳转到独立分包页面，主包只持有路径字符串不 import 业务代码。
   function navigateToSubPackage(path: MiniPackageRoute) {
-    Taro.navigateTo({ url: path });
+    navigateToMiniRoute(path);
   }
 
   // 展示轻量业务提示，用于当前尚未接入真实页面的入口。
@@ -166,7 +168,7 @@ const HomePage = observer(function HomePage() {
     }
 
     if (action === 'shareIncome' || action === 'deferred') {
-      await showWechatToast('该服务将在核心板块完成后开放');
+      await showWechatToast('服务准备中，请稍后再试');
     }
   }
 
@@ -199,6 +201,14 @@ const HomePage = observer(function HomePage() {
     navigateToSubPackage(MINI_PACKAGE_ROUTES.mallSearch);
   }
 
+  function handleCouponPress() {
+    navigateToMiniRoute(MINI_PACKAGE_ROUTES.memberCoupons);
+  }
+
+  function handleMemberLevelPress() {
+    navigateToMiniRoute(MINI_PACKAGE_ROUTES.memberGrowth);
+  }
+
   async function handleScan() {
     const scanResult = await scanWechatCode();
     if (!scanResult?.result) return;
@@ -221,13 +231,13 @@ const HomePage = observer(function HomePage() {
   // 会员福利入口保留登录守卫。
   async function handleMemberBenefitPress() {
     await runAfterLogin('登录后可查看会员专享福利', () => {
-      navigateToSubPackage(MINI_PACKAGE_ROUTES.memberHome);
+      navigateToSubPackage(MINI_PACKAGE_ROUTES.memberGrowth);
     });
   }
 
   // 当前首页仅保留开园时间卡，不再展示交通指南 / 乐园导览双按钮。
   function handleSchedulePress() {
-    navigateToSubPackage(MINI_PACKAGE_ROUTES.ticketHome);
+    navigateToSubPackage(MINI_PACKAGE_ROUTES.ticketSchedule);
   }
 
   async function handleBannerPress(entry: HomeBannerEntry) {
@@ -241,19 +251,28 @@ const HomePage = observer(function HomePage() {
   }
 
   function handleSectionMorePress(section: 'rank' | 'activity' | 'recommend' | 'play') {
-    if (section === 'recommend') {
-      navigateToSubPackage(MINI_PACKAGE_ROUTES.ticketParkGuide);
+    if (section === 'rank') {
+      navigateToSubPackage(MINI_PACKAGE_ROUTES.ticketParkList);
       return;
     }
 
-    if (section === 'play' || section === 'rank' || section === 'activity') {
-      navigateToSubPackage(MINI_PACKAGE_ROUTES.ticketHome);
+    if (section === 'recommend' || section === 'play') {
+      navigateToSubPackage(MINI_PACKAGE_ROUTES.ticketActivityList);
+      return;
+    }
+
+    if (section === 'activity') {
+      navigateToSubPackage(MINI_PACKAGE_ROUTES.ticketActivityList);
+      return;
     }
   }
 
   async function handleSectionCardPress(card: HomeSectionCard) {
     if (card.path) {
-      navigateToSubPackage(card.path);
+      const url = card.path === MINI_PACKAGE_ROUTES.ticketParkDetail || card.path === MINI_PACKAGE_ROUTES.ticketActivityDetail
+        ? `${card.path}?id=${encodeURIComponent(card.id)}`
+        : card.path;
+      navigateToMiniRoute(url);
       return;
     }
 
@@ -262,7 +281,10 @@ const HomePage = observer(function HomePage() {
 
   async function handlePlayCategoryPress(category: HomePlayCategory) {
     if (category.path) {
-      navigateToSubPackage(category.path);
+      const url = category.path === MINI_PACKAGE_ROUTES.ticketActivityDetail
+        ? `${category.path}?id=${encodeURIComponent(category.id)}`
+        : category.path;
+      navigateToMiniRoute(url);
       return;
     }
 
@@ -305,7 +327,7 @@ const HomePage = observer(function HomePage() {
               {heroBannerEntries.map((entry) => (
                 <SwiperItem key={entry.key}>
                   <View className="_pg-hero_banner-slide" onClick={() => handleBannerPress(entry)}>
-                    {renderHomeImage('_pg-hero_banner-image', heroBannerImageSrc)}
+                    {renderHomeImage('_pg-hero_banner-image', entry.imageSrc || heroBannerImageSrc)}
                   </View>
                 </SwiperItem>
               ))}
@@ -318,11 +340,15 @@ const HomePage = observer(function HomePage() {
               <View className="_pg-member-card_header">
                 <View>
                   <Text className="_pg-member-card_hello">{memberName}，您好！</Text>
-                  <Text className="_pg-member-card_level">1 {memberLevel}</Text>
+                  <Text className="_pg-member-card_level" onClick={handleMemberLevelPress}>
+                    {memberLevel.levelNo} {memberLevel.levelName}
+                  </Text>
                 </View>
                 <View className="_pg-member-card_right">
-                  <Text className="_pg-member-card_coupon">{couponBadgeText}</Text>
-                  <Text className="_pg-member-card_points">乐园积分 {memberPoints}</Text>
+                  <View className="_pg-member-card_coupon" onClick={handleCouponPress}>
+                    <Text className="_pg-member-card_coupon-text">{couponBadgeText}</Text>
+                    <AppIcon name="arrowRight" className="_pg-member-card_coupon-arrow" size={16} color="#db2777" />
+                  </View>
                 </View>
               </View>
 
@@ -363,7 +389,7 @@ const HomePage = observer(function HomePage() {
                   {hotCards.map((card, index) => (
                     <View
                       className={`_pg-rank-card ${index === 0 ? '_pg-rank-card--primary' : '_pg-rank-card--peek'}`}
-                      key={card.key}
+                      key={card.id}
                       onClick={() => handleSectionCardPress(card)}
                     >
                       {renderHomeImage('_pg-rank-card_image', rankImageSrc)}
@@ -394,7 +420,7 @@ const HomePage = observer(function HomePage() {
                 </View>
               </View>
               {activityCards.map((card) => (
-                <View className="_pg-feature-card" key={card.key} onClick={() => handleSectionCardPress(card)}>
+                <View className="_pg-feature-card" key={card.id} onClick={() => handleSectionCardPress(card)}>
                   {renderHomeImage('_pg-feature-card_image', activityImageSrc)}
                   <View className="_pg-feature-card_body">
                     <View>
@@ -420,7 +446,7 @@ const HomePage = observer(function HomePage() {
               </View>
               <View className="_pg-card-grid">
                 {recommendCards.map((card) => (
-                  <View className="_pg-guide-card" key={card.key} onClick={() => handleSectionCardPress(card)}>
+                  <View className="_pg-guide-card" key={card.id} onClick={() => handleSectionCardPress(card)}>
                     {renderHomeImage('_pg-guide-card_image', recommendImageSrc)}
                     <View className="_pg-guide-card_body">
                       <Text className="_pg-guide-card_title">{card.title}</Text>
@@ -449,7 +475,7 @@ const HomePage = observer(function HomePage() {
               </View>
               <View className="_pg-play_grid">
                 {playCategories.map((category) => (
-                  <View className="_pg-play-card" key={category.key} onClick={() => handlePlayCategoryPress(category)}>
+                  <View className="_pg-play-card" key={category.id} onClick={() => handlePlayCategoryPress(category)}>
                     {renderHomeImage('_pg-play-card_image', playCategoryImageSrc)}
                     <Text className="_pg-play-card_title">{category.title}</Text>
                   </View>

@@ -1,6 +1,6 @@
 ._pg {
   min-height: 100vh;
-  background: $color-page-bg;
+  background: #ffffff;
 
   .page-shell__body {
     min-height: 100%;
@@ -10,151 +10,130 @@
 ._pg-shell {
   min-height: 100vh;
   box-sizing: border-box;
-  background: $color-page-bg;
+  background: #ffffff;
 }
 
 ._pg-content {
   min-height: 100%;
-  padding: 32px;
-  box-sizing: border-box;
-  background: #f6f7fb;
+  padding-bottom: 34px;
+  background: #ffffff;
 }
 
-._pg-section {
-  margin-bottom: 24px;
-  padding: 32px;
-  border: 1px solid #eef0f6;
-  border-radius: 28px;
-  box-sizing: border-box;
+._pg-hero {
+  position: relative;
+
+  &_swiper {
+    height: 520px;
+  }
+
+  &_slide,
+  &_image {
+    width: 100%;
+    height: 520px;
+  }
+}
+
+._pg-summary {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 24px 24px 0;
+  padding: 20px 22px;
+  border-radius: 16px;
   background: #ffffff;
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.18);
+
+  &_main {
+    min-width: 0;
+    flex: 1;
+  }
+
+  &_title,
+  &_meta {
+    display: block;
+  }
 
   &_title {
-    display: block;
-    margin-bottom: 28px;
-    color: #23262f;
-    font-size: 44px;
-    font-weight: 550;
-    line-height: 1.2;
-  }
-}
-
-._pg-intro {
-  display: block;
-  color: #6b7280;
-  font-size: 28px;
-  line-height: 1.6;
-}
-
-._pg-schedule {
-  &_item {
-    & + & {
-      margin-top: 34px;
-    }
-  }
-
-  &_range {
-    display: block;
-    color: #23262f;
+    color: #18181b;
     font-size: 30px;
-    font-weight: 550;
+    font-weight: 500;
     line-height: 1.4;
   }
 
   &_meta {
     display: flex;
     align-items: center;
-    margin-top: 14px;
-    color: #6b7280;
-    font-size: 28px;
-    line-height: 1.5;
+    margin-top: 8px;
+    color: #52525b;
+    font-size: 22px;
+    line-height: 1.3;
   }
 
-  &_days {
-    min-width: 160px;
-    margin-right: 24px;
-  }
-}
-
-._pg-policy {
-  &_row {
-    display: flex;
-    align-items: flex-start;
-
-    & + & {
-      margin-top: 26px;
-    }
+  &_meta-icon {
+    margin-right: 8px;
   }
 
-  &_label {
-    flex: none;
-    width: 190px;
-    color: #4b5563;
-    font-size: 30px;
-    line-height: 1.5;
-  }
-
-  &_value {
-    flex: 1;
-    color: #6b7280;
-    font-size: 30px;
-    line-height: 1.5;
-  }
-}
-
-._pg-info {
-  &_row {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-
-    & + & {
-      margin-top: 24px;
-    }
-
-    &--link {
-      align-items: center;
-    }
-  }
-
-  &_value-wrap {
+  &_actions {
     display: flex;
     align-items: center;
-    min-width: 0;
-    flex: 1;
-  }
-
-  &_label {
     flex: none;
-    width: 190px;
-    color: #23262f;
-    font-size: 30px;
-    line-height: 1.5;
-  }
-
-  &_value {
-    flex: 1;
-    color: #6b7280;
-    font-size: 28px;
-    line-height: 1.5;
-    text-align: right;
-  }
-
-  &_chevron {
-    flex: none;
-    margin-left: 10px;
+    margin-left: 18px;
   }
 
   &_action {
     display: flex;
+    flex-direction: column;
     align-items: center;
-    color: #e779a7;
-    font-size: 30px;
-    font-weight: 550;
-    line-height: 1.5;
+    justify-content: center;
+    min-width: 72px;
+    min-height: 72px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: #18181b;
+    font-size: 22px;
+    line-height: 1.4;
   }
 
-  &_action-icon {
-    margin-left: 6px;
+  &_action + &_action {
+    margin-left: 24px;
+  }
+}
+
+._pg-hero + ._pg-summary {
+  margin-top: -70px;
+}
+
+._pg-detail {
+  padding: 64px 28px 42px;
+
+  &_rich-text {
+    width: 100%;
+  }
+}
+
+._pg-footer {
+  display: flex;
+  padding: 18px 24px 20px;
+  background: #ffffff;
+  box-shadow: 0 -8px 20px rgba(15, 23, 42, 0.08);
+
+  &_button {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 88px;
+    border-radius: 44px;
+    background: #e96b9e;
+    color: #ffffff;
+    font-size: 30px;
+    font-weight: 500;
+  }
+
+  &_button + &_button {
+    margin-left: 24px;
   }
 }

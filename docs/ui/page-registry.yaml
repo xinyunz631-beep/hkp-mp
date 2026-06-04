@@ -340,7 +340,7 @@ pages:
         - yarn check:package-boundary
         - yarn check:ui-contract
   ticket-park-detail:
-    title: 乐园详情
+    title: 热玩项目
     route: src/pkg-ticket/pages/park-detail
     status: interaction-ready
     spec: docs/ui/pages/ticket-park-detail.md
@@ -350,10 +350,10 @@ pages:
       pencil:
         file: /Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
         nodeId: ticket-park-detail
-        name: 乐园详情 750px 开发稿
+        name: 热玩项目详情 750px 开发稿
         width: 750
         role: active-source
-        note: 已按 park-detail-intro.png 完成信息卡，客服热线/园区地址/节目单分别接入微信拨号、地图和说明弹窗，并补在线购票入口。
+        note: 已改为热玩项目详情页，根据路由 id 获取接口数据，承载顶部 Swiper、浮层项目卡、分享/喜欢、富文本详情和底部双按钮。
     implementation:
       files:
         - src/pkg-ticket/pages/park-detail/index.tsx
@@ -858,6 +858,85 @@ pages:
         - yarn check:page-convention
         - yarn check:package-boundary
         - yarn check:ui-contract
+  member-coupon-center:
+    title: 领券中心
+    route: src/pkg-member/pages/coupon-center
+    status: interaction-ready
+    spec: docs/ui/pages/member-coupon-center.md
+    design:
+      currentTool: pencil
+      approval: code-first-draft
+      pencil:
+        file: /Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
+        nodeId: member-coupon-center
+        name: 领券中心 750px 开发稿
+        width: 750
+        role: active-source
+        note: 首页快捷入口领券中心落地页，按接口 tabs 和 coupons 渲染；当前 mock 为空列表，展示无可领取或可兑换优惠券空态。
+    implementation:
+      files:
+        - src/pkg-member/pages/coupon-center/index.tsx
+        - src/pkg-member/pages/coupon-center/index.scss
+        - src/pkg-member/pages/coupon-center/index.config.ts
+        - src/pkg-member/services/coupon-center.ts
+      verification:
+        - yarn typecheck
+        - yarn check:page-convention
+        - yarn check:package-boundary
+        - yarn check:ui-contract
+  member-exchange:
+    title: 兑换专区
+    route: src/pkg-member/pages/exchange
+    status: interaction-ready
+    spec: docs/ui/pages/member-exchange.md
+    design:
+      currentTool: pencil
+      approval: code-first-draft
+      pencil:
+        file: /Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
+        nodeId: member-exchange
+        name: 兑换专区 750px 开发稿
+        width: 750
+        role: active-source
+        note: 首页快捷入口兑换专区落地页，按接口商品列表渲染兑换商品，支持推荐和 K币排序，商品卡使用接口 id 跳详情。
+    implementation:
+      files:
+        - src/pkg-member/pages/exchange/index.tsx
+        - src/pkg-member/pages/exchange/index.scss
+        - src/pkg-member/pages/exchange/index.config.ts
+        - src/pkg-member/services/exchange.ts
+      verification:
+        - yarn typecheck
+        - yarn check:page-convention
+        - yarn check:package-boundary
+        - yarn check:ui-contract
+  member-exchange-detail:
+    title: 商品详情
+    route: src/pkg-member/pages/exchange-detail
+    status: interaction-ready
+    spec: docs/ui/pages/member-exchange-detail.md
+    design:
+      currentTool: pencil
+      approval: code-first-draft
+      pencil:
+        file: /Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
+        nodeId: member-exchange-detail
+        name: 兑换商品详情 750px 开发稿
+        width: 750
+        role: active-source
+        note: 根据路由 id 获取兑换商品详情，承载商品图、K币价格、库存、详情正文和订单确认弹层。
+    implementation:
+      files:
+        - src/pkg-member/pages/exchange-detail/index.tsx
+        - src/pkg-member/pages/exchange-detail/index.scss
+        - src/pkg-member/pages/exchange-detail/index.config.ts
+        - src/pkg-member/components/MemberRichText/index.tsx
+        - src/pkg-member/services/exchange.ts
+      verification:
+        - yarn typecheck
+        - yarn check:page-convention
+        - yarn check:package-boundary
+        - yarn check:ui-contract
   member-share-rule:
     title: 分享规则
     route: src/pkg-member/pages/share-rule
@@ -1214,6 +1293,111 @@ pages:
         - src/pkg-member/pages/index/index.scss
         - src/pkg-member/pages/index/index.config.ts
         - src/pkg-member/services/index.ts
+      verification:
+        - yarn typecheck
+        - yarn check:page-convention
+        - yarn check:package-boundary
+        - yarn check:ui-contract
+  ticket-schedule:
+    title: 节目单
+    route: src/pkg-ticket/pages/schedule
+    status: interaction-ready
+    spec: docs/ui/pages/ticket-schedule.md
+    design:
+      currentTool: pencil
+      approval: code-first-draft
+      pencil:
+        file: /Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
+        nodeId: ticket-schedule
+        name: 节目单 750px 开发稿
+        width: 750
+        role: active-source
+        note: 代码优先创建今日节目单落地页，页面只展示当天日期标题，具体节目内容由接口富文本完全控制。
+    implementation:
+      files:
+        - src/pkg-ticket/pages/schedule/index.tsx
+        - src/pkg-ticket/pages/schedule/index.scss
+        - src/pkg-ticket/pages/schedule/index.config.ts
+        - src/pkg-ticket/services/schedule.ts
+      verification:
+        - yarn typecheck
+        - yarn check:page-convention
+        - yarn check:package-boundary
+        - yarn check:ui-contract
+  ticket-park-list:
+    title: 热玩项目
+    route: src/pkg-ticket/pages/park-list
+    status: interaction-ready
+    spec: docs/ui/pages/ticket-park-list.md
+    design:
+      currentTool: pencil
+      approval: code-first-draft
+      pencil:
+        file: /Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
+        nodeId: ticket-park-list
+        name: 热玩项目 750px 开发稿
+        width: 750
+        role: active-source
+        note: 首页热玩榜单查看更多落地页，按接口 tabs/items 渲染分类和列表，列表项使用接口 id 跳项目详情。
+    implementation:
+      files:
+        - src/pkg-ticket/pages/park-list/index.tsx
+        - src/pkg-ticket/pages/park-list/index.scss
+        - src/pkg-ticket/pages/park-list/index.config.ts
+        - src/pkg-ticket/services/park-list.ts
+      verification:
+        - yarn typecheck
+        - yarn check:page-convention
+        - yarn check:package-boundary
+        - yarn check:ui-contract
+  ticket-activity-list:
+    title: 精选活动
+    route: src/pkg-ticket/pages/activity-list
+    status: interaction-ready
+    spec: docs/ui/pages/ticket-activity-list.md
+    design:
+      currentTool: pencil
+      approval: code-first-draft
+      pencil:
+        file: /Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
+        nodeId: ticket-activity-list
+        name: 精选活动 750px 开发稿
+        width: 750
+        role: active-source
+        note: 首页精选活动查看更多落地页，按接口 items 渲染活动列表，列表项使用接口 id 跳乐园资讯页。
+    implementation:
+      files:
+        - src/pkg-ticket/pages/activity-list/index.tsx
+        - src/pkg-ticket/pages/activity-list/index.scss
+        - src/pkg-ticket/pages/activity-list/index.config.ts
+        - src/pkg-ticket/services/activity.ts
+      verification:
+        - yarn typecheck
+        - yarn check:page-convention
+        - yarn check:package-boundary
+        - yarn check:ui-contract
+  ticket-activity-detail:
+    title: 乐园资讯
+    route: src/pkg-ticket/pages/activity-detail
+    status: interaction-ready
+    spec: docs/ui/pages/ticket-activity-detail.md
+    design:
+      currentTool: pencil
+      approval: code-first-draft
+      pencil:
+        file: /Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
+        nodeId: ticket-activity-detail
+        name: 乐园资讯 750px 开发稿
+        width: 750
+        role: active-source
+        note: 根据路由 id 获取乐园资讯内容，精选活动、精彩推荐和玩转乐园复用本页，页面承载顶部图片、标题/分享和接口富文本正文。
+    implementation:
+      files:
+        - src/pkg-ticket/pages/activity-detail/index.tsx
+        - src/pkg-ticket/pages/activity-detail/index.scss
+        - src/pkg-ticket/pages/activity-detail/index.config.ts
+        - src/pkg-ticket/components/TicketRichText/index.tsx
+        - src/pkg-ticket/services/activity.ts
       verification:
         - yarn typecheck
         - yarn check:page-convention

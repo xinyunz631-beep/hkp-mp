@@ -13,9 +13,9 @@ export const ACTIVE_RUNTIME_ENV: RuntimeEnv = 'uat';
 export const RUNTIME_ENV_CONFIGS: Record<RuntimeEnv, RuntimeEnvConfig> = {
   uat: {
     name: 'UAT',
-    host: 'https://pre-weapp.hefunoodles.com',
-    tokenPath: '/hll-auth-client/oauth2/login/V2',
-    appIdFallback: 'wx00261f550fdbc7ea',
+    host: 'https://hellokitty-uat.yoursite.xin',
+    tokenPath: '/api/bff/auth/mini-program/login',
+    appIdFallback: 'wx72b9e08ce45d3e79',
   },
   prod: {
     name: '生产',

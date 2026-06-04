@@ -1,6 +1,7 @@
 import Taro from '@tarojs/taro';
 import { getRuntimeConfig } from '@/core/config/runtime';
 import { rootStore } from '@/core/store';
+import { createSignatureNonce, hmacSha256Base64Url, sha256Hex } from '@/core/utils/crypto';
 import { getCurrentMiniProgramAppId, getWechatLoginCode } from '@/core/wechat/auth';
 
 export interface RequestOptions<TData = unknown> {
@@ -12,6 +13,7 @@ export interface RequestOptions<TData = unknown> {
   retry?: RequestRetryOptions;
   responseMode?: RequestResponseMode;
   showErrorToast?: boolean;
+  sign?: boolean;
   // 兼容旧调用，等价于 auth: 'none'。
   skipAuth?: boolean;
 }
@@ -33,6 +35,7 @@ export interface RequestRetryOptions {
 export type ApiBusinessCode = number | string;
 
 export interface ApiResponse<TData> {
+  success?: boolean;
   code?: ApiBusinessCode;
   message?: string;
   msg?: string;
@@ -69,14 +72,20 @@ export class ApiRequestError extends Error {
 }
 
 interface TokenResponseShape {
+  success?: boolean;
   code?: ApiBusinessCode;
   message?: string;
   msg?: string;
   CSESSION?: string;
   csession?: string;
   token?: string;
+  tokenType?: string;
   accessToken?: string;
   access_token?: string;
+  expiresIn?: number;
+  refreshToken?: string;
+  refreshExpiresIn?: number;
+  signSecret?: string;
   data?: TokenResponseShape | string;
 }
 
@@ -91,6 +100,12 @@ type TokenRequestResponse = TokenResponseShape | ApiResponse<TokenResponseShape 
 
 type RequestResponseValidator<TResponse> = (response: ApiTransportResponse<TResponse>) => ApiRequestError | undefined;
 type RequestDataFactory<TData> = () => TData | Promise<TData>;
+
+interface AuthSessionShape {
+  accessToken?: string;
+  refreshToken?: string;
+  signSecret?: string;
+}
 
 interface InternalRequestOptions<TData = unknown, TResponse = unknown> extends RequestOptions<TData> {
   validateResponse?: RequestResponseValidator<TResponse>;
@@ -108,6 +123,7 @@ interface PreparedRequest<TData = unknown, TResponse = unknown> {
   data?: TData;
   createData?: RequestDataFactory<TData>;
   header: Record<string, string>;
+  sign: boolean;
   retry: ResolvedRequestRetryOptions;
   responseMode: RequestResponseMode;
   validateResponse?: RequestResponseValidator<TResponse>;
@@ -133,12 +149,14 @@ const AUTH_REQUEST_MAX_ATTEMPTS = 3;
 const REQUEST_MAX_ATTEMPTS_LIMIT = 5;
 const REQUEST_RETRY_DELAY_MS = 1000;
 const AUTH_MODES_WITHOUT_TOKEN = new Set<RequestAuthMode>(['none']);
+const SIGNED_BODY_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 const BUSINESS_SUCCESS_CODES = new Set<ApiBusinessCode>([
   BusinessResponseCode.Success,
   String(BusinessResponseCode.Success),
   BusinessResponseCode.ZeroSuccess,
   String(BusinessResponseCode.ZeroSuccess),
   '000',
+  'OK',
 ]);
 
 // 判断是否是完整 URL，兼容个别接口需要直连完整地址。
@@ -161,8 +179,8 @@ function isCredentialInvalidBusinessCode(code?: ApiBusinessCode) {
   return code == BusinessResponseCode.Unauthorized || code == BusinessResponseCode.CredentialExpired;
 }
 
-// 从 V2 授权接口响应中提取 CSESSION，兼容常见 token 字段命名。
-function extractCsessionToken(payload: TokenResponseShape | string | undefined, headers?: Record<string, unknown>): string | undefined {
+// 从授权接口响应中提取后端访问令牌，兼容旧 CSESSION 和新 BFF accessToken。
+function extractAccessToken(payload: TokenResponseShape | string | undefined, headers?: Record<string, unknown>): string | undefined {
   const headerToken = headers?.CSESSION || headers?.csession || headers?.Csession;
   if (typeof headerToken === 'string') return headerToken;
   if (!payload) return undefined;
@@ -171,7 +189,24 @@ function extractCsessionToken(payload: TokenResponseShape | string | undefined, 
   const directToken = payload.CSESSION || payload.csession || payload.token || payload.accessToken || payload.access_token;
   if (directToken) return directToken;
 
-  return extractCsessionToken(payload.data);
+  return extractAccessToken(payload.data);
+}
+
+// 从授权接口响应中提取完整会话字段，兼容统一响应和旧字段命名。
+function extractAuthSession(payload: TokenResponseShape | string | undefined, headers?: Record<string, unknown>): AuthSessionShape {
+  if (!payload || typeof payload === 'string') {
+    return {
+      accessToken: extractAccessToken(payload, headers),
+    };
+  }
+
+  const nested: AuthSessionShape | undefined = typeof payload.data === 'object' ? extractAuthSession(payload.data, headers) : undefined;
+
+  return {
+    accessToken: extractAccessToken(payload, headers),
+    refreshToken: payload.refreshToken || nested?.refreshToken,
+    signSecret: payload.signSecret || nested?.signSecret,
+  };
 }
 
 // 兼容真实接口 code/msg 与旧统一响应 code/message 的差异。
@@ -197,7 +232,7 @@ function normalizeApiResponse<TData>(
 
   const response = payload as ApiResponse<TData>;
   const code = response.code;
-  const success = isBusinessSuccessCode(code);
+  const success = response.success === true || isBusinessSuccessCode(code);
 
   return {
     success,
@@ -258,45 +293,51 @@ export class ApiRequestClient {
     };
   }
 
-  // 请求微信小程序授权接口，成功后写入后续请求使用的 CSESSION。
+  // 请求微信小程序授权接口，成功后写入后续请求使用的访问令牌。
   private async requestCsessionToken() {
     const config = getRuntimeConfig();
     const appid = getCurrentMiniProgramAppId(config.appIdFallback);
-    const result = await this.send<TokenRequestResponse, { appid: string; code: string }>({
+    const result = await this.send<TokenRequestResponse, { platform: 'WECHAT'; code: string; appId: string }>({
       url: config.tokenUrl,
       method: 'POST',
       createData: async () => ({
-        appid,
+        platform: 'WECHAT',
         code: await getWechatLoginCode(),
+        appId: appid,
       }),
       header: {
         'content-type': 'application/json',
+        'ngrok-skip-browser-warning': '1',
       },
       auth: 'none',
       responseMode: 'raw',
-      retry: {
-        maxAttempts: AUTH_REQUEST_MAX_ATTEMPTS,
-        delayMs: REQUEST_RETRY_DELAY_MS,
-      },
+      // retry: {
+      //   maxAttempts: AUTH_REQUEST_MAX_ATTEMPTS,
+      //   delayMs: REQUEST_RETRY_DELAY_MS,
+      // },
       showErrorToast: false,
       validateResponse: this.validateCsessionResponse,
     });
     const response = result.response;
 
-    const token = extractCsessionToken(response.data, response.header);
-    if (!token) {
-      throw new ApiRequestError('授权失败：缺少 CSESSION');
+    const authSession = extractAuthSession(response.data, response.header);
+    if (!authSession.accessToken) {
+      throw new ApiRequestError('授权失败：缺少访问令牌');
     }
 
-    rootStore.member.setCsession(token);
+    rootStore.member.setAuthSession({
+      accessToken: authSession.accessToken,
+      refreshToken: authSession.refreshToken,
+      signSecret: authSession.signSecret,
+    });
     this.hasBootstrappedCsession = true;
-    return token;
+    return authSession.accessToken;
   }
 
-  // 校验授权接口必须返回可提取的 CSESSION，缺 token 也要进入授权请求自己的重试链路。
+  // 校验授权接口必须返回可提取的访问令牌，缺 token 也要进入授权请求自己的重试链路。
   private validateCsessionResponse(response: ApiTransportResponse<TokenRequestResponse>) {
-    if (extractCsessionToken(response.data, response.header)) return undefined;
-    return new ApiRequestError('授权失败：缺少 CSESSION');
+    if (extractAccessToken(response.data, response.header)) return undefined;
+    return new ApiRequestError('授权失败：缺少访问令牌');
   }
 
   // 准备一次真实请求所需的 URL、header、token 和重试策略。
@@ -317,6 +358,7 @@ export class ApiRequestClient {
       data: options.data,
       createData: options.createData,
       header: this.buildHeaders(options.header, csession),
+      sign: options.sign === true,
       retry,
       responseMode,
       validateResponse: options.validateResponse,
@@ -331,11 +373,12 @@ export class ApiRequestClient {
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
       try {
         const data = preparedRequest.createData ? await preparedRequest.createData() : preparedRequest.data;
+        const signedRequest = this.resolveSignedRequest(preparedRequest, data);
         const response = await Taro.request<TResponse>({
           url: preparedRequest.url,
           method: preparedRequest.method,
-          data,
-          header: preparedRequest.header,
+          data: signedRequest.data as TData,
+          header: signedRequest.header,
         });
 
         const responseError = this.resolveResponseError(response, preparedRequest.responseMode) || preparedRequest.validateResponse?.(response);
@@ -486,14 +529,88 @@ export class ApiRequestClient {
     return isAbsoluteUrl(url) ? url : `${config.apiHost}${url}`;
   }
 
+  // 为需要 HMAC 的 BFF 写接口生成签名头和稳定请求体。
+  private resolveSignedRequest<TData, TResponse>(preparedRequest: PreparedRequest<TData, TResponse>, data: TData | undefined) {
+    if (!preparedRequest.sign) {
+      return {
+        data,
+        header: preparedRequest.header,
+      };
+    }
+
+    if (!SIGNED_BODY_METHODS.has(preparedRequest.method)) {
+      return {
+        data,
+        header: preparedRequest.header,
+      };
+    }
+
+    const signSecret = rootStore.member.signSecret;
+    if (!signSecret) {
+      throw new ApiRequestError('缺少请求签名密钥，请重新登录', { retryable: false });
+    }
+
+    const bodyText = this.stringifyRequestBody(data);
+    const bodySha256 = sha256Hex(bodyText);
+    const timestamp = String(Date.now());
+    const nonce = createSignatureNonce();
+    const { path, query } = this.resolveSignatureUrlParts(preparedRequest.url);
+    const signingText = [
+      preparedRequest.method,
+      path,
+      query,
+      timestamp,
+      nonce,
+      bodySha256,
+    ].join('\n');
+
+    return {
+      data: bodyText || undefined,
+      header: {
+        'content-type': 'application/json',
+        ...preparedRequest.header,
+        'X-Timestamp': timestamp,
+        'X-Nonce': nonce,
+        'X-Body-Sha256': bodySha256,
+        'X-Signature': hmacSha256Base64Url(signSecret, signingText),
+      },
+    };
+  }
+
+  // 将请求体转成签名和真实请求共用的 JSON 文本。
+  private stringifyRequestBody(data: unknown) {
+    if (typeof data === 'undefined' || data === null) return '';
+    if (typeof data === 'string') return data;
+    return JSON.stringify(data);
+  }
+
+  // 从完整 URL 中提取后端签名原文需要的 path 和 query。
+  private resolveSignatureUrlParts(url: string) {
+    const pathWithQuery = url.replace(/^https?:\/\/[^/]+/i, '') || '/';
+    const queryIndex = pathWithQuery.indexOf('?');
+
+    if (queryIndex < 0) {
+      return {
+        path: pathWithQuery,
+        query: '',
+      };
+    }
+
+    return {
+      path: pathWithQuery.slice(0, queryIndex) || '/',
+      query: pathWithQuery.slice(queryIndex + 1),
+    };
+  }
+
   // 组装请求头，只有调用方配置需要携带 token 时才注入 CSESSION。
   private buildHeaders(extra?: Record<string, string>, csession?: string) {
     const headers: Record<string, string> = {
+      'ngrok-skip-browser-warning': '1',
       ...extra,
     };
 
     if (csession) {
-      headers.CSESSION = csession;
+      headers.Authorization = `Bearer ${csession}`;
     }
 
     return headers;

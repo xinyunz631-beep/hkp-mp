@@ -1,4 +1,5 @@
 import type { LoginUserProfile } from '@/core/types/auth';
+import { resolveMemberAvatar, resolveMemberLevel } from '@/core/utils/member-profile';
 
 export interface LoginIdentitySnapshot {
   csession?: string;
@@ -15,12 +16,17 @@ export function buildLoginUserProfile(payload: Partial<LoginUserProfile> = {}) {
   const mobile = payload.mobile?.trim();
   if (!mobile) return undefined;
 
+  const memberLevel = resolveMemberLevel(payload);
+
   return {
     id: payload.id || mobile,
     nickname: payload.nickname || '乐园会员',
-    avatarUrl: payload.avatarUrl,
+    avatarUrl: resolveMemberAvatar(payload),
     mobile,
-    levelName: payload.levelName || '会员',
+    levelId: memberLevel.levelId,
+    levelNo: memberLevel.levelNo,
+    levelName: memberLevel.levelName,
+    growthValue: memberLevel.growthValue,
     points: payload.points ?? 0,
   };
 }
