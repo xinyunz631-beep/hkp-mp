@@ -63,25 +63,24 @@ export function fetchPurchaseMenuDetail(menuNo: string) {
   });
 }
 
-// 拉取购票页 CMS 资源位，展示 GET 显式不等待登录态。
+// 拉取购票页资源位，走公开购票聚合入口，显式不等待登录态。
 export function fetchPurchaseResources(options: FetchPurchaseResourceOptions = {}) {
   const sceneType = options.sceneType || PURCHASE_SCENE_TYPE;
   const pageCode = options.pageCode || PURCHASE_PAGE_CODE;
 
   return request<CmsResourceSlotApiItem[]>({
-    url: `/api/bff/cms/resources?sceneType=${encodeURIComponent(sceneType)}&pageCode=${encodeURIComponent(pageCode)}`,
+    url: `/api/bff/purchase/resources?sceneType=${encodeURIComponent(sceneType)}&pageCode=${encodeURIComponent(pageCode)}`,
     method: 'GET',
     auth: 'none',
     showErrorToast: false,
   });
 }
 
-// 拉取单个 CMS 资源位，供后续页面按资源位稳定 key 查询。
+// 拉取单个 CMS 资源位；后端已要求登录态，不再按公开接口调用。
 export function fetchCmsResourceSlot(slotCode: string) {
   return request<CmsResourceSlotApiItem>({
     url: `/api/bff/cms/resources/${encodeURIComponent(slotCode)}`,
     method: 'GET',
-    auth: 'none',
     showErrorToast: false,
   });
 }

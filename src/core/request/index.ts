@@ -357,7 +357,7 @@ export class ApiRequestClient {
       method,
       data: options.data,
       createData: options.createData,
-      header: this.buildHeaders(options.header, csession),
+      header: this.buildHeaders(options.header, csession, method),
       sign: options.sign === true,
       retry,
       responseMode,
@@ -602,10 +602,11 @@ export class ApiRequestClient {
     };
   }
 
-  // 组装请求头，只有调用方配置需要携带 token 时才注入 CSESSION。
-  private buildHeaders(extra?: Record<string, string>, csession?: string) {
+  // 组装请求头，JSON 写接口默认声明 content-type，调用方可按需覆盖。
+  private buildHeaders(extra?: Record<string, string>, csession?: string, method?: RequestOptions['method']) {
     const headers: Record<string, string> = {
       'ngrok-skip-browser-warning': '1',
+      ...(method && SIGNED_BODY_METHODS.has(method) ? { 'content-type': 'application/json' } : {}),
       ...extra,
     };
 

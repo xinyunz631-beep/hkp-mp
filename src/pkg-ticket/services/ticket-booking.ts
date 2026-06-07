@@ -529,10 +529,8 @@ export function fetchTicketBookingData(options: FetchTicketBookingDataOptions = 
   const fallback = buildTicketBookingData(options);
 
   return withServiceFallback(async () => {
-    const [menus, resources] = await Promise.all([
-      fetchPurchaseMenus(),
-      fetchPurchaseResources(),
-    ]);
+    const menus = await fetchPurchaseMenus();
+    const resources = await fetchPurchaseResources().catch(() => []);
 
     return buildTicketBookingDataFromApi(fallback, menus, resources);
   }, fallback);

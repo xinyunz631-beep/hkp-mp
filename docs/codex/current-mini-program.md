@@ -8,11 +8,8 @@
 
 ## 恢复时先看
 
-1. 根目录 `codex/current/current-task-list.md`
-2. 根目录 `codex/current/current-mini-program.md`
-3. 本文件
-4. `mini-program/AGENTS.md`
-5. `mini-program/CONSTRAINTS.md`
+1. 根目录 `codex/current/current-task-list.md`、`codex/current/current-mini-program.md` 和本文件。
+2. `mini-program/AGENTS.md`、`mini-program/CONSTRAINTS.md`。
 
 ## 技术与端约束
 
@@ -33,13 +30,20 @@
 - BFF 授权地址：`https://hellokitty-uat.yoursite.xin/api/bff/auth/mini-program/login`
 - 首页优惠券数量接口：`https://hellokitty-uat.yoursite.xin/coupon/applet/used/count`
 - 门票预定列表接口：`GET https://hellokitty-uat.yoursite.xin/api/bff/purchase/menus?sceneType=TICKET`
-- 购票页 CMS 资源位接口：`GET https://hellokitty-uat.yoursite.xin/api/bff/cms/resources?sceneType=TICKET&pageCode=PURCHASE_HOME`
+- 购票页资源位公开接口：`GET https://hellokitty-uat.yoursite.xin/api/bff/purchase/resources?sceneType=TICKET&pageCode=PURCHASE_HOME`
+- 首页广告聚合公开接口：`GET https://hellokitty-uat.yoursite.xin/api/bff/content/mini-program/ads?pagecode=index`
+- 单广告详情公开接口：`GET https://hellokitty-uat.yoursite.xin/api/bff/content/mini-program/ads/{id}`
 - 业务成功码：`200`
 - 普通业务接口 header 只默认带 `Authorization: Bearer <token>`。
 - 授权登录/刷新不带业务访问令牌；高风险 BFF 写接口通过 `sign: true` 自动携带 HMAC 签名头。
-- Feishu 主文档 13 个 BFF 对外入口已落到 `src/core/services/bff-api.ts` 和请求/登录层；购票列表和购票页 CMS 资源位是公开展示 GET，`src/pkg-ticket/services/ticket-booking.ts` 显式使用 `auth: 'none'`，失败时兜底本地数据；最近辅助 commit 为 `b40c8ed`，字段和鉴权以 Feishu 主文档、OpenAPI 和 uat 后续变更记录为准。
+- Feishu 主文档 13 个 BFF 对外入口已落到 `src/core/services/bff-api.ts` 和请求/登录层；购票列表和购票页资源位通过 `/api/bff/purchase/**` 公开展示 GET 接入，`src/pkg-ticket/services/ticket-booking.ts` 显式使用 `auth: 'none'`，失败时兜底本地数据；最近辅助 commit 为 `c06ca8f`，字段和鉴权以 Feishu 主文档、OpenAPI、uat 后续变更记录和 BFF `public-paths` 最新安全配置为准。
+- 后端 `c06ca8f` 已移除 `/api/bff/cms/**` 公开白名单；小程序购票页资源位已改走 `/api/bff/purchase/resources`，单个 CMS 资源位查询默认带登录态，不再按免登录接口调用。
+- 2026-06-06 复测 `/api/bff/purchase/resources?sceneType=TICKET&pageCode=PURCHASE_HOME` 无 token 返回 500，traceId `65ab9abb2e764e02bca0cf30ae1ad14a`；小程序已让资源位失败只回退图片，不阻断购票列表真实数据，后端仍需排查公开资源位聚合入口。
+- 后端 `v0.1.9`/`v0.1.10` 已将小程序登录请求体、`Content-Type`、JWT 签发和 Redis 登录态存储异常转为明确错误码；小程序统一 request 已为 JSON 写请求默认补 `content-type: application/json`，仍需微信开发工具用真实 code 复测登录和刷新响应。
 - CRM/P1 已新增 `src/core/services/bff-crm-api.ts`，会员首页、资料、会员码、地址、领券中心和兑换专区服务已做真实接口优先 + 本地兜底接入；资料保存、地址写操作和老会员绑定走 request `sign: true`，待微信开发工具真实登录态验证。
 - 订单已新增 `src/core/services/bff-order-api.ts`，覆盖订单提交、详情、列表 BFF 入口；页面交易链路暂未强切，后续按票务/商城/订单中心工作包逐步替换。
+- 小程序广告已新增 `src/core/services/mini-program-ad.ts` 和 `src/core/types/mini-program-ad.ts`，首页 `src/pages/home/index.tsx` 已优先读取 `/api/bff/content/mini-program/ads?pagecode=index`，按 `slotCode` 覆盖顶部轮播、八大导航、节目单、热门项目和吃喝玩乐；顶部轮播优先使用 `index_top_banner`，无数据才兜底旧 `index_banner`。接口失败或资源位无数据时继续使用本地兜底内容。`GET /api/bff/content/mini-program/ads/1` 已在 UAT 无登录态返回 200，可用于后续内容详情读取富文本。
+- 2026-06-07 已完成首页顶部 banner 真实闭环：使用后台账号真实登录，调用 `/api/admin-config/files/images` 上传 `Desktop/HKP/banner` 下 5 张 JPG，再调用 `/api/content/mini-program/ads` 保存到 `index_top_banner` 资源位；Kimi WebBridge 打开公开 BFF 页面解析确认返回 5 条启用广告，标题为“首页顶部-冰箱贴 / 十周年公仔 / 年卡 / 慕斯蛋糕 / 棒棒糖”，图片 URL 均为 UAT `/ng/2026/06/07/*.jpg` 真实上传结果。
 
 ## 登录体系目标
 
@@ -70,9 +74,7 @@
 
 ## 页面布局与导航
 
-- `src/app.config.ts` 已按 Taro 自定义 tabbar 约定配置 `tabBar.custom = true`，保留 `tabBar.list` 作为微信小程序识别 tab 页的来源。
-- `src/custom-tab-bar` 是 Taro 自定义 tabbar 组件目录，但只渲染 0 高度占位，避免微信系统 tabbar 层级压过页面弹层。
-- `src/core/components/AppTabBar` 是真实可见 tabbar；每个 tabbar item 由 CSS ICON、文本和 `Taro.switchTab` 跳转组成，选中态根据当前页面栈路由计算，外层由 `PageLayout` fixed 到底部。
+- `src/app.config.ts` 配置 `tabBar.custom = true`，`src/custom-tab-bar` 只渲染 0 高度占位，真实可见 tabbar 由 `src/core/components/AppTabBar` 放在页面内 fixed 底部容器，避免微信系统 tabbar 层级压过弹层。
 - 主包 tab 页面配置 `navigationStyle: 'custom'`，不使用微信默认导航栏。
 - `src/core/components/PageNavbar` 是独立导航栏组件，读取状态栏和微信右侧胶囊位置，可作为 layout header 内容。
 - `PageNavbar` 默认按当前页面栈判断是否为主包 tab 页面：tab 页面只展示标题，不展示左侧 icon；非 tab 自定义 navbar 页面默认展示左侧 icon，返回逻辑统一走 `navigateBackOrHome()`，标题水平居中，默认返回图标统一使用 NutUI `ArrowLeft`。
@@ -127,9 +129,10 @@
 
 ## 当前待验证
 
-- 在微信开发工具中确认 BFF 授权响应结构，尤其是访问令牌和 `mobile` 实际位置；如字段不一致，调整 `src/core/request/index.ts`。
+- 在微信开发工具中确认 BFF 授权响应结构，尤其是访问令牌和 `mobile` 实际位置，并复测登录/刷新异常是否返回 `400/415/AUTH_TOKEN_*` 等明确错误码；如字段不一致，调整 `src/core/request/index.ts`。
 - 在微信开发工具中用真实登录态验证登出、支付预下单、促销试算等签名写接口 header 和后端响应。
-- 在微信开发工具网络面板确认购票列表和购票页 CMS 资源位公开 GET 不带 `Authorization` 也能返回，并目视确认门票预定页展示。
+- 在微信开发工具网络面板确认购票列表公开 GET 不带 `Authorization` 能返回，并目视确认资源位 500 时门票预定页仍展示真实购票列表和兜底图片；单 CMS 资源位需真实登录态验证。
+- 在微信开发工具网络面板确认首页广告聚合公开 GET 不带 `Authorization` 能返回，并目视确认顶部 5 张真实上传 banner、导航图标、节目单、热门项目和吃喝玩乐资源位渲染；资源位无数据时不得影响首页兜底内容。
 - 验证首页优惠券数量、签到/会员入口登录弹窗续执行、会员码二维码 canvas 和 30 秒刷新。
 - 验证 `withLoading` 只显示当前页面唯一 loading，不跨页面残留或重叠。
 - 目视确认首页新视觉、会员入口、登录弹窗、页面 loading、tabBar 选中态、自定义 navbar 胶囊避让和弹层覆盖；验收以模拟器可见画面为准。
@@ -142,8 +145,6 @@ nvm use
 yarn dev:weapp
 ```
 
-修完后校验：
-
 ```bash
 yarn typecheck
 yarn check:package-boundary
@@ -153,7 +154,5 @@ yarn check:main-package:build
 ## 不要忘记
 
 - 用户已经在微信开发工具里打开了项目。
-- 不要再把登录弹窗当作 H5 全局 DOM 使用。
-- 不要再把 loading 计数放进全局 store，也不要用 pageKey 注册表；页面通过 `usePageRuntime()` 控制本页唯一 loading，展示组件统一维护在 `src/core/components/loading`。
+- 不要把登录弹窗当作 H5 全局 DOM 使用；不要把 loading 计数放进全局 store 或 pageKey 注册表，页面通过 `usePageRuntime()` 控制本页唯一 loading。
 - 不要让本地 mock 地址、示例地址或 `mock`、`CSESSION`、`V2`、`Taro`、技术栈名、开发态等内部字眼出现在界面里。
-- 当前半改代码先不要提交，等编译和微信开发工具验证通过后再提交。
