@@ -158,6 +158,22 @@ const BUSINESS_SUCCESS_CODES = new Set<ApiBusinessCode>([
   '000',
   'OK',
 ]);
+const CREDENTIAL_INVALID_BUSINESS_CODES = new Set<string>([
+  String(BusinessResponseCode.Unauthorized),
+  String(BusinessResponseCode.CredentialExpired),
+  'AUTH_TOKEN_MISSING',
+  'AUTH_TOKEN_INVALID',
+  'AUTH_TOKEN_EXPIRED',
+  'AUTH_REFRESH_TOKEN_MISSING',
+  'AUTH_REFRESH_TOKEN_INVALID',
+  'AUTH_REFRESH_TOKEN_EXPIRED',
+]);
+const ACCESS_TOKEN_REFRESHABLE_BUSINESS_CODES = new Set<string>([
+  String(BusinessResponseCode.Unauthorized),
+  String(BusinessResponseCode.CredentialExpired),
+  'AUTH_TOKEN_INVALID',
+  'AUTH_TOKEN_EXPIRED',
+]);
 
 // 判断是否是完整 URL，兼容个别接口需要直连完整地址。
 function isAbsoluteUrl(url: string) {
@@ -176,7 +192,21 @@ function isBusinessSuccessCode(code?: ApiBusinessCode) {
 
 // 判断接口业务 code 是否为请求凭证失效。
 function isCredentialInvalidBusinessCode(code?: ApiBusinessCode) {
-  return code == BusinessResponseCode.Unauthorized || code == BusinessResponseCode.CredentialExpired;
+  return typeof code !== 'undefined' && CREDENTIAL_INVALID_BUSINESS_CODES.has(String(code));
+}
+
+// 判断接口业务 code 是否允许通过 refreshToken 轮换 accessToken 后重放请求。
+function isAccessTokenRefreshableBusinessCode(code?: ApiBusinessCode) {
+  return typeof code !== 'undefined' && ACCESS_TOKEN_REFRESHABLE_BUSINESS_CODES.has(String(code));
+}
+
+// 判断响应体是否像后端统一错误体，HTTP 非 2xx 时只有这种结构才读取后端错误文案。
+function hasApiErrorPayload(payload: unknown): payload is ApiResponse<unknown> {
+  return Boolean(
+    payload
+      && typeof payload === 'object'
+      && ('code' in payload || 'message' in payload || 'msg' in payload),
+  );
 }
 
 // 从授权接口响应中提取后端访问令牌，兼容旧 CSESSION 和新 BFF accessToken。
@@ -244,6 +274,7 @@ function normalizeApiResponse<TData>(
 
 export class ApiRequestClient {
   private csessionPromise?: Promise<string>;
+  private authRefreshPromise?: Promise<string>;
   private hasBootstrappedCsession = false;
 
   // 发起业务接口请求，默认等待并携带后端 CSESSION，再归一化业务响应。
@@ -334,6 +365,54 @@ export class ApiRequestClient {
     return authSession.accessToken;
   }
 
+  // 使用 refreshToken 轮换后端登录态，并让并发过期请求共用同一个刷新 Promise。
+  private refreshAuthSession() {
+    if (this.authRefreshPromise) return this.authRefreshPromise;
+
+    this.authRefreshPromise = this.requestRefreshToken().finally(() => {
+      this.authRefreshPromise = undefined;
+    });
+
+    return this.authRefreshPromise;
+  }
+
+  // 调用 BFF 刷新接口，成功后覆盖本地 accessToken、refreshToken 和签名密钥。
+  private async requestRefreshToken() {
+    const refreshToken = rootStore.member.refreshToken;
+    if (!refreshToken) {
+      throw new ApiRequestError('登录令牌已过期，请重新登录', {
+        code: 'AUTH_REFRESH_TOKEN_MISSING',
+        retryable: false,
+      });
+    }
+
+    const result = await this.send<TokenRequestResponse, { refreshToken: string }>({
+      url: '/api/bff/auth/refresh',
+      method: 'POST',
+      data: { refreshToken },
+      header: {
+        'content-type': 'application/json',
+        'ngrok-skip-browser-warning': '1',
+      },
+      auth: 'none',
+      showErrorToast: false,
+      validateResponse: this.validateCsessionResponse,
+    });
+
+    const authSession = extractAuthSession(result.response.data, result.response.header);
+    if (!authSession.accessToken) {
+      throw new ApiRequestError('刷新登录令牌失败：缺少访问令牌', { retryable: false });
+    }
+
+    rootStore.member.setAuthSession({
+      accessToken: authSession.accessToken,
+      refreshToken: authSession.refreshToken,
+      signSecret: authSession.signSecret,
+    });
+    this.hasBootstrappedCsession = true;
+    return authSession.accessToken;
+  }
+
   // 校验授权接口必须返回可提取的访问令牌，缺 token 也要进入授权请求自己的重试链路。
   private validateCsessionResponse(response: ApiTransportResponse<TokenRequestResponse>) {
     if (extractAccessToken(response.data, response.header)) return undefined;
@@ -369,6 +448,7 @@ export class ApiRequestClient {
   private async requestWithRetry<TResponse, TData = unknown>(preparedRequest: PreparedRequest<TData, TResponse>) {
     let lastError: unknown;
     const { maxAttempts, delayMs } = preparedRequest.retry;
+    let authRefreshed = false;
 
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
       try {
@@ -383,6 +463,13 @@ export class ApiRequestClient {
 
         const responseError = this.resolveResponseError(response, preparedRequest.responseMode) || preparedRequest.validateResponse?.(response);
         if (responseError) {
+          if (this.shouldRefreshAuthForRequest(responseError, preparedRequest, authRefreshed)) {
+            await this.applyRefreshedAuthToRequest(preparedRequest);
+            authRefreshed = true;
+            attempt -= 1;
+            continue;
+          }
+
           lastError = responseError;
           if (this.shouldRetryRequest(responseError, attempt, maxAttempts)) {
             await this.waitForRetry(delayMs);
@@ -394,6 +481,12 @@ export class ApiRequestClient {
         return response;
       } catch (error) {
         lastError = this.normalizeRequestError(error);
+        if (this.shouldRefreshAuthForRequest(lastError, preparedRequest, authRefreshed)) {
+          await this.applyRefreshedAuthToRequest(preparedRequest);
+          authRefreshed = true;
+          attempt -= 1;
+          continue;
+        }
       }
 
       if (this.shouldRetryRequest(lastError, attempt, maxAttempts)) {
@@ -412,10 +505,10 @@ export class ApiRequestClient {
     response: ApiTransportResponse<TResponse>,
     responseMode: RequestResponseMode,
   ) {
-    const httpError = this.resolveHttpStatusError(response.statusCode);
+    const normalizedResponse = normalizeApiResponse<unknown>(response.data, responseMode);
+    const httpError = this.resolveHttpStatusError(response.statusCode, response.data, responseMode);
     if (httpError) return httpError;
 
-    const normalizedResponse = normalizeApiResponse<unknown>(response.data, responseMode);
     if (normalizedResponse.success) return undefined;
 
     return new ApiRequestError(normalizedResponse.message, {
@@ -425,20 +518,37 @@ export class ApiRequestClient {
   }
 
   // 判断 HTTP 状态码是否需要触发本次原始请求重试。
-  private resolveHttpStatusError(statusCode: number) {
+  private resolveHttpStatusError<TResponse>(
+    statusCode: number,
+    payload: TResponse,
+    responseMode: RequestResponseMode,
+  ) {
     if (isHttpSuccessStatus(statusCode)) return undefined;
 
+    const backendError = this.resolveHttpBackendError(payload, responseMode);
     const unauthorized = statusCode === HttpStatusCode.Unauthorized;
-    const message = unauthorized
+    const fallbackMessage = unauthorized
       ? '请求凭证已失效'
       : statusCode === HttpStatusCode.NotFound
         ? '请求失败：接口不存在'
         : `请求失败：${statusCode}`;
 
-    return new ApiRequestError(message, {
+    return new ApiRequestError(backendError?.message || fallbackMessage, {
+      code: backendError?.code,
       statusCode,
-      retryable: !unauthorized,
+      retryable: !unauthorized && !isCredentialInvalidBusinessCode(backendError?.code),
     });
+  }
+
+  // HTTP 错误只解析真实后端错误体，避免 raw 响应把错误文案误归因为 success。
+  private resolveHttpBackendError<TResponse>(payload: TResponse, responseMode: RequestResponseMode) {
+    if (responseMode === 'raw' && !hasApiErrorPayload(payload)) return undefined;
+    if (!hasApiErrorPayload(payload)) return undefined;
+
+    return {
+      code: payload.code,
+      message: payload.message || payload.msg,
+    };
   }
 
   // 判断接口错误是否属于请求凭证失效，便于 HTTP 与业务 code 共用一套处理。
@@ -453,6 +563,49 @@ export class ApiRequestClient {
     if (this.isCredentialInvalidError(error)) return false;
     if (error instanceof ApiRequestError) return error.retryable;
     return true;
+  }
+
+  // 判断本次登录态失效是否应该先刷新 token，再重放原请求。
+  private shouldRefreshAuthForRequest<TData = unknown, TResponse = unknown>(
+    error: unknown,
+    preparedRequest: PreparedRequest<TData, TResponse>,
+    authRefreshed: boolean,
+  ) {
+    if (authRefreshed) return false;
+    if (!this.isCredentialInvalidError(error)) return false;
+    if (!preparedRequest.header.Authorization) return false;
+    if (!(error instanceof ApiRequestError)) return false;
+    if (isAccessTokenRefreshableBusinessCode(error.code)) return true;
+    return error.statusCode === HttpStatusCode.Unauthorized && typeof error.code === 'undefined';
+  }
+
+  // 刷新成功后把新 accessToken 写回原请求头，签名请求会在重放前重新计算签名。
+  private async applyRefreshedAuthToRequest<TData = unknown, TResponse = unknown>(
+    preparedRequest: PreparedRequest<TData, TResponse>,
+  ) {
+    try {
+      const requestToken = this.resolveAuthorizationToken(preparedRequest.header.Authorization);
+      const currentAccessToken = rootStore.member.csession;
+      if (requestToken && currentAccessToken && requestToken !== currentAccessToken) {
+        preparedRequest.header.Authorization = `Bearer ${currentAccessToken}`;
+        return;
+      }
+
+      const nextAccessToken = await this.refreshAuthSession();
+      preparedRequest.header.Authorization = `Bearer ${nextAccessToken}`;
+    } catch (error) {
+      this.handleCredentialInvalid();
+      throw this.normalizeRequestError(error);
+    }
+  }
+
+  // 读取本次请求实际携带的 Bearer token，用于判断是否已有其它请求刷新过登录态。
+  private resolveAuthorizationToken(authorization?: string) {
+    if (!authorization) return undefined;
+    const bearerPrefix = 'Bearer ';
+    return authorization.startsWith(bearerPrefix)
+      ? authorization.slice(bearerPrefix.length)
+      : authorization;
   }
 
   // 归一化 Taro 底层抛出的非 Error 异常，避免 toast 和调用方拿不到可读 message。

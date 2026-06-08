@@ -9,25 +9,36 @@ export const MINI_PROGRAM_AD_PAGE_CODES = {
   home: 'index',
 } as const;
 
-// 读取小程序页面广告聚合，公开接口失败时返回空结构，不阻断页面首屏。
+// 读取小程序页面广告聚合，先完成小程序授权并携带访问令牌；真实接口链路不吞异常，避免旧内容掩盖配置问题。
 export function fetchMiniProgramPageAds(pagecode = MINI_PROGRAM_AD_PAGE_CODES.home) {
-  return new Promise<MiniProgramAdPageAdsResponse>((resolve) => {
-    request<MiniProgramAdPageAdsResponse>({
-      url: `/api/bff/content/mini-program/ads?pagecode=${encodeURIComponent(pagecode)}`,
-      method: 'GET',
-      auth: 'none',
-      showErrorToast: false,
-    })
-      .then((response) => {
-        resolve({
-          page: response?.page,
-          slots: response?.slots || [],
-        });
-      })
-      .catch(() => {
-        resolve({ slots: [] });
-      });
+  return request<MiniProgramAdPageAdsResponse>({
+    url: `/api/bff/content/mini-program/ads?pagecode=${encodeURIComponent(pagecode)}`,
+    method: 'GET',
+    showErrorToast: false,
+  }).then((response) => ({
+    page: response?.page,
+    slots: response?.slots || [],
+  }));
+}
+
+// 读取单个广告详情，用于首页内容项进入富文本详情时按后端广告 ID 回查正文。
+export function fetchMiniProgramAdDetail(id: string) {
+  return request<MiniProgramAdView>({
+    url: `/api/bff/content/mini-program/ads/${encodeURIComponent(id)}`,
+    method: 'GET',
+    showErrorToast: false,
   });
+}
+
+// 按单个资源位直查可见广告，供首页“查看更多”列表页使用真实接口数据。
+export function fetchMiniProgramSlotAds(slotCode: string) {
+  return request<MiniProgramAdView[]>({
+    url: `/api/bff/content/mini-program/slots/${encodeURIComponent(slotCode)}/ads`,
+    method: 'GET',
+    showErrorToast: false,
+  }).then((ads) => (ads || [])
+    .map((ad) => ({ ...ad, slotCode: ad.slotCode || slotCode }))
+    .sort((left, right) => (left.sortOrder || 0) - (right.sortOrder || 0)));
 }
 
 // 按资源位编码读取广告列表，并统一按 sortOrder 从小到大排列。

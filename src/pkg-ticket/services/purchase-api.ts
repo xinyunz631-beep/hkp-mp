@@ -48,7 +48,7 @@ export interface FetchPurchaseResourceOptions {
 const PURCHASE_SCENE_TYPE = 'TICKET';
 const PURCHASE_PAGE_CODE = 'PURCHASE_HOME';
 
-// 拉取后端购票列表；UAT BFF 购票接口要求登录态，不能按匿名接口调用。
+// 拉取后端购票列表，先完成小程序授权并携带访问令牌；UAT BFF 购票接口不能按匿名接口调用。
 export function fetchPurchaseMenus(sceneType = PURCHASE_SCENE_TYPE) {
   return request<PurchaseMenuApiItem[]>({
     url: `/api/bff/purchase/menus?sceneType=${encodeURIComponent(sceneType)}`,
@@ -66,7 +66,7 @@ export function fetchPurchaseMenuDetail(menuNo: string) {
   });
 }
 
-// 拉取购票页资源位；后端已要求登录态。
+// 拉取购票页资源位，先完成小程序授权并携带访问令牌；后端已要求登录态。
 export function fetchPurchaseResources(options: FetchPurchaseResourceOptions = {}) {
   const sceneType = options.sceneType || PURCHASE_SCENE_TYPE;
   const pageCode = options.pageCode || PURCHASE_PAGE_CODE;

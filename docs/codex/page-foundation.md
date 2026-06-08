@@ -48,6 +48,7 @@
 - `PageShell` 默认不展示底部 `AppTabBar`；只有首页和“我的”页显式传 `reserveTabBarSpace` 开启页面内 tabbar。
 - 全项目受保护业务能力都必须做登录双保险：入口点击先拦截，登录成功后再跳转；目标页面仍要保留 `usePageRuntime({ loginRequired: true })` 作为第二道兜底。公开浏览页不拦截登录，例如商品详情、商品列表、门票预订、酒店首页/房型详情和餐饮商户详情。
 - 跳转会员码、会员中心、优惠券、购物车、收藏、赠品选择、订单、地址、售后、评价创建、票务/酒店确认订单等受保护路由时，优先使用 `src/core/utils/navigation.ts` 的 `navigateToMiniRoute()`；不要在各页面散写 `Taro.navigateTo` 后漏掉入口拦截。商品评价列表、商品详情、门票预订等公开内容不放入受保护路由。
+- 所有广告资源位点击必须统一调用 `src/core/utils/ad-click.ts` 的 `adClick()`；页面只传广告对象和必要兜底路径，不再散写 `jumpType`、H5 复制、其他小程序、地图、电话或富文本详情分支。
 - 非 tab 自定义 navbar 页面默认使用 `navigateBackOrHome()` 返回。
 - 页面栈判断和“有上一页则返回、无上一页则回首页”的按钮事件必须封装在 `src/core/utils/navigation.ts`，页面或状态组件不要直接散写 `Taro.getCurrentPages()`。
 - 首页错误态不展示返回入口；通用错误组件需要临时隐藏返回时使用 `hideBack`，不要在页面里重复写路由判断。

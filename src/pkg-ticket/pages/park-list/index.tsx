@@ -4,19 +4,45 @@ import { Text, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
 import { AppIcon } from '@/core/components/AppIcon';
 import { AppImage } from '@/core/components/AppImage';
+import { BaseEmpty } from '@/core/components/BaseEmpty';
 import { PageHeader, PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import { fetchParkListData, type TicketParkListData, type TicketParkListItem } from '@/pkg-ticket/services/park-list';
 import './index.scss';
 
+const DEFAULT_PARK_LIST_TITLE = '热玩项目';
+const DEFAULT_PARK_SLOT_CODE = 'index_hot_project';
+
+// 解码首页传入的资源位参数，异常编码直接按原值处理。
+function decodeRouteParam(value?: string) {
+  if (!value) return '';
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
+// 读取热玩列表页路由参数，slotCode 决定本页真实接口数据来源。
+function resolveParkListRouteParams() {
+  const params = Taro.getCurrentInstance().router?.params || {};
+  return {
+    slotCode: decodeRouteParam(params.slotCode) || DEFAULT_PARK_SLOT_CODE,
+    title: decodeRouteParam(params.title) || DEFAULT_PARK_LIST_TITLE,
+  };
+}
+
 // 渲染热玩榜单列表页，列表项使用接口返回 id 跳转项目详情。
 const ParkListPage = observer(function ParkListPage() {
   const [listData, setListData] = useState<TicketParkListData>();
   const [activeTabId, setActiveTabId] = useState('');
+  const [pageTitle, setPageTitle] = useState(DEFAULT_PARK_LIST_TITLE);
   const pageRuntime = usePageRuntime({
     initPage: async () => {
-      const nextData = await fetchParkListData();
+      const routeParams = resolveParkListRouteParams();
+      setPageTitle(routeParams.title);
+      const nextData = await fetchParkListData(routeParams.slotCode);
       setListData(nextData);
       setActiveTabId(nextData.tabs[0]?.id || '');
     },
@@ -39,7 +65,7 @@ const ParkListPage = observer(function ParkListPage() {
 
     return (
       <View className="_pg">
-        <PageShell title="热玩项目" className="_pg-shell">
+        <PageShell title={pageTitle} className="_pg-shell">
           <PageHeader>
             <View className="_pg-tabs">
               {listData.tabs.map((tab) => (
@@ -55,7 +81,7 @@ const ParkListPage = observer(function ParkListPage() {
           </PageHeader>
 
           <View className="_pg-content">
-            {activeItems.map((item) => (
+            {activeItems.length > 0 ? activeItems.map((item) => (
               <View className="_pg-card" key={item.id} onClick={() => openProjectDetail(item)}>
                 <AppImage className="_pg-card_image" src={item.imageSrc} mode="aspectFill" emptyState="error" />
                 <View className="_pg-card_body">
@@ -77,7 +103,9 @@ const ParkListPage = observer(function ParkListPage() {
                   </View>
                 </View>
               </View>
-            ))}
+            )) : (
+              <BaseEmpty title={`暂无${pageTitle}`} description="更多精彩内容敬请期待" />
+            )}
           </View>
         </PageShell>
       </View>

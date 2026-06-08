@@ -10,12 +10,37 @@ import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import { fetchActivityListData, type TicketActivityListData, type TicketActivityListItem } from '@/pkg-ticket/services/activity';
 import './index.scss';
 
+const DEFAULT_ACTIVITY_LIST_TITLE = '精选活动';
+const DEFAULT_ACTIVITY_SLOT_CODE = 'index_activity';
+
+// 解码首页传入的资源位参数，异常编码直接按原值处理。
+function decodeRouteParam(value?: string) {
+  if (!value) return '';
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
+// 读取列表页路由参数，slotCode 决定本页真实接口数据来源。
+function resolveActivityListRouteParams() {
+  const params = Taro.getCurrentInstance().router?.params || {};
+  return {
+    slotCode: decodeRouteParam(params.slotCode) || DEFAULT_ACTIVITY_SLOT_CODE,
+    title: decodeRouteParam(params.title) || DEFAULT_ACTIVITY_LIST_TITLE,
+  };
+}
+
 // 渲染精选活动列表页，列表项使用接口返回 id 跳转活动详情。
 const ActivityListPage = observer(function ActivityListPage() {
   const [listData, setListData] = useState<TicketActivityListData>();
+  const [pageTitle, setPageTitle] = useState(DEFAULT_ACTIVITY_LIST_TITLE);
   const pageRuntime = usePageRuntime({
     initPage: async () => {
-      const nextData = await fetchActivityListData();
+      const routeParams = resolveActivityListRouteParams();
+      setPageTitle(routeParams.title);
+      const nextData = await fetchActivityListData(routeParams.slotCode);
       setListData(nextData);
     },
   });
@@ -30,7 +55,7 @@ const ActivityListPage = observer(function ActivityListPage() {
 
   return pageRuntime.renderPage(() => (
     <View className="_pg">
-      <PageShell title="精选活动" className="_pg-shell">
+      <PageShell title={pageTitle} className="_pg-shell">
         <View className="_pg-content">
           {items.length > 0 ? items.map((item) => (
             <View className="_pg-card" key={item.id} onClick={() => openActivityDetail(item)}>
@@ -42,7 +67,7 @@ const ActivityListPage = observer(function ActivityListPage() {
               </View>
             </View>
           )) : (
-            <BaseEmpty title="暂无活动" description="更多精彩内容敬请期待" />
+            <BaseEmpty title={`暂无${pageTitle}`} description="更多精彩内容敬请期待" />
           )}
         </View>
       </PageShell>
