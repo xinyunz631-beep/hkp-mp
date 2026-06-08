@@ -7,44 +7,12 @@ interface MemberRichTextProps {
   nodes?: string;
 }
 
-function mergeStyleAttribute(existStyle = '', defaultStyle: string) {
-  const trimmedStyle = existStyle.trim();
-  if (!trimmedStyle) return defaultStyle;
-
-  return `${defaultStyle};${trimmedStyle}`;
-}
-
-function applyDefaultTagStyle(html: string, tagName: string, defaultStyle: string) {
-  const tagRegExp = new RegExp(`<${tagName}([^>]*)>`, 'gi');
-
-  return html.replace(tagRegExp, (matched, rawAttrs = '') => {
-    const attrs = String(rawAttrs);
-    const styleRegExp = /\sstyle=(["'])(.*?)\1/i;
-    const styleMatched = attrs.match(styleRegExp);
-
-    if (styleMatched) {
-      const nextStyle = mergeStyleAttribute(styleMatched[2], defaultStyle);
-      const nextAttrs = attrs.replace(styleRegExp, ` style=${styleMatched[1]}${nextStyle}${styleMatched[1]}`);
-      return `<${tagName}${nextAttrs}>`;
-    }
-
-    return `<${tagName}${attrs} style="${defaultStyle}">`;
-  });
-}
-
+// 保持后端富文本原文，前端不重写接口返回的 HTML 结构。
 function normalizeRichTextHtml(nodes = '') {
-  if (!nodes) return '';
-
-  return [
-    ['div', 'box-sizing:border-box;max-width:100%;font-size:30px;line-height:1.65;color:#111111;word-break:break-word'],
-    ['p', 'margin:0 0 24px;font-size:30px;line-height:1.65;color:#111111;word-break:break-word'],
-    ['span', 'font-size:30px;line-height:1.65;color:inherit;word-break:break-word'],
-    ['text', 'font-size:30px;line-height:1.65;color:inherit;word-break:break-word'],
-    ['img', 'display:block;width:100%;max-width:100%;height:auto;margin:18px 0;border:0'],
-  ].reduce((html, [tagName, defaultStyle]) => applyDefaultTagStyle(html, tagName, defaultStyle), nodes);
+  return nodes;
 }
 
-// 统一会员分包富文本容器；外层样式能命中时走 CSS，命不中时由 inline style 兜底。
+// 统一会员分包富文本容器，只承接后端已维护好的富文本结构。
 export function MemberRichText({ className, nodes }: MemberRichTextProps) {
   return (
     <View className={classNames('member-rich-text', className)}>

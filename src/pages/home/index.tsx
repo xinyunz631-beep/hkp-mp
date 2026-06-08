@@ -9,7 +9,6 @@ import { PageRoot, PageShell } from '@/core/components/PageShell';
 import { HKP_PARK_HOTLINE, HKP_PARK_LOCATION } from '@/core/constants/park-location';
 import { MINI_MAIN_ROUTES, MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
-import { fetchCouponUsedCount } from '@/core/services/home';
 import {
   fetchMiniProgramPageAds,
   findMiniProgramSlotAds,
@@ -18,7 +17,8 @@ import {
   resolveMiniProgramAdTitle,
 } from '@/core/services/mini-program-ad';
 import { rootStore } from '@/core/store';
-import type { MiniProgramAdJumpType, MiniProgramAdPageAdsResponse, MiniProgramAdView } from '@/core/types/mini-program-ad';
+import type { MiniProgramAdPageAdsResponse, MiniProgramAdView } from '@/core/types/mini-program-ad';
+import { adClick, resolveMiniProgramAdClickTarget, type MiniProgramAdClickTarget } from '@/core/utils/ad-click';
 import { resolveMemberLevel } from '@/core/utils/member-profile';
 import { navigateToMiniRoute } from '@/core/utils/navigation';
 import { resolvePageChromeMetrics } from '@/core/utils/style';
@@ -32,15 +32,7 @@ import {
 } from '@/core/utils/wechat-actions';
 import './index.scss';
 
-interface HomeAdJumpTarget {
-  jumpType?: MiniProgramAdJumpType;
-  jumpPath?: string;
-  jumpAppId?: string;
-  jumpUrl?: string;
-  jumpCustomValue?: string;
-}
-
-interface HomeShortcutEntry extends HomeAdJumpTarget {
+interface HomeShortcutEntry extends MiniProgramAdClickTarget {
   key: string;
   title: string;
   path?: string;
@@ -50,7 +42,7 @@ interface HomeShortcutEntry extends HomeAdJumpTarget {
   deferred?: boolean;
 }
 
-interface HomeSectionCard extends HomeAdJumpTarget {
+interface HomeSectionCard extends MiniProgramAdClickTarget {
   id: string;
   title: string;
   description: string;
@@ -61,7 +53,7 @@ interface HomeSectionCard extends HomeAdJumpTarget {
   action?: 'location' | 'map';
 }
 
-interface HomePlayCategory extends HomeAdJumpTarget {
+interface HomePlayCategory extends MiniProgramAdClickTarget {
   id: string;
   title: string;
   path?: string;
@@ -69,7 +61,7 @@ interface HomePlayCategory extends HomeAdJumpTarget {
   action?: 'location' | 'phone' | 'deferred';
 }
 
-interface HomeBannerEntry extends HomeAdJumpTarget {
+interface HomeBannerEntry extends MiniProgramAdClickTarget {
   key: string;
   path?: string;
   imageSrc?: string;
@@ -78,162 +70,130 @@ interface HomeBannerEntry extends HomeAdJumpTarget {
 
 type HomeScrollHandler = NonNullable<ScrollViewProps['onScroll']>;
 
-const shortcutEntries: HomeShortcutEntry[] = [
-  { key: 'exchange', title: '兑换专区', path: MINI_PACKAGE_ROUTES.memberExchange, requireLogin: true },
-  { key: 'coupon', title: '领券中心', path: MINI_PACKAGE_ROUTES.memberCouponCenter, requireLogin: true },
-  { key: 'service', title: '服务专区', path: MINI_PACKAGE_ROUTES.ticketHome },
-  { key: 'mall', title: '官方商城', path: MINI_PACKAGE_ROUTES.mallHome },
-  { key: 'contact', title: '联系客服', action: 'phone' },
-  { key: 'share', title: '分享收益', requireLogin: true, action: 'shareIncome', deferred: true },
-  { key: 'guide', title: '导航至乐园', action: 'location' },
-  { key: 'map', title: '园内地图', path: MINI_PACKAGE_ROUTES.ticketParkGuide, action: 'map' },
-];
-
-const hotCards: HomeSectionCard[] = [
-  { id: '1000000000001001', title: '欢乐漂流', description: '日间游览人气路线', rank: 'top1', path: MINI_PACKAGE_ROUTES.ticketParkDetail },
-  { id: '1000000000001002', title: '缤纷摩天轮', description: '亲子高空观景项目', rank: 'top2', path: MINI_PACKAGE_ROUTES.ticketParkDetail },
-];
-
-const activityCards: HomeSectionCard[] = [
-  { id: '2000000000001003', title: '乐园助力，嗨吃玩乐', description: '为世界杯喝彩', tag: '进行中', path: MINI_PACKAGE_ROUTES.ticketActivityDetail },
-];
-
-const recommendCards: HomeSectionCard[] = [
-  { id: '3000000000001001', title: '交通动线', description: '入园、停车与接驳指引', tag: '快速查看', path: MINI_PACKAGE_ROUTES.ticketActivityDetail },
-  { id: '3000000000001002', title: '项目排队', description: '热门项目开放与等待', tag: '实时提醒', path: MINI_PACKAGE_ROUTES.ticketActivityDetail },
-];
-
-const playCategories: HomePlayCategory[] = [
-  { id: '5000000000001001', title: '吃', path: MINI_PACKAGE_ROUTES.ticketActivityDetail },
-  { id: '5000000000001002', title: '住', path: MINI_PACKAGE_ROUTES.ticketActivityDetail },
-  { id: '5000000000001003', title: '行', path: MINI_PACKAGE_ROUTES.ticketActivityDetail },
-  { id: '5000000000001004', title: '游', path: MINI_PACKAGE_ROUTES.ticketActivityDetail },
-  { id: '5000000000001005', title: '购', path: MINI_PACKAGE_ROUTES.ticketActivityDetail },
-  { id: '5000000000001006', title: '娱', path: MINI_PACKAGE_ROUTES.ticketActivityDetail },
-  { id: '5000000000001007', title: '商', path: MINI_PACKAGE_ROUTES.ticketActivityDetail },
-  { id: '5000000000001008', title: '学', path: MINI_PACKAGE_ROUTES.ticketActivityDetail },
-  { id: '5000000000001009', title: '情', path: MINI_PACKAGE_ROUTES.ticketActivityDetail },
-];
-
-const heroBannerEntries: HomeBannerEntry[] = [
-  { key: 'main', path: MINI_PACKAGE_ROUTES.ticketBooking, imageSrc: 'https://hellokitty-uat.yoursite.xin/ng/2f87c96ee684f066feab967a35f2ef9b.jpg' },
-  { key: 'event', path: MINI_PACKAGE_ROUTES.ticketHome },
-  { key: 'member', path: MINI_PACKAGE_ROUTES.memberGrowth, requireLogin: true },
-];
-
 const MAIN_ROUTE_SET = new Set<string>(Object.values(MINI_MAIN_ROUTES));
+const HOME_TOP_BANNER_SLOT_CODES = ['index_top_banner'];
+const HOME_LEGACY_BANNER_SLOT_CODES = ['index_banner'];
+const HOME_NAV_SLOT_CODES = ['index_nav_grid'];
+const HOME_SCHEDULE_SLOT_CODES = ['index_schedule'];
+const HOME_HOT_SLOT_CODES = ['index_hot_project', 'index_hot_projects'];
+const HOME_ACTIVITY_SLOT_CODES = ['index_activity', 'index_feature_activity'];
+const HOME_RECOMMEND_SLOT_CODES = ['index_recommend', 'index_recommendation'];
+const HOME_MEMBER_BENEFIT_SLOT_CODES = ['index_member_benefit', 'index_member_benefits'];
+const HOME_PLAY_LIFE_SLOT_CODES = ['index_play_life', 'index_life'];
+const HOME_SECTION_MORE_CONFIG = {
+  rank: { path: MINI_PACKAGE_ROUTES.ticketParkList, slotCode: HOME_HOT_SLOT_CODES[0], title: '热玩榜单' },
+  activity: { path: MINI_PACKAGE_ROUTES.ticketActivityList, slotCode: HOME_ACTIVITY_SLOT_CODES[0], title: '精选活动' },
+  recommend: { path: MINI_PACKAGE_ROUTES.ticketActivityList, slotCode: HOME_RECOMMEND_SLOT_CODES[0], title: '精彩推荐' },
+  play: { path: MINI_PACKAGE_ROUTES.ticketActivityList, slotCode: HOME_PLAY_LIFE_SLOT_CODES[0], title: '玩转乐园' },
+} as const;
 
 function renderHomeImage(className: string, src: string) {
   return <AppImage className={className} src={src} mode="aspectFill" emptyState="error" />;
 }
 
-// 将后台广告路径里的旧首页路径归一到当前小程序真实首页。
-function normalizeAdMiniProgramPath(path?: string) {
-  if (!path || path === '/') return undefined;
-  if (path === '/pages/index/index') return MINI_MAIN_ROUTES.home;
-  return path;
+// 拼接小程序路由参数，避免首页“查看更多”列表页丢失资源位上下文。
+function appendRouteQuery(path: string, params: Record<string, string>) {
+  const query = Object.entries(params)
+    .filter(([, value]) => Boolean(value))
+    .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
+    .join('&');
+  return query ? `${path}?${query}` : path;
 }
 
-// 广告跳转对象只保留首页需要的跳转字段，避免页面感知后端完整 DTO。
-function buildAdJumpTarget(ad: MiniProgramAdView): HomeAdJumpTarget {
-  return {
-    jumpType: ad.jumpType,
-    jumpPath: normalizeAdMiniProgramPath(ad.jumpPath || ad.jumpTarget),
-    jumpAppId: ad.jumpAppId || ad.jumpMiniProgramAppId,
-    jumpUrl: ad.jumpUrl,
-    jumpCustomValue: ad.jumpCustomValue,
-  };
+// 首页广告已进入真实接口链路，核心资源位缺失时直接暴露配置问题，不再回退旧本地内容。
+function assertHomeAdPayloadReady(payload: MiniProgramAdPageAdsResponse) {
+  const requiredSlots = [
+    { name: '顶部内容', codes: [...HOME_TOP_BANNER_SLOT_CODES, ...HOME_LEGACY_BANNER_SLOT_CODES] },
+    { name: '快捷入口', codes: HOME_NAV_SLOT_CODES },
+    { name: '节目单', codes: HOME_SCHEDULE_SLOT_CODES },
+    { name: '热玩榜单', codes: HOME_HOT_SLOT_CODES },
+    { name: '精选活动', codes: HOME_ACTIVITY_SLOT_CODES },
+    { name: '精彩推荐', codes: HOME_RECOMMEND_SLOT_CODES },
+    { name: '会员福利', codes: HOME_MEMBER_BENEFIT_SLOT_CODES },
+    { name: '玩转乐园', codes: HOME_PLAY_LIFE_SLOT_CODES },
+  ];
+  const hasMissingSlot = requiredSlots.some((slot) => findMiniProgramSlotAds(payload, slot.codes).length === 0);
+
+  if (hasMissingSlot) throw new Error('首页内容正在更新，请稍后重试');
 }
 
 // 把广告映射成顶部轮播项。
 function mapAdToBannerEntry(ad: MiniProgramAdView, index: number): HomeBannerEntry {
   return {
+    ...resolveMiniProgramAdClickTarget(ad),
     key: ad.id || ad.adNo || `banner-${index}`,
     imageSrc: resolveMiniProgramAdImage(ad, 'background'),
-    ...buildAdJumpTarget(ad),
   };
 }
 
 // 把广告映射成快捷入口项。
 function mapAdToShortcutEntry(ad: MiniProgramAdView, index: number): HomeShortcutEntry {
   return {
+    ...resolveMiniProgramAdClickTarget(ad),
     key: ad.id || ad.adNo || `shortcut-${index}`,
     title: resolveMiniProgramAdTitle(ad) || `入口${index + 1}`,
     imageSrc: resolveMiniProgramAdImage(ad, 'icon'),
-    ...buildAdJumpTarget(ad),
   };
 }
 
 // 把广告映射成首页横向内容卡。
 function mapAdToSectionCard(ad: MiniProgramAdView, index: number, prefix: string): HomeSectionCard {
   return {
+    ...resolveMiniProgramAdClickTarget(ad),
     id: ad.id || ad.adNo || `${prefix}-${index}`,
     title: resolveMiniProgramAdTitle(ad) || '乐园推荐',
     description: resolveMiniProgramAdDescription(ad) || '',
     tag: ad.badgeText || ad.content,
     rank: prefix === 'hot' ? `top${index + 1}` : undefined,
     imageSrc: resolveMiniProgramAdImage(ad, 'material'),
-    ...buildAdJumpTarget(ad),
   };
 }
 
 // 把广告映射成吃喝玩乐入口。
 function mapAdToPlayCategory(ad: MiniProgramAdView, index: number): HomePlayCategory {
   return {
+    ...resolveMiniProgramAdClickTarget(ad),
     id: ad.id || ad.adNo || `play-${index}`,
     title: resolveMiniProgramAdTitle(ad) || `推荐${index + 1}`,
     imageSrc: resolveMiniProgramAdImage(ad, 'material'),
-    ...buildAdJumpTarget(ad),
   };
 }
 
 // 渲染主包首页，按当前 Pencil 750px 开发稿实现首页结构和接口图占位。
 const HomePage = observer(function HomePage() {
-  const [couponCount, setCouponCount] = useState<number>();
   const [homeAds, setHomeAds] = useState<MiniProgramAdPageAdsResponse>();
   const [chromeMetrics] = useState(resolvePageChromeMetrics);
   const [navSearchSolid, setNavSearchSolid] = useState(false);
   const navSearchSolidRef = useRef(false);
   const pageRuntime = usePageRuntime({
     initPage: async () => {
-      const [nextCouponCount, nextHomeAds] = await Promise.all([
-        fetchCouponUsedCount(),
-        fetchMiniProgramPageAds(),
-      ]);
-      setCouponCount(nextCouponCount);
+      const nextHomeAds = await fetchMiniProgramPageAds();
+      assertHomeAdPayloadReady(nextHomeAds);
       setHomeAds(nextHomeAds);
     },
   });
   const memberProfile = rootStore.member.profile;
   const memberLevel = resolveMemberLevel(memberProfile);
   const memberName = memberProfile?.nickname || '微信用户';
-  const couponBadgeText = `优惠券${couponCount ?? 0}张`;
-  const heroBannerImageSrc = '';
-  const shortcutImageSrc = '';
-  const openTimeImageSrc = '';
-  const rankImageSrc = '';
-  const activityImageSrc = '';
-  const recommendImageSrc = '';
-  const memberBenefitImageSrc = '';
-  const playCategoryImageSrc = '';
-  const topBannerAds = findMiniProgramSlotAds(homeAds, ['index_top_banner']);
-  const legacyBannerAds = findMiniProgramSlotAds(homeAds, ['index_banner']);
+  const couponBadgeText = '我的优惠券';
+  const topBannerAds = findMiniProgramSlotAds(homeAds, HOME_TOP_BANNER_SLOT_CODES);
+  const legacyBannerAds = findMiniProgramSlotAds(homeAds, HOME_LEGACY_BANNER_SLOT_CODES);
   const bannerAds = topBannerAds.length ? topBannerAds : legacyBannerAds;
-  const navAds = findMiniProgramSlotAds(homeAds, ['index_nav_grid']);
-  const scheduleAds = findMiniProgramSlotAds(homeAds, ['index_schedule']);
-  const hotAds = findMiniProgramSlotAds(homeAds, ['index_hot_project', 'index_hot_projects']);
-  const activityAds = findMiniProgramSlotAds(homeAds, ['index_activity', 'index_feature_activity']);
-  const recommendAds = findMiniProgramSlotAds(homeAds, ['index_recommend', 'index_recommendation']);
-  const memberBenefitAds = findMiniProgramSlotAds(homeAds, ['index_member_benefit', 'index_member_benefits']);
-  const playLifeAds = findMiniProgramSlotAds(homeAds, ['index_play_life', 'index_life']);
-  const resolvedHeroBannerEntries = bannerAds.length ? bannerAds.map(mapAdToBannerEntry) : heroBannerEntries;
-  const resolvedShortcutEntries = navAds.length ? navAds.slice(0, 8).map(mapAdToShortcutEntry) : shortcutEntries;
+  const navAds = findMiniProgramSlotAds(homeAds, HOME_NAV_SLOT_CODES);
+  const scheduleAds = findMiniProgramSlotAds(homeAds, HOME_SCHEDULE_SLOT_CODES);
+  const hotAds = findMiniProgramSlotAds(homeAds, HOME_HOT_SLOT_CODES);
+  const activityAds = findMiniProgramSlotAds(homeAds, HOME_ACTIVITY_SLOT_CODES);
+  const recommendAds = findMiniProgramSlotAds(homeAds, HOME_RECOMMEND_SLOT_CODES);
+  const memberBenefitAds = findMiniProgramSlotAds(homeAds, HOME_MEMBER_BENEFIT_SLOT_CODES);
+  const playLifeAds = findMiniProgramSlotAds(homeAds, HOME_PLAY_LIFE_SLOT_CODES);
+  const resolvedHeroBannerEntries = bannerAds.map(mapAdToBannerEntry);
+  const resolvedShortcutEntries = navAds.slice(0, 8).map(mapAdToShortcutEntry);
   const scheduleAd = scheduleAds[0];
-  const resolvedHotCards = hotAds.length ? hotAds.map((ad, index) => mapAdToSectionCard(ad, index, 'hot')) : hotCards;
-  const resolvedActivityCards = activityAds.length ? activityAds.map((ad, index) => mapAdToSectionCard(ad, index, 'activity')) : activityCards;
-  const resolvedRecommendCards = recommendAds.length ? recommendAds.map((ad, index) => mapAdToSectionCard(ad, index, 'recommend')) : recommendCards;
+  const resolvedHotCards = hotAds.map((ad, index) => mapAdToSectionCard(ad, index, 'hot'));
+  const resolvedActivityCards = activityAds.map((ad, index) => mapAdToSectionCard(ad, index, 'activity'));
+  const resolvedRecommendCards = recommendAds.map((ad, index) => mapAdToSectionCard(ad, index, 'recommend'));
   const memberBenefitAd = memberBenefitAds[0];
-  const resolvedPlayCategories = playLifeAds.length ? playLifeAds.slice(0, 9).map(mapAdToPlayCategory) : playCategories;
+  const resolvedPlayCategories = playLifeAds.slice(0, 9).map(mapAdToPlayCategory);
   const fixedNavStyle: CSSProperties = {
     paddingTop: `${chromeMetrics.statusBarHeight + chromeMetrics.headerContentTopGap}px`,
     paddingRight: `${chromeMetrics.menuRightReserve + 18}px`,
@@ -279,34 +239,10 @@ const HomePage = observer(function HomePage() {
     }
   }
 
-  // 执行后台广告维护的跳转配置，当前小程序路径直接跳，其他小程序调微信能力，H5/自定义先复制配置值。
-  async function handleAdJump(target: HomeAdJumpTarget, fallbackPath?: string) {
-    const miniPath = normalizeAdMiniProgramPath(target.jumpPath || fallbackPath);
-    if (target.jumpType === 'otherMiniProgram' && target.jumpAppId) {
-      await Taro.navigateToMiniProgram({ appId: target.jumpAppId, path: miniPath });
-      return;
-    }
-
-    if ((target.jumpType === 'h5' || target.jumpType === 'custom') && !miniPath) {
-      const copyText = target.jumpType === 'h5' ? target.jumpUrl : target.jumpCustomValue;
-      if (copyText) {
-        await copyWechatText(copyText, '内容已复制');
-        return;
-      }
-    }
-
-    if (miniPath) {
-      navigateToSubPackage(miniPath);
-      return;
-    }
-
-    await showWechatToast('服务准备中，请稍后再试');
-  }
-
   async function handleShortcutPress(entry: HomeShortcutEntry) {
     const action = async () => {
       if (entry.jumpType || entry.jumpPath || entry.path) {
-        await handleAdJump(entry, entry.path);
+        await adClick(entry, { fallbackPath: entry.path });
         return;
       }
 
@@ -363,7 +299,7 @@ const HomePage = observer(function HomePage() {
   async function handleMemberBenefitPress() {
     await runAfterLogin('登录后可查看会员专享福利', async () => {
       if (memberBenefitAd) {
-        await handleAdJump(buildAdJumpTarget(memberBenefitAd), MINI_PACKAGE_ROUTES.memberGrowth);
+        await adClick(memberBenefitAd, { fallbackPath: MINI_PACKAGE_ROUTES.memberGrowth });
         return;
       }
       navigateToSubPackage(MINI_PACKAGE_ROUTES.memberGrowth);
@@ -373,14 +309,16 @@ const HomePage = observer(function HomePage() {
   // 当前首页仅保留开园时间卡，不再展示交通指南 / 乐园导览双按钮。
   async function handleSchedulePress() {
     if (scheduleAd) {
-      await handleAdJump(buildAdJumpTarget(scheduleAd), MINI_PACKAGE_ROUTES.ticketSchedule);
+      await adClick(scheduleAd, { fallbackPath: MINI_PACKAGE_ROUTES.ticketSchedule });
       return;
     }
     navigateToSubPackage(MINI_PACKAGE_ROUTES.ticketSchedule);
   }
 
   async function handleBannerPress(entry: HomeBannerEntry) {
-    const action = () => handleAdJump(entry, entry.path);
+    const action = async () => {
+      await adClick(entry, { fallbackPath: entry.path });
+    };
     if (entry.requireLogin) {
       await runAfterLogin('登录后可查看会员专享内容', action);
       return;
@@ -390,25 +328,22 @@ const HomePage = observer(function HomePage() {
   }
 
   function handleSectionMorePress(section: 'rank' | 'activity' | 'recommend' | 'play') {
-    if (section === 'rank') {
-      navigateToSubPackage(MINI_PACKAGE_ROUTES.ticketParkList);
-      return;
+    const config = HOME_SECTION_MORE_CONFIG[section];
+    navigateToSubPackage(appendRouteQuery(config.path, { slotCode: config.slotCode, title: config.title }));
+  }
+
+  // 生成内容卡兜底详情路径，保证无跳转配置的广告仍可按广告 id 进富文本详情。
+  function resolveSectionFallbackPath(card: HomeSectionCard) {
+    if (card.path === MINI_PACKAGE_ROUTES.ticketParkDetail || card.path === MINI_PACKAGE_ROUTES.ticketActivityDetail) {
+      return `${card.path}?id=${encodeURIComponent(card.id)}`;
     }
 
-    if (section === 'recommend' || section === 'play') {
-      navigateToSubPackage(MINI_PACKAGE_ROUTES.ticketActivityList);
-      return;
-    }
-
-    if (section === 'activity') {
-      navigateToSubPackage(MINI_PACKAGE_ROUTES.ticketActivityList);
-      return;
-    }
+    return card.path;
   }
 
   async function handleSectionCardPress(card: HomeSectionCard) {
-    if (card.jumpType || card.jumpPath || card.jumpUrl || card.jumpCustomValue) {
-      await handleAdJump(card, card.path);
+    if (card.jumpType || card.jumpPath || card.jumpUrl || card.jumpCustomValue || card.richText || card.richTextHtml) {
+      await adClick(card, { fallbackPath: resolveSectionFallbackPath(card) });
       return;
     }
 
@@ -423,9 +358,18 @@ const HomePage = observer(function HomePage() {
     await handleHomeAction(card.action);
   }
 
+  // 生成玩法入口兜底详情路径，保持静态入口和后台广告入口的详情 id 规则一致。
+  function resolvePlayCategoryFallbackPath(category: HomePlayCategory) {
+    if (category.path === MINI_PACKAGE_ROUTES.ticketActivityDetail) {
+      return `${category.path}?id=${encodeURIComponent(category.id)}`;
+    }
+
+    return category.path;
+  }
+
   async function handlePlayCategoryPress(category: HomePlayCategory) {
-    if (category.jumpType || category.jumpPath || category.jumpUrl || category.jumpCustomValue) {
-      await handleAdJump(category, category.path);
+    if (category.jumpType || category.jumpPath || category.jumpUrl || category.jumpCustomValue || category.richText || category.richTextHtml) {
+      await adClick(category, { fallbackPath: resolvePlayCategoryFallbackPath(category) });
       return;
     }
 
@@ -476,7 +420,7 @@ const HomePage = observer(function HomePage() {
               {resolvedHeroBannerEntries.map((entry) => (
                 <SwiperItem key={entry.key}>
                   <View className="_pg-hero_banner-slide" onClick={() => handleBannerPress(entry)}>
-                    {renderHomeImage('_pg-hero_banner-image', entry.imageSrc || heroBannerImageSrc)}
+                    {renderHomeImage('_pg-hero_banner-image', entry.imageSrc || '')}
                   </View>
                 </SwiperItem>
               ))}
@@ -504,21 +448,20 @@ const HomePage = observer(function HomePage() {
               <View className="_pg-shortcuts">
                 {resolvedShortcutEntries.map((entry) => (
                   <View className="_pg-shortcut" key={entry.key} onClick={() => handleShortcutPress(entry)}>
-                    {renderHomeImage('_pg-shortcut_art', entry.imageSrc || shortcutImageSrc)}
+                    {renderHomeImage('_pg-shortcut_art', entry.imageSrc || '')}
+                    <Text className="_pg-shortcut_title">{entry.title}</Text>
                   </View>
                 ))}
               </View>
             </View>
 
             <View className="_pg-open-card" onClick={handleSchedulePress}>
-              {renderHomeImage('_pg-open-card_image', resolveMiniProgramAdImage(scheduleAd, 'background') || openTimeImageSrc)}
+              {renderHomeImage('_pg-open-card_image', resolveMiniProgramAdImage(scheduleAd, 'background') || '')}
               <View className="_pg-open-card_content">
                 <View className="_pg-open-card_line">
-                  <Text className="_pg-open-card_title">{resolveMiniProgramAdTitle(scheduleAd) || '今日开园时间：'}</Text>
-                  <Text className="_pg-open-card_time">10:00~17:00</Text>
-                  <Text className="_pg-open-card_phone">（详情请咨询4009778899）</Text>
+                  <Text className="_pg-open-card_title">{resolveMiniProgramAdTitle(scheduleAd)}</Text>
                 </View>
-                <Text className="_pg-open-card_desc">{resolveMiniProgramAdDescription(scheduleAd) || '详细节目单，欢迎戳一戳~'}</Text>
+                <Text className="_pg-open-card_desc">{resolveMiniProgramAdDescription(scheduleAd)}</Text>
               </View>
             </View>
 
@@ -541,7 +484,7 @@ const HomePage = observer(function HomePage() {
                       key={card.id}
                       onClick={() => handleSectionCardPress(card)}
                     >
-                      {renderHomeImage('_pg-rank-card_image', card.imageSrc || rankImageSrc)}
+                      {renderHomeImage('_pg-rank-card_image', card.imageSrc || '')}
                       {card.rank ? (
                         <View className="_pg-rank-card_rank">
                           <Text>{card.rank}</Text>
@@ -570,7 +513,7 @@ const HomePage = observer(function HomePage() {
               </View>
               {resolvedActivityCards.map((card) => (
                 <View className="_pg-feature-card" key={card.id} onClick={() => handleSectionCardPress(card)}>
-                  {renderHomeImage('_pg-feature-card_image', card.imageSrc || activityImageSrc)}
+                  {renderHomeImage('_pg-feature-card_image', card.imageSrc || '')}
                   <View className="_pg-feature-card_body">
                     <View>
                       <Text className="_pg-feature-card_title">{card.title}</Text>
@@ -596,7 +539,7 @@ const HomePage = observer(function HomePage() {
               <View className="_pg-card-grid">
                 {resolvedRecommendCards.map((card) => (
                   <View className="_pg-guide-card" key={card.id} onClick={() => handleSectionCardPress(card)}>
-                    {renderHomeImage('_pg-guide-card_image', card.imageSrc || recommendImageSrc)}
+                    {renderHomeImage('_pg-guide-card_image', card.imageSrc || '')}
                     <View className="_pg-guide-card_body">
                       <Text className="_pg-guide-card_title">{card.title}</Text>
                       <Text className="_pg-guide-card_desc">{card.description}</Text>
@@ -608,7 +551,7 @@ const HomePage = observer(function HomePage() {
             </View>
 
             <View className="_pg-benefit-card" onClick={handleMemberBenefitPress}>
-              {renderHomeImage('_pg-benefit-card_image', resolveMiniProgramAdImage(memberBenefitAd, 'background') || memberBenefitImageSrc)}
+              {renderHomeImage('_pg-benefit-card_image', resolveMiniProgramAdImage(memberBenefitAd, 'background') || '')}
             </View>
 
             <View className="_pg-section _pg-section--last">
@@ -625,7 +568,7 @@ const HomePage = observer(function HomePage() {
               <View className="_pg-play_grid">
                 {resolvedPlayCategories.map((category) => (
                   <View className="_pg-play-card" key={category.id} onClick={() => handlePlayCategoryPress(category)}>
-                    {renderHomeImage('_pg-play-card_image', category.imageSrc || playCategoryImageSrc)}
+                    {renderHomeImage('_pg-play-card_image', category.imageSrc || '')}
                     <Text className="_pg-play-card_title">{category.title}</Text>
                   </View>
                 ))}

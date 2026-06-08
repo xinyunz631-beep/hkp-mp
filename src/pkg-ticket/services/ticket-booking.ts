@@ -524,7 +524,7 @@ function buildTicketBookingDataFromApi(
   };
 }
 
-// 获取门票预定页面数据，优先使用后端公开 GET，失败时回落到本地兜底。
+// 获取门票预定页面数据，优先使用后端登录态 GET，失败时回落到本地兜底。
 export function fetchTicketBookingData(options: FetchTicketBookingDataOptions = {}) {
   const fallback = buildTicketBookingData(options);
 
