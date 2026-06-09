@@ -66,12 +66,13 @@ export function navigateToMiniRoute(url: string, options: NavigateToMiniRouteOpt
   const loginReason = options.loginReason ?? getMiniRouteLoginReason(url);
 
   if (options.forceLogin || loginReason) {
-    return requireLogin({
+    requireLogin({
       reason: loginReason,
       onSuccess: () => {
         Taro.navigateTo({ url });
       },
-    });
+    }).catch(() => undefined);
+    return false;
   }
 
   Taro.navigateTo({ url });

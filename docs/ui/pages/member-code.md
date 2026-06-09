@@ -40,7 +40,7 @@
 ## 动态与静态边界
 
 - 接口图片：无。
-- 接口文本/数据：会员码字符串由 service mock 返回，后续可无缝替换为真实接口。
+- 接口文本/数据：会员码字符串由 `GET /api/bff/crm/member-code` 返回的 `qrContent` 提供。
 - 代码渲染：隐藏 canvas 按微信真实像素生成二维码、转成本地临时图片后通过 `AppImage` 按 750 设计稿 `rpx` 展示，页面背景、卡片样式和提示文案。
 - 本地配置：自定义导航标题、页面分包路由、30 秒自动刷新定时器。
 
@@ -56,7 +56,7 @@
 
 | 模块 | service | 失败策略 | 是否阻断页面 |
 |---|---|---|---|
-| 会员码内容 | `fetchMemberCode()` | 当前 mock 始终返回默认码，后续可替换真实接口 | 是，首屏必须拿到内容后再展示二维码 |
+| 会员码内容 | `fetchMemberCode()` | 接口失败、缺少 `qrContent` 或未登录时进入异常态，不回退本地码 | 是，首屏必须拿到内容后再展示二维码 |
 
 ## 交互与跳转
 
@@ -70,7 +70,7 @@
 | 元素 | 触发 | 处理结果 | 反馈 |
 |---|---|---|---|
 | 顶部导航返回 | 点击返回按钮 | 调用 `PageNavbar` 默认返回逻辑，页面栈不足时回首页 | 微信原生页面跳转 |
-| 页面初始化 | 进入页面 | 拉取 mock 会员码并生成二维码 | 首屏 loading 后展示二维码图片 |
+| 页面初始化 | 进入页面 | 拉取真实会员码并生成二维码 | 首屏 loading 后展示二维码图片 |
 | 二维码展示区 | 会员码生成完成 | 隐藏 canvas 使用固定像素坐标绘制并转成本地临时图片，页面内只展示 `AppImage` | 白卡内完整展示，不裁切，不出现左上角 1/4 截取 |
 | 自动刷新 | 页面可见时每 30 秒 | 重新拉取会员码并重绘、转图 | 图片更新且页面不闪退 |
 
@@ -96,7 +96,7 @@
 - `src/pkg-member/pages/member-code/index.tsx`：页面主体、隐藏 canvas 生成、二维码转图和自动刷新。
 - `src/pkg-member/pages/member-code/index.scss`：页面视觉、白卡和背景氛围。
 - `src/pkg-member/pages/member-code/index.config.ts`：系统导航标题。
-- `src/pkg-member/services/member-code.ts`：会员码 mock 数据源。
+- `src/pkg-member/services/member-code.ts`：会员码真实接口适配。
 - `src/core/components/AppTabBar/index.tsx`：底部中间会员码入口跳转到本页面。
 - `src/core/constants/routes.ts`：分包路由常量。
 - `src/app.config.ts`：分包页面接入。

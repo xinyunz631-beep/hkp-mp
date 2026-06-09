@@ -45,7 +45,6 @@ export interface BffOrderItem {
 
 export interface BffOrder {
   orderNo: string;
-  userId?: string;
   sceneType?: BffOrderSceneType;
   orderStatus?: string;
   paymentChannel?: BffOrderPaymentChannel;

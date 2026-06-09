@@ -1,4 +1,5 @@
 import Taro from '@tarojs/taro';
+import { resolveErrorMessage } from '@/core/utils/error-message';
 
 const APP_MODAL_CONFIRM_COLOR = '#db2777';
 const APP_MODAL_CANCEL_COLOR = '#666666';
@@ -62,8 +63,7 @@ interface AppPaymentOptions {
 }
 
 function getWechatFailMessage(error: unknown) {
-  if (!error || typeof error !== 'object' || !('errMsg' in error)) return '';
-  return String((error as { errMsg?: string }).errMsg || '');
+  return resolveErrorMessage(error, '');
 }
 
 // 展示微信小程序原生轻提示，页面只传业务文案。
@@ -133,7 +133,7 @@ export async function requestWechatPayment({
       const errMsg = getWechatFailMessage(error);
       if (allowPending && /cancel/i.test(errMsg)) return 'pending';
 
-      await showWechatToast('支付未完成');
+      await showWechatToast(resolveErrorMessage(error, '支付未完成'));
       return 'failed';
     }
   }
@@ -179,8 +179,8 @@ export async function chooseWechatImages({
     });
 
     return result.tempFilePaths ?? [];
-  } catch {
-    await showWechatToast('未选择图片');
+  } catch (error) {
+    await showWechatToast(resolveErrorMessage(error, '未选择图片'));
     return [];
   }
 }
@@ -206,8 +206,8 @@ export async function openWechatLocation({
       address,
       scale,
     });
-  } catch {
-    await copyWechatText(address, '地址已复制，可粘贴到地图导航');
+  } catch (error) {
+    await copyWechatText(address, resolveErrorMessage(error, '地址已复制，可粘贴到地图导航'));
   }
 }
 
@@ -233,16 +233,16 @@ export async function chooseWechatLocation(): Promise<WechatLocationResult | und
     const errMsg = getWechatFailMessage(error);
 
     if (/cancel/i.test(errMsg)) {
-      await showWechatToast('未选择地址');
+      await showWechatToast(resolveErrorMessage(error, '未选择地址'));
       return undefined;
     }
 
     if (/auth|authorize|permission|privacy|requiredPrivateInfos/i.test(errMsg)) {
-      await showWechatToast('请允许位置权限后再选择地址');
+      await showWechatToast(resolveErrorMessage(error, '请允许位置权限后再选择地址'));
       return undefined;
     }
 
-    await showWechatToast('位置选择暂不可用，请稍后再试');
+    await showWechatToast(resolveErrorMessage(error, '位置选择暂不可用，请稍后再试'));
     return undefined;
   }
 }
@@ -256,8 +256,8 @@ export async function callWechatPhone(phoneNumber: string) {
 
   try {
     await Taro.makePhoneCall({ phoneNumber });
-  } catch {
-    await copyWechatText(phoneNumber, '电话已复制');
+  } catch (error) {
+    await copyWechatText(phoneNumber, resolveErrorMessage(error, '电话已复制'));
   }
 }
 
@@ -283,8 +283,8 @@ export async function scanWechatCode(): Promise<ScanCodeResult | undefined> {
       result: result.result,
       scanType: result.scanType,
     };
-  } catch {
-    await showWechatToast('未完成扫码');
+  } catch (error) {
+    await showWechatToast(resolveErrorMessage(error, '未完成扫码'));
     return undefined;
   }
 }

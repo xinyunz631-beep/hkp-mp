@@ -1,20 +1,22 @@
 import { useMemo, useState } from 'react';
 import { Input, Picker, Text, View } from '@tarojs/components';
+import Taro from '@tarojs/taro';
 import { observer } from 'mobx-react';
 import { AppIcon } from '@/core/components/AppIcon';
 import { AppImage } from '@/core/components/AppImage';
 import { AppPopup } from '@/core/components/AppPopup';
 import { PageShare, PageShell } from '@/core/components/PageShell';
-import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
+import { MINI_MAIN_ROUTES, MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
+import { logout } from '@/core/services/auth';
 import { rootStore } from '@/core/store';
+import { resolveErrorMessage } from '@/core/utils/error-message';
 import { navigateToMiniRoute } from '@/core/utils/navigation';
-import { chooseWechatImages, showWechatToast } from '@/core/utils/wechat-actions';
+import { chooseWechatImages, showWechatConfirm, showWechatToast } from '@/core/utils/wechat-actions';
 import {
   MEMBER_PROFILE_GENDER_FEMALE,
   MEMBER_PROFILE_GENDER_MALE,
   MEMBER_PROFILE_GENDER_UNKNOWN,
-  buildLoginProfileFromMemberProfile,
   fetchMemberProfileData,
   updateMemberProfile,
   uploadMemberAvatarImage,
@@ -24,7 +26,7 @@ import {
 } from '@/pkg-member/services/profile';
 import './index.scss';
 
-type EditableField = 'nickname' | 'mobile' | 'idCardNo' | 'plateNo';
+type EditableField = 'nickname' | 'idCardNo' | 'plateNo';
 
 interface EditConfig {
   field: EditableField;
@@ -67,17 +69,6 @@ function normalizePlateNo(value: string) {
 }
 
 function getEditConfig(field: EditableField): EditConfig {
-  if (field === 'mobile') {
-    return {
-      field,
-      title: '更换手机号',
-      desc: '请输入当前可联系的手机号',
-      placeholder: '请输入手机号',
-      maxlength: 11,
-      inputType: 'number',
-    };
-  }
-
   if (field === 'idCardNo') {
     return {
       field,
@@ -112,7 +103,6 @@ function getEditConfig(field: EditableField): EditConfig {
 
 function validateEditValue(field: EditableField, value: string) {
   if (field === 'nickname' && !value) return '请输入姓名';
-  if (field === 'mobile' && !/^1[3-9]\d{9}$/.test(value)) return '请输入正确的手机号';
   if (field === 'idCardNo' && !/^(\d{15}|\d{17}[\dX])$/.test(value)) return '请输入正确的身份证号';
   if (field === 'plateNo' && !/^[\u4e00-\u9fa5][A-Z][A-Z0-9]{5,6}$/.test(value)) return '请输入正确的车牌号';
 
@@ -129,7 +119,6 @@ const MemberProfilePage = observer(function MemberProfilePage() {
     initPage: async () => {
       const nextProfile = await fetchMemberProfileData();
       setProfileData(nextProfile);
-      rootStore.member.setProfile(buildLoginProfileFromMemberProfile(nextProfile, rootStore.member.profile));
     },
     loginRequired: true,
     loginReason: '登录后可查看个人信息',
@@ -137,7 +126,6 @@ const MemberProfilePage = observer(function MemberProfilePage() {
 
   function syncProfile(nextProfile: MemberProfileData) {
     setProfileData(nextProfile);
-    rootStore.member.setProfile(buildLoginProfileFromMemberProfile(nextProfile, rootStore.member.profile));
   }
 
   async function commitProfileUpdate(payload: MemberProfileUpdatePayload, successText: string) {
@@ -150,12 +138,16 @@ const MemberProfilePage = observer(function MemberProfilePage() {
     const [filePath] = await chooseWechatImages({ count: 1 });
     if (!filePath) return;
 
-    await pageRuntime.withLoading(async () => {
-      const uploadResult = await uploadMemberAvatarImage(filePath);
-      const nextProfile = await updateMemberProfile({ avatarUrl: uploadResult.fileUrl });
-      syncProfile(nextProfile);
-    });
-    await showWechatToast('头像已更新', 'success');
+    try {
+      await pageRuntime.withLoading(async () => {
+        const uploadResult = await uploadMemberAvatarImage(filePath);
+        const nextProfile = await updateMemberProfile({ avatarUrl: uploadResult.fileUrl });
+        syncProfile(nextProfile);
+      });
+      await showWechatToast('头像已更新', 'success');
+    } catch (error) {
+      await showWechatToast(resolveErrorMessage(error, '头像更新失败'));
+    }
   }
 
   function openEditPopup(field: EditableField, value: string) {
@@ -202,6 +194,20 @@ const MemberProfilePage = observer(function MemberProfilePage() {
     const nextRegion = value.filter(Boolean).join(' ');
     if (!nextRegion || nextRegion === profileData?.regionText) return;
     await commitProfileUpdate({ regionText: nextRegion }, '地区已更新');
+  }
+
+  async function handleLogoutTap() {
+    const confirmed = await showWechatConfirm({
+      title: '退出登录',
+      content: '退出后需要重新授权手机号才能使用会员服务。',
+      confirmText: '退出登录',
+      cancelText: '取消',
+    });
+    if (!confirmed) return;
+
+    await pageRuntime.withLoading(logout);
+    await showWechatToast('已退出登录', 'success');
+    await Taro.switchTab({ url: MINI_MAIN_ROUTES.member });
   }
 
   function renderArrow(showArrow = true) {
@@ -257,7 +263,7 @@ const MemberProfilePage = observer(function MemberProfilePage() {
             placeholder={config.placeholder}
             placeholderClass="_pg-edit-popup_placeholder"
             confirmType="done"
-            onConfirm={() => void handleEditConfirm()}
+            onConfirm={() => handleEditConfirm().catch(() => undefined)}
             onInput={(event) => {
               setEditingValue(event.detail.value || '');
             }}
@@ -266,7 +272,7 @@ const MemberProfilePage = observer(function MemberProfilePage() {
             <View className="_pg-edit-popup_button _pg-edit-popup_button--cancel" onClick={closeEditPopup}>
               <Text>取消</Text>
             </View>
-            <View className="_pg-edit-popup_button _pg-edit-popup_button--confirm" onClick={() => void handleEditConfirm()}>
+            <View className="_pg-edit-popup_button _pg-edit-popup_button--confirm" onClick={() => handleEditConfirm().catch(() => undefined)}>
               <Text>确认</Text>
             </View>
           </View>
@@ -278,17 +284,22 @@ const MemberProfilePage = observer(function MemberProfilePage() {
   return pageRuntime.renderPage(() => {
     if (!profileData) return null;
 
+    const memberInfo = rootStore.memberInfo;
+    const displayAvatar = memberInfo?.avatarUrl || profileData.avatarUrl;
+    const displayName = memberInfo?.nickname || profileData.nickname;
+    const displayMobile = memberInfo?.mobile || profileData.mobile;
+
     return (
       <View className="_pg">
         <PageShell title="个人信息" className="_pg-shell" reserveTabBarSpace={false}>
           <View className="_pg-content">
             <View className="_pg-card">
-              <View className="_pg-row _pg-row--avatar _pg-row--clickable" onClick={() => void handleAvatarTap()}>
+              <View className="_pg-row _pg-row--avatar _pg-row--clickable" onClick={() => handleAvatarTap().catch(() => undefined)}>
                 <Text className="_pg-row_label">头像</Text>
                 <View className="_pg-row_value-wrap">
                   <AppImage
                     className="_pg-avatar"
-                    src={profileData.avatarUrl}
+                    src={displayAvatar}
                     width={54}
                     height={54}
                     showErrorIcon={false}
@@ -296,12 +307,13 @@ const MemberProfilePage = observer(function MemberProfilePage() {
                 </View>
               </View>
 
-              {renderRow('姓名', profileData.nickname, {
+              {renderRow('姓名', displayName, {
                 placeholder: '微信用户',
                 showArrow: false,
               })}
-              {renderRow('手机', profileData.mobile, {
-                onClick: () => openEditPopup('mobile', profileData.mobile),
+              {renderRow('手机', displayMobile, {
+                placeholder: '手机号待同步',
+                showArrow: false,
               })}
               {renderRow('身份证号', resolveTextValue(profileData.idCardNo), {
                 showArrow: false,
@@ -311,7 +323,7 @@ const MemberProfilePage = observer(function MemberProfilePage() {
                 value={profileData.birthday || todayDate}
                 start="1900-01-01"
                 end={todayDate}
-                onChange={(event) => void handleBirthdayChange(String(event.detail.value || ''))}
+                onChange={(event) => handleBirthdayChange(String(event.detail.value || '')).catch(() => undefined)}
               >
                 {renderRow('生日', profileData.birthday, { placeholder: '请选择', showArrow: true })}
               </Picker>
@@ -319,13 +331,13 @@ const MemberProfilePage = observer(function MemberProfilePage() {
                 mode="selector"
                 range={GENDER_OPTIONS.map((option) => option.text)}
                 value={resolveGenderIndex(profileData.gender)}
-                onChange={(event) => void handleGenderChange(Number(event.detail.value))}
+                onChange={(event) => handleGenderChange(Number(event.detail.value)).catch(() => undefined)}
               >
                 {renderRow('性别', resolveGenderText(profileData.gender), { showArrow: true })}
               </Picker>
               <Picker
                 mode="region"
-                onChange={(event) => void handleRegionChange(event.detail.value as string[])}
+                onChange={(event) => handleRegionChange(event.detail.value as string[]).catch(() => undefined)}
               >
                 {renderRow('地区', resolveTextValue(profileData.regionText), { showArrow: true })}
               </Picker>
@@ -338,6 +350,9 @@ const MemberProfilePage = observer(function MemberProfilePage() {
                 showArrow: true,
                 onClick: () => navigateToMiniRoute(MINI_PACKAGE_ROUTES.mallHome),
               })}
+            </View>
+            <View className="_pg-logout" onClick={() => handleLogoutTap().catch(() => undefined)}>
+              <Text>退出登录</Text>
             </View>
           </View>
 

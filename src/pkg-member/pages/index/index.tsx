@@ -56,7 +56,7 @@ function resolveShortcutIcon(action: MemberHomeShortcut['action']) {
 // 渲染会员独立分包首页，收口会员资料、快捷入口和权益服务首版。
 const MemberIndexPage = observer(function MemberIndexPage() {
   const [pageData, setPageData] = useState<MemberHomeData>();
-  const memberProfile = rootStore.member.profile;
+  const memberProfile = rootStore.memberInfo;
   const pageRuntime = usePageRuntime({
     initPage: async () => {
       const nextData = await fetchMemberHomeData();

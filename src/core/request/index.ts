@@ -2,6 +2,7 @@ import Taro from '@tarojs/taro';
 import { getRuntimeConfig } from '@/core/config/runtime';
 import { rootStore } from '@/core/store';
 import { createSignatureNonce, hmacSha256Base64Url, sha256Hex } from '@/core/utils/crypto';
+import { resolveErrorMessage } from '@/core/utils/error-message';
 import { getCurrentMiniProgramAppId, getWechatLoginCode } from '@/core/wechat/auth';
 
 export interface RequestOptions<TData = unknown> {
@@ -14,6 +15,8 @@ export interface RequestOptions<TData = unknown> {
   responseMode?: RequestResponseMode;
   showErrorToast?: boolean;
   sign?: boolean;
+  // member/status 自身触发 token refresh 时跳过刷新后的额外会员态同步，避免重复请求。
+  skipAuthStatusSync?: boolean;
   // 兼容旧调用，等价于 auth: 'none'。
   skipAuth?: boolean;
 }
@@ -39,6 +42,7 @@ export interface ApiResponse<TData> {
   code?: ApiBusinessCode;
   message?: string;
   msg?: string;
+  errMsg?: string;
   data?: TData;
 }
 
@@ -76,6 +80,7 @@ interface TokenResponseShape {
   code?: ApiBusinessCode;
   message?: string;
   msg?: string;
+  errMsg?: string;
   CSESSION?: string;
   csession?: string;
   token?: string;
@@ -127,6 +132,7 @@ interface PreparedRequest<TData = unknown, TResponse = unknown> {
   retry: ResolvedRequestRetryOptions;
   responseMode: RequestResponseMode;
   validateResponse?: RequestResponseValidator<TResponse>;
+  skipAuthStatusSync: boolean;
 }
 
 interface ApiRequestResult<TResponse> {
@@ -164,6 +170,8 @@ const CREDENTIAL_INVALID_BUSINESS_CODES = new Set<string>([
   'AUTH_TOKEN_MISSING',
   'AUTH_TOKEN_INVALID',
   'AUTH_TOKEN_EXPIRED',
+  'AUTH_TOKEN_SESSION_EXPIRED',
+  'AUTH_TOKEN_LOGGED_OUT',
   'AUTH_REFRESH_TOKEN_MISSING',
   'AUTH_REFRESH_TOKEN_INVALID',
   'AUTH_REFRESH_TOKEN_EXPIRED',
@@ -173,7 +181,30 @@ const ACCESS_TOKEN_REFRESHABLE_BUSINESS_CODES = new Set<string>([
   String(BusinessResponseCode.CredentialExpired),
   'AUTH_TOKEN_INVALID',
   'AUTH_TOKEN_EXPIRED',
+  'AUTH_TOKEN_SESSION_EXPIRED',
 ]);
+
+export type AuthSessionChangedSource = 'login' | 'refresh';
+
+let credentialInvalidHandler: (() => void | Promise<void>) | undefined;
+let authSessionChangedHandler: ((source: AuthSessionChangedSource) => void | Promise<void>) | undefined;
+
+// 执行外部注册的认证回调，回调失败不影响当前接口请求链路。
+function runAuthLifecycleHandler(task?: void | Promise<void>) {
+  if (!task || typeof (task as Promise<void>).catch !== 'function') return;
+  (task as Promise<void>).catch(() => undefined);
+}
+
+// 首次登录后等待会员态同步完成，保证启动默认缓存 memberInfo。
+async function waitAuthLifecycleHandler(task?: void | Promise<void>) {
+  if (!task || typeof (task as Promise<void>).catch !== 'function') return;
+
+  try {
+    await task;
+  } catch {
+    // token 已写入，会员态失败交给后续页面/业务入口按需重查。
+  }
+}
 
 // 判断是否是完整 URL，兼容个别接口需要直连完整地址。
 function isAbsoluteUrl(url: string) {
@@ -200,12 +231,17 @@ function isAccessTokenRefreshableBusinessCode(code?: ApiBusinessCode) {
   return typeof code !== 'undefined' && ACCESS_TOKEN_REFRESHABLE_BUSINESS_CODES.has(String(code));
 }
 
+export function isApiCredentialInvalidError(error: unknown) {
+  if (!(error instanceof ApiRequestError)) return false;
+  return error.statusCode === HttpStatusCode.Unauthorized || isCredentialInvalidBusinessCode(error.code);
+}
+
 // 判断响应体是否像后端统一错误体，HTTP 非 2xx 时只有这种结构才读取后端错误文案。
 function hasApiErrorPayload(payload: unknown): payload is ApiResponse<unknown> {
   return Boolean(
     payload
       && typeof payload === 'object'
-      && ('code' in payload || 'message' in payload || 'msg' in payload),
+      && ('code' in payload || 'message' in payload || 'msg' in payload || 'errMsg' in payload),
   );
 }
 
@@ -267,7 +303,7 @@ function normalizeApiResponse<TData>(
   return {
     success,
     code,
-    message: response.message || response.msg || '业务请求失败',
+    message: resolveErrorMessage(response, '业务请求失败'),
     data: response.data as TData,
   };
 }
@@ -347,29 +383,30 @@ export class ApiRequestClient {
       //   delayMs: REQUEST_RETRY_DELAY_MS,
       // },
       showErrorToast: false,
-      validateResponse: this.validateCsessionResponse,
+      validateResponse: (response) => this.validateCsessionResponse(response),
     });
     const response = result.response;
 
     const authSession = extractAuthSession(response.data, response.header);
     if (!authSession.accessToken) {
-      throw new ApiRequestError('授权失败：缺少访问令牌');
+      throw new ApiRequestError(resolveErrorMessage(response.data, '授权失败：缺少访问令牌'));
     }
 
     rootStore.member.setAuthSession({
       accessToken: authSession.accessToken,
       refreshToken: authSession.refreshToken,
       signSecret: authSession.signSecret,
-    });
+    }, { resetProfile: true });
     this.hasBootstrappedCsession = true;
+    await waitAuthLifecycleHandler(authSessionChangedHandler?.('login'));
     return authSession.accessToken;
   }
 
   // 使用 refreshToken 轮换后端登录态，并让并发过期请求共用同一个刷新 Promise。
-  private refreshAuthSession() {
+  private refreshAuthSession(options: { skipAuthStatusSync?: boolean } = {}) {
     if (this.authRefreshPromise) return this.authRefreshPromise;
 
-    this.authRefreshPromise = this.requestRefreshToken().finally(() => {
+    this.authRefreshPromise = this.requestRefreshToken(options).finally(() => {
       this.authRefreshPromise = undefined;
     });
 
@@ -377,7 +414,7 @@ export class ApiRequestClient {
   }
 
   // 调用 BFF 刷新接口，成功后覆盖本地 accessToken、refreshToken 和签名密钥。
-  private async requestRefreshToken() {
+  private async requestRefreshToken(options: { skipAuthStatusSync?: boolean } = {}) {
     const refreshToken = rootStore.member.refreshToken;
     if (!refreshToken) {
       throw new ApiRequestError('登录令牌已过期，请重新登录', {
@@ -396,12 +433,14 @@ export class ApiRequestClient {
       },
       auth: 'none',
       showErrorToast: false,
-      validateResponse: this.validateCsessionResponse,
+      validateResponse: (response) => this.validateCsessionResponse(response),
     });
 
     const authSession = extractAuthSession(result.response.data, result.response.header);
     if (!authSession.accessToken) {
-      throw new ApiRequestError('刷新登录令牌失败：缺少访问令牌', { retryable: false });
+      throw new ApiRequestError(resolveErrorMessage(result.response.data, '刷新登录令牌失败：缺少访问令牌'), {
+        retryable: false,
+      });
     }
 
     rootStore.member.setAuthSession({
@@ -410,13 +449,30 @@ export class ApiRequestClient {
       signSecret: authSession.signSecret,
     });
     this.hasBootstrappedCsession = true;
+    if (!options.skipAuthStatusSync) {
+      runAuthLifecycleHandler(authSessionChangedHandler?.('refresh'));
+    }
     return authSession.accessToken;
   }
 
   // 校验授权接口必须返回可提取的访问令牌，缺 token 也要进入授权请求自己的重试链路。
   private validateCsessionResponse(response: ApiTransportResponse<TokenRequestResponse>) {
     if (extractAccessToken(response.data, response.header)) return undefined;
-    return new ApiRequestError('授权失败：缺少访问令牌');
+    return this.resolveRawBusinessError(response.data)
+      || new ApiRequestError(resolveErrorMessage(response.data, '授权失败：缺少访问令牌'));
+  }
+
+  // raw 授权响应也可能是后端统一错误体，必须优先保留后端 message/msg/errMsg。
+  private resolveRawBusinessError(payload: unknown) {
+    if (!hasApiErrorPayload(payload)) return undefined;
+
+    const response = payload as ApiResponse<unknown>;
+    if (response.success === true || isBusinessSuccessCode(response.code)) return undefined;
+
+    return new ApiRequestError(resolveErrorMessage(response, '授权失败'), {
+      code: response.code,
+      retryable: !isCredentialInvalidBusinessCode(response.code),
+    });
   }
 
   // 准备一次真实请求所需的 URL、header、token 和重试策略。
@@ -441,6 +497,7 @@ export class ApiRequestClient {
       retry,
       responseMode,
       validateResponse: options.validateResponse,
+      skipAuthStatusSync: options.skipAuthStatusSync === true,
     };
   }
 
@@ -547,14 +604,13 @@ export class ApiRequestClient {
 
     return {
       code: payload.code,
-      message: payload.message || payload.msg,
+      message: resolveErrorMessage(payload, ''),
     };
   }
 
   // 判断接口错误是否属于请求凭证失效，便于 HTTP 与业务 code 共用一套处理。
   private isCredentialInvalidError(error: unknown) {
-    if (!(error instanceof ApiRequestError)) return false;
-    return error.statusCode === HttpStatusCode.Unauthorized || isCredentialInvalidBusinessCode(error.code);
+    return isApiCredentialInvalidError(error);
   }
 
   // 判断当前失败是否允许继续自动重试，请求凭证失效必须立即失败并交给页面处理。
@@ -591,7 +647,9 @@ export class ApiRequestClient {
         return;
       }
 
-      const nextAccessToken = await this.refreshAuthSession();
+      const nextAccessToken = await this.refreshAuthSession({
+        skipAuthStatusSync: preparedRequest.skipAuthStatusSync,
+      });
       preparedRequest.header.Authorization = `Bearer ${nextAccessToken}`;
     } catch (error) {
       this.handleCredentialInvalid();
@@ -612,11 +670,7 @@ export class ApiRequestClient {
   private normalizeRequestError(error: unknown) {
     if (error instanceof Error) return error;
 
-    if (error && typeof error === 'object' && 'errMsg' in error) {
-      return new ApiRequestError(String((error as { errMsg?: unknown }).errMsg || '网络异常，请稍后再试'));
-    }
-
-    return new ApiRequestError('网络异常，请稍后再试');
+    return new ApiRequestError(resolveErrorMessage(error, '网络异常，请稍后再试'));
   }
 
   // 归一化每个接口自己的重试配置，默认不自动重试。
@@ -775,13 +829,13 @@ export class ApiRequestClient {
     rootStore.member.clearCsession();
     this.csessionPromise = undefined;
     this.hasBootstrappedCsession = false;
+    runAuthLifecycleHandler(credentialInvalidHandler?.());
   }
 
   // 输出用户可理解的错误提示，避免页面重复写 toast。
   private showRequestErrorToast(error: unknown) {
-    const message = error instanceof Error ? error.message : '网络异常，请稍后再试';
     Taro.showToast({
-      title: message,
+      title: resolveErrorMessage(error, '网络异常，请稍后再试'),
       icon: 'none',
       duration: 2200,
     });
@@ -798,6 +852,16 @@ export function ensureCsession(forceRefresh = false) {
 // 小程序启动时提前触发授权；保留函数导出兼容现有调用。
 export function bootstrapCsession() {
   return apiRequestClient.bootstrapCsession();
+}
+
+// 注册请求凭证失效后的全局回调，用于刷新会员状态缓存。
+export function setCredentialInvalidHandler(handler: () => void | Promise<void>) {
+  credentialInvalidHandler = handler;
+}
+
+// 注册认证会话获取或刷新后的全局回调，用于紧跟刷新会员状态。
+export function setAuthSessionChangedHandler(handler: (source: AuthSessionChangedSource) => void | Promise<void>) {
+  authSessionChangedHandler = handler;
 }
 
 // 发起业务接口请求；保留函数导出兼容现有调用。

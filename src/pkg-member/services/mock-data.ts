@@ -1,33 +1,5 @@
 import type { HkpCouponSummary, HkpFilterTab } from '@/core/types/hkp';
 
-export interface MemberHomeShortcut {
-  key: string;
-  title: string;
-  value: string;
-  action: 'memberCode' | 'coupons' | 'orders' | 'address' | 'comingSoon';
-  disabled?: boolean;
-}
-
-export interface MemberHomeSectionItem {
-  key: string;
-  title: string;
-  desc: string;
-  action: 'memberGrowth' | 'coupons' | 'orders' | 'parkGuide' | 'ticketBooking' | 'shareDeferred' | 'withdrawDeferred';
-  disabled?: boolean;
-}
-
-export interface MemberHomeData {
-  points: number;
-  growthText: string;
-  couponCount: number;
-  couponHintText: string;
-  shortcuts: MemberHomeShortcut[];
-  sections: {
-    title: string;
-    items: MemberHomeSectionItem[];
-  }[];
-}
-
 export interface MemberCouponsData {
   tabs: HkpFilterTab[];
   coupons: HkpCouponSummary[];
@@ -61,77 +33,6 @@ export const memberCoupons: HkpCouponSummary[] = [
     tag: '酒店权益',
   },
 ];
-
-export const memberHomeData: MemberHomeData = {
-  points: 1280,
-  growthText: '再获得 220 积分即可升级银卡会员',
-  couponCount: memberCoupons.filter((coupon) => coupon.status === 'available').length,
-  couponHintText: '本月新增 2 张会员专享券',
-  shortcuts: [
-    {
-      key: 'member-code',
-      title: '会员码',
-      value: '快速核销',
-      action: 'memberCode',
-    },
-    {
-      key: 'coupons',
-      title: '优惠券',
-      value: `${memberCoupons.filter((coupon) => coupon.status === 'available').length} 张可用`,
-      action: 'coupons',
-    },
-    {
-      key: 'orders',
-      title: '我的订单',
-      value: '票务 / 商城 / 酒店',
-      action: 'orders',
-    },
-    {
-      key: 'address',
-      title: '地址管理',
-      value: '常用收货信息',
-      action: 'address',
-    },
-  ],
-  sections: [
-    {
-      title: '会员权益',
-      items: [
-        {
-          key: 'birthday',
-          title: '生日礼遇',
-          desc: '生日月券包到账后在优惠券页领取',
-          action: 'memberGrowth',
-        },
-        {
-          key: 'parking',
-          title: '停车权益',
-          desc: '酒店住客与年卡会员可享受停车优惠',
-          action: 'memberGrowth',
-        },
-      ],
-    },
-    {
-      title: '更多服务',
-      items: [
-        {
-          key: 'share',
-          title: '分享收益',
-          desc: '邀请好友下单后可查看专属奖励',
-          action: 'shareDeferred',
-          disabled: true,
-        },
-        {
-          key: 'withdraw',
-          title: '提现服务',
-          desc: '奖励到账后可在这里发起提现',
-          action: 'withdrawDeferred',
-          disabled: true,
-        },
-      ],
-    },
-  ],
-};
 
 export const memberCouponsData: MemberCouponsData = {
   tabs: [

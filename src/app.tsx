@@ -12,7 +12,7 @@ configure({
 function App({ children }: PropsWithChildren) {
   useEffect(() => {
     // 触发 V2 授权获取 CSESSION，失败时保持游客态不打断首屏渲染。
-    silentLogin();
+    silentLogin().catch(() => undefined);
   }, []);
 
   return <>{children}</>;

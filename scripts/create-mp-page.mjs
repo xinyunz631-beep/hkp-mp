@@ -49,13 +49,6 @@ function startsWithPackagePrefix(pageKey, packageName) {
   return Boolean(packageName) && pageKey.startsWith(`${packageName}-`);
 }
 
-function resolveRegistryKey(pageKey, packageName) {
-  if (!packageName) return pageKey;
-  if (pageKey === 'index') return `${packageName}-home`;
-  if (startsWithPackagePrefix(pageKey, packageName)) return pageKey;
-  return `${packageName}-${pageKey}`;
-}
-
 function resolveRouteConstantKey(pageKey, packageName) {
   if (!packageName) return toCamelCase(pageKey);
   if (pageKey === 'index') return toCamelCase(`${packageName}-home`);
@@ -149,7 +142,6 @@ function resolvePaths(options) {
     : `src/core/services/${options.pageKey}.ts`;
   const appConfigPage = isPackagePage ? `pages/${options.pageKey}/index` : `pages/${options.pageKey}/index`;
   const routeValue = isPackagePage ? `/${packageRoot}/pages/${options.pageKey}/index` : `/pages/${options.pageKey}/index`;
-  const registryKey = resolveRegistryKey(options.pageKey, options.packageName);
 
   return {
     isPackagePage,
@@ -158,8 +150,6 @@ function resolvePaths(options) {
     serviceRoute,
     appConfigPage,
     routeValue,
-    registryKey,
-    specPath: `docs/ui/pages/${registryKey}.md`,
   };
 }
 
@@ -234,67 +224,6 @@ function registerAppConfig(paths) {
   writeText(configFile, nextText);
 }
 
-function appendRegistry(options, paths) {
-  const registryFile = 'docs/ui/page-registry.yaml';
-  if (!existsSync(join(rootDir, registryFile))) return;
-
-  const text = readText(registryFile);
-  if (new RegExp(`\\n  ${paths.registryKey}:\\n`).test(text)) return;
-
-  const serviceFileLine = options.service ? `        - ${paths.serviceRoute}\n` : '';
-  const block = `  ${paths.registryKey}:
-    title: ${options.title}
-    route: ${paths.pageRoute}
-    status: implementing
-    spec: ${paths.specPath}
-    design:
-      currentTool: pencil
-      approval: code-first-draft
-      pencil:
-        file: /Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
-        nodeId: ${paths.registryKey}
-        name: ${options.title} 750px 开发稿
-        width: 750
-        role: active-source
-        note: 代码优先创建页面，后续按截图或设计稿继续同步。
-    implementation:
-      files:
-        - ${paths.pageRoute}/index.tsx
-        - ${paths.pageRoute}/index.scss
-        - ${paths.pageRoute}/index.config.ts
-${serviceFileLine}      verification:
-        - yarn typecheck
-        - yarn check:page-convention
-        - yarn check:package-boundary
-        - yarn check:ui-contract
-`;
-
-  writeText(registryFile, `${text.trimEnd()}\n${block}`);
-}
-
-function createSpec(options, paths, names) {
-  if (!existsSync(join(rootDir, 'docs/ui/pages'))) return;
-  if (existsSync(join(rootDir, paths.specPath))) return;
-
-  const serviceSpecFile = options.service ? `  - ${paths.serviceRoute}\n` : '';
-  const serviceTableRow = options.service
-    ? `| 页面数据 | \`fetch${names.pascalName}Data()\` | service 内归一和兜底 | 按业务决定 |\n`
-    : '| 暂无 | - | - | 否 |\n';
-  const serviceMapping = options.service ? `- \`${paths.serviceRoute}\`：页面 service。\n` : '';
-  const content = renderTemplate('spec.md.tpl', {
-    PAGE_TITLE: options.title,
-    PAGE_KEY: paths.registryKey,
-    PAGE_ROUTE: paths.pageRoute,
-    REGISTRY_ROUTE: paths.pageRoute,
-    TODAY: new Date().toISOString().slice(0, 10),
-    SERVICE_SPEC_FILE: serviceSpecFile,
-    SERVICE_TABLE_ROW: serviceTableRow,
-    SERVICE_MAPPING: serviceMapping,
-  });
-
-  writeText(paths.specPath, content);
-}
-
 function createPageFiles(options, paths, names) {
   if (existsSync(join(rootDir, paths.pageRoute))) {
     fail(`页面已存在：${paths.pageRoute}。请进入更新模式，直接修改已有页面。`);
@@ -345,8 +274,6 @@ function main() {
   createPageFiles(options, paths, names);
   appendRouteConstant(paths, names);
   registerAppConfig(paths);
-  appendRegistry(options, paths);
-  createSpec(options, paths, names);
 
   info(`OK 已创建页面 ${options.pageKey}`);
   info(`页面路径：${paths.pageRoute}`);

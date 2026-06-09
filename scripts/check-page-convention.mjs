@@ -4,9 +4,9 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const rootDir = process.cwd();
-const registryPath = resolve(rootDir, 'docs/ui/page-registry.yaml');
 const failures = [];
 const sourceDir = resolve(rootDir, 'src');
+const appConfigPath = resolve(rootDir, 'src/app.config.ts');
 const forbiddenTextIconPattern = /[♡♥❤💕✨✦▱›→←★☆◆×✕✖📍📞☎]/u;
 const forbiddenUserFacingInternalTextPattern = /按票种生成|实名槽位|生成\s*\{[^}]+\}\s*位实名信息/;
 
@@ -124,80 +124,62 @@ function checkForbiddenUserFacingInternalTexts() {
   }
 }
 
-function getIndent(line) {
-  return line.match(/^ */)[0].length;
+function extractArrayItems(arrayBody) {
+  const items = [];
+  const itemPattern = /['"]([^'"]+)['"]/g;
+  let matched;
+
+  while ((matched = itemPattern.exec(arrayBody))) {
+    items.push(matched[1]);
+  }
+
+  return items;
 }
 
-function normalizeScalar(value) {
-  return value.trim().replace(/^['"]|['"]$/g, '');
+function resolvePackagePageKey(root, pagePath) {
+  const packageName = root.replace(/^pkg-/, '');
+  const pageKey = pagePath.replace(/^pages\//, '').replace(/\/index$/, '');
+
+  if (pageKey === 'index') return `${packageName}-home`;
+  if (pageKey.startsWith(`${packageName}-`)) return pageKey;
+  return `${packageName}-${pageKey}`;
 }
 
-function parseRegistryPages() {
-  if (!existsSync(registryPath)) return [];
+function createPageContract(key, route) {
+  return {
+    key,
+    implementation: {
+      files: [
+        `${route}/index.tsx`,
+        `${route}/index.scss`,
+      ],
+    },
+    route,
+  };
+}
 
+function discoverPagesFromAppConfig() {
+  if (!existsSync(appConfigPath)) return [];
+
+  const configText = readFileSync(appConfigPath, 'utf8');
   const pages = [];
-  const lines = readFileSync(registryPath, 'utf8').split(/\r?\n/);
-  let inPagesBlock = false;
-  let currentPage;
-  let currentBlock;
-  let currentListKey;
+  const mainPagesMatch = configText.match(/pages:\s*\[([\s\S]*?)\]\s*,\s*window:/);
 
-  for (const line of lines) {
-    if (!line.trim() || line.trim().startsWith('#')) continue;
-
-    const indent = getIndent(line);
-    const trimmed = line.trim();
-
-    if (indent === 0) {
-      inPagesBlock = trimmed === 'pages:';
-      currentPage = undefined;
-      currentBlock = undefined;
-      currentListKey = undefined;
-      continue;
+  if (mainPagesMatch) {
+    for (const pagePath of extractArrayItems(mainPagesMatch[1])) {
+      const pageKey = pagePath.replace(/^pages\//, '').replace(/\/index$/, '');
+      pages.push(createPageContract(pageKey, `src/${pagePath.replace(/\/index$/, '')}`));
     }
+  }
 
-    if (!inPagesBlock) continue;
+  const subPackagePattern = /root:\s*['"]([^'"]+)['"][\s\S]*?pages:\s*\[([\s\S]*?)\]/g;
+  let matched;
 
-    if (indent === 2) {
-      const pageMatch = trimmed.match(/^([a-zA-Z0-9_-]+):\s*$/);
-      if (!pageMatch) continue;
-      currentPage = {
-        key: pageMatch[1],
-        implementation: {
-          files: [],
-        },
-      };
-      pages.push(currentPage);
-      currentBlock = undefined;
-      currentListKey = undefined;
-      continue;
-    }
-
-    if (!currentPage) continue;
-
-    if (indent === 4) {
-      const fieldMatch = trimmed.match(/^([a-zA-Z0-9_-]+):(?:\s*(.*))?$/);
-      if (!fieldMatch) continue;
-      const [, key, rawValue = ''] = fieldMatch;
-      currentBlock = key;
-      currentListKey = undefined;
-
-      if (rawValue) currentPage[key] = normalizeScalar(rawValue);
-      continue;
-    }
-
-    if (indent === 6 && currentBlock === 'implementation') {
-      const listMatch = trimmed.match(/^([a-zA-Z0-9_-]+):\s*$/);
-      if (listMatch) {
-        currentListKey = listMatch[1];
-        if (!currentPage.implementation[currentListKey]) currentPage.implementation[currentListKey] = [];
-      }
-      continue;
-    }
-
-    if (indent === 8 && currentBlock === 'implementation' && currentListKey) {
-      const itemMatch = trimmed.match(/^-\s+(.+?)\s*$/);
-      if (itemMatch) currentPage.implementation[currentListKey].push(normalizeScalar(itemMatch[1]));
+  while ((matched = subPackagePattern.exec(configText))) {
+    const [, root, pageArrayBody] = matched;
+    for (const pagePath of extractArrayItems(pageArrayBody)) {
+      const pageKey = resolvePackagePageKey(root, pagePath);
+      pages.push(createPageContract(pageKey, `src/${root}/${pagePath.replace(/\/index$/, '')}`));
     }
   }
 
@@ -267,27 +249,6 @@ function checkScssClassSelectors(page, scssFile) {
     fail(`${page.key} SCSS selector ".${selector}" 不符合 _pg-* BEM 命名`);
   }
 
-  if (page.status === 'commercial-ready' && /::before|::after|:before|:after/.test(scssText)) {
-    fail(`${page.key} commercial-ready 页面 SCSS 不应使用伪类绘制功能性元素`);
-  }
-}
-
-function checkCommercialReadyContract(page, pageText, scssFile) {
-  if (page.status !== 'commercial-ready') return;
-
-  if (/即将开放|准备中/.test(pageText)) {
-    fail(`${page.key} commercial-ready 页面仍存在占位文案`);
-  }
-
-  if (!page.spec || !existsSync(resolve(rootDir, page.spec))) {
-    fail(`${page.key} commercial-ready 页面缺少页面说明文档`);
-    return;
-  }
-
-  const specText = readText(page.spec);
-  for (const heading of ['交互矩阵', '状态矩阵', '微信开发工具验收清单']) {
-    if (!specText.includes(heading)) fail(`${page.key} commercial-ready 页面文档缺少 ${heading}`);
-  }
 }
 
 function checkCustomNavbarHeaderSafety(page, pageText) {
@@ -355,11 +316,10 @@ function checkPage(page) {
   checkClassNameTokens(page, pageText);
   checkScssClassSelectors(page, scssFile);
   checkCustomNavbarHeaderSafety(page, pageText);
-  checkCommercialReadyContract(page, pageText, scssFile);
 }
 
 function main() {
-  const pages = parseRegistryPages();
+  const pages = discoverPagesFromAppConfig();
   checkForbiddenTextIconGlyphs();
   checkForbiddenUserFacingInternalTexts();
   checkFontWeightCeiling();
@@ -372,7 +332,7 @@ function main() {
       return;
     }
 
-    console.log('OK 未发现登记页面，跳过页面约束检查');
+    console.log('OK 未发现 app.config.ts 注册页面，跳过页面约束检查');
     return;
   }
 

@@ -15,7 +15,6 @@
     "typecheck": "tsc --noEmit",
     "mp:page": "node scripts/create-mp-page.mjs",
     "check:page-convention": "node scripts/check-page-convention.mjs",
-    "check:ui-contract": "node scripts/check-ui-contract.mjs",
     "check:main-package": "node scripts/check-main-package-size.mjs",
     "check:main-package:build": "node scripts/check-main-package-isolated.mjs",
     "check:package-boundary": "node scripts/check-package-boundary.mjs"

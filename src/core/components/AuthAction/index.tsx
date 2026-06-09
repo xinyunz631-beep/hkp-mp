@@ -15,7 +15,7 @@ export function AuthAction({ reason, className, onAuthed, children }: AuthAction
     requireLogin({
       reason,
       onSuccess: onAuthed,
-    });
+    }).catch(() => undefined);
   }
 
   return (

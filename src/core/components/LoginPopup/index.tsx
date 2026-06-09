@@ -1,16 +1,16 @@
-import Taro from '@tarojs/taro';
 import { Button, View, type BaseEventOrig, type ButtonProps } from '@tarojs/components';
 import { observer } from 'mobx-react';
 import { useEffect } from 'react';
 import { AppPopup } from '@/core/components/AppPopup';
-import { loginWithLocalMember, loginWithPhoneNumber, loginWithProfile } from '@/core/services/auth';
+import { loginWithPhoneNumber } from '@/core/services/auth';
 import { rootStore } from '@/core/store';
-import { parseWechatPhoneCredential } from '@/core/wechat/auth';
+import { showWechatToast } from '@/core/utils/wechat-actions';
+import { parseWechatPhoneCredential, resolveWechatPhoneCredentialMessage } from '@/core/wechat/auth';
 import './index.scss';
 
 // 常驻渲染页面级登录弹窗，显示状态跟随全局登录态自动收口。
 export const LoginPopup = observer(function LoginPopup() {
-  const isLoggedIn = rootStore.member.isLoggedIn;
+  const isLoggedIn = rootStore.isLoggedIn;
   const loginVisible = rootStore.app.loginVisible;
   const visible = loginVisible && !isLoggedIn;
 
@@ -24,24 +24,11 @@ export const LoginPopup = observer(function LoginPopup() {
   async function handlePhoneLogin(event: BaseEventOrig<ButtonProps.onGetPhoneNumberEventDetail>) {
     const credential = parseWechatPhoneCredential(event.detail);
     if (!credential) {
-      Taro.showToast({
-        title: '未完成手机号授权',
-        icon: 'none',
-      });
+      await showWechatToast(resolveWechatPhoneCredentialMessage(event.detail));
       return;
     }
 
-    await loginWithPhoneNumber(credential);
-  }
-
-  // 处理微信资料授权登录，作为手机号授权不可用时的兜底。
-  async function handleProfileLogin() {
-    await loginWithProfile();
-  }
-
-  // 使用本地会员身份完成登录，保证无真实后端时也能验收交易闭环。
-  function handleLocalLogin() {
-    loginWithLocalMember();
+    await loginWithPhoneNumber(credential).catch(() => undefined);
   }
 
   // 处理取消登录，保留游客状态继续浏览。
@@ -67,12 +54,6 @@ export const LoginPopup = observer(function LoginPopup() {
         </View>
         <Button className="login-popup__primary" openType="getPhoneNumber" onGetPhoneNumber={handlePhoneLogin}>
           手机号快捷登录
-        </Button>
-        <Button className="login-popup__secondary" onClick={handleProfileLogin}>
-          使用微信资料登录
-        </Button>
-        <Button className="login-popup__secondary" onClick={handleLocalLogin}>
-          会员身份登录
         </Button>
         <Button className="login-popup__ghost" onClick={handleCancel}>
           暂不登录

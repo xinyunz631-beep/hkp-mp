@@ -1,37 +1,59 @@
 import { useEffect, useState } from 'react';
 import Taro, { useDidShow } from '@tarojs/taro';
-import { Text, View } from '@tarojs/components';
-import { AppIcon, type AppIconName } from '@/core/components/AppIcon';
+import { Image, Text, View } from '@tarojs/components';
 import { MINI_MAIN_ROUTES, MINI_PACKAGE_ROUTES, type MiniMainRoute, type MiniPackageRoute } from '@/core/constants/routes';
 import { navigateToMiniRoute } from '@/core/utils/navigation';
 import './index.scss';
 
 type AppTabBarRoute = MiniMainRoute | MiniPackageRoute;
+type AppTabBarKey = 'home' | 'ticket' | 'memberCode' | 'hotel' | 'profile';
 
 interface AppTabBarItem {
-  key: string;
+  key: AppTabBarKey;
   text: string;
   path: AppTabBarRoute;
   routeType: 'tab' | 'package';
-  icon: AppIconName;
   center?: boolean;
   hideText?: boolean;
 }
 
+// 维护 tabbar 每个入口的选中和未选中图片，后续只替换这里的图片链接。
+const tabBarImages: Record<AppTabBarKey, { selected: string; unselected: string }> = {
+  home: {
+    selected: 'https://image.hellokittypark.cn/10000_kitty_theme_2e2e8d26-f6bb-44d8-bda5-ffeec5623443.png',
+    unselected: 'https://image.hellokittypark.cn/10000_kitty_theme_2e2e8d26-f6bb-44d8-bda5-ffeec5623443.png',
+  },
+  ticket: {
+    selected: 'https://image.hellokittypark.cn/10000_kitty_theme_38e423e3-67ec-4c53-81bb-b3f0024ff6e5.png',
+    unselected: 'https://image.hellokittypark.cn/10000_kitty_theme_38e423e3-67ec-4c53-81bb-b3f0024ff6e5.png',
+  },
+  memberCode: {
+    selected: 'https://image.hellokittypark.cn/10000_kitty_theme_7d176b69-7a4d-4f24-af95-3a04948fcb23.png',
+    unselected: 'https://image.hellokittypark.cn/10000_kitty_theme_7d176b69-7a4d-4f24-af95-3a04948fcb23.png',
+  },
+  hotel: {
+    selected: 'https://image.hellokittypark.cn/10000_kitty_theme_a495b64b-91d6-45c3-9b67-5a47eb4cf56d.png',
+    unselected: 'https://image.hellokittypark.cn/10000_kitty_theme_a495b64b-91d6-45c3-9b67-5a47eb4cf56d.png',
+  },
+  profile: {
+    selected: 'https://image.hellokittypark.cn/10000_kitty_theme_561b35ab-1bff-4474-af64-2eb9194f7179.png',
+    unselected: 'https://image.hellokittypark.cn/10000_kitty_theme_561b35ab-1bff-4474-af64-2eb9194f7179.png',
+  },
+};
+
 const tabBarItems: AppTabBarItem[] = [
-  { key: 'home', text: '首页', path: MINI_MAIN_ROUTES.home, routeType: 'tab', icon: 'home' },
-  { key: 'ticket', text: '购票', path: MINI_PACKAGE_ROUTES.ticketBooking, routeType: 'package', icon: 'ticket' },
+  { key: 'home', text: '首页', path: MINI_MAIN_ROUTES.home, routeType: 'tab' },
+  { key: 'ticket', text: '购票', path: MINI_PACKAGE_ROUTES.ticketBooking, routeType: 'package' },
   {
     key: 'memberCode',
     text: '会员码',
     path: MINI_PACKAGE_ROUTES.memberCode,
     routeType: 'package',
-    icon: 'code',
     center: true,
     hideText: true,
   },
-  { key: 'hotel', text: '酒店', path: MINI_PACKAGE_ROUTES.hotelHome, routeType: 'package', icon: 'hotel' },
-  { key: 'profile', text: '我的', path: MINI_MAIN_ROUTES.member, routeType: 'tab', icon: 'profile' },
+  { key: 'hotel', text: '酒店', path: MINI_PACKAGE_ROUTES.hotelHome, routeType: 'package' },
+  { key: 'profile', text: '我的', path: MINI_MAIN_ROUTES.member, routeType: 'tab' },
 ];
 
 // 获取当前 tab 页面路径，兼容微信页面栈里无前导斜杠的 route。
@@ -83,16 +105,16 @@ export function AppTabBar() {
           isActive ? 'hkitty-tabbar__item--active' : '',
           item.center ? 'hkitty-tabbar__item--center' : '',
         ].filter(Boolean).join(' ');
+        const imageSrc = isActive ? tabBarImages[item.key].selected : tabBarImages[item.key].unselected;
+        const imageClassName = [
+          'hkitty-tabbar__image',
+          isActive ? 'hkitty-tabbar__image--active' : '',
+          item.center ? 'hkitty-tabbar__image--center' : '',
+        ].filter(Boolean).join(' ');
 
         return (
           <View className={itemClassName} key={item.key} onClick={() => handleNavigate(item)}>
-            {item.center ? (
-              <View className="hkitty-tabbar__center-button">
-                <AppIcon name={item.icon} size={22} color="#ffffff" />
-              </View>
-            ) : (
-              <AppIcon className="hkitty-tabbar__icon" name={item.icon} size={16} color="currentColor" />
-            )}
+            <Image className={imageClassName} src={imageSrc} mode="aspectFit" />
             {item.hideText ? null : <Text className="hkitty-tabbar__text">{item.text}</Text>}
           </View>
         );

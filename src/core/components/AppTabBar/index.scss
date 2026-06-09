@@ -37,31 +37,30 @@
   justify-content: flex-start;
 }
 
-.hkitty-tabbar__icon {
+.hkitty-tabbar__image {
+  display: block;
   width: 40px;
   height: 40px;
-  color: currentColor;
+  flex: none;
+  transition: .25s .1s ease-in-out;
+  margin-bottom: 2px;
 }
 
-.hkitty-tabbar__center-button {
-  position: relative;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 110px;
-  height: 110px;
-  margin-top: -58px;
-  border: 4px solid #f7c1da;
-  border-radius: 50%;
-  background: #ea6aa4;
-  box-shadow: 0 8px 18px rgba(219, 39, 119, 0.28);
+.hkitty-tabbar__image--active {
+  transform: scale(1.2);
+  transform-origin: center bottom;
+}
+
+.hkitty-tabbar__image--center {
+  width: 100px;
+  height: 100px;
+  margin-top: -50px;
 }
 
 .hkitty-tabbar__text {
   overflow: hidden;
   max-width: 100%;
-  font-size: 22px;
+  font-size: 24px;
   font-weight: 500;
   line-height: 1.2;
   text-overflow: ellipsis;
