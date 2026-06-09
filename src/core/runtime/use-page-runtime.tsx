@@ -292,7 +292,7 @@ export function usePageRuntime(options: PageRuntimeOptions = {}): PageRuntimeCon
       onSuccess: async () => {
         await handler(...args);
       },
-    });
+    }).catch(() => undefined);
   }, []);
 
   useDidHide(() => {

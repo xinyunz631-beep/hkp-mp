@@ -4,10 +4,6 @@ export type BffCrmGender = 'UNKNOWN' | 'MALE' | 'FEMALE' | string;
 export type BffCrmP1ItemType = 'MALL' | 'COUPON' | 'EXCHANGE' | 'HOTEL' | 'SERVICE' | string;
 
 export interface BffCrmProfile {
-  memberNo: string;
-  platform?: string;
-  appId?: string;
-  externalUserId?: string;
   nickName?: string;
   avatarUrl?: string;
   phone?: string;
@@ -87,7 +83,6 @@ export interface BffCrmCenter {
 
 export interface BffCrmAddress {
   addressNo: string;
-  memberNo?: string;
   contactName: string;
   phone: string;
   provinceCode?: string;
@@ -118,16 +113,12 @@ export interface BffCrmAddressSaveRequest {
 }
 
 export interface BffCrmMemberCode {
-  memberNo: string;
   qrContent?: string;
   legacyBound?: boolean;
-  legacyMemberNo?: string;
   updatedAt?: string;
 }
 
 export interface BffCrmLegacyBindResult {
-  memberNo: string;
-  legacyMemberNo?: string;
   phone?: string;
   bound?: boolean;
   message?: string;
@@ -234,42 +225,42 @@ export function bindBffCrmLegacyMember(phone: string) {
 
 export function fetchBffCrmP1Mall() {
   return request<BffCrmP1ConfigItem[]>({
-    url: '/api/bff/crm/p1/mall',
+    url: '/api/bff/crm/entries/mall',
     method: 'GET',
   });
 }
 
 export function fetchBffCrmP1Coupons() {
   return request<BffCrmP1ConfigItem[]>({
-    url: '/api/bff/crm/p1/coupons',
+    url: '/api/bff/crm/entries/coupons',
     method: 'GET',
   });
 }
 
 export function fetchBffCrmP1Exchanges() {
   return request<BffCrmP1ConfigItem[]>({
-    url: '/api/bff/crm/p1/exchanges',
+    url: '/api/bff/crm/entries/exchanges',
     method: 'GET',
   });
 }
 
 export function fetchBffCrmP1Hotels() {
   return request<BffCrmP1ConfigItem[]>({
-    url: '/api/bff/crm/p1/hotels',
+    url: '/api/bff/crm/entries/hotels',
     method: 'GET',
   });
 }
 
 export function fetchBffCrmP1Services() {
   return request<BffCrmP1ConfigItem[]>({
-    url: '/api/bff/crm/p1/services',
+    url: '/api/bff/crm/entries/services',
     method: 'GET',
   });
 }
 
 export function fetchBffCrmP1Item(itemNo: string) {
   return request<BffCrmP1ConfigItem>({
-    url: `/api/bff/crm/p1/items/${encodeURIComponent(itemNo)}`,
+    url: `/api/bff/crm/entries/items/${encodeURIComponent(itemNo)}`,
     method: 'GET',
   });
 }

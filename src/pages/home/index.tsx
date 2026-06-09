@@ -172,7 +172,7 @@ const HomePage = observer(function HomePage() {
       setHomeAds(nextHomeAds);
     },
   });
-  const memberProfile = rootStore.member.profile;
+  const memberProfile = rootStore.memberInfo;
   const memberLevel = resolveMemberLevel(memberProfile);
   const memberName = memberProfile?.nickname || '微信用户';
   const couponBadgeText = '我的优惠券';
@@ -480,7 +480,7 @@ const HomePage = observer(function HomePage() {
                 <View className="_pg-rank_track">
                   {resolvedHotCards.map((card, index) => (
                     <View
-                      className={`_pg-rank-card ${index === 0 ? '_pg-rank-card--primary' : '_pg-rank-card--peek'}`}
+                      className={`_pg-rank-card ${index >= 0 ? '_pg-rank-card--primary' : '_pg-rank-card--peek'}`}
                       key={card.id}
                       onClick={() => handleSectionCardPress(card)}
                     >
@@ -560,10 +560,10 @@ const HomePage = observer(function HomePage() {
                   <AppIcon name="location" className="_pg-section_mark" size={16} color="#e5004f" />
                   <Text className="_pg-section_title">玩转乐园</Text>
                 </View>
-                <View className="_pg-section_more" onClick={() => handleSectionMorePress('play')}>
+                {/* <View className="_pg-section_more" onClick={() => handleSectionMorePress('play')}>
                   <Text>查看全部</Text>
                   <AppIcon name="arrowRight" className="_pg-section_arrow" size={16} color="#a1a1aa" />
-                </View>
+                </View> */}
               </View>
               <View className="_pg-play_grid">
                 {resolvedPlayCategories.map((category) => (

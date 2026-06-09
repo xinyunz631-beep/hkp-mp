@@ -121,7 +121,7 @@
 
 ._pg-member-card {
   padding: 28px;
-  border: 1px solid #e5e7eb;
+  // border: 1px solid #e5e7eb;
   border-radius: 22px;
   background: rgba(255, 255, 255, 0.96);
   box-shadow: 0 12px 32px rgba(15, 23, 42, 0.08);
@@ -287,7 +287,7 @@
 }
 
 ._pg-section {
-  margin-top: 76px;
+  margin-top: 56px;
 
   &_header {
     display: flex;
@@ -342,13 +342,14 @@
     width: max-content;
     padding-right: 32px;
     box-sizing: border-box;
+    padding-bottom: 15px;
   }
 }
 
 ._pg-rank-card {
   position: relative;
   overflow: hidden;
-  border: 1px solid #e5e7eb;
+  // border: 1px solid #e5e7eb;
   border-radius: 18px;
   background: #ffffff;
   box-shadow: 0 8px 18px rgba(17, 24, 39, 0.06);
@@ -415,7 +416,7 @@
 ._pg-feature-card {
   overflow: hidden;
   margin-top: 18px;
-  border: 1px solid #e5e7eb;
+  // border: 1px solid #e5e7eb;
   border-radius: 20px;
   background: #ffffff;
   box-shadow: 0 8px 18px rgba(17, 24, 39, 0.06);
@@ -470,7 +471,7 @@
 
 ._pg-guide-card {
   overflow: hidden;
-  border: 1px solid #e5e7eb;
+  // border: 1px solid #e5e7eb;
   border-radius: 18px;
   background: #ffffff;
   box-shadow: 0 8px 18px rgba(17, 24, 39, 0.06);
@@ -517,7 +518,7 @@
 ._pg-benefit-card {
   margin-top: 18px;
   overflow: hidden;
-  border: 1px solid #d7dee7;
+  // border: 1px solid #d7dee7;
   border-radius: 22px;
   background: #e6ebf0;
   box-shadow: 0 8px 18px rgba(17, 24, 39, 0.04);

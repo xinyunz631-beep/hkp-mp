@@ -6,6 +6,7 @@ import { AppIcon } from '@/core/components/AppIcon';
 import { PageShell } from '@/core/components/PageShell';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import type { HkpAddressSummary } from '@/core/types/hkp';
+import { resolveErrorMessage } from '@/core/utils/error-message';
 import { navigateBackOrHome } from '@/core/utils/navigation';
 import {
   chooseWechatLocation,
@@ -203,7 +204,7 @@ const AddressEditPage = observer(function AddressEditPage() {
         return;
       }
 
-      await showWechatToast('保存失败，请稍后再试');
+      await showWechatToast(resolveErrorMessage(error, '保存失败，请稍后再试'));
     }
   }
 

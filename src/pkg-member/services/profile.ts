@@ -6,7 +6,9 @@ import {
   type BffCrmProfile,
   type BffCrmProfileUpdateRequest,
 } from '@/core/services/bff-crm-api';
-import { resolveMockData, withServiceFallback } from '@/core/services/mock';
+import { uploadBffImage } from '@/core/services/bff-api';
+import { syncMemberStatus } from '@/core/services/auth';
+import { rootStore } from '@/core/store';
 import type { LoginUserProfile } from '@/core/types/auth';
 import {
   DEFAULT_MEMBER_AVATAR_URL,
@@ -52,7 +54,7 @@ export interface MemberProfileData {
 
 export type MemberProfileUpdatePayload = Partial<Pick<
   MemberProfileData,
-  'nickname' | 'avatarUrl' | 'mobile' | 'idCardNo' | 'birthday' | 'gender' | 'regionText' | 'plateNo'
+  'nickname' | 'avatarUrl' | 'idCardNo' | 'birthday' | 'gender' | 'regionText' | 'plateNo'
 >>;
 
 export interface MemberAvatarUploadResult {
@@ -62,70 +64,6 @@ export interface MemberAvatarUploadResult {
 
 export interface LegacyMemberBindPayload {
   mobile: string;
-}
-
-interface MemberProfileApiData {
-  memberId: string;
-  nickName: string;
-  avatarUrl: string;
-  mobile: string;
-  certificateNo: string;
-  birthday: string;
-  gender: MemberProfileGender;
-  regionName: string;
-  carNo: string;
-  onlineStoreName: string;
-  legacyBindStatus: MemberProfileLegacyStatus;
-  levelId: string;
-  levelNo: number;
-  levelName: string;
-  growthValue: number;
-  points: number;
-}
-
-interface MemberAvatarUploadApiResult {
-  fileId: string;
-  url: string;
-}
-
-let memberProfileApiData: MemberProfileApiData = {
-  memberId: '9000000000001001',
-  nickName: '微信用户',
-  avatarUrl: DEFAULT_MEMBER_AVATAR_URL,
-  mobile: '13333333333',
-  certificateNo: '',
-  birthday: '',
-  gender: MEMBER_PROFILE_GENDER_UNKNOWN,
-  regionName: '',
-  carNo: '',
-  onlineStoreName: '',
-  legacyBindStatus: MEMBER_PROFILE_LEGACY_UNBOUND,
-  levelId: DEFAULT_MEMBER_LEVEL_ID,
-  levelNo: DEFAULT_MEMBER_LEVEL_NO,
-  levelName: DEFAULT_MEMBER_LEVEL_NAME,
-  growthValue: DEFAULT_MEMBER_GROWTH_VALUE,
-  points: 1280,
-};
-
-function normalizeMemberProfile(apiData: MemberProfileApiData): MemberProfileData {
-  return {
-    id: apiData.memberId,
-    nickname: apiData.nickName,
-    avatarUrl: apiData.avatarUrl,
-    mobile: apiData.mobile,
-    idCardNo: apiData.certificateNo,
-    birthday: apiData.birthday,
-    gender: apiData.gender,
-    regionText: apiData.regionName,
-    plateNo: apiData.carNo,
-    onlineStoreText: apiData.onlineStoreName,
-    legacyStatus: apiData.legacyBindStatus,
-    levelId: apiData.levelId,
-    levelNo: apiData.levelNo,
-    levelName: apiData.levelName,
-    growthValue: apiData.growthValue,
-    points: apiData.points,
-  };
 }
 
 function normalizeBffGender(gender?: BffCrmGender): MemberProfileGender {
@@ -141,54 +79,38 @@ function toBffGender(gender?: MemberProfileGender): BffCrmGender | undefined {
   return undefined;
 }
 
-function normalizeBffCrmProfile(profile: BffCrmProfile): MemberProfileApiData {
+function normalizeBffCrmProfile(
+  profile: BffCrmProfile,
+  legacyStatus: MemberProfileLegacyStatus = MEMBER_PROFILE_LEGACY_UNBOUND,
+): MemberProfileData {
+  const currentProfile = rootStore.memberInfo;
+  const mobile = profile.phone || currentProfile?.mobile || '';
+  const growthValue = profile.growthValue ?? currentProfile?.growthValue ?? DEFAULT_MEMBER_GROWTH_VALUE;
+
   return {
-    memberId: profile.memberNo,
-    nickName: profile.nickName || memberProfileApiData.nickName,
-    avatarUrl: profile.avatarUrl || DEFAULT_MEMBER_AVATAR_URL,
-    mobile: profile.phone || '',
-    certificateNo: profile.idCardNo || '',
+    id: mobile || currentProfile?.id || 'current-member',
+    nickname: profile.nickName || currentProfile?.nickname || '乐园会员',
+    avatarUrl: profile.avatarUrl || currentProfile?.avatarUrl || DEFAULT_MEMBER_AVATAR_URL,
+    mobile,
+    idCardNo: profile.idCardNo || '',
     birthday: profile.birthday || '',
     gender: normalizeBffGender(profile.gender),
-    regionName: profile.regionName || '',
-    carNo: profile.carPlateNo || '',
-    onlineStoreName: profile.onlineStoreUrl || '',
-    legacyBindStatus: memberProfileApiData.legacyBindStatus,
+    regionText: profile.regionName || '',
+    plateNo: profile.carPlateNo || '',
+    onlineStoreText: profile.onlineStoreUrl || '',
+    legacyStatus,
     levelId: profile.levelCode || DEFAULT_MEMBER_LEVEL_ID,
     levelNo: profile.levelNo || DEFAULT_MEMBER_LEVEL_NO,
     levelName: profile.levelName || DEFAULT_MEMBER_LEVEL_NAME,
-    growthValue: profile.growthValue || DEFAULT_MEMBER_GROWTH_VALUE,
-    points: memberProfileApiData.points,
+    growthValue,
+    points: currentProfile?.points ?? growthValue,
   };
-}
-
-function normalizeAvatarUploadResult(apiResult: MemberAvatarUploadApiResult): MemberAvatarUploadResult {
-  return {
-    id: apiResult.fileId,
-    fileUrl: apiResult.url,
-  };
-}
-
-function applyMemberProfilePatch(payload: MemberProfileUpdatePayload) {
-  memberProfileApiData = {
-    ...memberProfileApiData,
-    ...(payload.nickname !== undefined ? { nickName: payload.nickname } : {}),
-    ...(payload.avatarUrl !== undefined ? { avatarUrl: payload.avatarUrl } : {}),
-    ...(payload.mobile !== undefined ? { mobile: payload.mobile } : {}),
-    ...(payload.idCardNo !== undefined ? { certificateNo: payload.idCardNo } : {}),
-    ...(payload.birthday !== undefined ? { birthday: payload.birthday } : {}),
-    ...(payload.gender !== undefined ? { gender: payload.gender } : {}),
-    ...(payload.regionText !== undefined ? { regionName: payload.regionText } : {}),
-    ...(payload.plateNo !== undefined ? { carNo: payload.plateNo } : {}),
-  };
-  return memberProfileApiData;
 }
 
 function toBffProfileUpdatePayload(payload: MemberProfileUpdatePayload): BffCrmProfileUpdateRequest {
   return {
     ...(payload.nickname !== undefined ? { nickName: payload.nickname } : {}),
     ...(payload.avatarUrl !== undefined ? { avatarUrl: payload.avatarUrl } : {}),
-    ...(payload.mobile !== undefined ? { phone: payload.mobile } : {}),
     ...(payload.idCardNo !== undefined ? { idCardNo: payload.idCardNo } : {}),
     ...(payload.birthday !== undefined ? { birthday: payload.birthday } : {}),
     ...(payload.gender !== undefined ? { gender: toBffGender(payload.gender) } : {}),
@@ -197,58 +119,42 @@ function toBffProfileUpdatePayload(payload: MemberProfileUpdatePayload): BffCrmP
   };
 }
 
+function syncGlobalMemberProfile(profile: MemberProfileData) {
+  rootStore.member.setProfile(buildLoginProfileFromMemberProfile(profile, rootStore.memberInfo));
+}
+
 // 拉取会员资料，头像和昵称以该接口结果为展示事实源。
 export async function fetchMemberProfileData() {
-  const apiData = await withServiceFallback(async () => {
-    const profile = await fetchBffCrmProfile();
-    memberProfileApiData = normalizeBffCrmProfile(profile);
-    return memberProfileApiData;
-  }, memberProfileApiData);
-  return normalizeMemberProfile(apiData);
+  const profile = normalizeBffCrmProfile(await fetchBffCrmProfile());
+  syncGlobalMemberProfile(profile);
+  return profile;
 }
 
-// 上传会员头像，真实接口接入后只需要替换上传实现和返回字段归一。
+// 上传会员头像，使用真实 BFF 图片上传接口返回的线上 URL。
 export async function uploadMemberAvatarImage(filePath: string) {
-  const apiResult: MemberAvatarUploadApiResult = {
-    fileId: '9000000000002001',
-    url: filePath,
+  const uploadResult = await uploadBffImage(filePath);
+  return {
+    id: uploadResult.imageUrl,
+    fileUrl: uploadResult.imageUrl,
   };
-  const uploadResult = await resolveMockData<MemberAvatarUploadApiResult>(apiResult, 300);
-
-  return normalizeAvatarUploadResult(uploadResult);
 }
 
-// 更新会员资料，页面不直接改全局会员信息，成功后使用接口返回值同步。
+// 更新会员资料，成功后同步全局会员信息，并用当前 session 刷新 member/status。
 export async function updateMemberProfile(payload: MemberProfileUpdatePayload) {
-  const fallbackProfile = applyMemberProfilePatch(payload);
-  const apiData = await withServiceFallback(async () => {
-    const profile = await updateBffCrmProfile(toBffProfileUpdatePayload(payload));
-    memberProfileApiData = normalizeBffCrmProfile(profile);
-    return memberProfileApiData;
-  }, fallbackProfile);
-
-  return normalizeMemberProfile(apiData);
+  const profile = normalizeBffCrmProfile(await updateBffCrmProfile(toBffProfileUpdatePayload(payload)));
+  syncGlobalMemberProfile(profile);
+  await syncMemberStatus({ silent: true });
+  return profile;
 }
 
-// 绑定老会员手机号，真实接口接入后由这里处理历史会员核验和资料回写。
+// 绑定老会员手机号，接口成功后重新拉取会员资料并同步全局会员态。
 export async function bindLegacyMember(payload: LegacyMemberBindPayload) {
-  const fallbackProfile: MemberProfileApiData = {
-    ...memberProfileApiData,
-    mobile: payload.mobile,
-    legacyBindStatus: MEMBER_PROFILE_LEGACY_BOUND,
-  };
-  memberProfileApiData = fallbackProfile;
-  const apiData = await withServiceFallback(async () => {
-    const result = await bindBffCrmLegacyMember(payload.mobile);
-    const profile = await fetchBffCrmProfile();
-    memberProfileApiData = {
-      ...normalizeBffCrmProfile(profile),
-      legacyBindStatus: result.bound === false ? MEMBER_PROFILE_LEGACY_UNBOUND : MEMBER_PROFILE_LEGACY_BOUND,
-    };
-    return memberProfileApiData;
-  }, fallbackProfile);
-
-  return normalizeMemberProfile(apiData);
+  const result = await bindBffCrmLegacyMember(payload.mobile);
+  const legacyStatus = result.bound === false ? MEMBER_PROFILE_LEGACY_UNBOUND : MEMBER_PROFILE_LEGACY_BOUND;
+  const profile = normalizeBffCrmProfile(await fetchBffCrmProfile(), legacyStatus);
+  syncGlobalMemberProfile(profile);
+  await syncMemberStatus({ silent: true });
+  return profile;
 }
 
 // 将会员资料接口结果转换为全局登录态可承载的字段，避免页面各自拼 profile。

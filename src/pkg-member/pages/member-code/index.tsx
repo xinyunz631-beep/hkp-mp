@@ -45,7 +45,7 @@ function convertCanvasToImage() {
   });
 }
 
-// 渲染会员码页面，先用 mock 服务生成二维码内容，后续可直接替换为真实接口。
+// 渲染会员码页面，会员码内容只来自真实 CRM member-code 接口。
 const MemberCodePage = observer(function MemberCodePage() {
   const [canvasSizeRpx] = useState(resolveCanvasSizeRpx);
   const [memberCode, setMemberCode] = useState('');
@@ -101,7 +101,7 @@ const MemberCodePage = observer(function MemberCodePage() {
     if (!pageVisible || pageRuntime.phase !== 'ready') return undefined;
 
     const timer = setInterval(() => {
-      void refreshMemberCode();
+      void refreshMemberCode().catch(() => undefined);
     }, MEMBER_CODE_REFRESH_INTERVAL);
 
     return () => {

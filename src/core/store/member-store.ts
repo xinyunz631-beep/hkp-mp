@@ -16,6 +16,7 @@ export class MemberStore {
   refreshToken = '';
   signSecret = '';
   profile?: LoginUserProfile;
+  memberStatusChecked = false;
 
   // 初始化会员全局状态，承载后端会话和会员资料。
   constructor() {
@@ -36,6 +37,11 @@ export class MemberStore {
     });
   }
 
+  // 页面统一读取的会员资料，头像昵称手机号等级等用户信息都维护在 member store。
+  get memberInfo() {
+    return this.profile;
+  }
+
   // 同步后端会话，不改变已有会员资料。
   setCsession(csession: string) {
     this.csession = csession;
@@ -43,18 +49,27 @@ export class MemberStore {
   }
 
   // 同步后端完整认证会话，包含后续刷新令牌和高风险写接口签名密钥。
-  setAuthSession(payload: { accessToken: string; refreshToken?: string; signSecret?: string }) {
+  setAuthSession(
+    payload: { accessToken: string; refreshToken?: string; signSecret?: string },
+    options: { resetProfile?: boolean } = {},
+  ) {
     this.csession = payload.accessToken;
     this.refreshToken = payload.refreshToken || '';
     this.signSecret = payload.signSecret || '';
+    if (options.resetProfile) {
+      this.profile = undefined;
+      this.memberStatusChecked = false;
+    }
     this.persistMember();
   }
 
-  // 仅清空后端请求凭证，不替页面决定手机号登录态。
+  // 仅清空后端请求凭证；下次需要会员身份时重新拉取会员状态。
   clearCsession() {
     this.csession = '';
     this.refreshToken = '';
     this.signSecret = '';
+    this.profile = undefined;
+    this.memberStatusChecked = false;
     this.persistMember();
   }
 
@@ -63,11 +78,13 @@ export class MemberStore {
     const profile = buildLoginUserProfile(payload);
     if (!profile) {
       this.profile = undefined;
+      this.memberStatusChecked = true;
       this.persistMember();
       return;
     }
 
     this.profile = profile;
+    this.memberStatusChecked = true;
     this.persistMember();
   }
 
@@ -77,12 +94,28 @@ export class MemberStore {
     this.refreshToken = '';
     this.signSecret = '';
     this.profile = profile;
+    this.memberStatusChecked = true;
     this.persistMember();
   }
 
   // 同步会员资料，不覆盖已经建立的 CSESSION。
   setProfile(profile: LoginUserProfile) {
     this.profile = profile;
+    this.memberStatusChecked = true;
+    this.persistMember();
+  }
+
+  // 应用后端会员状态接口结果；没有 memberInfo 时明确记录已查但未成为会员。
+  applyMemberStatus(profile?: LoginUserProfile) {
+    this.profile = profile;
+    this.memberStatusChecked = true;
+    this.persistMember();
+  }
+
+  // 清空会员资料，但保留当前 BFF token，适用于状态接口确认未成为会员。
+  clearProfile(checked = true) {
+    this.profile = undefined;
+    this.memberStatusChecked = checked;
     this.persistMember();
   }
 
@@ -92,6 +125,7 @@ export class MemberStore {
     this.refreshToken = '';
     this.signSecret = '';
     this.profile = undefined;
+    this.memberStatusChecked = false;
     removeCache(MINI_STORAGE_KEYS.member);
   }
 
@@ -104,6 +138,7 @@ export class MemberStore {
     this.refreshToken = snapshot.refreshToken || '';
     this.signSecret = snapshot.signSecret || '';
     this.profile = snapshot.profile;
+    this.memberStatusChecked = false;
   }
 
   // 持久化会员状态，统一管理本地缓存 key。

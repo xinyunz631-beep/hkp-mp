@@ -79,7 +79,6 @@ export interface BffOrderTicketVoucher {
 
 export interface BffOrder {
   orderNo: string;
-  userId?: string;
   sceneType?: BffOrderSceneType;
   orderStatus?: string;
   paymentChannel?: BffOrderPaymentChannel;

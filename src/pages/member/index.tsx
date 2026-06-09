@@ -266,7 +266,7 @@ function renderServiceAction(item: ProfileServiceItem) {
 
 const MemberPage = observer(function MemberPage() {
   const pageRuntime = usePageRuntime();
-  const memberProfile = rootStore.member.profile;
+  const memberProfile = rootStore.memberInfo;
   const memberLevel = resolveMemberLevel(memberProfile);
   const memberAvatar = resolveMemberAvatar(memberProfile);
   const displayName = memberProfile?.nickname || '微信用户';

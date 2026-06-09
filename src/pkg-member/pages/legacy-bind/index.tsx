@@ -3,13 +3,9 @@ import { Input, Text, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
 import { PageShell } from '@/core/components/PageShell';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
-import { rootStore } from '@/core/store';
 import { navigateBackOrHome } from '@/core/utils/navigation';
 import { showWechatToast } from '@/core/utils/wechat-actions';
-import {
-  bindLegacyMember,
-  buildLoginProfileFromMemberProfile,
-} from '@/pkg-member/services/profile';
+import { bindLegacyMember } from '@/pkg-member/services/profile';
 import './index.scss';
 
 function normalizeMobile(value: string) {
@@ -36,11 +32,10 @@ const LegacyBindPage = observer(function LegacyBindPage() {
       return;
     }
 
-    const nextProfile = await pageRuntime.withLoading(() => bindLegacyMember({ mobile: nextMobile }));
-    rootStore.member.setProfile(buildLoginProfileFromMemberProfile(nextProfile, rootStore.member.profile));
+    await pageRuntime.withLoading(() => bindLegacyMember({ mobile: nextMobile }));
     await showWechatToast('绑定成功', 'success');
     setTimeout(() => {
-      void navigateBackOrHome();
+      Promise.resolve(navigateBackOrHome()).catch(() => undefined);
     }, 300);
   }
 
@@ -65,7 +60,7 @@ const LegacyBindPage = observer(function LegacyBindPage() {
           </View>
           <View
             className={`_pg-submit ${validateMobile(normalizeMobile(mobile)) ? '_pg-submit--active' : ''}`}
-            onClick={() => void handleSubmit()}
+            onClick={() => handleSubmit().catch(() => undefined)}
           >
             <Text>绑定</Text>
           </View>

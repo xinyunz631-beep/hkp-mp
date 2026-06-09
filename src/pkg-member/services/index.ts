@@ -1,38 +1,112 @@
 import { fetchBffCrmCenter } from '@/core/services/bff-crm-api';
-import { withServiceFallback } from '@/core/services/mock';
-import { memberHomeData, type MemberHomeData } from './mock-data';
 
-export type { MemberHomeData, MemberHomeSectionItem, MemberHomeShortcut } from './mock-data';
+export interface MemberHomeShortcut {
+  key: string;
+  title: string;
+  value: string;
+  action: 'memberCode' | 'coupons' | 'orders' | 'address' | 'comingSoon';
+  disabled?: boolean;
+}
 
-// 获取会员中心首页数据，后续接真实接口时在这里统一处理字段归一和失败兜底。
-export function fetchMemberHomeData() {
-  return withServiceFallback(async () => {
-    const center = await fetchBffCrmCenter();
-    const profile = center.profile;
-    const nextLevelText = profile.nextLevelGrowth
-      ? `再获得 ${Math.max(profile.nextLevelGrowth - (profile.growthValue || 0), 0)} 成长值即可升级${profile.nextLevelName || '下一等级'}`
-      : `${profile.levelName || '会员'}权益已生效`;
-    const benefitItems = center.benefits.map((benefit) => ({
-      key: benefit.benefitNo,
-      title: benefit.benefitTitle,
-      desc: benefit.benefitSummary || benefit.highlightText || '会员专属权益',
-      action: 'memberGrowth' as const,
-    }));
+export interface MemberHomeSectionItem {
+  key: string;
+  title: string;
+  desc: string;
+  action: 'memberGrowth' | 'coupons' | 'orders' | 'parkGuide' | 'ticketBooking' | 'shareDeferred' | 'withdrawDeferred';
+  disabled?: boolean;
+}
 
-    return {
-      ...memberHomeData,
-      points: profile.growthValue || memberHomeData.points,
-      growthText: nextLevelText,
-      couponCount: profile.couponCount ?? memberHomeData.couponCount,
-      couponHintText: profile.couponCount ? `当前有 ${profile.couponCount} 张可用券` : memberHomeData.couponHintText,
-      shortcuts: memberHomeData.shortcuts.map((shortcut) => (
-        shortcut.key === 'coupons'
-          ? { ...shortcut, value: `${profile.couponCount ?? memberHomeData.couponCount} 张可用` }
-          : shortcut
-      )),
-      sections: memberHomeData.sections.map((section, index) => (
-        index === 0 && benefitItems.length > 0 ? { ...section, items: benefitItems } : section
-      )),
-    };
-  }, memberHomeData);
+export interface MemberHomeData {
+  points: number;
+  growthText: string;
+  couponCount: number;
+  couponHintText: string;
+  shortcuts: MemberHomeShortcut[];
+  sections: {
+    title: string;
+    items: MemberHomeSectionItem[];
+  }[];
+}
+
+const MEMBER_HOME_SHORTCUTS: MemberHomeShortcut[] = [
+  {
+    key: 'member-code',
+    title: '会员码',
+    value: '快速核销',
+    action: 'memberCode',
+  },
+  {
+    key: 'coupons',
+    title: '优惠券',
+    value: '0 张可用',
+    action: 'coupons',
+  },
+  {
+    key: 'orders',
+    title: '我的订单',
+    value: '票务 / 商城 / 酒店',
+    action: 'orders',
+  },
+  {
+    key: 'address',
+    title: '地址管理',
+    value: '常用收货信息',
+    action: 'address',
+  },
+];
+
+const MEMBER_HOME_MORE_SERVICE_SECTION = {
+  title: '更多服务',
+  items: [
+    {
+      key: 'share',
+      title: '分享收益',
+      desc: '邀请好友下单后可查看专属奖励',
+      action: 'shareDeferred' as const,
+      disabled: true,
+    },
+    {
+      key: 'withdraw',
+      title: '提现服务',
+      desc: '奖励到账后可在这里发起提现',
+      action: 'withdrawDeferred' as const,
+      disabled: true,
+    },
+  ],
+};
+
+// 获取会员中心首页真实数据，静态配置只承载入口结构，不做接口失败兜底。
+export async function fetchMemberHomeData(): Promise<MemberHomeData> {
+  const center = await fetchBffCrmCenter();
+  const profile = center.profile;
+  const couponCount = profile.couponCount ?? 0;
+  const growthValue = profile.growthValue ?? 0;
+  const nextLevelText = profile.nextLevelGrowth
+    ? `再获得 ${Math.max(profile.nextLevelGrowth - growthValue, 0)} 成长值即可升级${profile.nextLevelName || '下一等级'}`
+    : `${profile.levelName || '会员'}权益已生效`;
+  const benefitItems = center.benefits.map((benefit) => ({
+    key: benefit.benefitNo,
+    title: benefit.benefitTitle,
+    desc: benefit.benefitSummary || benefit.highlightText || '会员专属权益',
+    action: 'memberGrowth' as const,
+  }));
+
+  return {
+    points: growthValue,
+    growthText: nextLevelText,
+    couponCount,
+    couponHintText: couponCount ? `当前有 ${couponCount} 张可用券` : '暂无可用会员券',
+    shortcuts: MEMBER_HOME_SHORTCUTS.map((shortcut) => (
+      shortcut.key === 'coupons'
+        ? { ...shortcut, value: `${couponCount} 张可用` }
+        : shortcut
+    )),
+    sections: [
+      ...(benefitItems.length ? [{
+        title: '会员权益',
+        items: benefitItems,
+      }] : []),
+      MEMBER_HOME_MORE_SERVICE_SECTION,
+    ],
+  };
 }

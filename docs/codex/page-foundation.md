@@ -20,7 +20,7 @@
 - 用户可见文案禁止出现 `mock`、组件库、技术栈、开发态或测试态字眼。
 - 用户可见文案必须按真实 C 端业务语境表达，不得暴露实现层、调试层或产品内部分类词；输入提示、空态、按钮和列表标题都要让普通游客能直接理解。
 - 用户可见文案禁止出现实现过程描述，例如“按票种生成”“实名槽位”“接口返回”“草稿”等；页面上应表达为“请补充出游人信息”“返回重新选择”“订单信息已保存”等游客可理解话术。
-- 商用级补完页面使用 `commercial-ready` 状态；必须在页面文档记录交互矩阵、状态矩阵和微信开发工具验收清单。
+- 商用级补完页面必须在代码、service 状态、接口文档或必要的 current 文档里体现交互、状态和验收口径；不再维护页面级 UI 设计说明文档。
 
 ## 多页面流开发
 
@@ -28,10 +28,10 @@
 - 同一个页面的首屏/中屏/底部/滚动态、多状态截图、补充参考图，不触发多页面流开发。
 - 触发后先建立页面清单：`pageKey`、标题、主包/分包、路由、navbar、登录要求、截图归属、入口和下一跳。
 - 截图归属不明确时只问一个最关键问题；能合理判断时直接继续。
-- 先批量生成或定位页面骨架、route、app.config 和 registry，再逐页实现 UI 和业务。
+- 先批量生成或定位页面骨架、route 和 app.config，再逐页实现 UI 和业务。
 - 只有 2 个以上页面明确复用同一 UI 或逻辑时，才抽公共组件或 util；否则保持页面内最小实现，避免过度抽象。
 - 每个页面都必须遵守 `PageShell`、`usePageRuntime`、`observer`、`_pg-*` BEM 和 `AppImage` 等页面基础约束。
-- 当前代码阶段默认不维护页面设计 md；只有用户明确要求、页面索引/门禁强制依赖或本次就是文档/规范任务时，才最小同步 `docs/ui/pages/{page}.md` 和 `docs/ui/page-registry.yaml`。
+- 小程序 UI 维护文档体系已下线；不要创建、读取或维护 `docs/ui/pages/{page}.md`、`docs/ui/page-registry.yaml`、页面设计变更记录或 UI contract。基础 UI 约束继续以本文件、代码组件和检查脚本为准。
 
 ## 导航规则
 
@@ -81,9 +81,13 @@
 - 标题固定、右侧关闭、中间滚动、底部确认按钮可选的底部业务弹层优先使用 `AppBottomSheet`；页面只传业务内容，不要重复手写弹层 header、关闭按钮、滚动容器和确认 footer；中间滚动区默认最小高度为 `300px`，未超过最大高度前随内容自适应，特殊业务只通过 `bodyMinHeight/bodyMaxHeight` 覆盖。
 - 后续新增或触达页面布局时优先用 `flex` 实现；不要在新写区域主动新增 `grid` / `gap`，历史已经存在的 `grid` / `gap` 不为此单独追改。
 - 小程序页面 SCSS 尺寸默认按 750px 设计稿原值书写，不要按 375 逻辑手动折半；只有明确在写 JS canvas 实际像素、NutUI 内部变量适配或某个组件文档要求时，才单独说明换算依据。
+- 颜色、间距、圆角和安全区 token 以 `src/styles/tokens.scss` 为唯一代码准源；新增 token 必须先确认复用价值，不再新增或同步 `docs/ui/tokens.md` 这类设计记录表。
 - 页面级默认内容左右留白统一使用 `30px`；新页面模板和商用页主体区块不要继续默认写 `32px`，组件内部、卡片内部或弹层内部的局部 padding 按组件视觉单独决定。
+- 页面背景以浅灰白和白色承载面为主，品牌粉只用于主按钮、选中态、重点氛围和少量品牌识别；圆角、阴影和粉色面积要克制，避免整页变成单一粉色主题。
+- 字体层级服务页面扫描效率，卡片、列表、侧栏、弹层和紧凑工具区不得使用 hero 级大字；模块标题、金额、主按钮等明确重点再做尺寸和字重强调。
+- 列表、卡片和模块内部常规间距优先复用 `12px / 16px / 24px / 30px / 32px` 这组既有尺度，模块之间至少保留 `24px` 呼吸感；特殊业务视觉按局部组件收口，不另开全局节奏。
 - 小程序交互控件边框（按钮、操作按钮、筛选项、可选项、checkbox、可点击/可选择胶囊 tag 等）如果需要 1px 视觉发丝线，统一写 `1Px`，例如 `border: 1Px solid ...`；不要把这类控件边框写成 `1px`，否则按 750px 设计稿转换成 rpx 后真机显示不稳定。`Px` / `PX` 大写是刻意规避转换的项目约定，不要改回 `px`。分割线、下划线、结构性 `border-top/bottom/right: 1px` 以及纯展示型卡片/标签边框可继续保留 `1px`。
-- 页面可见文本 `font-size` 最小为 `22px`；新增或触达页面样式时不得写低于 `22px` 的字号，第三方组件内部样式或特殊视觉资产需要例外时必须在对应组件/页面文档中说明原因。
+- 页面可见文本 `font-size` 最小为 `22px`；新增或触达页面样式时不得写低于 `22px` 的字号，第三方组件内部样式或特殊视觉资产需要例外时必须在对应组件代码注释或通用事实源中说明原因。
 - 字体默认不声明 `font-weight`，让宿主默认粗度生效；正文、说明、链接、普通行文、tab 普通项和卡片普通信息不要为了“看起来重点”特意写 `font-weight: 500`。只有页面标题、模块标题、金额、主按钮等明确强调文本，且确实需要时才显式使用 `500`。
 - 项目源码内 `font-weight` 数值不得超过 `500`；新增或触达样式优先使用 `normal` / `500`，不要写 `550/600/700/800/900`。
 
@@ -107,7 +111,7 @@
 - 图片预览、扫码、地图、电话、复制、确认弹窗和 toast 默认优先使用 `src/core/utils/wechat-actions.ts` 封装；确认类弹窗统一走 `showAppModal()` / `showWechatConfirm()`，不要在页面直接散写 `Taro.showModal`，确认按钮颜色默认使用项目主色。
 - 微信支付默认优先使用 `src/core/utils/wechat-actions.ts` 的 `requestWechatPayment()`，无真实支付参数时由封装函数完成本地支付 / 暂不支付闭环；页面不要直接散写 `Taro.requestPayment` 或临时支付 modal。
 - 新增或使用 `chooseLocation` 等微信隐私 API 时，必须同步检查 `src/app.config.ts` 的 `requiredPrivateInfos` 和 `permission` 声明，避免开发工具内接口直接 fail 后被业务 toast 误判为用户取消。
-- 搜索、筛选、表单、交易确认等页面的业务细节必须沉淀到对应页面文档，不写进本文件；本文件只保留微信 API、文案边界、状态组件、布局安全区等跨页面通用约束。
+- 搜索、筛选、表单、交易确认等页面的业务细节默认沉淀到 service/types、接口联调文档或必要 current 文档；不再维护页面级 UI 设计说明。本文件只保留微信 API、文案边界、状态组件、布局安全区等跨页面通用约束。
 - 页面可见点击必须落到跳转、弹层、微信 API、本地状态变化、登录拦截或提交结果，不允许用“即将开放”作为非暂缓页面兜底。
 - 微信 canvas 生成图片时必须区分 750 设计稿 `rpx` 展示尺寸和 canvas 真实像素绘制尺寸；不要直接把 SCSS 中会被 Taro 转换的 `px` 常量复用为 JS 绘制 / 导出尺寸，避免只导出左上角局部。
 
@@ -125,8 +129,7 @@
 
 ## 组件决策顺序
 
-- 先查事实源：`docs/ui/components.md` 和 `docs/codex/nutui-component-registry.md`。
-- 先查项目内封装：`src/core/components`、当前分包组件、已有同类页面。
+- 先查项目内封装和事实源：`src/core/components`、当前分包组件、已有同类页面、`docs/codex/nutui-component-registry.md`。
 - 交易类通用 UI 优先查 `src/core/components/commerce`，当前包含商品卡、订单卡、优惠券卡、地址卡、提交栏、数量选择、筛选 Tab、SKU 弹层和日期选择。
 - 商城多层级 SKU 必须复用 `src/core/utils/sku.ts` 的选择引擎和 `SkuPopup`：页面不得散写规格联动、库存禁用和层级联动逻辑；SKU 遵循“上层决定下层”，下层选择不得反向改动上层，当前上层下不可售的下层项直接置灰禁点；有组合但无库存显示“售罄”，没有对应组合才显示“暂不可选”；真实接口接入时先在 service/adapter 转成 `HkpSkuGroup` + `HkpSkuVariantBase` 兼容结构。
 - 商城首页、商品列表、商城分类右侧商品列表的快捷加购必须先判断是否需要 SKU 弹层：无可售规格提示无货，只有 1 个可售组合时直接加车，存在多个可售组合时才在当前页通过 `PageShare` 弹 `SkuPopup`；其它加购入口默认跳商品详情，由详情页承接完整规格和商品信息，不要直接写购物车。
@@ -153,17 +156,14 @@
 - 项目级图标组件：`src/core/components/AppIcon`
 - 路由常量：`src/core/constants/routes.ts`
 - 分包页面注册：`src/app.config.ts`
-- 页面文档：`docs/ui/pages/{page}.md`
-- 页面索引：`docs/ui/page-registry.yaml`
 
 ## 默认校验
 
 - 默认按影响范围运行最小门禁，不要每次无差别全跑。
-- 只改 SCSS / 页面视觉：运行 `yarn check:page-convention` 和 `git diff --check`；不运行 `typecheck`、`package-boundary`、`ui-contract`。
+- 只改 SCSS / 页面视觉：运行 `yarn check:page-convention` 和 `git diff --check`；不运行 `typecheck`、`package-boundary`。
 - 改 TS/TSX 页面或组件逻辑：运行 `yarn typecheck`、`yarn check:page-convention` 和 `git diff --check`；未动 import / 路由 / 分包时不运行 `package-boundary`。
 - 改 service / mock / store / utils / hooks：运行 `yarn typecheck` 和 `git diff --check`；未触达页面 render / SCSS 时不运行 `page-convention`。
 - 改路由、`app.config.ts`、分包结构、主包和分包 import 边界：运行 `yarn typecheck`、`yarn check:package-boundary` 和 `git diff --check`。
-- 改 `docs/ui`、页面文档或 `page-registry.yaml`：运行 `yarn check:ui-contract` 和 `git diff --check`。
 - 只改 skill / `docs/codex` / 说明性文档：通常只运行 `git diff --check`，必要时用 `grep` 确认规则落点。
 - `yarn check:page-convention` 会拦截缺少 `_pg` 根节点、页面名前缀 class、双下划线元素写法、非 `_pg-*` 页面 selector，以及用 `♡/✨/›/×` 等文本符号冒充图标。
 - 默认不运行完整 `yarn build:weapp`，除非用户要求或需要排查完整产物。

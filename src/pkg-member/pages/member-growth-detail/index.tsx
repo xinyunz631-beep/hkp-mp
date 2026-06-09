@@ -45,7 +45,7 @@ function formatGrowthValue(value: number) {
 const MemberGrowthDetailPage = observer(function MemberGrowthDetailPage() {
   const [pageData, setPageData] = useState<MemberGrowthData>();
   const [growthRuleVisible, setGrowthRuleVisible] = useState(false);
-  const memberProfile = rootStore.member.profile;
+  const memberProfile = rootStore.memberInfo;
   const pageRuntime = usePageRuntime({
     initPage: async () => {
       const nextData = await fetchMemberGrowthData();

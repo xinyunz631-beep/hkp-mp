@@ -1,18 +1,8 @@
 import { fetchBffCrmMemberCode } from '@/core/services/bff-crm-api';
-import { withServiceFallback } from '@/core/services/mock';
 
-const MEMBER_CODE_REFRESH_INTERVAL = 30000;
-
-// 生成会员码接口返回值的 mock 结果，后续接真实接口时只替换这里。
-function buildMemberCodeValue() {
-  const refreshBucket = Math.floor(Date.now() / MEMBER_CODE_REFRESH_INTERVAL).toString(36).toUpperCase();
-  return `HKP-MEMBER-${refreshBucket}`;
-}
-
-// 拉取会员码内容，当前先用 mock 值兜底，保证页面能直接完成渲染。
-export function fetchMemberCode() {
-  return withServiceFallback(async () => {
-    const code = await fetchBffCrmMemberCode();
-    return code.qrContent || code.memberNo || buildMemberCodeValue();
-  }, buildMemberCodeValue());
+// 拉取真实会员码内容，后端不再暴露 memberNo，页面只使用 qrContent。
+export async function fetchMemberCode() {
+  const code = await fetchBffCrmMemberCode();
+  if (!code.qrContent) throw new Error('会员码暂不可用');
+  return code.qrContent;
 }
