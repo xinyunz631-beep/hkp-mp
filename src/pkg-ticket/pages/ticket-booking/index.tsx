@@ -6,6 +6,7 @@ import { Badge, Sticky } from '@nutui/nutui-react-taro';
 import { observer } from 'mobx-react';
 import { AppIcon } from '@/core/components/AppIcon';
 import { AppImage } from '@/core/components/AppImage';
+import { BaseEmpty } from '@/core/components/BaseEmpty';
 import { AppShareButton } from '@/core/components/AppShareButton';
 import { CouponSelectionPopup, DateSelectionPopup, QuantityStepper } from '@/core/components/commerce';
 import { AppPopup } from '@/core/components/AppPopup';
@@ -645,7 +646,14 @@ const TicketBookingPage = observer(function TicketBookingPage() {
               </View>
             </Sticky>
 
-            {visibleSections.map((section) => renderBookingSection(section))}
+            {visibleSections.length > 0 ? visibleSections.map((section) => renderBookingSection(section)) : (
+              <View className="_pg-empty-wrap">
+                <BaseEmpty
+                  title="暂无可预订门票"
+                  description="请稍后再来查看可预订票种。"
+                />
+              </View>
+            )}
             <View className="_pg-tips">
               <Text className="_pg-tips_title">温馨提示</Text>
               <View className="_pg-tips_list">

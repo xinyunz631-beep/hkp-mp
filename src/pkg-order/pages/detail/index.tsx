@@ -1,6 +1,7 @@
 import Taro from '@tarojs/taro';
 import { Text, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
+import { AppImage } from '@/core/components/AppImage';
 import { PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
@@ -117,6 +118,30 @@ const DetailPage = observer(function DetailPage() {
                 </View>
               ))}
             </View>
+
+            {detailData.ticketVouchers?.length ? (
+              <View className="_pg-card">
+                <Text className="_pg-card_section-title">入园凭证</Text>
+                <View className="_pg-voucher-list">
+                  {detailData.ticketVouchers.map((voucher, index) => (
+                    <View className="_pg-voucher" key={`${voucher.id}-${index}`}>
+                      {voucher.imageUrl ? (
+                        <AppImage
+                          className="_pg-voucher_image"
+                          src={voucher.imageUrl}
+                          mode="aspectFit"
+                          emptyState="error"
+                        />
+                      ) : null}
+                      <View className="_pg-voucher_body">
+                        <Text className="_pg-voucher_label">票码</Text>
+                        <Text className="_pg-voucher_code">{voucher.codeText}</Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            ) : null}
 
             <View className="_pg-card">
               <Text className="_pg-card_section-title">{resolveContactSectionTitle(detailData)}</Text>

@@ -118,6 +118,50 @@
   }
 }
 
+._pg-voucher-list {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+._pg-voucher {
+  display: flex;
+  gap: 22px;
+  align-items: center;
+  padding: 22px;
+  border-radius: 8px;
+  background: #f8f9fc;
+
+  &_image {
+    flex: none;
+    width: 176px;
+    height: 176px;
+    border-radius: 6px;
+    background: #ffffff;
+  }
+
+  &_body {
+    flex: 1;
+    min-width: 0;
+  }
+
+  &_label {
+    display: block;
+    color: #6b7280;
+    font-size: 26px;
+    line-height: 1.4;
+  }
+
+  &_code {
+    display: block;
+    margin-top: 12px;
+    color: #23262f;
+    font-size: 30px;
+    line-height: 1.45;
+    word-break: break-all;
+  }
+}
+
 ._pg-order-meta {
   display: flex;
   align-items: flex-start;

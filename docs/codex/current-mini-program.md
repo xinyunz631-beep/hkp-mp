@@ -1,9 +1,9 @@
 # 当前小程序状态
 ## 更新时间
 
-- 更新时间：`2026-06-09 00:20 CST`
-- 当前状态：登录、请求、会员状态、页面初始化闸门、页面显式 runtime hook、页面单例 loading、统一 loading 组件入口和白色渐变淡出蒙层、全局登录态弹窗、webpack5 prebundle/cache 关闭、NutUI 按需样式、`@tarojs/plugin-html` 和 `@nutui/icons-react-taro` 显式依赖、BaseSkeleton/BaseEmpty/BaseException、中性页面底色+粉色品牌点缀、自定义 tabbar、独立 PageNavbar 和页面级 header/layout 已完成代码收口并通过本地校验；系统 custom-tab-bar 已压成 0 高度占位，可见 tabbar 已下沉到页面内 fixed 底部容器，`AppTabBar` 已从 `AppIcon` 切为直接 `Image` 小图并在组件顶部集中维护图片链接；会员授权登录已按后端真实接口重接，启动默认 `login -> member/status` 并把头像、昵称、手机号、等级统一维护到 MobX `rootStore.memberInfo`，页面可直接读 `rootStore.isLoggedIn`；登录弹窗只保留手机号授权和关闭；个人信息页新增退出登录；会员资料、头像上传、会员码和会员中心首页不再失败回旧会员 mock。
-- 恢复优先级：下一步优先在微信开发工具中验证真实 BFF 授权响应、`member/status` 登录态判断、手机号授权 `code`、资料保存签名、退出登录、首页广告聚合、首页新视觉还原、页面内自定义 tabbar 跳转/选中态、弹层覆盖关系和自定义 navbar 安全区表现。
+- 更新时间：`2026-06-13 21:27 CST`
+- 当前状态：登录、请求、会员状态、页面初始化闸门、页面显式 runtime hook、页面单例 loading、统一 loading 组件入口、全局登录态弹窗、自定义 tabbar、独立 PageNavbar 和页面级 header/layout 已完成代码收口；会员授权登录已按后端真实接口重接，启动默认 `login -> member/status` 并把头像、昵称、手机号、等级统一维护到 MobX `rootStore.memberInfo`；会员券资产、领券中心券包、领取优惠券、兑换码兑券、门票结算候选券、带券统一下单和订单详情票码承接已按后端 `uat` 最新券/订单 BFF 接入，相关券链路不再失败回旧本地券或本地订单假成功。
+- 恢复优先级：下一步优先在微信开发工具中验证会员券列表、领券中心领取、兑换码错误/成功、门票结算选择优惠券、`POST /api/bff/orders` 携带 `selectedCouponNos`、订单详情展示后端 `ticketVouchers`；同时继续验证真实 BFF 授权响应、`member/status` 登录态判断、手机号授权 `code`、首页广告聚合和自定义 navbar 安全区表现。
 
 ## 恢复时先看
 
@@ -37,6 +37,13 @@
 - 会员资料接口：`GET/POST https://hellokitty-uat.yoursite.xin/api/bff/crm/profile`；资料保存为登录态 + HMAC 签名，BFF 不暴露 `memberNo/openId/userId`。
 - 头像上传接口：`POST https://hellokitty-uat.yoursite.xin/api/bff/files/images`，登录态 multipart，返回 `imageUrl`。
 - 退出登录接口：`POST https://hellokitty-uat.yoursite.xin/api/bff/auth/logout`，登录态 + HMAC 签名。
+- 会员券资产接口：`GET https://hellokitty-uat.yoursite.xin/api/bff/member/coupons`，需小程序登录态；只传 `sceneType?`、`status?`，当前用户由 token 派生。
+- 会员可领券包接口：`GET https://hellokitty-uat.yoursite.xin/api/bff/member/coupon-packages`，需小程序登录态；当前后端由 promotion 券模板同源生成券包。
+- 优惠券领取接口：`POST https://hellokitty-uat.yoursite.xin/api/bff/promotion/coupons/claim`，需登录态 + HMAC 签名；前端只提交 `templateNo`。
+- 兑换码兑券接口：`POST https://hellokitty-uat.yoursite.xin/api/bff/promotion/coupons/exchange`，需登录态 + HMAC 签名；前端只提交 `exchangeCode`，没有真实兑换码时不得假成功。
+- 退款退券接口：`POST https://hellokitty-uat.yoursite.xin/api/bff/promotion/coupons/refund-return`，需登录态 + HMAC 签名；订单退款自动触发口径仍待后端确认。
+- 统一创建订单接口：`POST https://hellokitty-uat.yoursite.xin/api/bff/orders`，需小程序登录态；门票带券下单提交 `selectedCouponNos`，后端直接确认优惠锁并返回 `WAIT_USE/ticketVouchers`。
+- 订单详情接口：`GET https://hellokitty-uat.yoursite.xin/api/bff/orders/{orderNo}`，需小程序登录态；门票票码只展示后端 `ticketVouchers`，前端不自造二维码。
 - 业务成功码：`200`
 - 普通业务接口 header 只默认带 `Authorization: Bearer <token>`。
 - 授权登录/刷新不带业务访问令牌；高风险 BFF 写接口通过 `sign: true` 自动携带 HMAC 签名头。
@@ -46,7 +53,7 @@
 - 2026-06-06 复测 `/api/bff/purchase/resources?sceneType=TICKET&pageCode=PURCHASE_HOME` 无 token 返回 500，traceId `65ab9abb2e764e02bca0cf30ae1ad14a`；小程序已让资源位失败只回退图片，不阻断购票列表真实数据，后端仍需排查公开资源位聚合入口。
 - 后端 `v0.1.9`/`v0.1.10` 已将小程序登录请求体、`Content-Type`、JWT 签发和 Redis 登录态存储异常转为明确错误码；小程序统一 request 已为 JSON 写请求默认补 `content-type: application/json`，仍需微信开发工具用真实 code 复测登录和刷新响应。
 - CRM 已新增 `src/core/services/bff-crm-api.ts`；会员状态、会员资料、会员码、会员中心首页、头像上传和老会员绑定已按真实接口重接，会员资料链路不再失败回本地会员 mock；CRM 入口路径已从 `/api/bff/crm/p1/**` 改为 `/api/bff/crm/entries/**`；资料保存、地址写操作和老会员绑定走 request `sign: true`，待微信开发工具真实登录态验证。
-- 订单已新增 `src/core/services/bff-order-api.ts`，覆盖订单提交、详情、列表 BFF 入口；页面交易链路暂未强切，后续按票务/商城/订单中心工作包逐步替换。
+- 订单已新增 `src/core/services/bff-order-api.ts`，覆盖旧提交、统一创建单、订单支付、详情和列表 BFF 入口；门票结算已切到统一创建单，商城/酒店订单列表和结算用券仍待后续工作包接入。
 - 小程序广告已新增 `src/core/services/mini-program-ad.ts` 和 `src/core/types/mini-program-ad.ts`，首页 `src/pages/home/index.tsx` 已读取 `/api/bff/content/mini-program/ads?pagecode=index`，按 `slotCode` 覆盖顶部轮播、八大导航、节目单、热门项目和吃喝玩乐；顶部轮播优先使用 `index_top_banner`，无数据才兼容旧 `index_banner`。广告聚合和详情请求均先完成小程序授权并携带 `Authorization`，接口失败、核心资源位缺失或详情无数据时进入异常态，不再回退旧本地内容。
 - 2026-06-07 已完成首页顶部 banner 真实闭环：使用后台账号真实登录，调用 `/api/admin-config/files/images` 上传 `Desktop/HKP/banner` 下 5 张 JPG，再调用 `/api/content/mini-program/ads` 保存到 `index_top_banner` 资源位；后端已恢复小程序广告 BFF 鉴权，后续验收必须在微信开发工具网络面板确认广告聚合请求携带小程序访问令牌。
 
@@ -104,7 +111,7 @@
 - `src/core/config/env.ts` 已设置 UAT host、BFF 授权路径和微信 AppID fallback，已删除本地 mock API 文件。
 - request 已实现 BFF 授权 Promise 队列、业务请求等待授权、提取访问令牌、持久化 `refreshToken/signSecret`、accessToken 过期后 refreshToken 自动刷新并重放原请求、高风险写接口 HMAC 签名，且不再自动维护页面 loading。
 - 已新增 `src/core/services/bff-api.ts` 覆盖 Feishu 主文档 13 个 BFF 对外入口；已有交易链路未成熟的接口先以 service 入口落地，页面级接入跟随订单/支付/促销功能推进。
-- 已新增 `src/pkg-ticket/services/purchase-api.ts`，并让门票预定页优先读取后端购票列表和 CMS 资源位，失败兜底本地数据。
+- 已新增 `src/pkg-ticket/services/purchase-api.ts`，并让门票预定页读取后端购票列表和 CMS 资源位；当前真实订单链路不再回退本地票种，空商品展示业务空态，资源位失败只影响图片。
 - NutUI 小程序组件依赖 HTML 模板运行时；新增 NutUI 组件时必须确认 `babel-plugin-import`、`@tarojs/plugin-html`、prebundle/cache 和 NutUI `designWidth=375` 配置链路完整；新增图标相关 UI 默认优先使用 `@nutui/icons-react-taro`。
 - 已新增 `member-store`、`app-store` 和 `identity.ts` 登录身份判断。
 - 已新增 `usePageRuntime()`、`PageRuntimeHost` 和统一 `src/core/components/loading`，页面显式接入 runtime 并维护本页单例 loading。
@@ -128,13 +135,14 @@
 - 已将主包 tab 页面导航栏切到 `navigationStyle: 'custom'`，由 `PageLayout` 统一处理状态栏和微信胶囊避让。
 - 已新增 `yarn check:main-package:build`，通过 `HKITTY_MP_OUTPUT_ROOT=.dist-check/main-package` 隔离构建并检测主包体积，不覆盖 `dist/`。
 - 已新增 `pkg-member/pages/member-code` 会员码页面，使用 `weapp-qrcode` 生成二维码，服务层读取 `/api/bff/crm/member-code` 的 `qrContent`，页面按 30 秒自动刷新；页面内底部 tabbar 中间会员码按钮已跳转到该分包页。
-- 已新增 `pkg-member/pages/coupon-center` 领券中心页面，首页第二个快捷入口登录后进入该页；页面顶部“好券推荐 / K币兑换”放入 `PageHeader`，当前 mock 返回空券列表并展示无可领取或可兑换优惠券空态。
-- `pkg-member/pages/coupons` 已改为“我的优惠券”页，顶部“已领取 / 已使用 / 已过期”放入 `PageHeader`，券面按接口字段渲染，底部固定“获取更多好券”跳领券中心，mock id 已改为数字字符串，券使用类型使用数字枚举 `useType`。线上券点击进入 `mallProducts?couponId=...`，商品列表通过 `fetchCouponApplicableProductsData(couponId)` mock 独立“券适用商品”接口，线下或未知类型兜底进入会员码。
+- `pkg-member/pages/coupon-center` 领券中心页面已改读 `GET /api/bff/member/coupon-packages`，可领取券调用 `POST /api/bff/promotion/coupons/claim`，兑换码页签调用 `POST /api/bff/promotion/coupons/exchange`；不再使用 CRM 入口或本地券数据冒充领券中心。
+- `pkg-member/pages/coupons` “我的优惠券”页已改读 `GET /api/bff/member/coupons`，顶部“已领取 / 已使用 / 已过期”按真实券资产归类，底部“获取更多好券”跳领券中心；接口失败进入异常态，不再回退旧本地券。
 - 已新增 `pkg-member/pages/member-growth` 和 `pkg-member/pages/member-growth-detail` 会员权益 / 成长值独立页面；首页、我的页、会员中心和权益/成长值页统一读取会员资料中的 `levelId / levelNo / levelName / growthValue / avatarUrl`，头像通过 `resolveMemberAvatar()` 统一兜底，主包“我的”页会员卡、会员等级标签和“会员权益”服务行，首页会员 banner / 会员福利卡，以及会员分包首页“会员权益”分区项均进入会员权益页，会员权益按等级数据渲染 swiper 权益图，权益页成长值按钮进入独立明细页，成长值页展示 mock 记录或统一空态，两个页面分别承载对应规则弹层，复杂视觉图用 `AppImage` 空图占位等待接口或素材替换。
 - 首页广告已切到后端聚合数据：`index_top_banner/index_nav_grid/index_schedule/index_hot_project/index_activity/index_recommend/index_member_benefit/index_play_life` 覆盖对应楼层，八大导航现在渲染后台标题和图标，点击统一走 `src/core/utils/ad-click.ts`；首页广告点击到活动/项目/节目单详情页时必须把后端广告 `id` 写入路由，详情页再调用 `/api/bff/content/mini-program/ads/{id}`，正文只把后端 `richTextHtml/richText` 原文传给小程序 `RichText`。
 - 首页楼层“查看全部”已改为路由参数携带 `slotCode/title`，热玩项目列表和活动/推荐列表直接调用 `/api/bff/content/mini-program/slots/{slotCode}/ads`；`src/pkg-ticket/services/activity.ts` 和 `src/pkg-ticket/services/park-list.ts` 已删除旧本地列表 mock，空数组进入页面空态，接口失败进入异常态。
 - 2026-06-08 已通过后台真实接口补齐 `pagecode=index` 首页资源位：顶部 Banner 5、八大导航 8、节目单 1、热门项目 2、精选活动 1、精彩推荐 2、会员福利 1、吃喝玩乐 9；小程序 `yarn typecheck` 已通过，BFF 无小程序登录态直接回读为空，最终需在微信开发工具确认授权后接口返回、首页渲染和广告详情页回查。
 - 2026-06-09 已按后端 `uat` 最新会员授权接口重接小程序会员链路：`login` 只换 BFF token，`member/status` 统一判断并缓存会员登录态；受保护入口只读 `rootStore.isLoggedIn` 拦截，未登录缓存态不再重复调用 login/memberStatus；微信手机号授权调用 `/api/bff/auth/mini-program/phone/authorize`；登录弹窗删除微信资料登录和本地会员登录；个人信息页新增退出登录；会员资料、头像上传、会员码和会员中心首页删除本地会员 mock 兜底；CRM 入口路径改为 `/api/bff/crm/entries/**`。
+- 2026-06-13 已按后端 `uat` 会员券和订单最新批次重接小程序券消费闭环：`src/core/services/bff-api.ts` 补会员券、券包、领券、兑换码、退款退券；`src/pkg-member/services/coupons.ts`、`coupon-center.ts`、`exchange.ts` 删除旧券/兑换假成功；门票预定读取真实会员券资产作为候选券，确认订单提交 `selectedCouponNos` 到 `POST /api/bff/orders`，订单详情展示后端 `ticketVouchers`；K 币商品兑换、退款退券自动触发、后台券包编排一致性写入 `docs/codex/api-requirements/coupon-service.md`。
 
 ## 当前待验证
 
@@ -142,6 +150,10 @@
 - 在微信开发工具中验证启动默认 `login -> member/status`，以及 `rootStore.memberInfo` 驱动首页/我的/会员中心/会员权益/个人信息页头像昵称手机号自动刷新。
 - 在微信开发工具中验证受保护入口：启动已缓存未登录态时，点击会员码/订单/地址/购物车等入口应直接弹登录弹窗，不再重复触发 login/memberStatus；手机号授权 `getPhoneNumber` 返回 `code` 后调用 `/api/bff/auth/mini-program/phone/authorize`，成功后用当前 token 刷新 `member/status`；旧 `encryptedData/iv` 不作为登录凭证。
 - 在微信开发工具中用真实登录态验证登出、支付预下单、促销试算等签名写接口 header 和后端响应。
+- 在微信开发工具中验证“我的优惠券”调用 `/api/bff/member/coupons`，状态归类正确，接口失败进入页面异常态。
+- 在微信开发工具中验证“领券中心”调用 `/api/bff/member/coupon-packages`，点击可领取券提交 `/api/bff/promotion/coupons/claim`，成功后刷新券包列表。
+- 在微信开发工具中验证兑换码页签提交 `/api/bff/promotion/coupons/exchange`，无效码展示后端业务错误，不出现本地假成功。
+- 在微信开发工具中验证门票预定页读取真实会员券资产、结算页选择优惠券、创建订单请求体携带 `selectedCouponNos`，订单详情展示后端 `ticketVouchers`。
 - 在微信开发工具网络面板确认购票列表、购票资源位、单 CMS 资源位、首页广告聚合和资源位广告列表均携带小程序 `Authorization`，并目视确认购票页失败兜底、首页资源位渲染和列表空态。
 - 验证首页优惠券数量、签到/会员入口登录弹窗续执行、会员码二维码 canvas 和 30 秒刷新。
 - 验证 `withLoading` 只显示当前页面唯一 loading，不跨页面残留或重叠。
@@ -157,6 +169,7 @@ yarn dev:weapp
 
 ```bash
 yarn typecheck
+yarn check:page-convention
 yarn check:package-boundary
 yarn check:main-package:build
 ```

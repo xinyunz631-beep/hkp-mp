@@ -1,10 +1,13 @@
 import { useMemo, useState } from 'react';
-import { Text, View } from '@tarojs/components';
+import { Input, Text, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
 import { PageHeader, PageShell } from '@/core/components/PageShell';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
+import { resolveErrorMessage } from '@/core/utils/error-message';
 import { showWechatToast } from '@/core/utils/wechat-actions';
 import {
+  claimMemberCouponCenterCoupon,
+  exchangeMemberCouponCode,
   fetchMemberCouponCenterData,
   type MemberCouponCenterCoupon,
   type MemberCouponCenterData,
@@ -23,12 +26,16 @@ function resolveVisibleCoupons(coupons: MemberCouponCenterCoupon[], activeTabKey
 const MemberCouponCenterPage = observer(function MemberCouponCenterPage() {
   const [pageData, setPageData] = useState<MemberCouponCenterData>();
   const [activeTabKey, setActiveTabKey] = useState<MemberCouponCenterTabKey>(DEFAULT_TAB_KEY);
+  const [exchangeCode, setExchangeCode] = useState('');
+
+  async function loadPageData() {
+    const nextData = await fetchMemberCouponCenterData();
+    setPageData(nextData);
+    setActiveTabKey(nextData.tabs[0]?.key ?? DEFAULT_TAB_KEY);
+  }
+
   const pageRuntime = usePageRuntime({
-    initPage: async () => {
-      const nextData = await fetchMemberCouponCenterData();
-      setPageData(nextData);
-      setActiveTabKey(nextData.tabs[0]?.key ?? DEFAULT_TAB_KEY);
-    },
+    initPage: loadPageData,
     loginRequired: true,
     loginReason: '登录后可进入领券中心',
   });
@@ -43,9 +50,42 @@ const MemberCouponCenterPage = observer(function MemberCouponCenterPage() {
     setActiveTabKey(tabKey);
   }
 
-  // 点击券项时按当前券类型给出领取或兑换反馈，真实接口接入后替换为提交动作。
+  // 点击券项时调用真实领券接口，成功后刷新可领取列表和会员券资产。
   async function handleCouponPress(coupon: MemberCouponCenterCoupon) {
-    await showWechatToast(coupon.tabKey === 'kcoin' ? '兑换成功' : '领取成功', 'success');
+    if (!coupon.claimable) {
+      await showWechatToast(coupon.reason || '当前优惠券不可领取');
+      return;
+    }
+
+    try {
+      await pageRuntime.withLoading(async () => {
+        await claimMemberCouponCenterCoupon(coupon);
+        await loadPageData();
+      });
+      await showWechatToast('领取成功', 'success');
+    } catch (error) {
+      await showWechatToast(resolveErrorMessage(error, '领取失败，请稍后再试'));
+    }
+  }
+
+  // 提交优惠券兑换码，兑换成功后进入我的优惠券资产。
+  async function handleExchangeSubmit() {
+    const nextExchangeCode = exchangeCode.trim();
+    if (!nextExchangeCode) {
+      await showWechatToast('请输入兑换码');
+      return;
+    }
+
+    try {
+      await pageRuntime.withLoading(async () => {
+        await exchangeMemberCouponCode(nextExchangeCode);
+        await loadPageData();
+      });
+      setExchangeCode('');
+      await showWechatToast('兑换成功', 'success');
+    } catch (error) {
+      await showWechatToast(resolveErrorMessage(error, '兑换失败，请稍后再试'));
+    }
   }
 
   return pageRuntime.renderPage(() => {
@@ -74,10 +114,30 @@ const MemberCouponCenterPage = observer(function MemberCouponCenterPage() {
           </PageHeader>
 
           <View className="_pg-content">
-            {visibleCoupons.length > 0 ? (
+            {activeTabKey === 'exchangeCode' ? (
+              <View className="_pg-exchange">
+                <Text className="_pg-exchange_title">输入兑换码</Text>
+                <View className="_pg-exchange_field">
+                  <Input
+                    className="_pg-exchange_input"
+                    value={exchangeCode}
+                    placeholder="请输入优惠券兑换码"
+                    maxlength={32}
+                    onInput={(event) => setExchangeCode(event.detail.value)}
+                  />
+                </View>
+                <View className="_pg-exchange_button" onClick={() => void handleExchangeSubmit()}>
+                  <Text>立即兑换</Text>
+                </View>
+              </View>
+            ) : visibleCoupons.length > 0 ? (
               <View className="_pg-list">
                 {visibleCoupons.map((coupon) => (
-                  <View className="_pg-coupon-card" key={coupon.id} onClick={() => void handleCouponPress(coupon)}>
+                  <View
+                    className={`_pg-coupon-card ${coupon.claimable ? '' : '_pg-coupon-card--disabled'}`}
+                    key={coupon.id}
+                    onClick={() => void handleCouponPress(coupon)}
+                  >
                     <View className="_pg-coupon-card_main">
                       <Text className="_pg-coupon-card_amount">{coupon.amountText}</Text>
                       <Text className="_pg-coupon-card_title">{coupon.title}</Text>

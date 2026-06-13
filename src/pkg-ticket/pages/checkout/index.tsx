@@ -8,13 +8,15 @@ import { CouponSelectionPopup, QuantityStepper } from '@/core/components/commerc
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { PageShare, PageShell } from '@/core/components/PageShell';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
+import { resolveErrorMessage } from '@/core/utils/error-message';
 import { navigateBackInPageStack, navigateToMiniRoute } from '@/core/utils/navigation';
-import { showWechatConfirm, showWechatToast } from '@/core/utils/wechat-actions';
+import { requestWechatPayment, showWechatConfirm, showWechatToast } from '@/core/utils/wechat-actions';
 import { TicketSubmitFooter } from '@/pkg-ticket/components/TicketSubmitFooter';
 import { fetchCheckoutData, type TicketCheckoutPageData } from '@/pkg-ticket/services/checkout';
 import {
   submitTicketOrderDraft,
   updateTicketOrderDraft,
+  type TicketOrderSubmitResult,
   type TicketOrderTraveler,
 } from '@/pkg-ticket/services/order-draft';
 import './index.scss';
@@ -88,6 +90,14 @@ function isTravelerComplete(traveler: TicketOrderTraveler) {
 
 function getTravelerTabTitle(traveler: TicketOrderTraveler, index: number) {
   return traveler.category === 'annualCard' ? `持卡人${index + 1}` : `游客${index + 1}`;
+}
+
+// 判断门票订单是否已由后端完成免支付出票，避免重复拉起微信支付。
+function isTicketOrderReady(order: TicketOrderSubmitResult) {
+  return Boolean(
+    (order.ticketVouchers?.length ?? 0) > 0
+    || ['WAIT_USE', 'PART_USED', 'USED', 'FULFILLED', 'COMPLETED'].includes(order.orderStatus || ''),
+  );
 }
 
 const CheckoutPage = observer(function CheckoutPage() {
@@ -313,6 +323,11 @@ const CheckoutPage = observer(function CheckoutPage() {
 
     if (!await validateTravelers(nextTravelers)) return;
 
+    if (addonQuantity > 0) {
+      await showWechatToast('套餐暂不可随票下单，请先提交门票');
+      return;
+    }
+
     setContactForm(nextContact);
     setTravelerForms(nextTravelers);
     updateTicketOrderDraft(draftId, {
@@ -321,27 +336,63 @@ const CheckoutPage = observer(function CheckoutPage() {
     });
 
     const confirmed = await showWechatConfirm({
-      title: '确认支付',
-      content: `已核对 ${nextTravelers.length} 位实名出游人，本次需支付 ¥${payAmount.toFixed(2)}。`,
-      confirmText: '确认支付',
+      title: '确认提交',
+      content: `已核对 ${nextTravelers.length} 位实名出游人，本次订单金额 ¥${payAmount.toFixed(2)}。`,
+      confirmText: '提交订单',
     });
     if (!confirmed) return;
 
-    const nextOrder = submitTicketOrderDraft(draftId, {
-      selectedDate,
-      selectedCouponId: selectedCouponUsable ? selectedCouponId : undefined,
-      addonQuantity,
-      contact: nextContact,
-      travelers: nextTravelers,
-    });
+    try {
+      const nextOrder = await pageRuntime.withLoading(() => submitTicketOrderDraft(draftId, {
+        selectedDate,
+        selectedCouponId: selectedCouponUsable ? selectedCouponId : undefined,
+        addonQuantity,
+        contact: nextContact,
+        travelers: nextTravelers,
+      }));
 
-    if (!nextOrder) {
-      await showWechatToast('订单提交失败，请重新选择门票');
+      if (!nextOrder) {
+        await showWechatToast('订单提交失败，请重新选择门票');
+        return;
+      }
+
+      if (isTicketOrderReady(nextOrder)) {
+        await showWechatToast('订单已提交', 'success');
+        navigateToMiniRoute(`${MINI_PACKAGE_ROUTES.orderDetail}?orderId=${encodeURIComponent(nextOrder.id)}`);
+        return;
+      }
+
+      const paymentParams = nextOrder.prepay?.paymentParams || nextOrder.prepay?.payParams;
+      const paymentSkipped = nextOrder.prepay?.paymentSkipped;
+      if (paymentSkipped) {
+        await showWechatToast('订单已提交', 'success');
+        navigateToMiniRoute(`${MINI_PACKAGE_ROUTES.orderDetail}?orderId=${encodeURIComponent(nextOrder.id)}`);
+        return;
+      }
+
+      if (nextOrder.payableAmount > 0 && !paymentParams) {
+        await showWechatToast('支付参数暂不可用，请稍后继续支付');
+        navigateToMiniRoute(`${MINI_PACKAGE_ROUTES.orderDetail}?orderId=${encodeURIComponent(nextOrder.id)}`);
+        return;
+      }
+
+      const paymentStatus = nextOrder.payableAmount > 0
+        ? await requestWechatPayment({
+          title: '微信支付',
+          amount: nextOrder.payableAmount,
+          paymentParams: paymentParams as Parameters<typeof requestWechatPayment>[0]['paymentParams'],
+          allowPending: true,
+        })
+        : 'success';
+
+      if (paymentStatus === 'failed') return;
+
+      await showWechatToast(paymentStatus === 'success' ? '支付成功' : '订单已提交，可稍后继续支付', 'success');
+      navigateToMiniRoute(`${MINI_PACKAGE_ROUTES.orderDetail}?orderId=${encodeURIComponent(nextOrder.id)}`);
+    } catch (error) {
+      await showWechatToast(resolveErrorMessage(error, '订单提交失败，请稍后再试'));
       return;
     }
-
-    await showWechatToast('支付成功', 'success');
-    navigateToMiniRoute(`${MINI_PACKAGE_ROUTES.orderDetail}?orderId=${encodeURIComponent(nextOrder.id)}`);
   }
 
   return pageRuntime.renderPage(() => {
@@ -402,7 +453,7 @@ const CheckoutPage = observer(function CheckoutPage() {
                 </View>
                 <View className="_pg-item_notice">
                   <AppIcon name="code" size={14} color="#d94a88" />
-                  <Text>支付成功后生成订单入园码，也可凭购票证件核验入园。</Text>
+                  <Text>提交成功后生成订单入园码，也可凭购票证件核验入园。</Text>
                 </View>
                 <View className="_pg-product-list">
                   {selectedProducts.map((product) => (

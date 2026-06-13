@@ -79,6 +79,12 @@ export interface OrderDetailFieldData {
   value: string;
 }
 
+export interface OrderDetailVoucherData {
+  id: string;
+  codeText: string;
+  imageUrl?: string;
+}
+
 export interface OrderDetailData {
   id: string;
   statusText: string;
@@ -89,6 +95,7 @@ export interface OrderDetailData {
   quantityText: string;
   productFields: OrderDetailFieldData[];
   ticketFields: OrderDetailFieldData[];
+  ticketVouchers?: OrderDetailVoucherData[];
   contactFields: OrderDetailFieldData[];
   amountFields: OrderDetailFieldData[];
   orderFields: OrderDetailFieldData[];

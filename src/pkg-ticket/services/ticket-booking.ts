@@ -1,6 +1,6 @@
 import { HKP_PARK_LOCATION } from '@/core/constants/park-location';
-import { withServiceFallback } from '@/core/services/mock';
-import { ticketCoupons, ticketDates } from './mock-data';
+import { fetchBffMemberCoupons, type BffMemberCouponAsset } from '@/core/services/bff-api';
+import { ticketDates } from './mock-data';
 import {
   fetchPurchaseMenus,
   fetchPurchaseResources,
@@ -129,11 +129,7 @@ const ticketBookingData: TicketBookingData = {
   },
   dates: ticketDates,
   sections: [],
-  coupons: ticketCoupons.map((coupon) => ({
-    ...coupon,
-    minimumAmount: 230,
-    discountAmount: 30,
-  })),
+  coupons: [],
   products: [
     {
       id: '4000000000001001',
@@ -437,6 +433,45 @@ function resolvePrice(priceCent?: number) {
   return Math.max(0, Number(priceCent) / 100);
 }
 
+function formatCentAmount(amountCent?: number) {
+  const amount = resolvePrice(amountCent);
+  if (amount <= 0) return '优惠';
+
+  return Number.isInteger(amount) ? `${amount}元` : `${amount.toFixed(2)}元`;
+}
+
+function formatCouponValidDate(value?: string) {
+  return value ? value.slice(0, 10).replace(/-/g, '.') : '';
+}
+
+function normalizeTicketCoupon(coupon: BffMemberCouponAsset): TicketCoupon | undefined {
+  if (!coupon.couponNo || coupon.status !== 'AVAILABLE') return undefined;
+  if (coupon.sceneType && coupon.sceneType !== 'TICKET' && coupon.sceneType !== 'ALL') return undefined;
+
+  const minimumAmount = resolvePrice(coupon.thresholdAmountCent);
+  const discountAmount = resolvePrice(coupon.discountAmountCent);
+  const validEndAt = formatCouponValidDate(coupon.validEndAt);
+
+  return {
+    id: coupon.couponNo,
+    title: coupon.couponName || '门票优惠券',
+    amountText: formatCentAmount(coupon.discountAmountCent),
+    thresholdText: minimumAmount > 0 ? `满${minimumAmount}元可用` : '无门槛可用',
+    validityText: validEndAt ? `有效期至 ${validEndAt}` : '有效期以券规则为准',
+    status: 'available',
+    tag: coupon.reason || '可用',
+    minimumAmount,
+    discountAmount,
+  };
+}
+
+async function fetchTicketCoupons() {
+  const response = await fetchBffMemberCoupons({ status: 'AVAILABLE' });
+  return (response.coupons ?? [])
+    .map(normalizeTicketCoupon)
+    .filter((coupon): coupon is TicketCoupon => Boolean(coupon));
+}
+
 // 将购票列表 BFF 字段归一为页面票种模型。
 function normalizePurchaseMenuItem(item: PurchaseMenuApiItem): TicketProduct | undefined {
   if (!item.menuNo || !item.menuName || !isEnabledApiItem(item.status)) return undefined;
@@ -503,12 +538,11 @@ function buildTicketBookingDataFromApi(
   fallback: TicketBookingData,
   menus: PurchaseMenuApiItem[],
   resources: CmsResourceSlotApiItem[],
+  coupons: TicketCoupon[],
 ) {
   const products = menus
     .map(normalizePurchaseMenuItem)
     .filter((item): item is TicketProduct => Boolean(item));
-
-  if (!products.length) return fallback;
 
   const heroImages = resolveHeroImages(resources, fallback);
 
@@ -519,19 +553,21 @@ function buildTicketBookingDataFromApi(
       heroImages,
       imageCount: heroImages.filter(Boolean).length || fallback.parkInfo.imageCount,
     },
-    sections: buildSectionsFromProducts(products, fallback),
+    sections: products.length ? buildSectionsFromProducts(products, fallback) : [],
     products,
+    packages: [],
+    coupons,
   };
 }
 
-// 获取门票预定页面数据，优先使用后端登录态 GET，失败时回落到本地兜底。
-export function fetchTicketBookingData(options: FetchTicketBookingDataOptions = {}) {
+// 获取门票预定页面数据，票种和优惠券均来自真实 BFF 接口，不再回退本地券。
+export async function fetchTicketBookingData(options: FetchTicketBookingDataOptions = {}) {
   const fallback = buildTicketBookingData(options);
+  const [menus, resources, coupons] = await Promise.all([
+    fetchPurchaseMenus(),
+    fetchPurchaseResources().catch(() => []),
+    fetchTicketCoupons(),
+  ]);
 
-  return withServiceFallback(async () => {
-    const menus = await fetchPurchaseMenus();
-    const resources = await fetchPurchaseResources().catch(() => []);
-
-    return buildTicketBookingDataFromApi(fallback, menus, resources);
-  }, fallback);
+  return buildTicketBookingDataFromApi(fallback, menus, resources, coupons);
 }

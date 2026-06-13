@@ -1,9 +1,9 @@
+import { exchangeBffCoupon } from '@/core/services/bff-api';
 import {
   fetchBffCrmP1Exchanges,
   fetchBffCrmP1Item,
   type BffCrmP1ConfigItem,
 } from '@/core/services/bff-crm-api';
-import { resolveMockData, withServiceFallback } from '@/core/services/mock';
 
 export interface MemberExchangeProduct {
   id: string;
@@ -15,6 +15,7 @@ export interface MemberExchangeProduct {
   stock: number;
   detailHtml: string;
   liked: boolean;
+  exchangeCode?: string;
 }
 
 export interface MemberExchangeListData {
@@ -26,123 +27,66 @@ export interface MemberExchangeDetailData {
   memberKCoins: number;
 }
 
-const exchangeImageSrc = 'https://hellokitty-uat.yoursite.xin/ng/2f87c96ee684f066feab967a35f2ef9b.jpg';
+interface ExchangeExtraPayload {
+  exchangeCode?: string;
+  memberKCoins?: number;
+}
 
-const exchangeProducts: MemberExchangeProduct[] = [
-  {
-    id: '6000000000001001',
-    title: 'KT城堡酒店公主系列圆形小挎包',
-    imageSrc: exchangeImageSrc,
-    kCoinPrice: 169,
-    originalKCoinPrice: 169,
-    exchangedCount: 184,
-    stock: 101,
-    detailHtml: '<div><p>一经兑换，概不退换</p></div>',
-    liked: false,
-  },
-  {
-    id: '6000000000001002',
-    title: 'KT城堡酒店公主系列毛绒双肩包',
-    imageSrc: exchangeImageSrc,
-    kCoinPrice: 199,
-    originalKCoinPrice: 199,
-    exchangedCount: 128,
-    stock: 86,
-    detailHtml: '<div><p>兑换商品以实际库存为准，一经兑换，概不退换。</p></div>',
-    liked: false,
-  },
-  {
-    id: '6000000000001003',
-    title: 'MM精灵森林限量款采用珍珠手链',
-    imageSrc: exchangeImageSrc,
-    kCoinPrice: 499,
-    originalKCoinPrice: 499,
-    exchangedCount: 72,
-    stock: 45,
-    detailHtml: '<div><p>限量周边兑换后不支持退换，请确认库存和数量后提交。</p></div>',
-    liked: false,
-  },
-  {
-    id: '6000000000001004',
-    title: 'KT精灵森林限量款采用银色项链',
-    imageSrc: exchangeImageSrc,
-    kCoinPrice: 699,
-    originalKCoinPrice: 699,
-    exchangedCount: 51,
-    stock: 28,
-    detailHtml: '<div><p>商品兑换成功后将进入订单处理流程，详情以会员中心记录为准。</p></div>',
-    liked: false,
-  },
-  {
-    id: '6000000000001005',
-    title: 'MM精灵森林限量款采用双人项链',
-    imageSrc: exchangeImageSrc,
-    kCoinPrice: 699,
-    originalKCoinPrice: 699,
-    exchangedCount: 63,
-    stock: 32,
-    detailHtml: '<div><p>请在兑换前确认收货信息，兑换后不支持撤销。</p></div>',
-    liked: false,
-  },
-  {
-    id: '6000000000001006',
-    title: 'KT精灵森林限定银色手镯',
-    imageSrc: exchangeImageSrc,
-    kCoinPrice: 899,
-    originalKCoinPrice: 899,
-    exchangedCount: 39,
-    stock: 19,
-    detailHtml: '<div><p>限定商品数量有限，兑换完成后库存实时扣减。</p></div>',
-    liked: false,
-  },
-];
+function readExchangeExtraPayload(item: BffCrmP1ConfigItem): ExchangeExtraPayload {
+  if (!item.extraPayload) return {};
 
-const defaultExchangeProduct = exchangeProducts[0];
-const exchangeProductMap = exchangeProducts.reduce<Record<string, MemberExchangeProduct>>((map, product) => {
-  map[product.id] = product;
-  return map;
-}, {});
+  try {
+    return JSON.parse(item.extraPayload) as ExchangeExtraPayload;
+  } catch {
+    return {};
+  }
+}
 
 function toExchangeProduct(item: BffCrmP1ConfigItem): MemberExchangeProduct {
   const price = item.pointsCost || 0;
+  const extraPayload = readExchangeExtraPayload(item);
 
   return {
     id: item.itemNo,
     title: item.itemName,
-    imageSrc: item.imageUrl || exchangeImageSrc,
+    imageSrc: item.imageUrl || '',
     kCoinPrice: price,
-    originalKCoinPrice: price,
+    originalKCoinPrice: item.originalPriceCent ? Math.round(item.originalPriceCent / 100) : price,
     exchangedCount: Math.max(Number(item.stockTotal || 0) - Number(item.stockAvailable || 0), 0),
     stock: Number(item.stockAvailable || 0),
     detailHtml: `<div><p>${item.description || item.subtitle || '兑换商品以实际配置为准。'}</p></div>`,
     liked: false,
+    exchangeCode: extraPayload.exchangeCode,
   };
 }
 
-export function fetchMemberExchangeListData() {
-  return withServiceFallback(async () => {
-    const products = (await fetchBffCrmP1Exchanges()).map(toExchangeProduct);
-    return {
-      products,
-    };
-  }, {
-    products: exchangeProducts,
-  });
+// 获取会员兑换专区真实入口，接口失败直接进入页面异常态。
+export async function fetchMemberExchangeListData() {
+  const products = (await fetchBffCrmP1Exchanges()).map(toExchangeProduct);
+  return { products };
 }
 
-export function fetchMemberExchangeDetailData(productId = '') {
-  const fallbackData = {
-    product: exchangeProductMap[productId] ?? defaultExchangeProduct,
-    memberKCoins: 1288,
+// 获取兑换商品详情，不再按本地默认商品兜底。
+export async function fetchMemberExchangeDetailData(productId = '') {
+  if (!productId) {
+    throw new Error('兑换商品暂不可用');
+  }
+
+  const item = await fetchBffCrmP1Item(productId);
+  const product = toExchangeProduct(item);
+  const extraPayload = readExchangeExtraPayload(item);
+
+  return {
+    product,
+    memberKCoins: extraPayload.memberKCoins || 0,
   };
+}
 
-  if (!productId) return resolveMockData<MemberExchangeDetailData>(fallbackData);
+// 使用后端提供的真实兑换码兑换优惠券；没有兑换码时不得模拟成功。
+export function submitMemberExchangeProduct(product: MemberExchangeProduct) {
+  if (!product.exchangeCode) {
+    throw new Error('当前商品暂不可兑换');
+  }
 
-  return withServiceFallback(async () => {
-    const item = await fetchBffCrmP1Item(productId);
-    return {
-      product: toExchangeProduct(item),
-      memberKCoins: 1288,
-    };
-  }, fallbackData);
+  return exchangeBffCoupon(product.exchangeCode);
 }

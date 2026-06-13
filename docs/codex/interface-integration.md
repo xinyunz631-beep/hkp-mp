@@ -18,6 +18,7 @@
 | `BE-2026-06-07-mini-program-ads` | `6fbe8f8`、`31cabcb`、`936aa38`、`00486d4` | 后续变更：`backend-server/release-records/frontend-api/changes/2026-06-07-mini-program-ads.md`、`backend-server/release-records/frontend-api/changes/2026-06-07-bff-mini-program-auth-restore.md`、`backend-server/release-records/frontend-api/mini-program-api.md` | 后端新增小程序广告聚合和单广告详情接口，并在 2026-06-07 恢复小程序 BFF 业务接口鉴权；首页广告、购票列表和购票资源位 GET 均需先完成小程序授权并携带 `Authorization`，不需要签名；广告字段补齐 `id/pageId/slotId/fieldConfig/adName/backgroundImage/materialImage/iconImage/jumpPath` 等前端字段；广告真实接口链路不允许失败回旧本地内容 |
 | `BE-2026-06-08-mini-program-slot-ads` | `b77d398` | 后续变更：`backend-server/release-records/frontend-api/changes/2026-06-08-mini-program-slot-ads.md` | 后端新增 `/api/bff/content/mini-program/slots/{slotCode}/ads`，首页“查看更多”列表页可按资源位编码直查可见广告；小程序列表页已移除旧本地 mock，空数组进入空态，接口错误进入异常态 |
 | `BE-2026-06-08-member-auth-status` | `30d37b1`、`348945c`、`29efdf7`、`5473fe3`、`da1b529` | 后续变更：`backend-server/release-records/frontend-api/changes/2026-06-08-mini-program-phone-authorize.md`、`2026-06-08-bff-member-identity-hardening.md`、`2026-06-08-bff-member-status-upload.md`、`2026-06-08-bff-crm-entry-rename.md`、`mini-program-api.md` | 小程序登录只换 BFF token，会员登录态统一由 `GET /api/bff/auth/member/status` 的 `memberLoggedIn/memberInfo.phone` 判断；启动默认 `login -> member/status` 缓存 MobX `memberInfo`，受保护入口只读 `rootStore.isLoggedIn` 做弹窗拦截，不主动重复 login/memberStatus；手机号授权后和资料更新后用当前 session 刷新 `member/status`；登录弹窗只保留微信手机号授权；会员资料/会员码/会员中心链路不再失败回旧 mock；CRM 入口路径从 `/crm/p1/**` 改为 `/crm/entries/**`；前端不再传/读 `memberNo/openId/userId/channelOpenId/payerId` |
+| `BE-2026-06-13-member-coupon-assets` | `0a33cfe`、`2569e74`、`4080957`、`06ef472` | 后续变更：`backend-server/release-records/frontend-api/changes/2026-06-13-bff-member-coupon-assets.md`、`2026-06-13-bff-order-confirm-error-propagation.md`、`2026-06-13-ticket-order-payment-bypass.md`、`mini-program-api.md` | 小程序会员券资产、可领取券包、领券、兑换码、退款退券 service、门票结算候选券和带券统一下单已按真实 BFF 接入；门票下单改走 `POST /api/bff/orders` 并提交 `selectedCouponNos`，创建成功后承接后端 `WAIT_USE/ticketVouchers`，不再本地伪造订单或支付成功；K 币商品兑换、退款退券自动触发、后台券包编排一致性仍需后端补齐或确认 |
 
 ## BFF 主接口落地表
 
@@ -37,14 +38,19 @@
 | 锁定优惠 | `POST /api/bff/promotion/lock` | 登录态 + HMAC 签名 | `src/core/services/bff-api.ts` | service 已接入，待下单链路使用；Feishu BFF 转换稿漏写 body，按 uat 源码和内部 promotion 文档保留请求体 |
 | 核销优惠 | `POST /api/bff/promotion/confirm` | 登录态 + HMAC 签名 | `src/core/services/bff-api.ts` | service 已接入，待支付成功链路使用；Feishu BFF 转换稿漏写 body，按 uat 源码和内部 promotion 文档保留请求体 |
 | 释放优惠 | `POST /api/bff/promotion/release` | 登录态 + HMAC 签名 | `src/core/services/bff-api.ts` | service 已接入，待订单取消/超时链路使用；Feishu BFF 转换稿漏写 body，按 uat 源码和内部 promotion 文档保留请求体 |
-| 可用优惠券 | `GET /api/bff/promotion/coupons/available` | 登录态 | `src/core/services/bff-api.ts` | service 已接入，待结算页真实券列表替换 mock |
+| 可用优惠券 | `GET /api/bff/promotion/coupons/available` | 登录态 | `src/core/services/bff-api.ts` | service 已接入；门票结算本阶段先用会员券资产列表筛选候选券，待后端确认该接口是精确试算还是候选券查询 |
+| 会员券资产 | `GET /api/bff/member/coupons` | 登录态 | `src/core/services/bff-api.ts`、`src/pkg-member/services/coupons.ts`、`src/pkg-ticket/services/ticket-booking.ts` | 我的优惠券和门票结算候选券已接入；页面不再失败回旧本地券 |
+| 会员可领券包 | `GET /api/bff/member/coupon-packages` | 登录态 | `src/core/services/bff-api.ts`、`src/pkg-member/services/coupon-center.ts` | 领券中心已接入；当前后端由 promotion 券模板同源生成券包，后台券包编排一致性见缺口文档 |
+| 领取优惠券 | `POST /api/bff/promotion/coupons/claim` | 登录态 + HMAC 签名 | `src/core/services/bff-api.ts`、`src/pkg-member/pages/coupon-center/index.tsx` | 已接入真实领取；成功后刷新券包列表 |
+| 兑换码兑券 | `POST /api/bff/promotion/coupons/exchange` | 登录态 + HMAC 签名 | `src/core/services/bff-api.ts`、`src/pkg-member/pages/coupon-center/index.tsx`、`src/pkg-member/services/exchange.ts` | 已接入兑换码；兑换专区没有真实 `exchangeCode` 时阻断，不做 K 币商品假兑换 |
+| 退款退券 | `POST /api/bff/promotion/coupons/refund-return` | 登录态 + HMAC 签名 | `src/core/services/bff-api.ts` | service 已补齐，订单退款触发口径待后端确认 |
 | 节假日同步 | `POST /api/bff/xxl-job/holiday/sync` | 登录态 + HMAC 签名 | `src/core/services/bff-api.ts` | service 已接入，仅作受控调试入口，不建议普通页面暴露 |
 
 ## 购票/CMS 后续变更落地表
 
 | 页面/能力 | 接口 | 鉴权模式 | 字段归一 | 适配状态 | 验证状态 |
 | --- | --- | --- | --- | --- | --- |
-| 门票预定列表 | `GET /api/bff/purchase/menus?sceneType=TICKET` | 登录态 GET，不需要签名 | `menuNo -> id`，`menuName -> title`，`subtitle -> description`，`priceCent / 100 -> price`，`badgeText -> tags` | 已接入 `src/pkg-ticket/services/ticket-booking.ts`，由默认 request 先拿 token；失败兜底本地数据 | 待微信开发工具网络面板确认携带 `Authorization` |
+| 门票预定列表 | `GET /api/bff/purchase/menus?sceneType=TICKET` | 登录态 GET，不需要签名 | `menuNo -> id`，`menuName -> title`，`subtitle -> description`，`priceCent / 100 -> price`，`badgeText -> tags` | 已接入 `src/pkg-ticket/services/ticket-booking.ts`，由默认 request 先拿 token；接口失败进入页面异常态，空商品展示业务空态，不再回退本地票种 | 待微信开发工具网络面板确认携带 `Authorization` |
 | 门票详情 | `GET /api/bff/purchase/menus/{menuNo}` | 登录态 GET，不需要签名 | 详情字段暂按列表项复用，缺失字段由页面已有规则兜底 | `src/pkg-ticket/services/purchase-api.ts` 已接 service；待详情/下单链路接入 | 待验证 |
 | 购票页资源位 | `GET /api/bff/purchase/resources?sceneType=TICKET&pageCode=PURCHASE_HOME` | 登录态 GET，不需要签名 | `mobileImageUrl/imageUrl -> heroImages`，缺图沿用本地兜底 | 已接入 `src/pkg-ticket/services/ticket-booking.ts`，由默认 request 先拿 token；资源位失败时只回退图片，不阻断购票列表真实数据 | 待微信开发工具目视验证和网络面板确认携带 `Authorization` |
 | CMS 单资源位 | `GET /api/bff/cms/resources/{slotCode}` | 登录态 GET，默认携带 `Authorization` | `slotCode` 作为资源位稳定 key | `src/pkg-ticket/services/purchase-api.ts` 已接 service；暂无页面直接依赖；后端 `c06ca8f` 后不再按公开接口调用 | `curl` 无 token 返回 `401 AUTH_TOKEN_MISSING`；带 token 待验证 |
@@ -61,16 +67,17 @@
 | 我的地址 | `GET/POST /api/bff/crm/addresses`、`POST /delete`、`POST /default` | 查询登录态；写接口登录态 + HMAC 签名 | `addressNo -> id`，`contactName -> name`，省市区名称拼 `region`，`detailAddress -> detail` | 已接入 `src/pkg-order/services/address.ts`；列表优先读后端，保存/删除/默认先本地更新再异步同步后端 | `yarn typecheck` 通过；待真实签名写接口验证 |
 | 会员码 | `GET /api/bff/crm/member-code` | 登录态 | 只使用 `qrContent`，BFF 不再暴露 `memberNo` | 已接入 `src/pkg-member/services/member-code.ts`；缺 `qrContent` 或接口失败进入异常态，不再生成本地动态码 | `yarn typecheck` 通过；待真实登录态验证 |
 | 老会员绑定 | `POST /api/bff/crm/legacy-bind` | 登录态 + HMAC 签名 | `phone` 入参，结果 `bound` 映射老会员绑定状态；不读取 `memberNo/legacyMemberNo` | 已接入 `src/pkg-member/services/profile.ts`，绑定成功后重新拉取资料并刷新 `member/status` | `yarn typecheck` 通过；待真实签名写接口验证 |
-| 领券中心入口 | `GET /api/bff/crm/entries/coupons` | 登录态 | `itemNo/itemName/badgeText/tagText/pointsCost/extraPayload.buttonText` 映射券卡 | BFF service 路径已从 `/crm/p1/coupons` 改为 `/crm/entries/coupons`；页面仍保留后续业务入口自己的空态/兜底策略 | `yarn typecheck` 通过；待微信开发工具验证 |
-| 兑换专区入口 | `GET /api/bff/crm/entries/exchanges`、`GET /api/bff/crm/entries/items/{itemNo}` | 登录态 | `itemNo/itemName/imageUrl/pointsCost/stockAvailable/description` 映射兑换商品 | BFF service 路径已从 `/crm/p1/**` 改为 `/crm/entries/**`；页面仍保留后续业务入口自己的空态/兜底策略 | `yarn typecheck` 通过；待微信开发工具验证 |
+| 领券中心入口 | `GET /api/bff/crm/entries/coupons` | 登录态 | 已不作为领券中心主数据源，领券中心改读会员券包接口 | 领券中心已切到 `GET /api/bff/member/coupon-packages` 和领取接口，CRM 入口仅保留历史路径说明 | 待微信开发工具验证 |
+| 兑换专区入口 | `GET /api/bff/crm/entries/exchanges`、`GET /api/bff/crm/entries/items/{itemNo}` | 登录态 | `itemNo/itemName/imageUrl/pointsCost/stockAvailable/description/extraPayload.exchangeCode` 映射兑换商品 | 已删除旧本地兑换商品兜底；只有后端配置真实 `exchangeCode` 时才调用兑换码兑券，否则阻断并同步接口缺口 | 待微信开发工具验证；K 币商品兑换接口见 `docs/codex/api-requirements/coupon-service.md` |
 
 ## 订单 UAT 变更落地表
 
 | 页面/能力 | 接口 | 鉴权模式 | 字段归一 | 适配状态 | 验证状态 |
 | --- | --- | --- | --- | --- | --- |
-| 提交订单 | `POST /api/bff/orders/submit` | 登录态 + HMAC 签名 | `sceneType/items/contact/paymentChannel/createPayment` 按后端 `OrderSubmitRequest` 建 service 类型 | 已新增 `src/core/services/bff-order-api.ts`；暂未替换票务/商城页面提交链路 | `yarn typecheck` 通过；待按页面工作包接入真实交易链路 |
-| 订单详情 | `GET /api/bff/orders/{orderNo}` | 登录态 | `orderNo/orderStatus/amount/items/context` 按后端 `OrderView` 建 service 类型 | 已新增 service 入口，页面详情仍用现有本地/静态数据 | `yarn typecheck` 通过；待页面切片接入 |
-| 订单列表 | `GET /api/bff/orders?sceneType=TICKET` | 登录态 | `sceneType` 支持 `TICKET/MALL/DINING` | 已新增 service 入口，订单中心页面仍待分场景替换 | `yarn typecheck` 通过；待页面切片接入 |
+| 统一创建订单 | `POST /api/bff/orders` | 登录态 | `OrderUnifiedRequest.items/selectedCouponNos/context/contact`；价格、库存和优惠由后端按后台配置计算 | 门票确认订单页已改走统一创建单并提交 `selectedCouponNos`；不再写本地订单假成功 | 待微信开发工具真实 token 创建带券门票订单 |
+| 订单支付 | `POST /api/bff/orders/{orderNo}/pay` | 登录态 | `prepay.paymentSkipped` 表示门票已免支付出票 | service 已新增；当前门票创建单若已返回 `WAIT_USE/ticketVouchers` 直接进详情，不重复拉起微信支付 | 待微信开发工具验证旧流程兜底 |
+| 订单详情 | `GET /api/bff/orders/{orderNo}` | 登录态 | `orderNo/orderStatus/amount/items/context/ticketVouchers` 按后端 `BffOrderView` 映射 | 真实订单详情已接 BFF；门票详情展示后端智游宝票码或二维码，不在前端自造码 | 待微信开发工具验证真实订单详情 |
+| 订单列表 | `GET /api/bff/orders?sceneType=TICKET` | 登录态 | `sceneType` 支持 `TICKET/MALL/HOTEL` | service 已新增，订单中心列表仍待分场景替换；本阶段先保证带券门票下单后可按详情页查看 | 待页面切片接入 |
 
 ## 鉴权跟进
 
@@ -99,6 +106,7 @@
 | `BE-2026-06-07-mini-program-ads` | 小程序首页已接入登录态广告聚合接口，按资源位覆盖首页核心内容区域；广告详情页按后端广告 `id` 回查富文本详情；request 层已补齐 accessToken 过期后的 refresh + 原请求重放 | `src/core/request/index.ts`、`src/core/types/mini-program-ad.ts`、`src/core/services/mini-program-ad.ts`、`src/core/utils/ad-click.ts`、`src/pages/home/index.tsx`、`src/pkg-ticket/services/activity.ts`、`src/pkg-ticket/services/park-detail.ts`、`docs/codex/interface-integration.md`、`docs/codex/current-mini-program.md` | 需要 `$hk-api` 合并根总表最近辅助 commit `936aa38/00486d4`，并登记小程序广告接口不再公开；后台已用真实接口上传并投放 5 张首页顶部 banner | `yarn typecheck` 通过；待微信开发工具网络面板确认广告聚合和单广告详情在 token 过期时表现为“原请求 401 -> refresh -> 原请求重放成功”，并回归首页轮播和详情页 | 首页顶部 banner 先读 `index_top_banner`，无数据才兼容旧 `index_banner`；首页核心资源位缺失、广告详情接口失败或无详情数据均进入异常态，不回退旧本地内容 |
 | `BE-2026-06-08-mini-program-slot-ads` | 首页楼层“查看全部”已改为携带资源位编码，列表页按资源位直查真实广告列表 | `src/core/services/mini-program-ad.ts`、`src/pages/home/index.tsx`、`src/pkg-ticket/pages/activity-list/index.tsx`、`src/pkg-ticket/pages/park-list/index.tsx`、`src/pkg-ticket/services/activity.ts`、`src/pkg-ticket/services/park-list.ts`、`docs/codex/interface-integration.md`、`docs/codex/current-mini-program.md` | 需要微信开发工具确认小程序授权后资源位直查 200；资源位不存在或停用按后端业务错误暴露，不回退旧 mock | `yarn typecheck`、`yarn check:package-boundary`、`git diff --check` 通过 | 后续新增首页楼层列表页时统一传 `slotCode`，不要再从首页聚合结果或本地 mock 派生列表 |
 | `BE-2026-06-08-member-auth-status` | 小程序会员授权登录和会员资料链路已按真实接口重接：启动默认 `login -> member/status`，受保护入口只读 MobX 登录态拦截，手机号授权走官方 `code`，资料保存/头像上传/老会员绑定后刷新全局 `memberInfo`，个人信息页新增退出登录 | `src/core/request/index.ts`、`src/core/services/auth.ts`、`src/core/services/bff-api.ts`、`src/core/services/bff-crm-api.ts`、`src/core/store/member-store.ts`、`src/core/store/root-store.ts`、`src/core/components/LoginPopup`、`src/core/wechat/auth.ts`、`src/pkg-member/services/profile.ts`、`src/pkg-member/services/member-code.ts`、`src/pkg-member/services/index.ts`、`src/pkg-member/pages/profile/index.tsx` | 需要 `$hk-api` 合并根总表最近辅助 commit `30d37b1/348945c/29efdf7/5473fe3/da1b529`，并覆盖旧“BFF 授权返回 mobile 即登录”和 CRM P1 路径结论；小程序仍待微信开发工具真实手机号授权验证 | `yarn typecheck` 通过；待微信开发工具验证 `login -> member/status`、未登录缓存态点击受保护入口不重复 login/memberStatus、`getPhoneNumber code -> phone/authorize -> member/status`、资料保存签名和退出登录 | 长期规则候选：小程序页面不要散写会员登录判断，统一读 `rootStore.isLoggedIn/rootStore.memberInfo`；后端身份字段由 BFF token 内部转换，前端不传不读内部会员标识 |
+| `BE-2026-06-13-member-coupon-assets` | 小程序会员券资产、领券中心、兑换码、兑换专区阻断、门票结算候选券、带券统一下单和订单详情票码承接已接入真实 BFF；票务改动仅作为券消费场景闭环，不扩展票务配置能力 | `src/core/services/bff-api.ts`、`src/core/services/bff-order-api.ts`、`src/pkg-member/services/coupons.ts`、`src/pkg-member/services/coupon-center.ts`、`src/pkg-member/services/exchange.ts`、`src/pkg-member/pages/coupon-center/index.tsx`、`src/pkg-member/pages/exchange-detail/index.tsx`、`src/pkg-ticket/services/ticket-booking.ts`、`src/pkg-ticket/services/order-draft.ts`、`src/pkg-ticket/pages/checkout/index.tsx`、`src/pkg-ticket/pages/ticket-booking/index.tsx`、`src/pkg-order/services/detail.ts`、`src/pkg-order/pages/detail/index.tsx`、`docs/codex/api-requirements/coupon-service.md`、`docs/codex/interface-integration.md`、`docs/codex/current-mini-program.md` | 后端仍需补齐 K 币商品兑换提交、K 币余额事实源、后台券包编排进入小程序券包、退款退券自动触发口径和商城/酒店结算用券回显；详见 `docs/codex/api-requirements/coupon-service.md` | `git diff --check`、`yarn typecheck`、`yarn check:page-convention`、`yarn check:package-boundary` 已通过；待微信开发工具真实 token 验证领券、兑换码、门票带券下单和订单详情票码 | 稳定规则候选：会员券真实接口接入后不得再用 CRM 入口或本地券数据冒充券资产；小程序券消费场景必须提交后端券号并以订单服务优惠结果为准 |
 
 ## 文档瘦身规则
 

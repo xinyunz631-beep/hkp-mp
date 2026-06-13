@@ -1,10 +1,10 @@
 import { MINI_STORAGE_KEYS } from '@/core/constants/storage';
 import {
-  createLocalOrderId,
-  createLocalOrderTime,
-  saveLocalOrder,
-  type LocalOrderRecord,
-} from '@/core/services/local-order';
+  createBffOrder,
+  type BffOrderPrepay,
+  type BffOrderTicketVoucher,
+} from '@/core/services/bff-order-api';
+import { createLocalOrderId, createLocalOrderTime } from '@/core/services/local-order';
 import { getCache, setCache } from '@/core/utils/cache';
 import { ticketCheckoutData } from './mock-data';
 import type { TicketCoupon } from './ticket-booking';
@@ -78,6 +78,14 @@ export interface SubmitTicketOrderDraftPayload {
   travelers: TicketOrderTraveler[];
 }
 
+export interface TicketOrderSubmitResult {
+  id: string;
+  payableAmount: number;
+  orderStatus?: string;
+  ticketVouchers?: BffOrderTicketVoucher[];
+  prepay?: BffOrderPrepay;
+}
+
 // 读取全部本地门票订单草稿，异常时返回空列表。
 function listTicketOrderDrafts() {
   const cachedDrafts = getCache<unknown>(MINI_STORAGE_KEYS.ticketOrderDrafts);
@@ -96,11 +104,6 @@ function listTicketOrderDrafts() {
 // 保存门票订单草稿列表，统一隔离本地缓存 key。
 function saveTicketOrderDrafts(drafts: TicketOrderDraft[]) {
   setCache(MINI_STORAGE_KEYS.ticketOrderDrafts, drafts);
-}
-
-// 计算草稿中门票商品金额。
-function calculateProductsAmount(products: TicketOrderDraftProduct[]) {
-  return products.reduce((total, product) => total + product.price * product.quantity, 0);
 }
 
 // 查找当前已选优惠券。
@@ -211,6 +214,20 @@ function resolveTravelerSlotRules(product: TicketOrderDraftProduct) {
   return repeatSlotRules(adultSlotRule, product.quantity);
 }
 
+// 将门票草稿转换成统一订单选择项，价格和库存交由后端按后台配置重新计算。
+function buildTicketOrderItems(draft: TicketOrderDraft, payload: SubmitTicketOrderDraftPayload) {
+  return draft.products.map((product, index) => ({
+    lineNo: `TICKET-${index + 1}`,
+    itemId: product.id,
+    itemType: 'TICKET',
+    quantity: product.quantity,
+    attributes: {
+      visitDate: payload.selectedDate,
+      category: product.category,
+    },
+  }));
+}
+
 // 生成门票实名出游人列表，旧草稿缺少该字段时也用这里补齐。
 export function createTicketOrderTravelers(
   products: TicketOrderDraftProduct[],
@@ -296,80 +313,22 @@ export function updateTicketOrderDraft(draftId: string, patch: Partial<TicketOrd
   return nextDraft;
 }
 
-// 提交门票订单草稿，模拟支付成功后写入本地订单中心。
-export function submitTicketOrderDraft(draftId: string, payload: SubmitTicketOrderDraftPayload) {
+// 提交门票订单草稿到真实 BFF 订单接口，并携带用户选择的优惠券编号。
+export async function submitTicketOrderDraft(
+  draftId: string,
+  payload: SubmitTicketOrderDraftPayload,
+): Promise<TicketOrderSubmitResult | undefined> {
   const draft = getTicketOrderDraft(draftId);
   if (!draft) return undefined;
+  if (payload.addonQuantity > 0) throw new Error('套餐暂不可随票下单，请先提交门票');
 
-  const productsAmount = calculateProductsAmount(draft.products);
-  const addonAmount = ticketCheckoutData.addonItem.price * payload.addonQuantity;
-  const originAmount = productsAmount + addonAmount;
   const selectedCoupon = resolveSelectedCoupon(draft, payload.selectedCouponId);
-  const discountAmount = selectedCoupon && originAmount >= selectedCoupon.minimumAmount
-    ? selectedCoupon.discountAmount
-    : 0;
-  const paidAmount = Math.max(0, productsAmount + addonAmount - discountAmount);
-  const orderId = createLocalOrderId('TICKET-');
-  const now = createLocalOrderTime();
-  const firstProduct = draft.products[0];
   const productSummary = draft.products.map((product) => `${product.title} x${product.quantity}`).join('、');
   const travelerNames = payload.travelers
-    .map((traveler) => `${traveler.name}（${traveler.productTitle}）`)
+    .map((traveler) => `${traveler.name}（${traveler.productTitle}）`);
   const travelerSummary = travelerNames.length > 3
     ? `${travelerNames.slice(0, 3).join('、')} 等${travelerNames.length}人`
     : travelerNames.join('、');
-
-  const record: LocalOrderRecord = {
-    id: orderId,
-    source: 'ticket',
-    tabKey: 'pendingReceive',
-    dateText: payload.selectedDate,
-    statusText: '待使用',
-    paidAmountText: `¥${paidAmount.toFixed(2)}`,
-    title: firstProduct?.title || 'Hello Kitty 乐园门票',
-    quantityText: `x${draft.products.reduce((total, product) => total + product.quantity, 0)}`,
-    totalText: `共${draft.products.length}类票品 合计:¥${paidAmount.toFixed(2)}`,
-    productFields: [
-      { label: '使用日期', value: payload.selectedDate },
-      { label: '票品内容', value: productSummary },
-      { label: '使用方法', value: '凭购票时填写的身份证入园' },
-    ],
-    ticketFields: [
-      { label: '入园地址', value: '浙江湖州市安吉县天使大道1号' },
-      { label: '入园时间', value: '10:00-17:00' },
-      { label: '退票规则', value: '门票未使用前支持申请退款' },
-    ],
-    contactFields: [
-      { label: '联系人', value: payload.contact.name },
-      { label: '手机号', value: payload.contact.mobile },
-      { label: '实名游客', value: travelerSummary },
-    ],
-    amountFields: [
-      { label: '票品金额', value: `¥${productsAmount.toFixed(2)}` },
-      { label: '加购金额', value: `¥${addonAmount.toFixed(2)}` },
-      ...(discountAmount > 0 ? [{ label: '优惠金额', value: `- ¥${discountAmount.toFixed(2)}` }] : []),
-      { label: '实付款', value: `¥${paidAmount.toFixed(2)}` },
-    ],
-    orderFields: [
-      { label: '订单编号', value: orderId },
-      { label: '下单时间', value: now },
-      { label: '支付方式', value: '微信支付' },
-      { label: '支付时间', value: now },
-    ],
-    refundButtonText: '申请退款',
-    homeItems: [
-      {
-        id: orderId,
-        title: firstProduct?.title || 'Hello Kitty 乐园门票',
-        subtitle: `出行日期：${payload.selectedDate}`,
-        imageSrc: '',
-        quantity: draft.products.reduce((total, product) => total + product.quantity, 0),
-        priceText: `¥ ${paidAmount.toFixed(2)}`,
-        actionText: '查看详情',
-      },
-    ],
-    createdAt: now,
-  };
 
   updateTicketOrderDraft(draftId, {
     selectedDate: payload.selectedDate,
@@ -378,7 +337,27 @@ export function submitTicketOrderDraft(draftId: string, payload: SubmitTicketOrd
     contact: payload.contact,
     travelers: payload.travelers,
   });
-  saveLocalOrder(record);
 
-  return record;
+  const response = await createBffOrder({
+    sceneType: 'TICKET',
+    channel: 'MINI_PROGRAM',
+    paymentChannel: 'WECHAT',
+    freightAmountCent: 0,
+    selectedCouponNos: selectedCoupon ? [selectedCoupon.id] : [],
+    contactName: payload.contact.name,
+    contactPhone: payload.contact.mobile,
+    remark: productSummary,
+    context: {
+      visitDate: payload.selectedDate,
+      travelerSummary,
+    },
+    items: buildTicketOrderItems(draft, payload),
+  });
+
+  return {
+    id: response.order.orderNo,
+    payableAmount: (response.order.payableAmountCent || 0) / 100,
+    orderStatus: response.order.orderStatus,
+    ticketVouchers: response.order.ticketVouchers,
+  } satisfies TicketOrderSubmitResult;
 }

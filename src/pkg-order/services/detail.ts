@@ -1,3 +1,4 @@
+import { fetchBffOrderDetail, type BffOrder } from '@/core/services/bff-order-api';
 import { resolveMockData } from '@/core/services/mock';
 import { getLocalOrder } from '@/core/services/local-order';
 import { orderDetailData, orderList, type OrderDetailData } from './mock-data';
@@ -44,8 +45,84 @@ function createStaticPendingPayDetail(orderId?: string): OrderDetailData | undef
   };
 }
 
-// 获取订单详情页面数据，后续接真实接口时在这里处理字段归一和失败兜底。
-export function fetchDetailData(orderId?: string) {
+function formatCentAmount(amountCent?: number) {
+  return `¥${(Number(amountCent || 0) / 100).toFixed(2)}`;
+}
+
+function formatDateTime(value?: string) {
+  if (!value) return '';
+  return value.replace('T', ' ').slice(0, 16);
+}
+
+function resolveBffOrderStatusText(status?: string) {
+  if (!status) return '订单处理中';
+  if (/PAY|UNPAID|CREATED|PENDING/i.test(status)) return '待付款';
+  if (/PAID|RECEIVE|USE|CONFIRM/i.test(status)) return '待使用';
+  if (/CANCEL/i.test(status)) return '已取消';
+  if (/REFUND/i.test(status)) return '退款中';
+  if (/FINISH|COMPLETE|DONE/i.test(status)) return '已完成';
+
+  return '订单处理中';
+}
+
+// 从后端智游宝出票结果里选择可展示的二维码或图片地址。
+function resolveVoucherImage(voucher: NonNullable<BffOrder['ticketVouchers']>[number]) {
+  return voucher.codeImage || voucher.qrImage || voucher.qrCodeUrl || '';
+}
+
+// 归一订单详情页展示的票码文本，缺少真实票码时只展示序号名称。
+function resolveVoucherCode(voucher: NonNullable<BffOrder['ticketVouchers']>[number], index: number) {
+  const code = voucher.ticketCode || voucher.voucherCode;
+  return code ? String(code) : `入园凭证${index + 1}`;
+}
+
+function mapBffOrderDetail(order: BffOrder): OrderDetailData {
+  const products = order.items ?? [];
+  const ticketVouchers = (order.ticketVouchers ?? []).map((voucher, index) => ({
+    id: resolveVoucherCode(voucher, index),
+    codeText: resolveVoucherCode(voucher, index),
+    imageUrl: resolveVoucherImage(voucher),
+  }));
+  const totalQuantity = products.reduce((total, item) => total + Number(item.quantity || 0), 0);
+  const productSummary = products
+    .map((item) => `${item.itemName || item.itemId || '订单项目'} x${item.quantity || 1}`)
+    .join('\n');
+
+  return {
+    id: order.orderNo,
+    statusText: resolveBffOrderStatusText(order.orderStatus),
+    paidAmountText: formatCentAmount(order.payableAmountCent),
+    primaryActionType: 'none',
+    title: products[0]?.itemName || 'Hello Kitty Park 订单',
+    quantityText: `x${totalQuantity || 1}`,
+    productFields: [
+      { label: '订单内容', value: productSummary || '订单内容待确认' },
+      ...(order.context?.visitDate ? [{ label: '使用日期', value: order.context.visitDate }] : []),
+    ],
+    ticketFields: [
+      { label: '支付方式', value: order.paymentChannel || '微信支付' },
+      { label: '订单场景', value: order.sceneType || '园区订单' },
+    ],
+    ticketVouchers,
+    contactFields: [
+      { label: '联系人', value: order.contactName || '' },
+      { label: '手机号', value: order.contactPhone || '' },
+    ].filter((field) => field.value),
+    amountFields: [
+      { label: '订单金额', value: formatCentAmount(order.originalAmountCent) },
+      ...(order.discountAmountCent ? [{ label: '优惠金额', value: `- ${formatCentAmount(order.discountAmountCent)}` }] : []),
+      { label: '实付金额', value: formatCentAmount(order.payableAmountCent) },
+    ],
+    orderFields: [
+      { label: '订单编号', value: order.orderNo },
+      ...(order.createdAt ? [{ label: '下单时间', value: formatDateTime(order.createdAt) }] : []),
+    ],
+    refundButtonText: '',
+  };
+}
+
+// 获取订单详情页面数据，真实订单号走 BFF，历史本地订单继续兼容展示。
+export async function fetchDetailData(orderId?: string) {
   const localOrder = getLocalOrder(orderId);
   if (localOrder) {
     return resolveMockData<OrderDetailData>({
@@ -68,6 +145,10 @@ export function fetchDetailData(orderId?: string) {
   const staticPendingPayDetail = createStaticPendingPayDetail(orderId);
   if (staticPendingPayDetail) {
     return resolveMockData<OrderDetailData>(staticPendingPayDetail);
+  }
+
+  if (orderId) {
+    return mapBffOrderDetail(await fetchBffOrderDetail(orderId));
   }
 
   return resolveMockData<OrderDetailData>(orderDetailData);

@@ -79,6 +79,89 @@ export interface BffAvailableCouponsParams {
   orderAmountCent?: number;
 }
 
+export type BffCouponStatus = 'AVAILABLE' | 'LOCKED' | 'USED' | 'EXPIRED' | string;
+
+export interface BffMemberCouponAsset {
+  couponNo: string;
+  templateNo?: string;
+  couponName?: string;
+  sceneType?: BffSceneType;
+  couponType?: string;
+  thresholdAmountCent?: number;
+  discountAmountCent?: number;
+  status?: BffCouponStatus;
+  reason?: string;
+  issuedAt?: string;
+  validStartAt?: string;
+  validEndAt?: string;
+  lockedAt?: string;
+  usedAt?: string;
+}
+
+export interface BffMemberCouponsParams {
+  sceneType?: BffSceneType;
+  status?: BffCouponStatus;
+}
+
+export interface BffMemberCouponsResponse {
+  sceneType?: BffSceneType;
+  status?: BffCouponStatus;
+  coupons?: BffMemberCouponAsset[];
+  statusCounts?: Partial<Record<BffCouponStatus, number>>;
+}
+
+export interface BffCouponTemplateView {
+  templateNo: string;
+  templateName?: string;
+  sceneType?: BffSceneType;
+  couponType?: string;
+  thresholdAmountCent?: number;
+  discountAmountCent?: number;
+  issueStartAt?: string;
+  issueEndAt?: string;
+  validStartAt?: string;
+  validEndAt?: string;
+  totalStock?: number;
+  issuedStock?: number;
+  remainingStock?: number;
+  perUserLimit?: number;
+  claimedCount?: number;
+  claimable?: boolean;
+  reason?: string;
+}
+
+export interface BffCouponPackageView {
+  packageNo: string;
+  packageName?: string;
+  sceneType?: BffSceneType;
+  coupons?: BffCouponTemplateView[];
+  claimable?: boolean;
+  reason?: string;
+}
+
+export interface BffCouponPackagesResponse {
+  sceneType?: BffSceneType;
+  packages?: BffCouponPackageView[];
+}
+
+export interface BffCouponClaimResponse {
+  coupon?: BffMemberCouponAsset;
+}
+
+export interface BffCouponRefundReturnRequest {
+  orderNo: string;
+  refundNo?: string;
+  reason?: string;
+}
+
+export interface BffCouponRefundReturnResponse {
+  orderNo?: string;
+  refundNo?: string;
+  returnedCount?: number;
+  returnedCouponNos?: string[];
+  operatedAt?: string;
+}
+
 export interface BffHolidaySyncOptions {
   years?: string;
 }
@@ -294,6 +377,55 @@ export function fetchBffAvailableCoupons(params: BffAvailableCouponsParams) {
       orderAmountCent: params.orderAmountCent,
     }),
     method: 'GET',
+  });
+}
+
+// 查询当前会员已领取、已使用和已过期优惠券资产。
+export function fetchBffMemberCoupons(params: BffMemberCouponsParams = {}) {
+  return request<BffMemberCouponsResponse>({
+    url: appendQuery('/api/bff/member/coupons', {
+      sceneType: params.sceneType,
+      status: params.status,
+    }),
+    method: 'GET',
+  });
+}
+
+// 查询当前会员可领取券包，当前后端由 promotion 券模板同源生成券包。
+export function fetchBffMemberCouponPackages(sceneType?: BffSceneType) {
+  return request<BffCouponPackagesResponse>({
+    url: appendQuery('/api/bff/member/coupon-packages', { sceneType }),
+    method: 'GET',
+  });
+}
+
+// 按券模板编号领取优惠券，BFF 会从登录态注入当前会员身份。
+export function claimBffCoupon(templateNo: string) {
+  return request<BffCouponClaimResponse, { templateNo: string }>({
+    url: '/api/bff/promotion/coupons/claim',
+    method: 'POST',
+    data: { templateNo },
+    sign: true,
+  });
+}
+
+// 按真实兑换码兑换优惠券，不在前端模拟兑换成功。
+export function exchangeBffCoupon(exchangeCode: string) {
+  return request<BffCouponClaimResponse, { exchangeCode: string }>({
+    url: '/api/bff/promotion/coupons/exchange',
+    method: 'POST',
+    data: { exchangeCode },
+    sign: true,
+  });
+}
+
+// 退款成功后的退券接口，通常由订单/售后链路驱动，前端仅保留可调用服务能力。
+export function refundReturnBffCoupons(data: BffCouponRefundReturnRequest) {
+  return request<BffCouponRefundReturnResponse, BffCouponRefundReturnRequest>({
+    url: '/api/bff/promotion/coupons/refund-return',
+    method: 'POST',
+    data,
+    sign: true,
   });
 }
 

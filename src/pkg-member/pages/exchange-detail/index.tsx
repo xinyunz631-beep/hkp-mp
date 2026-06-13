@@ -10,9 +10,14 @@ import { QuantityStepper } from '@/core/components/commerce';
 import { PageFooter, PageShare, PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
+import { resolveErrorMessage } from '@/core/utils/error-message';
 import { showWechatToast } from '@/core/utils/wechat-actions';
 import { MemberRichText } from '@/pkg-member/components/MemberRichText';
-import { fetchMemberExchangeDetailData, type MemberExchangeDetailData } from '@/pkg-member/services/exchange';
+import {
+  fetchMemberExchangeDetailData,
+  submitMemberExchangeProduct,
+  type MemberExchangeDetailData,
+} from '@/pkg-member/services/exchange';
 import './index.scss';
 
 function resolveExchangeProductId() {
@@ -69,7 +74,7 @@ const MemberExchangeDetailPage = observer(function MemberExchangeDetailPage() {
   async function handleSubmitExchange() {
     if (!product) return;
 
-    if (totalKCoins > (detailData?.memberKCoins ?? 0)) {
+    if (detailData?.memberKCoins && totalKCoins > detailData.memberKCoins) {
       await showWechatToast('K币余额不足');
       return;
     }
@@ -79,8 +84,18 @@ const MemberExchangeDetailPage = observer(function MemberExchangeDetailPage() {
       return;
     }
 
-    setConfirmVisible(false);
-    await showWechatToast('兑换成功', 'success');
+    if (quantity > 1) {
+      await showWechatToast('每次只能兑换 1 份');
+      return;
+    }
+
+    try {
+      await pageRuntime.withLoading(() => submitMemberExchangeProduct(product));
+      setConfirmVisible(false);
+      await showWechatToast('兑换成功', 'success');
+    } catch (error) {
+      await showWechatToast(resolveErrorMessage(error, '兑换失败，请稍后再试'));
+    }
   }
 
   return pageRuntime.renderPage(() => {

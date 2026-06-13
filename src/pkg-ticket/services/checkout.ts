@@ -52,6 +52,7 @@ export function fetchCheckoutData(draftId?: string) {
     },
     discountAmount,
     couponText: draft?.coupons.find((coupon) => coupon.id === draft.selectedCouponId)?.amountText ?? ticketCheckoutData.couponText,
+    payButtonText: '提交订单',
     contact: {
       ...ticketCheckoutData.contact,
       ...(draft?.contact ?? {}),
