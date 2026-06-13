@@ -321,26 +321,31 @@ const CheckoutPage = observer(function CheckoutPage() {
     });
 
     const confirmed = await showWechatConfirm({
-      title: '确认支付',
-      content: `已核对 ${nextTravelers.length} 位实名出游人，本次需支付 ¥${payAmount.toFixed(2)}。`,
-      confirmText: '确认支付',
+      title: '确认下单',
+      content: `已核对 ${nextTravelers.length} 位实名出游人，本次订单金额 ¥${payAmount.toFixed(2)}，提交后将直接出票。`,
+      confirmText: '确认下单',
     });
     if (!confirmed) return;
 
-    const nextOrder = submitTicketOrderDraft(draftId, {
-      selectedDate,
-      selectedCouponId: selectedCouponUsable ? selectedCouponId : undefined,
-      addonQuantity,
-      contact: nextContact,
-      travelers: nextTravelers,
-    });
+    let nextOrder;
+    try {
+      nextOrder = await submitTicketOrderDraft(draftId, {
+        selectedDate,
+        selectedCouponId: selectedCouponUsable ? selectedCouponId : undefined,
+        addonQuantity,
+        contact: nextContact,
+        travelers: nextTravelers,
+      });
+    } catch {
+      return;
+    }
 
     if (!nextOrder) {
       await showWechatToast('订单提交失败，请重新选择门票');
       return;
     }
 
-    await showWechatToast('支付成功', 'success');
+    await showWechatToast('下单成功', 'success');
     navigateToMiniRoute(`${MINI_PACKAGE_ROUTES.orderDetail}?orderId=${encodeURIComponent(nextOrder.id)}`);
   }
 
@@ -402,7 +407,7 @@ const CheckoutPage = observer(function CheckoutPage() {
                 </View>
                 <View className="_pg-item_notice">
                   <AppIcon name="code" size={14} color="#d94a88" />
-                  <Text>支付成功后生成订单入园码，也可凭购票证件核验入园。</Text>
+                  <Text>提交成功后生成订单入园凭证，也可凭购票证件核验入园。</Text>
                 </View>
                 <View className="_pg-product-list">
                   {selectedProducts.map((product) => (
