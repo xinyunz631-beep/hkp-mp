@@ -41,6 +41,9 @@ export interface TicketBookingParkInfo {
 export interface TicketProduct {
   id: string;
   category: 'ticket' | 'annualCard';
+  productType?: string;
+  categorySection?: string;
+  publishStatus?: string;
   title: string;
   description: string;
   priceLabel: string;
@@ -425,16 +428,29 @@ function isEnabledApiItem(status?: string) {
   return !status || status === ENABLED_STATUS;
 }
 
-// 按后端 menuNo 和标题粗分票种类型，后续后端补分类字段后只改这里。
+// 按后端字段优先判断票种类型，缺字段时再按 menuNo 和标题兼容旧数据。
 function resolveProductCategory(item: PurchaseMenuApiItem): TicketProduct['category'] {
+  const backendType = `${item.productType || ''} ${item.categorySection || ''}`.toLowerCase();
+
+  if (backendType.includes('annual')) return 'annualCard';
+
   const categoryText = `${item.menuNo || ''} ${item.menuName || ''}`.toLowerCase();
   return categoryText.includes('annual') || categoryText.includes('年卡') ? 'annualCard' : 'ticket';
 }
 
 // 将后端分为单位的价格转为页面使用的元单位价格。
-function resolvePrice(priceCent?: number) {
-  if (!Number.isFinite(priceCent)) return 0;
-  return Math.max(0, Number(priceCent) / 100);
+function resolvePrice(item: PurchaseMenuApiItem) {
+  const priceCent = firstFiniteNumber(item.priceCent, item.minPrice, item.maxPrice);
+
+  if (priceCent === undefined) return 0;
+  return Math.max(0, priceCent / 100);
+}
+
+function firstFiniteNumber(...values: Array<number | undefined>) {
+  for (const value of values) {
+    if (Number.isFinite(value)) return Number(value);
+  }
+  return undefined;
 }
 
 // 将购票列表 BFF 字段归一为页面票种模型。
@@ -445,12 +461,16 @@ function normalizePurchaseMenuItem(item: PurchaseMenuApiItem): TicketProduct | u
   return {
     id: item.menuNo,
     category: resolveProductCategory(item),
+    productType: item.productType,
+    categorySection: item.categorySection,
+    publishStatus: item.publishStatus,
     title: item.menuName,
     description: item.subtitle || item.description || '官方直营票种',
     priceLabel: '网购价',
-    price: resolvePrice(item.priceCent),
+    price: resolvePrice(item),
     noticeText: '预定须知',
-    tags: item.badgeText ? [item.badgeText] : [],
+    tags: [item.badgeText, item.publishStatus && item.publishStatus !== 'published' ? '待上线' : undefined]
+      .filter((tag): tag is string => Boolean(tag)),
     validityText: '所选游玩日当天有效',
     stockText: holidayUnavailable ? '节假日不可用' : '当前可订',
     limitText: item.description || '请以下单页实名和库存规则为准',
@@ -459,7 +479,12 @@ function normalizePurchaseMenuItem(item: PurchaseMenuApiItem): TicketProduct | u
 
 // 根据真实票种生成页面分区，套餐能力暂沿用本地兜底数据。
 function buildSectionsFromProducts(products: TicketProduct[], fallback: TicketBookingData) {
-  const ticketProductIds = products.filter((product) => product.category === 'ticket').map((product) => product.id);
+  const fastPassProductIds = products
+    .filter((product) => product.productType === 'fastPass' || product.categorySection === 'fastPass')
+    .map((product) => product.id);
+  const ticketProductIds = products
+    .filter((product) => product.category === 'ticket' && !fastPassProductIds.includes(product.id))
+    .map((product) => product.id);
   const annualCardProductIds = products.filter((product) => product.category === 'annualCard').map((product) => product.id);
   const sections: TicketBookingSection[] = [];
 
@@ -479,6 +504,16 @@ function buildSectionsFromProducts(products: TicketProduct[], fallback: TicketBo
       title: '年卡',
       badge: { text: 'hot', color: 'red' },
       productIds: annualCardProductIds,
+    });
+  }
+
+  if (fastPassProductIds.length) {
+    sections.push({
+      key: 'fast-pass',
+      type: 'ticket',
+      title: '快速通',
+      badge: { text: 'fast', color: 'red' },
+      productIds: fastPassProductIds,
     });
   }
 
@@ -524,7 +559,7 @@ function buildTicketBookingDataFromApi(
   };
 }
 
-// 获取门票预定页面数据，优先使用后端公开 GET，失败时回落到本地兜底。
+// 获取门票预定页面数据，优先使用后端登录态 GET，失败时回落到本地兜底。
 export function fetchTicketBookingData(options: FetchTicketBookingDataOptions = {}) {
   const fallback = buildTicketBookingData(options);
 
