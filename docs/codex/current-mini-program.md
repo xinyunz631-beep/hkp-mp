@@ -80,6 +80,7 @@
 - 2026-06-09 已重接酒店与统一订单 BFF：酒店首页、房型详情、确认单、下单支付、订单列表、订单详情、取消和退款切真实接口；接口失败、缺支付参数或缺配置进入异常态或阻断态。
 - 2026-06-16 已按后端 `origin/uat@abbe80b` 建立小程序优惠券 BFF 必须接口清单：我的券、券包、领券、K 币、下单可用券、锁券核销和退款返还。当前 P0 阻塞是 CRM 会员券实例与 promotion 会员券资产未同源。
 - 近期校验：本轮票务闭环恢复已通过 `yarn typecheck`、`yarn check:package-boundary`、`yarn check:page-convention`、`git diff --check` 和根目录 `node scripts/check-codex-context.mjs`；`project.config.json`/`dist/project.config.json` AppID 均为 `wx72b9e08ce45d3e79`；小程序阶段性验收按 `$mp-verify` 复用本对话已打开的 hkitty 微信开发者工具和当前 dev 编译，不再用 `build:weapp` 作为本轮收尾门禁，也不为同一对话反复打开新的当前项目 DevTools 窗口。`yarn check:main-package:build` 曾按隔离输出目录执行，但本地 Taro/Rust `system-configuration` panic 后长时间无新增输出，已停止，需下一次本地环境恢复后再复验主包产物和页面可见状态。
+- 近期优惠券校验：本轮优惠券链路已在干净临时分支通过 `yarn typecheck`、`yarn check:package-boundary`、`yarn check:page-convention` 和 `git diff --check`；小程序阶段性验收按 `$mp-verify` 复用微信开发者工具，不用 `build:weapp` 作为本轮收尾门禁。2026-06-16 使用微信开发者工具 `open-other` 打开 `/Users/kite/Desktop/vibe-coding/codex/hkitty-fe/mini-program/dist` 后，首页 `login/status/ads?pagecode=index` 均为 200；“我的优惠券”页面展示业务空态且 `coupons` XHR 200；“领券中心”页面展示业务空态且 `coupon-packages`、CRM `coupons` XHR 200；K 币兑换 tab 切换正常。当前未覆盖真实领券成功、K 币兑换提交和门票/酒店确认单选券，因为后端测试数据为空且 CRM/promotion 同源缺口仍待后端补齐。
 
 ## 当前待验证
 
