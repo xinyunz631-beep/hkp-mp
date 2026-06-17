@@ -200,7 +200,6 @@ export function confirmBffOrder(data: BffOrderUnifiedRequest) {
       ...data,
       freightAmountCent: data.freightAmountCent ?? 0,
     },
-    sign: true,
   });
 }
 
@@ -213,7 +212,6 @@ export function createBffOrder(data: BffOrderUnifiedRequest) {
       ...data,
       freightAmountCent: data.freightAmountCent ?? 0,
     },
-    sign: true,
   });
 }
 
@@ -223,7 +221,6 @@ export function payBffOrder(orderNo: string, paymentChannel: BffOrderPaymentChan
     url: `/api/bff/orders/${encodeURIComponent(orderNo)}/pay`,
     method: 'POST',
     data: { paymentChannel },
-    sign: true,
   });
 }
 
