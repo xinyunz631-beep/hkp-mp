@@ -22,7 +22,7 @@ function resolveAftersaleReasons(typeText?: string) {
   return ['不想要了', '地址信息填写有误', '重复购买', '其他原因'];
 }
 
-// 获取售后申请页面数据，后续接真实接口时在这里处理字段归一和失败兜底。
+// 获取售后申请页面数据，后续接真实接口时在这里处理字段归一和异常态/空态转译。
 export function fetchAftersaleApplyData(options: FetchAftersaleApplyOptions = {}) {
   const order = resolveAftersaleOrder(options.orderId) ?? aftersaleApplyData.order;
   const selectedTypeText = options.typeText || aftersaleApplyData.selectedTypeText;

@@ -10,9 +10,14 @@ import { QuantityStepper } from '@/core/components/commerce';
 import { PageFooter, PageShare, PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
+import { resolveErrorMessage } from '@/core/utils/error-message';
 import { showWechatToast } from '@/core/utils/wechat-actions';
 import { MemberRichText } from '@/pkg-member/components/MemberRichText';
-import { fetchMemberExchangeDetailData, type MemberExchangeDetailData } from '@/pkg-member/services/exchange';
+import {
+  fetchMemberExchangeDetailData,
+  submitMemberKcoinExchange,
+  type MemberExchangeDetailData,
+} from '@/pkg-member/services/exchange';
 import './index.scss';
 
 function resolveExchangeProductId() {
@@ -59,6 +64,11 @@ const MemberExchangeDetailPage = observer(function MemberExchangeDetailPage() {
       return;
     }
 
+    if (totalKCoins > (detailData?.memberKCoins ?? 0)) {
+      void showWechatToast('K币余额不足');
+      return;
+    }
+
     setConfirmVisible(true);
   }
 
@@ -69,18 +79,31 @@ const MemberExchangeDetailPage = observer(function MemberExchangeDetailPage() {
   async function handleSubmitExchange() {
     if (!product) return;
 
-    if (totalKCoins > (detailData?.memberKCoins ?? 0)) {
-      await showWechatToast('K币余额不足');
-      return;
-    }
-
     if (quantity > stock) {
       await showWechatToast('库存不足');
       return;
     }
 
-    setConfirmVisible(false);
-    await showWechatToast('兑换成功', 'success');
+    if (totalKCoins > (detailData?.memberKCoins ?? 0)) {
+      await showWechatToast('K币余额不足');
+      return;
+    }
+
+    try {
+      const response = await pageRuntime.withLoading(() => submitMemberKcoinExchange({
+        itemNo: product.id,
+        quantity,
+      }));
+      setConfirmVisible(false);
+      if (typeof response.afterBalance === 'number') {
+        setDetailData((currentData) => currentData
+          ? { ...currentData, memberKCoins: response.afterBalance ?? currentData.memberKCoins }
+          : currentData);
+      }
+      await showWechatToast('兑换已受理，请稍后查看', 'success');
+    } catch (error) {
+      await showWechatToast(resolveErrorMessage(error, '兑换失败，请稍后再试'));
+    }
   }
 
   return pageRuntime.renderPage(() => {
@@ -109,6 +132,7 @@ const MemberExchangeDetailPage = observer(function MemberExchangeDetailPage() {
               <View className="_pg-info_meta">
                 <Text>已兑{product.exchangedCount}件</Text>
                 <Text>库存 {product.stock}件</Text>
+                <Text>余额 {detailData?.memberKCoins ?? 0}K币</Text>
               </View>
             </View>
 

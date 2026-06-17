@@ -1,23 +1,13 @@
 import { MINI_STORAGE_KEYS } from '@/core/constants/storage';
-import {
-  createLocalOrderId,
-  createLocalOrderTime,
-  saveLocalOrder,
-  type LocalOrderRecord,
-} from '@/core/services/local-order';
 import { getCache, setCache } from '@/core/utils/cache';
 import {
   calculateHotelNights,
-  createDefaultHotelOccupancy,
-  createDefaultHotelStayRange,
-  findHotelProduct,
-  formatHotelStayDateText,
   normalizeHotelOccupancy,
   type HotelOccupancy,
   type HotelProductCardData,
   type HotelRatePlanData,
   type HotelStayRange,
-} from './mock-data';
+} from './model';
 
 export interface HotelOrderDraftGuest {
   id: string;
@@ -42,6 +32,7 @@ export interface HotelOrderDraft {
   occupancy: HotelOccupancy;
   guests: HotelOrderDraftGuest[];
   contact: HotelOrderDraftContact;
+  selectedCouponId?: string;
   invoiceText: string;
   checkInTimeText: string;
   checkOutTimeText: string;
@@ -51,16 +42,23 @@ export interface HotelOrderDraft {
 
 export interface CreateHotelOrderDraftPayload {
   hotelId: string;
+  hotelName: string;
+  hotelAddress: string;
+  hotelPhone: string;
   productId: string;
+  product: HotelProductCardData;
   ratePlanId?: string;
   stayRange: HotelStayRange;
   occupancy: HotelOccupancy;
+  checkInTimeText: string;
+  checkOutTimeText: string;
 }
 
 export interface SubmitHotelOrderDraftPayload {
   roomCount: number;
   guestNames: string[];
   contact: HotelOrderDraftContact;
+  selectedCouponId?: string;
   totalAmount: number;
   discountAmount: number;
 }
@@ -81,6 +79,19 @@ function listHotelOrderDrafts() {
 
 function saveHotelOrderDrafts(drafts: HotelOrderDraft[]) {
   setCache(MINI_STORAGE_KEYS.hotelOrderDrafts, drafts);
+}
+
+// 生成酒店订单草稿编号，只用于跨页面临时恢复，不作为业务订单号。
+function createHotelDraftId() {
+  const random = Math.random().toString(36).slice(2, 8).toUpperCase();
+  return `HOTEL-DRAFT-${Date.now()}${random}`;
+}
+
+// 生成酒店草稿更新时间，便于本地草稿排序和排障。
+function createHotelDraftTime() {
+  const date = new Date();
+  const pad = (value: number) => `${value}`.padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
 function createHotelGuests(roomCount: number, seedGuests: HotelOrderDraftGuest[] = []) {
@@ -111,7 +122,7 @@ export function updateHotelOrderDraft(draftId: string, patch: Partial<HotelOrder
   const nextDraft: HotelOrderDraft = {
     ...current,
     ...patch,
-    updatedAt: createLocalOrderTime(),
+    updatedAt: createHotelDraftTime(),
   };
 
   saveHotelOrderDrafts(drafts.map((draft) => (draft.id === draftId ? nextDraft : draft)));
@@ -119,26 +130,18 @@ export function updateHotelOrderDraft(draftId: string, patch: Partial<HotelOrder
 }
 
 export function createHotelOrderDraft(payload: CreateHotelOrderDraftPayload) {
-  const matched = findHotelProduct({
-    hotelId: payload.hotelId,
-    productId: payload.productId,
-    stayRange: payload.stayRange,
-    occupancy: payload.occupancy,
-  }) ?? findHotelProduct({});
-
-  if (!matched) return undefined;
-
-  const now = createLocalOrderTime();
-  const ratePlan = matched.product.ratePlans.find((item) => item.id === payload.ratePlanId)
-    ?? matched.product.ratePlans[0];
+  const now = createHotelDraftTime();
+  const ratePlan = payload.product.ratePlans.find((item) => item.id === payload.ratePlanId)
+    ?? payload.product.ratePlans[0];
+  if (!ratePlan) return undefined;
   const occupancy = normalizeHotelOccupancy(payload.occupancy);
   const draft: HotelOrderDraft = {
-    id: createLocalOrderId('HOTEL-DRAFT-'),
-    hotelId: matched.hotel.id,
-    hotelName: matched.hotel.heroTitle,
-    hotelAddress: matched.hotel.address,
-    hotelPhone: matched.hotel.phoneNumber,
-    product: matched.product,
+    id: createHotelDraftId(),
+    hotelId: payload.hotelId,
+    hotelName: payload.hotelName,
+    hotelAddress: payload.hotelAddress,
+    hotelPhone: payload.hotelPhone,
+    product: payload.product,
     ratePlan,
     stayRange: payload.stayRange,
     occupancy,
@@ -148,8 +151,8 @@ export function createHotelOrderDraft(payload: CreateHotelOrderDraftPayload) {
       mobile: '',
     },
     invoiceText: '如需发票，请到酒店前台办理',
-    checkInTimeText: matched.hotel.checkInTimeText,
-    checkOutTimeText: matched.hotel.checkOutTimeText,
+    checkInTimeText: payload.checkInTimeText,
+    checkOutTimeText: payload.checkOutTimeText,
     createdAt: now,
     updatedAt: now,
   };
@@ -162,105 +165,11 @@ export function createHotelOrderDraft(payload: CreateHotelOrderDraftPayload) {
 export function ensureHotelOrderDraft(params: Partial<CreateHotelOrderDraftPayload> & { draftId?: string }) {
   const existingDraft = getHotelOrderDraft(params.draftId);
   if (existingDraft) return existingDraft;
+  if (!params.hotelId || !params.hotelName || !params.hotelAddress || !params.hotelPhone || !params.product || !params.stayRange || !params.occupancy || !params.checkInTimeText || !params.checkOutTimeText) {
+    return undefined;
+  }
 
-  const stayRange = params.stayRange ?? createDefaultHotelStayRange();
-  const occupancy = params.occupancy ?? createDefaultHotelOccupancy();
-  const matched = findHotelProduct({
-    hotelId: params.hotelId,
-    productId: params.productId,
-    stayRange,
-    occupancy,
-  });
-
-  if (!matched) return undefined;
-
-  return createHotelOrderDraft({
-    hotelId: matched.hotel.id,
-    productId: matched.product.id,
-    ratePlanId: params.ratePlanId,
-    stayRange,
-    occupancy,
-  });
-}
-
-export function submitHotelOrderDraft(draftId: string, payload: SubmitHotelOrderDraftPayload) {
-  const draft = getHotelOrderDraft(draftId);
-  if (!draft) return undefined;
-
-  const now = createLocalOrderTime();
-  const orderId = createLocalOrderId('HOTEL-');
-  const stayDateText = formatHotelStayDateText(draft.stayRange);
-  const nightsText = `共${calculateHotelNights(draft.stayRange)}晚`;
-  const guestSummary = payload.guestNames.length > 0 ? payload.guestNames.join('、') : '入住人待补充';
-  const productImageSrc = draft.product.imageSrc;
-  const hasDiscount = payload.discountAmount > 0;
-
-  const record: LocalOrderRecord = {
-    id: orderId,
-    source: 'hotel',
-    tabKey: 'pendingReceive',
-    dateText: stayDateText,
-    statusText: '待入住',
-    paidAmountText: `¥${payload.totalAmount.toFixed(2)}`,
-    title: draft.product.title,
-    quantityText: `x${payload.roomCount}`,
-    totalText: `共${payload.roomCount}间 合计:¥${payload.totalAmount.toFixed(2)}`,
-    productFields: [
-      { label: '酒店名称', value: draft.hotelName },
-      { label: '预订内容', value: draft.product.title },
-      { label: '房型信息', value: draft.product.tagsText },
-      { label: '入住日期', value: `${stayDateText} ${nightsText}` },
-    ],
-    ticketFields: [
-      { label: '酒店地址', value: draft.hotelAddress },
-      { label: '入住时间', value: `${draft.checkInTimeText}，${draft.checkOutTimeText}` },
-      { label: '取消规则', value: draft.ratePlan.cancelRule },
-    ],
-    contactFields: [
-      { label: '联系人', value: payload.contact.name },
-      { label: '手机号', value: payload.contact.mobile },
-      { label: '入住人', value: guestSummary },
-    ],
-    amountFields: [
-      { label: '房费', value: `¥${(payload.totalAmount + payload.discountAmount).toFixed(2)}` },
-      ...(hasDiscount ? [{ label: '优惠金额', value: `- ¥${payload.discountAmount.toFixed(2)}` }] : []),
-      { label: '实付款', value: `¥${payload.totalAmount.toFixed(2)}` },
-    ],
-    orderFields: [
-      { label: '订单编号', value: orderId },
-      { label: '下单时间', value: now },
-      { label: '支付方式', value: '微信支付' },
-      { label: '支付时间', value: now },
-    ],
-    refundButtonText: '申请退款',
-    homeItems: [
-      {
-        id: orderId,
-        title: draft.product.title,
-        subtitle: `${stayDateText} ${nightsText}`,
-        imageSrc: productImageSrc,
-        quantity: payload.roomCount,
-        priceText: `¥ ${payload.totalAmount.toFixed(2)}`,
-        actionText: '查看详情',
-      },
-    ],
-    createdAt: now,
-  };
-
-  updateHotelOrderDraft(draftId, {
-    occupancy: normalizeHotelOccupancy({
-      ...draft.occupancy,
-      roomCount: payload.roomCount,
-    }),
-    guests: createHotelGuests(payload.roomCount, payload.guestNames.map((name, index) => ({
-      id: `guest-${index + 1}`,
-      label: `房间${index + 1}`,
-      name,
-    }))),
-    contact: payload.contact,
-  });
-
-  return saveLocalOrder(record);
+  return createHotelOrderDraft(params as CreateHotelOrderDraftPayload);
 }
 
 export function resolveHotelDraftAmount(draft: HotelOrderDraft, roomCount = draft.occupancy.roomCount) {

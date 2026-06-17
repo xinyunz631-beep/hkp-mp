@@ -10,7 +10,7 @@ import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import { navigateToMiniRoute } from '@/core/utils/navigation';
 import { showWechatToast } from '@/core/utils/wechat-actions';
 import { fetchOrderHomeData, type OrderHomeData } from '@/pkg-order/services';
-import type { OrderHomeActionData, OrderHomeItemData } from '@/pkg-order/services/mock-data';
+import type { OrderHomeActionData, OrderHomeItemData } from '@/pkg-order/services/model';
 import './index.scss';
 
 function resolveOrderActionRoute(actionText: string) {
@@ -34,7 +34,7 @@ function resolveOrderItemActions(item: OrderHomeItemData): OrderHomeActionData[]
 }
 
 function shouldPassOrderId(actionText: string) {
-  return ['查看详情', '继续支付', '申请售后', '查看物流'].includes(actionText);
+  return ['查看详情', '继续支付', '取消订单', '申请售后', '查看物流'].includes(actionText);
 }
 
 function resolveOrderActionClassName(action: OrderHomeActionData) {

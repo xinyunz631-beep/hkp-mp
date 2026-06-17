@@ -2,13 +2,14 @@
   "miniprogramRoot": "dist/",
   "projectname": "hkitty-mini-program",
   "description": "企业级乐园 C 端小程序",
-  "appid": "wx00261f550fdbc7ea",
+  "appid": "wx72b9e08ce45d3e79",
   "setting": {
     "urlCheck": true,
     "es6": true,
     "enhance": true,
     "postcss": true,
-    "minified": true
+    "minified": true,
+    "minifyWXML": true
   },
   "compileType": "miniprogram"
 }

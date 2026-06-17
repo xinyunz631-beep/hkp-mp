@@ -118,6 +118,62 @@
   }
 }
 
+._pg-ticket-code {
+  padding: 20px 0 4px;
+  border-top: 1px solid #edf0f4;
+
+  &:first-of-type {
+    border-top: 0;
+  }
+
+  &_header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+  }
+
+  &_title {
+    flex: 1;
+    color: #23262f;
+    font-size: 28px;
+    line-height: 1.45;
+  }
+
+  &_status {
+    flex: none;
+    margin-left: 16px;
+    padding: 4px 14px;
+    border-radius: 999px;
+    background: #fff1f7;
+    color: #d94a88;
+    font-size: 24px;
+    line-height: 1.4;
+  }
+
+  &_qr {
+    display: block;
+    width: 320px;
+    height: 320px;
+    margin: 22px auto 0;
+    border: 1px solid #edf0f4;
+    border-radius: 12px;
+    background: #ffffff;
+  }
+
+  &_payload {
+    display: block;
+    margin-top: 18px;
+    padding: 22px;
+    border-radius: 16px;
+    background: #f6f7fb;
+    color: #23262f;
+    font-size: 34px;
+    font-weight: 500;
+    line-height: 1.45;
+    word-break: break-all;
+  }
+}
+
 ._pg-order-meta {
   display: flex;
   align-items: flex-start;

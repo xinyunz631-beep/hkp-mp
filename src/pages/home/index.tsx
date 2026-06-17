@@ -241,8 +241,8 @@ const HomePage = observer(function HomePage() {
 
   async function handleShortcutPress(entry: HomeShortcutEntry) {
     const action = async () => {
-      if (entry.jumpType || entry.jumpPath || entry.path) {
-        await adClick(entry, { fallbackPath: entry.path });
+      if (entry.jumpType || entry.jumpPath || entry.jumpUrl || entry.jumpCustomValue || entry.richText || entry.richTextHtml) {
+        await adClick(entry);
         return;
       }
 
@@ -299,25 +299,25 @@ const HomePage = observer(function HomePage() {
   async function handleMemberBenefitPress() {
     await runAfterLogin('登录后可查看会员专享福利', async () => {
       if (memberBenefitAd) {
-        await adClick(memberBenefitAd, { fallbackPath: MINI_PACKAGE_ROUTES.memberGrowth });
+        await adClick(memberBenefitAd);
         return;
       }
-      navigateToSubPackage(MINI_PACKAGE_ROUTES.memberGrowth);
+      await showWechatToast('会员福利正在更新，请稍后再试');
     });
   }
 
   // 当前首页仅保留开园时间卡，不再展示交通指南 / 乐园导览双按钮。
   async function handleSchedulePress() {
     if (scheduleAd) {
-      await adClick(scheduleAd, { fallbackPath: MINI_PACKAGE_ROUTES.ticketSchedule });
+      await adClick(scheduleAd);
       return;
     }
-    navigateToSubPackage(MINI_PACKAGE_ROUTES.ticketSchedule);
+    await showWechatToast('节目单正在更新，请稍后再试');
   }
 
   async function handleBannerPress(entry: HomeBannerEntry) {
     const action = async () => {
-      await adClick(entry, { fallbackPath: entry.path });
+      await adClick(entry);
     };
     if (entry.requireLogin) {
       await runAfterLogin('登录后可查看会员专享内容', action);
@@ -332,18 +332,9 @@ const HomePage = observer(function HomePage() {
     navigateToSubPackage(appendRouteQuery(config.path, { slotCode: config.slotCode, title: config.title }));
   }
 
-  // 生成内容卡兜底详情路径，保证无跳转配置的广告仍可按广告 id 进富文本详情。
-  function resolveSectionFallbackPath(card: HomeSectionCard) {
-    if (card.path === MINI_PACKAGE_ROUTES.ticketParkDetail || card.path === MINI_PACKAGE_ROUTES.ticketActivityDetail) {
-      return `${card.path}?id=${encodeURIComponent(card.id)}`;
-    }
-
-    return card.path;
-  }
-
   async function handleSectionCardPress(card: HomeSectionCard) {
     if (card.jumpType || card.jumpPath || card.jumpUrl || card.jumpCustomValue || card.richText || card.richTextHtml) {
-      await adClick(card, { fallbackPath: resolveSectionFallbackPath(card) });
+      await adClick(card);
       return;
     }
 
@@ -358,18 +349,9 @@ const HomePage = observer(function HomePage() {
     await handleHomeAction(card.action);
   }
 
-  // 生成玩法入口兜底详情路径，保持静态入口和后台广告入口的详情 id 规则一致。
-  function resolvePlayCategoryFallbackPath(category: HomePlayCategory) {
-    if (category.path === MINI_PACKAGE_ROUTES.ticketActivityDetail) {
-      return `${category.path}?id=${encodeURIComponent(category.id)}`;
-    }
-
-    return category.path;
-  }
-
   async function handlePlayCategoryPress(category: HomePlayCategory) {
     if (category.jumpType || category.jumpPath || category.jumpUrl || category.jumpCustomValue || category.richText || category.richTextHtml) {
-      await adClick(category, { fallbackPath: resolvePlayCategoryFallbackPath(category) });
+      await adClick(category);
       return;
     }
 

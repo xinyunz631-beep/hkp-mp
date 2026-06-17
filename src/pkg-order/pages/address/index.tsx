@@ -53,7 +53,7 @@ const AddressPage = observer(function AddressPage() {
   }
 
   async function handleSetDefault(addressId: string) {
-    setDefaultOrderAddress(addressId);
+    await setDefaultOrderAddress(addressId);
     await reloadAddressData();
     await showWechatToast('已设为默认地址', 'success');
   }
@@ -77,7 +77,7 @@ const AddressPage = observer(function AddressPage() {
 
     if (!confirmed) return;
 
-    deleteOrderAddress(addressId);
+    await deleteOrderAddress(addressId);
     await reloadAddressData();
     await showWechatToast('地址已删除', 'success');
   }

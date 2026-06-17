@@ -1,19 +1,7 @@
 import { request } from '@/core/request';
 
-export type BffOrderSceneType = 'TICKET' | 'MALL' | 'DINING' | string;
+export type BffOrderSceneType = 'TICKET' | 'MALL' | 'HOTEL';
 export type BffOrderPaymentChannel = 'WECHAT' | 'ALIPAY' | string;
-
-export interface BffOrderSubmitItem {
-  lineNo: string;
-  itemId: string;
-  itemType: string;
-  itemName: string;
-  categoryId?: string;
-  brandId?: string;
-  unitPriceCent: number;
-  quantity: number;
-  attributes?: Record<string, string>;
-}
 
 export interface BffOrderSelectionItem {
   lineNo: string;
@@ -29,26 +17,24 @@ export interface BffOrderUnifiedRequest {
   memberLevel?: string;
   channel?: string;
   paymentChannel?: BffOrderPaymentChannel;
-  items: BffOrderSelectionItem[];
   freightAmountCent?: number;
   selectedCouponNos?: string[];
   context?: Record<string, string>;
   contactName?: string;
   contactPhone?: string;
   remark?: string;
+  items: BffOrderSelectionItem[];
 }
 
-export interface BffOrderSubmitRequest {
-  sceneType: BffOrderSceneType;
-  memberLevel?: string;
-  channel?: string;
-  paymentChannel?: BffOrderPaymentChannel;
-  freightAmountCent?: number;
-  selectedCouponNos?: string[];
-  context?: Record<string, string>;
-  contactName?: string;
-  contactPhone?: string;
-  remark?: string;
+export interface BffOrderSubmitItem extends BffOrderSelectionItem {
+  itemType: string;
+  itemName: string;
+  categoryId?: string;
+  brandId?: string;
+  unitPriceCent: number;
+}
+
+export interface BffOrderSubmitRequest extends Omit<BffOrderUnifiedRequest, 'items'> {
   createPayment?: boolean;
   items: BffOrderSubmitItem[];
 }
@@ -56,6 +42,7 @@ export interface BffOrderSubmitRequest {
 export interface BffOrderItem {
   lineNo?: string;
   itemId?: string;
+  skuId?: string;
   itemType?: string;
   itemName?: string;
   categoryId?: string;
@@ -66,14 +53,32 @@ export interface BffOrderItem {
   attributes?: Record<string, string>;
 }
 
-export interface BffOrderTicketVoucher {
+export interface BffTicketInstance {
+  ticketNo?: string;
+  qrCodePayload?: string;
+  productName?: string;
+  skuName?: string;
+  status?: string;
+  visitDate?: string;
+  validStartAt?: string;
+  validEndAt?: string;
+  remainingUseTimes?: number;
+  usedTimes?: number;
+}
+
+export interface BffTicketVoucher {
+  source?: string;
+  orderCode?: string;
+  subOrderCode?: string;
   ticketCode?: string;
   voucherCode?: string;
-  couponCode?: string;
   codeImage?: string;
   qrImage?: string;
   qrCodeUrl?: string;
-  status?: string;
+  ticketStatus?: string;
+  usedNum?: number;
+  totalNum?: number;
+  rawFields?: Record<string, unknown>;
   [key: string]: unknown;
 }
 
@@ -95,7 +100,9 @@ export interface BffOrder {
   remark?: string;
   context?: Record<string, string>;
   items?: BffOrderItem[];
-  ticketVouchers?: BffOrderTicketVoucher[];
+  ticketInstances?: BffTicketInstance[];
+  ticketVouchers?: BffTicketVoucher[];
+  payExpireAt?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -108,6 +115,8 @@ export interface BffOrderPrepay {
   status?: string;
   payParams?: Record<string, unknown>;
   paymentParams?: Record<string, unknown>;
+  paymentSkipped?: boolean;
+  reason?: string;
   [key: string]: unknown;
 }
 
@@ -118,7 +127,7 @@ export interface BffOrderSubmitResponse {
   prepay?: BffOrderPrepay;
 }
 
-export interface BffOrderConfirmation {
+export interface BffOrderConfirmResponse {
   sceneType?: BffOrderSceneType;
   channel?: string;
   paymentChannel?: BffOrderPaymentChannel;
@@ -129,16 +138,39 @@ export interface BffOrderConfirmation {
   freightDiscountCent?: number;
   payableAmountCent?: number;
   quoteSnapshotNo?: string;
-  quote?: Record<string, unknown>;
+  promotionQuote?: Record<string, unknown>;
   context?: Record<string, string>;
-  unavailableItems?: unknown[];
+  warnings?: string[];
   confirmedAt?: string;
 }
 
 export interface BffOrderCreateResponse {
   order: BffOrder;
-  confirmation?: BffOrderConfirmation;
+  confirmation?: BffOrderConfirmResponse;
   promotionLock?: Record<string, unknown>;
+}
+
+export interface BffOrderPaymentResponse {
+  order: BffOrder;
+  prepay?: BffOrderPrepay;
+}
+
+export interface BffOrderOperationResponse {
+  order?: BffOrder;
+  orderNo?: string;
+  status?: string;
+  message?: string;
+  [key: string]: unknown;
+}
+
+export interface BffOrderCancelRequest {
+  reason?: string;
+}
+
+export interface BffOrderRefundRequest {
+  refundAmountCent?: number;
+  lineNos?: string[];
+  reason?: string;
 }
 
 function appendQuery(url: string, params: Record<string, string | number | undefined>) {
@@ -159,11 +191,59 @@ export function submitBffOrder(data: BffOrderSubmitRequest) {
   });
 }
 
+// 调用统一订单确认接口，确认酒店、票务、商城的价格、库存和优惠。
+export function confirmBffOrder(data: BffOrderUnifiedRequest) {
+  return request<BffOrderConfirmResponse, BffOrderUnifiedRequest>({
+    url: '/api/bff/orders/confirm',
+    method: 'POST',
+    data: {
+      ...data,
+      freightAmountCent: data.freightAmountCent ?? 0,
+    },
+    sign: true,
+  });
+}
+
+// 创建统一订单，酒店链路使用该接口落库并锁定库存/优惠。
 export function createBffOrder(data: BffOrderUnifiedRequest) {
   return request<BffOrderCreateResponse, BffOrderUnifiedRequest>({
     url: '/api/bff/orders',
     method: 'POST',
+    data: {
+      ...data,
+      freightAmountCent: data.freightAmountCent ?? 0,
+    },
+    sign: true,
+  });
+}
+
+// 为已创建订单发起支付，支付参数由后端按当前登录人注入。
+export function payBffOrder(orderNo: string, paymentChannel: BffOrderPaymentChannel = 'WECHAT') {
+  return request<BffOrderPaymentResponse, { paymentChannel: BffOrderPaymentChannel }>({
+    url: `/api/bff/orders/${encodeURIComponent(orderNo)}/pay`,
+    method: 'POST',
+    data: { paymentChannel },
+    sign: true,
+  });
+}
+
+// 取消未支付统一订单，库存锁和优惠锁由后端释放。
+export function cancelBffOrder(orderNo: string, data: BffOrderCancelRequest = {}) {
+  return request<BffOrderOperationResponse, BffOrderCancelRequest>({
+    url: `/api/bff/orders/${encodeURIComponent(orderNo)}/cancel`,
+    method: 'POST',
     data,
+    sign: true,
+  });
+}
+
+// 发起统一订单退款，默认整单退款；退款金额和可退性由后端校验。
+export function refundBffOrder(orderNo: string, data: BffOrderRefundRequest = {}) {
+  return request<BffOrderOperationResponse, BffOrderRefundRequest>({
+    url: `/api/bff/orders/${encodeURIComponent(orderNo)}/refunds`,
+    method: 'POST',
+    data,
+    sign: true,
   });
 }
 

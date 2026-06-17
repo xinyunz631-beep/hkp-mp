@@ -5,11 +5,13 @@ import { observer } from 'mobx-react';
 import { AppIcon } from '@/core/components/AppIcon';
 import { BaseEmpty } from '@/core/components/BaseEmpty';
 import { CouponSelectionPopup, QuantityStepper } from '@/core/components/commerce';
+import { StatusException } from '@/core/components/status';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { PageShare, PageShell } from '@/core/components/PageShell';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
+import { resolveErrorMessage } from '@/core/utils/error-message';
 import { navigateBackInPageStack, navigateToMiniRoute } from '@/core/utils/navigation';
-import { showWechatConfirm, showWechatToast } from '@/core/utils/wechat-actions';
+import { requestWechatPayment, showWechatConfirm, showWechatToast } from '@/core/utils/wechat-actions';
 import { TicketSubmitFooter } from '@/pkg-ticket/components/TicketSubmitFooter';
 import { fetchCheckoutData, type TicketCheckoutPageData } from '@/pkg-ticket/services/checkout';
 import {
@@ -68,10 +70,6 @@ function resolveAgeFromIdCard(idCard: string, travelDate: string) {
   return age;
 }
 
-function isAnnualCardTraveler(traveler: TicketOrderTraveler) {
-  return traveler.role === 'annualAdult' || traveler.role === 'annualChild';
-}
-
 function isDiscountTraveler(traveler: TicketOrderTraveler) {
   return traveler.role === 'senior';
 }
@@ -81,8 +79,8 @@ function isChildTraveler(traveler: TicketOrderTraveler) {
 }
 
 function isTravelerComplete(traveler: TicketOrderTraveler) {
-  return Boolean(traveler.name.trim())
-    && isValidMainlandIdCard(traveler.idCard)
+  return (!traveler.nameRequired || Boolean(traveler.name.trim()))
+    && (!traveler.certificateRequired || isValidMainlandIdCard(traveler.idCard))
     && (!traveler.mobileRequired || isValidMainlandMobile(traveler.mobile));
 }
 
@@ -125,6 +123,19 @@ const CheckoutPage = observer(function CheckoutPage() {
     },
     loginRequired: true,
     loginReason: '登录后可提交门票订单',
+    errorFallback: ({ retry, loading }) => (
+      <StatusException
+        fullScreen
+        type="server"
+        title="门票订单确认暂不可用"
+        description="当前订单确认服务未返回可用结果，请稍后重试。"
+        actionText="重新确认"
+        actionDisabled={loading}
+        backActionVisible
+        backActionText="返回选票"
+        onRetry={retry}
+      />
+    ),
   });
 
   const ticketAmount = checkoutData?.ticketItem.price ?? 0;
@@ -136,8 +147,8 @@ const CheckoutPage = observer(function CheckoutPage() {
     && selectedCoupon.status === 'available'
     && originAmount >= selectedCoupon.minimumAmount,
   );
-  const discountAmount = selectedCouponUsable && selectedCoupon ? selectedCoupon.discountAmount : 0;
-  const payAmount = useMemo(() => Math.max(0, originAmount - discountAmount), [discountAmount, originAmount]);
+  const discountAmount = checkoutData?.discountAmount ?? 0;
+  const payAmount = checkoutData ? checkoutData.payableAmount : 0;
   const couponOptions = useMemo(() => {
     if (!checkoutData) return [];
 
@@ -157,6 +168,26 @@ const CheckoutPage = observer(function CheckoutPage() {
       ? '未满足使用门槛'
       : '请选择优惠券';
   const hasCoupons = couponOptions.length > 0;
+
+  async function refreshCheckoutByCoupon(nextCouponId?: string) {
+    if (!draftId) return;
+
+    updateTicketOrderDraft(draftId, {
+      selectedCouponId: nextCouponId,
+      addonQuantity,
+      contact: contactForm,
+      travelers: travelerForms,
+    });
+
+    try {
+      const nextData = await pageRuntime.withLoading(() => fetchCheckoutData(draftId, nextCouponId));
+      setCheckoutData(nextData);
+      setSelectedCouponId(nextCouponId);
+      setCouponPopupVisible(false);
+    } catch (error) {
+      await showWechatToast(resolveErrorMessage(error, '优惠券暂不可用，请稍后再试'));
+    }
+  }
 
   function updateContactField(field: keyof ContactFormState, value: string) {
     const nextValue = field === 'mobile'
@@ -190,6 +221,7 @@ const CheckoutPage = observer(function CheckoutPage() {
   async function handleSyncContactToTraveler(travelerId: string) {
     const nextContactName = contactForm.name.trim();
     const nextContactMobile = normalizeMobileInput(contactForm.mobile);
+    const targetTraveler = travelerForms.find((traveler) => traveler.id === travelerId);
 
     if (!nextContactName && !nextContactMobile) {
       await showWechatToast('请先填写联系人信息');
@@ -200,15 +232,15 @@ const CheckoutPage = observer(function CheckoutPage() {
       traveler.id === travelerId
         ? {
           ...traveler,
-          name: nextContactName || traveler.name,
-          mobile: nextContactMobile || traveler.mobile,
+          name: traveler.nameRequired ? nextContactName || traveler.name : traveler.name,
+          mobile: traveler.mobileRequired ? nextContactMobile || traveler.mobile : traveler.mobile,
         }
         : traveler
     ));
 
     setTravelerForms(nextTravelers);
     if (draftId) updateTicketOrderDraft(draftId, { travelers: nextTravelers });
-    await showWechatToast('已同步联系人，请补充证件号');
+    await showWechatToast(targetTraveler?.certificateRequired ? '已同步联系人，请补充证件号' : '已同步联系人');
   }
 
   function handleAddonQuantityChange(value: number) {
@@ -230,20 +262,15 @@ const CheckoutPage = observer(function CheckoutPage() {
   }
 
   async function validateTravelers(nextTravelers: TicketOrderTraveler[]) {
-    if (nextTravelers.length <= 0) {
-      await showWechatToast('请先选择门票');
-      return false;
-    }
-
     const idCardMap = new Map<string, string>();
 
     for (const traveler of nextTravelers) {
-      if (!traveler.name.trim()) {
+      if (traveler.nameRequired && !traveler.name.trim()) {
         await showWechatToast(`请填写${traveler.title}姓名`);
         return false;
       }
 
-      if (!isValidMainlandIdCard(traveler.idCard)) {
+      if (traveler.certificateRequired && !isValidMainlandIdCard(traveler.idCard)) {
         await showWechatToast(`请填写${traveler.title}正确身份证号`);
         return false;
       }
@@ -252,6 +279,8 @@ const CheckoutPage = observer(function CheckoutPage() {
         await showWechatToast(`请填写${traveler.title}手机号`);
         return false;
       }
+
+      if (!traveler.certificateRequired || !traveler.idCard) continue;
 
       const existedTravelerTitle = idCardMap.get(traveler.idCard);
       if (existedTravelerTitle) {
@@ -264,6 +293,7 @@ const CheckoutPage = observer(function CheckoutPage() {
 
     const needsQualificationConfirm = nextTravelers.some((traveler) => {
       if (!isDiscountTraveler(traveler) && !isChildTraveler(traveler)) return false;
+      if (!traveler.certificateRequired) return false;
       const age = resolveAgeFromIdCard(traveler.idCard, selectedDate);
 
       if (isDiscountTraveler(traveler)) return age !== undefined && age < 70;
@@ -283,6 +313,8 @@ const CheckoutPage = observer(function CheckoutPage() {
 
   async function handleSubmit() {
     setSubmitAttempted(true);
+    const authed = await pageRuntime.ensureLogin('登录后可提交门票订单');
+    if (!authed) return;
 
     if (!checkoutData?.draft || checkoutData.draftMissing || !draftId) {
       await showWechatToast('请先选择门票');
@@ -321,32 +353,51 @@ const CheckoutPage = observer(function CheckoutPage() {
     });
 
     const confirmed = await showWechatConfirm({
-      title: '确认下单',
-      content: `已核对 ${nextTravelers.length} 位实名出游人，本次订单金额 ¥${payAmount.toFixed(2)}，提交后将直接出票。`,
-      confirmText: '确认下单',
+      title: '确认订单',
+      content: nextTravelers.length
+        ? `已核对 ${nextTravelers.length} 位实名出游人，本次应付 ¥${payAmount.toFixed(2)}，提交后将生成入园凭证。`
+        : `已核对订单联系人，本次应付 ¥${payAmount.toFixed(2)}，提交后将生成入园凭证。`,
+      confirmText: '确认提交',
     });
     if (!confirmed) return;
 
-    let nextOrder;
-    try {
-      nextOrder = await submitTicketOrderDraft(draftId, {
-        selectedDate,
-        selectedCouponId: selectedCouponUsable ? selectedCouponId : undefined,
-        addonQuantity,
-        contact: nextContact,
-        travelers: nextTravelers,
-      });
-    } catch {
-      return;
-    }
+    const nextOrder = await pageRuntime.withLoading(() => submitTicketOrderDraft(draftId, {
+      selectedDate,
+      selectedCouponId: selectedCouponUsable ? selectedCouponId : undefined,
+      addonQuantity,
+      contact: nextContact,
+      travelers: nextTravelers,
+    }));
 
     if (!nextOrder) {
       await showWechatToast('订单提交失败，请重新选择门票');
       return;
     }
 
-    await showWechatToast('下单成功', 'success');
-    navigateToMiniRoute(`${MINI_PACKAGE_ROUTES.orderDetail}?orderId=${encodeURIComponent(nextOrder.id)}`);
+    if (nextOrder.paymentSkipped || nextOrder.orderStatus === 'WAIT_USE' || nextOrder.ticketVouchers?.length) {
+      await showWechatToast('出票成功', 'success');
+      navigateToMiniRoute(`${MINI_PACKAGE_ROUTES.orderDetail}?orderId=${encodeURIComponent(nextOrder.orderNo)}`, {
+        loginMode: 'none',
+      });
+      return;
+    }
+
+    const paymentParams = nextOrder.payment?.prepay?.paymentParams || nextOrder.payment?.prepay?.payParams;
+    if (!paymentParams) {
+      await showWechatToast('支付参数缺失，请稍后再试');
+      return;
+    }
+
+    const paymentStatus = await requestWechatPayment({
+      amount: nextOrder.payableAmount || payAmount,
+      paymentParams: paymentParams as unknown as Parameters<typeof Taro.requestPayment>[0],
+    });
+    if (paymentStatus !== 'success') return;
+
+    await showWechatToast('支付成功', 'success');
+    navigateToMiniRoute(`${MINI_PACKAGE_ROUTES.orderDetail}?orderId=${encodeURIComponent(nextOrder.orderNo)}`, {
+      loginMode: 'none',
+    });
   }
 
   return pageRuntime.renderPage(() => {
@@ -407,7 +458,7 @@ const CheckoutPage = observer(function CheckoutPage() {
                 </View>
                 <View className="_pg-item_notice">
                   <AppIcon name="code" size={14} color="#d94a88" />
-                  <Text>提交成功后生成订单入园凭证，也可凭购票证件核验入园。</Text>
+                  <Text>支付成功后生成订单入园码，也可凭购票证件核验入园。</Text>
                 </View>
                 <View className="_pg-product-list">
                   {selectedProducts.map((product) => (
@@ -482,6 +533,7 @@ const CheckoutPage = observer(function CheckoutPage() {
               </View>
             </View>
 
+            {travelerCount > 0 ? (
             <View className="_pg-card">
               <View className="_pg-form">
                 <View className="_pg-form_heading">
@@ -491,7 +543,7 @@ const CheckoutPage = observer(function CheckoutPage() {
                 </View>
                 <View className="_pg-form_notice">
                   <AppIcon name="check" size={10} color="#d94a88" />
-                  <Text>一票一实名，儿童票、优待票和年卡资格以园区现场核验为准。</Text>
+                  <Text>请按票种要求补充出游人信息，儿童票、优待票和年卡资格以园区现场核验为准。</Text>
                 </View>
 
                 <ScrollView className="_pg-traveler-tabs" scrollX enhanced showScrollbar={false}>
@@ -520,13 +572,13 @@ const CheckoutPage = observer(function CheckoutPage() {
                 {activeTraveler ? (() => {
                   const traveler = activeTraveler;
                   const travelerIdCardError = submitAttempted
-                    && Boolean(traveler.idCard)
+                    && traveler.certificateRequired
                     && !isValidMainlandIdCard(traveler.idCard);
                   const travelerMobileError = submitAttempted
-                    && isAnnualCardTraveler(traveler)
-                    && Boolean(traveler.mobile)
+                    && traveler.mobileRequired
                     && !isValidMainlandMobile(traveler.mobile);
                   const travelerCompleted = isTravelerComplete(traveler);
+                  const canSyncContact = traveler.nameRequired || traveler.mobileRequired;
 
                   return (
                     <View className="_pg-traveler" key={traveler.id}>
@@ -543,9 +595,11 @@ const CheckoutPage = observer(function CheckoutPage() {
                       </View>
                       <View className="_pg-traveler_intro">
                         <Text className="_pg-traveler_desc">{traveler.requirementText}</Text>
-                        <Text className="_pg-traveler_action" onClick={() => { void handleSyncContactToTraveler(traveler.id); }}>
-                          同联系人
-                        </Text>
+                        {canSyncContact ? (
+                          <Text className="_pg-traveler_action" onClick={() => { void handleSyncContactToTraveler(traveler.id); }}>
+                            同联系人
+                          </Text>
+                        ) : null}
                       </View>
                       {traveler.qualificationText ? (
                         <View className="_pg-traveler_tip">
@@ -554,28 +608,34 @@ const CheckoutPage = observer(function CheckoutPage() {
                         </View>
                       ) : null}
 
-                      <View className="_pg-field">
-                        <Text className="_pg-field_label">姓名</Text>
-                        <Input
-                          className="_pg-field_input"
-                          value={traveler.name}
-                          placeholder="请输入实际入园人姓名"
-                          onInput={(event) => updateTravelerField(traveler.id, 'name', event.detail.value)}
-                        />
-                      </View>
+                      {traveler.nameRequired ? (
+                        <View className="_pg-field">
+                          <Text className="_pg-field_label">姓名</Text>
+                          <Input
+                            className="_pg-field_input"
+                            value={traveler.name}
+                            placeholder="请输入实际入园人姓名"
+                            onInput={(event) => updateTravelerField(traveler.id, 'name', event.detail.value)}
+                          />
+                        </View>
+                      ) : null}
 
-                      <View className="_pg-field">
-                        <Text className="_pg-field_label">身份证</Text>
-                        <Input
-                          className="_pg-field_input"
-                          value={traveler.idCard}
-                          placeholder={checkoutData.contact.idCardPlaceholder}
-                          type="idcard"
-                          maxlength={18}
-                          onInput={(event) => updateTravelerField(traveler.id, 'idCard', event.detail.value)}
-                        />
-                      </View>
-                      {travelerIdCardError ? <Text className="_pg-form_error">请填写正确身份证号</Text> : null}
+                      {traveler.certificateRequired ? (
+                        <>
+                          <View className="_pg-field">
+                            <Text className="_pg-field_label">身份证</Text>
+                            <Input
+                              className="_pg-field_input"
+                              value={traveler.idCard}
+                              placeholder={checkoutData.contact.idCardPlaceholder}
+                              type="idcard"
+                              maxlength={18}
+                              onInput={(event) => updateTravelerField(traveler.id, 'idCard', event.detail.value)}
+                            />
+                          </View>
+                          {travelerIdCardError ? <Text className="_pg-form_error">请填写正确身份证号</Text> : null}
+                        </>
+                      ) : null}
 
                       {traveler.mobileRequired ? (
                         <>
@@ -598,6 +658,7 @@ const CheckoutPage = observer(function CheckoutPage() {
                 })() : null}
               </View>
             </View>
+            ) : null}
 
             {hasCoupons ? (
               <>
@@ -659,14 +720,10 @@ const CheckoutPage = observer(function CheckoutPage() {
                     clearText="不使用优惠券"
                     onClose={() => setCouponPopupVisible(false)}
                     onClear={() => {
-                      setSelectedCouponId(undefined);
-                      if (draftId) updateTicketOrderDraft(draftId, { selectedCouponId: undefined });
-                      setCouponPopupVisible(false);
+                      void refreshCheckoutByCoupon(undefined);
                     }}
                     onSelect={(coupon) => {
-                      setSelectedCouponId(coupon.id);
-                      if (draftId) updateTicketOrderDraft(draftId, { selectedCouponId: coupon.id });
-                      setCouponPopupVisible(false);
+                      void refreshCheckoutByCoupon(coupon.id);
                     }}
                   />
                 ) : null}

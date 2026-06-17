@@ -71,7 +71,7 @@ export function resolveMiniProgramAdDescription(ad?: MiniProgramAdView) {
   return ad?.subtitle || ad?.badgeText || ad?.content || '';
 }
 
-// 判断资源位是否有可用广告，方便页面决定是否覆盖静态兜底数据。
+// 判断资源位是否有可用广告，方便页面决定是否渲染该运营资源位。
 export function hasMiniProgramSlotAds(slot?: MiniProgramAdSlotAdsView) {
   return Boolean(slot?.ads?.length);
 }

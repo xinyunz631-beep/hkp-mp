@@ -1,27 +1,30 @@
 import { MINI_STORAGE_KEYS } from '@/core/constants/storage';
+import { createLocalOrderId, createLocalOrderTime } from '@/core/services/local-order';
 import {
   createBffOrder,
-  type BffOrder,
-  type BffOrderTicketVoucher,
+  payBffOrder,
+  type BffOrderPaymentResponse,
+  type BffTicketVoucher,
   type BffOrderUnifiedRequest,
 } from '@/core/services/bff-order-api';
-import {
-  createLocalOrderId,
-  createLocalOrderTime,
-  saveLocalOrder,
-  type LocalOrderRecord,
-} from '@/core/services/local-order';
 import { getCache, setCache } from '@/core/utils/cache';
-import { ticketCheckoutData } from './mock-data';
 import type { TicketCoupon } from './ticket-booking';
 
 export interface TicketOrderDraftProduct {
   id: string;
+  productCode?: string;
+  skuId?: string;
+  skuName?: string;
   title: string;
-  category: 'ticket' | 'annualCard';
+  category: 'ticket' | 'annualCard' | 'fastPass';
   price: number;
+  unitPriceCent?: number;
   quantity: number;
   noticeText: string;
+  travelerRoles?: string[];
+  requiredFields?: string[];
+  mobileRequired?: boolean;
+  certificateRequired?: boolean;
 }
 
 export interface TicketOrderContact {
@@ -41,12 +44,14 @@ export interface TicketOrderTraveler {
   id: string;
   productId: string;
   productTitle: string;
-  category: 'ticket' | 'annualCard';
+  category: 'ticket' | 'annualCard' | 'fastPass';
   role: TicketOrderTravelerRole;
   roleText: string;
   title: string;
   requirementText: string;
+  nameRequired: boolean;
   mobileRequired: boolean;
+  certificateRequired: boolean;
   qualificationText?: string;
   name: string;
   mobile: string;
@@ -84,6 +89,16 @@ export interface SubmitTicketOrderDraftPayload {
   travelers: TicketOrderTraveler[];
 }
 
+export interface TicketOrderSubmitResult {
+  id: string;
+  orderNo: string;
+  orderStatus?: string;
+  payableAmount: number;
+  ticketVouchers?: BffTicketVoucher[];
+  paymentSkipped?: boolean;
+  payment?: BffOrderPaymentResponse;
+}
+
 // 读取全部本地门票订单草稿，异常时返回空列表。
 function listTicketOrderDrafts() {
   const cachedDrafts = getCache<unknown>(MINI_STORAGE_KEYS.ticketOrderDrafts);
@@ -104,53 +119,208 @@ function saveTicketOrderDrafts(drafts: TicketOrderDraft[]) {
   setCache(MINI_STORAGE_KEYS.ticketOrderDrafts, drafts);
 }
 
-function formatCentAmount(amountCent?: number) {
-  const normalizedAmount = Math.max(0, Number(amountCent ?? 0));
-  return `¥${(normalizedAmount / 100).toFixed(2)}`;
+interface TicketTravelerSlotRule {
+  role: TicketOrderTravelerRole;
+  roleText: string;
+  label: string;
+  requirementText: string;
+  nameRequired?: boolean;
+  mobileRequired?: boolean;
+  certificateRequired?: boolean;
+  qualificationText?: string;
 }
 
-function resolveBffTicketOrderStatusText(status?: string) {
-  const statusMap: Record<string, string> = {
-    PENDING_PAYMENT: '待支付',
-    PAYING: '支付中',
-    PAID: '已支付',
-    FULFILLING: '出票中',
-    WAIT_USE: '待使用',
-    PART_USED: '部分使用',
-    USED: '已使用',
-    FULFILLED: '已完成',
-    COMPLETED: '已完成',
-    CLOSED: '已关闭',
-    REFUNDING: '退款中',
-    REFUNDED: '已退款',
+const adultSlotRule: TicketTravelerSlotRule = {
+  role: 'adult',
+  roleText: '成人',
+  label: '成人',
+  requirementText: '填写实际入园成人信息，入园时可刷证件或入园码核验。',
+  nameRequired: true,
+  certificateRequired: true,
+};
+
+const childSlotRule: TicketTravelerSlotRule = {
+  role: 'child',
+  roleText: '儿童',
+  label: '儿童',
+  requirementText: '填写实际入园儿童信息，入园时核验身高或证件，需成人陪同。',
+  nameRequired: true,
+  certificateRequired: true,
+  qualificationText: '儿童票通常适用于 1米（含）-1.4米（不含）儿童，具体以现场核验为准。',
+};
+
+const seniorSlotRule: TicketTravelerSlotRule = {
+  role: 'senior',
+  roleText: '优待',
+  label: '优待游客',
+  requirementText: '填写本人实名信息，入园时需核验证件和优待资格。',
+  nameRequired: true,
+  certificateRequired: true,
+  qualificationText: '优惠票需现场核验证件或优待资格，若不满足政策可能无法入园。',
+};
+
+const annualAdultSlotRule: TicketTravelerSlotRule = {
+  role: 'annualAdult',
+  roleText: '成人年卡',
+  label: '成人持卡人',
+  requirementText: '年卡需实名绑定，激活后仅限本人使用，入园时核验证件。',
+  nameRequired: true,
+  mobileRequired: true,
+  certificateRequired: true,
+};
+
+const annualChildSlotRule: TicketTravelerSlotRule = {
+  role: 'annualChild',
+  roleText: '儿童年卡',
+  label: '儿童持卡人',
+  requirementText: '儿童年卡需实名绑定，入园时核验证件或身高，并由监护人陪同。',
+  nameRequired: true,
+  mobileRequired: true,
+  certificateRequired: true,
+  qualificationText: '儿童年卡适用范围以现场要求为准，请确认儿童符合购买条件。',
+};
+
+const travelerRoleRuleMap: Record<string, TicketTravelerSlotRule> = {
+  adult: adultSlotRule,
+  child: childSlotRule,
+  senior: seniorSlotRule,
+  annualAdult: annualAdultSlotRule,
+  annualChild: annualChildSlotRule,
+};
+
+const travelerNameFields = ['travelerName', 'holderName', 'name'];
+const travelerMobileFields = ['travelerPhone', 'holderPhone', 'mobile', 'phone'];
+const travelerCertificateFields = ['travelerIdCard', 'holderIdCard', 'idCard', 'certificateNo'];
+
+function repeatSlotRules(rule: TicketTravelerSlotRule, count: number) {
+  return Array.from({ length: count }, () => rule);
+}
+
+function hasRequiredField(product: TicketOrderDraftProduct, fieldNames: string[]) {
+  return product.requiredFields?.some((field) => fieldNames.includes(field)) ?? false;
+}
+
+function hasAnyRealNameField(product: TicketOrderDraftProduct) {
+  return Boolean(product.mobileRequired)
+    || Boolean(product.certificateRequired)
+    || hasRequiredField(product, travelerNameFields)
+    || hasRequiredField(product, travelerMobileFields)
+    || hasRequiredField(product, travelerCertificateFields);
+}
+
+function shouldCreateTravelerSlots(product: TicketOrderDraftProduct) {
+  return hasAnyRealNameField(product);
+}
+
+// 以后端 SKU 实名字段为准调整本地表单必填项；无实名字段的快速通/票种只保留订单联系人。
+function applyProductRealNameRule(
+  product: TicketOrderDraftProduct,
+  rule: TicketTravelerSlotRule,
+): TicketTravelerSlotRule {
+  if (!hasAnyRealNameField(product)) {
+    return {
+      ...rule,
+      nameRequired: false,
+      mobileRequired: false,
+      certificateRequired: false,
+      requirementText: '当前票种不需要补充实名出游人信息。',
+      qualificationText: undefined,
+    };
+  }
+
+  const nameRequired = hasRequiredField(product, travelerNameFields);
+  const mobileRequired = Boolean(product.mobileRequired)
+    || hasRequiredField(product, travelerMobileFields);
+  const certificateRequired = Boolean(product.certificateRequired)
+    || hasRequiredField(product, travelerCertificateFields);
+
+  return {
+    ...rule,
+    nameRequired,
+    mobileRequired,
+    certificateRequired,
   };
-
-  return status ? statusMap[status] ?? status : '待使用';
 }
 
-function resolveTicketVoucherCode(voucher: BffOrderTicketVoucher) {
-  const code = voucher.ticketCode || voucher.voucherCode || voucher.couponCode;
-  return typeof code === 'string' && code.trim() ? code.trim() : '';
+// 根据产品结构准备出游人填写项，不把各平台 UI 照搬到页面层。
+function resolveTravelerSlotRules(product: TicketOrderDraftProduct) {
+  if (!shouldCreateTravelerSlots(product)) return [];
+
+  if (product.travelerRoles?.length) {
+    return Array.from({ length: product.quantity }).flatMap(() => (
+      product.travelerRoles || []
+    ).map((role) => applyProductRealNameRule(product, travelerRoleRuleMap[role] || adultSlotRule)));
+  }
+
+  if (product.id === '4000000000001004') {
+    return Array.from({ length: product.quantity }).flatMap(() => [
+      applyProductRealNameRule(product, adultSlotRule),
+      applyProductRealNameRule(product, childSlotRule),
+    ]);
+  }
+
+  if (product.id === '4000000000001002') {
+    return repeatSlotRules(applyProductRealNameRule(product, seniorSlotRule), product.quantity);
+  }
+
+  if (product.id === '4000000000001003') {
+    return repeatSlotRules(applyProductRealNameRule(product, childSlotRule), product.quantity);
+  }
+
+  if (product.id === '4000000000002002') {
+    return repeatSlotRules(applyProductRealNameRule(product, annualChildSlotRule), product.quantity);
+  }
+
+  if (product.id === '4000000000002001') {
+    return repeatSlotRules(applyProductRealNameRule(product, annualAdultSlotRule), product.quantity);
+  }
+
+  if (product.id === '4000000000002003') {
+    return Array.from({ length: product.quantity }).flatMap(() => [
+      applyProductRealNameRule(product, annualAdultSlotRule),
+      applyProductRealNameRule(product, annualAdultSlotRule),
+      applyProductRealNameRule(product, annualChildSlotRule),
+    ]);
+  }
+
+  if (product.id === '4000000000002004') {
+    return Array.from({ length: product.quantity }).flatMap(() => [
+      applyProductRealNameRule(product, annualAdultSlotRule),
+      applyProductRealNameRule(product, annualAdultSlotRule),
+      applyProductRealNameRule(product, annualChildSlotRule),
+      applyProductRealNameRule(product, annualChildSlotRule),
+    ]);
+  }
+
+  if (product.id === '4000000000002005') {
+    return Array.from({ length: product.quantity }).flatMap(() => [
+      applyProductRealNameRule(product, annualAdultSlotRule),
+      applyProductRealNameRule(product, annualChildSlotRule),
+    ]);
+  }
+
+  if (product.category === 'annualCard') {
+    return repeatSlotRules(applyProductRealNameRule(product, annualAdultSlotRule), product.quantity);
+  }
+
+  return repeatSlotRules(applyProductRealNameRule(product, adultSlotRule), product.quantity);
 }
 
-function resolveTicketVoucherImage(voucher: BffOrderTicketVoucher) {
-  const image = voucher.codeImage || voucher.qrImage || voucher.qrCodeUrl;
-  return typeof image === 'string' && image.trim() ? image.trim() : '';
+// 归一化票务 SKU 编号，兼容购票菜单同步到票务商品后的标准票种编号。
+function resolveTicketSkuId(product: TicketOrderDraftProduct) {
+  const productCode = product.productCode || product.id;
+  return product.skuId || `${productCode}_standard`;
 }
 
-function createTicketOrderRequest(
+// 生成统一订单票务请求，价格、库存、优惠和出票由后端统一确认。
+export function buildTicketUnifiedOrderRequest(
   draft: TicketOrderDraft,
   payload: SubmitTicketOrderDraftPayload,
 ): BffOrderUnifiedRequest {
-  const selectedCouponNos = payload.selectedCouponId ? [payload.selectedCouponId] : undefined;
-  const travelerPayload = payload.travelers.map((traveler) => ({
-    productId: traveler.productId,
-    productTitle: traveler.productTitle,
-    role: traveler.role,
-    name: traveler.name,
-    mobile: traveler.mobile,
-    idCard: traveler.idCard,
-  }));
+  const selectedCouponNos = payload.selectedCouponId ? [payload.selectedCouponId] : [];
+  const travelerSummary = payload.travelers
+    .map((traveler) => `${traveler.name}/${traveler.idCard}/${traveler.productId}`)
+    .join(';');
 
   return {
     sceneType: 'TICKET',
@@ -161,229 +331,43 @@ function createTicketOrderRequest(
     contactName: payload.contact.name,
     contactPhone: payload.contact.mobile,
     context: {
+      visitDate: payload.selectedDate,
       parkName: draft.parkName,
-      visitDate: payload.selectedDate,
-      useDate: payload.selectedDate,
-      contactIdCard: payload.contact.idCard,
-      addonQuantity: String(payload.addonQuantity),
-      travelers: JSON.stringify(travelerPayload),
+      travelerSummary,
     },
-    items: draft.products
-      .filter((product) => product.quantity > 0)
-      .map((product, index) => ({
-        lineNo: String(index + 1),
-        itemId: product.id,
-        itemType: product.category === 'annualCard' ? 'ANNUAL_CARD' : 'TICKET',
-        quantity: product.quantity,
-        attributes: {
-          visitDate: payload.selectedDate,
-          useDate: payload.selectedDate,
-          category: product.category,
-          noticeText: product.noticeText,
-        },
-      })),
-  };
-}
-
-function createBffTicketLocalOrder(
-  order: BffOrder,
-  draft: TicketOrderDraft,
-  payload: SubmitTicketOrderDraftPayload,
-): LocalOrderRecord {
-  const now = createLocalOrderTime();
-  const orderItems = order.items?.length ? order.items : draft.products.map((product, index) => ({
-    lineNo: String(index + 1),
-    itemId: product.id,
-    itemName: product.title,
-    itemType: product.category === 'annualCard' ? 'ANNUAL_CARD' : 'TICKET',
-    unitPriceCent: Math.round(product.price * 100),
-    quantity: product.quantity,
-    amountCent: Math.round(product.price * product.quantity * 100),
-    attributes: {
-      visitDate: payload.selectedDate,
-    },
-  }));
-  const totalQuantity = orderItems.reduce((total, item) => total + (item.quantity ?? 0), 0);
-  const firstItem = orderItems[0];
-  const itemsAmountCent = orderItems.reduce((total, item) => total + (item.amountCent ?? 0), 0);
-  const originalAmountCent = order.originalAmountCent ?? itemsAmountCent;
-  const paidAmountCent = order.payableAmountCent ?? itemsAmountCent;
-  const discountAmountCent = order.discountAmountCent ?? 0;
-  const productSummary = orderItems.map((item) => `${item.itemName || item.itemId || '门票'} x${item.quantity ?? 0}`).join('、');
-  const travelerNames = payload.travelers.map((traveler) => `${traveler.name}（${traveler.productTitle}）`);
-  const travelerSummary = travelerNames.length > 3
-    ? `${travelerNames.slice(0, 3).join('、')} 等${travelerNames.length}人`
-    : travelerNames.join('、');
-  const voucherFields = (order.ticketVouchers ?? []).map((voucher, index) => {
-    const voucherCode = resolveTicketVoucherCode(voucher);
-    const voucherImage = resolveTicketVoucherImage(voucher);
-    const voucherText = [
-      voucherCode ? `票码：${voucherCode}` : '',
-      voucherImage ? `二维码：${voucherImage}` : '',
-    ].filter(Boolean).join('\n') || '已出票，请以订单详情为准';
-
-    return {
-      label: `入园凭证${index + 1}`,
-      value: voucherText,
-    };
-  });
-
-  return {
-    id: order.orderNo,
-    source: 'ticket',
-    tabKey: 'pendingReceive',
-    paymentStatus: 'paid',
-    primaryActionType: 'refund',
-    dateText: payload.selectedDate,
-    statusText: resolveBffTicketOrderStatusText(order.orderStatus),
-    paidAmountText: formatCentAmount(paidAmountCent),
-    title: firstItem?.itemName || draft.products[0]?.title || 'Hello Kitty 乐园门票',
-    quantityText: `x${totalQuantity}`,
-    totalText: `共${totalQuantity}张 合计:${formatCentAmount(paidAmountCent)}`,
-    productFields: [
-      { label: '使用日期', value: payload.selectedDate },
-      { label: '票品内容', value: productSummary },
-      { label: '使用方法', value: voucherFields.length ? '凭订单入园码或票码核验入园' : '凭订单详情中的入园凭证核验入园' },
-    ],
-    ticketFields: [
-      ...voucherFields,
-      { label: '入园地址', value: '浙江湖州市安吉县天使大道1号' },
-      { label: '入园时间', value: '10:00-17:00' },
-      { label: '退票规则', value: '门票未使用前支持申请退款' },
-    ],
-    contactFields: [
-      { label: '联系人', value: payload.contact.name },
-      { label: '手机号', value: payload.contact.mobile },
-      { label: '实名游客', value: travelerSummary },
-    ],
-    amountFields: [
-      { label: '票品金额', value: formatCentAmount(originalAmountCent) },
-      ...(discountAmountCent > 0 ? [{ label: '优惠金额', value: `- ${formatCentAmount(discountAmountCent)}` }] : []),
-      { label: '实付款', value: formatCentAmount(paidAmountCent) },
-    ],
-    orderFields: [
-      { label: '订单编号', value: order.orderNo },
-      { label: '下单时间', value: now },
-      { label: '支付方式', value: '免支付出票' },
-      { label: '订单状态', value: resolveBffTicketOrderStatusText(order.orderStatus) },
-    ],
-    refundButtonText: '申请退款',
-    homeItems: [
-      {
-        id: order.orderNo,
-        orderId: order.orderNo,
-        title: firstItem?.itemName || draft.products[0]?.title || 'Hello Kitty 乐园门票',
-        subtitle: `出行日期：${payload.selectedDate}`,
-        imageSrc: '',
-        quantity: totalQuantity,
-        priceText: formatCentAmount(paidAmountCent),
-        actionText: '查看详情',
+    items: draft.products.map((product, index) => ({
+      lineNo: String(index + 1),
+      itemId: product.productCode || product.id,
+      skuId: resolveTicketSkuId(product),
+      itemType: product.category === 'annualCard' ? 'TICKET_CARD' : 'TICKET_PRODUCT',
+      quantity: product.quantity,
+      attributes: {
+        visitDate: payload.selectedDate,
+        productCode: product.productCode || product.id,
+        productTitle: product.title,
+        skuId: resolveTicketSkuId(product),
+        skuName: product.skuName || '',
+        travelers: JSON.stringify(payload.travelers.filter((traveler) => traveler.productId === product.id)),
+        travelerIds: payload.travelers
+          .filter((traveler) => traveler.productId === product.id)
+          .map((traveler) => traveler.idCard)
+          .join(','),
       },
-    ],
-    createdAt: order.createdAt || now,
+    })),
   };
 }
 
-interface TicketTravelerSlotRule {
-  role: TicketOrderTravelerRole;
-  roleText: string;
-  label: string;
-  requirementText: string;
-  mobileRequired?: boolean;
-  qualificationText?: string;
+// 读取订单应付金额，后端未返回金额时阻断支付链路。
+function resolveTicketPayableAmountCent(value?: number) {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
+    throw new Error('门票订单金额暂不可用，请稍后再试');
+  }
+
+  return value;
 }
 
-const adultSlotRule: TicketTravelerSlotRule = {
-  role: 'adult',
-  roleText: '成人',
-  label: '成人',
-  requirementText: '填写实际入园成人信息，入园时可刷证件或入园码核验。',
-};
-
-const childSlotRule: TicketTravelerSlotRule = {
-  role: 'child',
-  roleText: '儿童',
-  label: '儿童',
-  requirementText: '填写实际入园儿童信息，入园时核验身高或证件，需成人陪同。',
-  qualificationText: '儿童票通常适用于 1米（含）-1.4米（不含）儿童，具体以现场核验为准。',
-};
-
-const seniorSlotRule: TicketTravelerSlotRule = {
-  role: 'senior',
-  roleText: '优待',
-  label: '优待游客',
-  requirementText: '填写本人实名信息，入园时需核验证件和优待资格。',
-  qualificationText: '优惠票需现场核验证件或优待资格，若不满足政策可能无法入园。',
-};
-
-const annualAdultSlotRule: TicketTravelerSlotRule = {
-  role: 'annualAdult',
-  roleText: '成人年卡',
-  label: '成人持卡人',
-  requirementText: '年卡需实名绑定，激活后仅限本人使用，入园时核验证件。',
-  mobileRequired: true,
-};
-
-const annualChildSlotRule: TicketTravelerSlotRule = {
-  role: 'annualChild',
-  roleText: '儿童年卡',
-  label: '儿童持卡人',
-  requirementText: '儿童年卡需实名绑定，入园时核验证件或身高，并由监护人陪同。',
-  mobileRequired: true,
-  qualificationText: '儿童年卡适用范围以现场要求为准，请确认儿童符合购买条件。',
-};
-
-function repeatSlotRules(rule: TicketTravelerSlotRule, count: number) {
-  return Array.from({ length: count }, () => rule);
-}
-
-// 根据产品结构准备出游人填写项，不把各平台 UI 照搬到页面层。
-function resolveTravelerSlotRules(product: TicketOrderDraftProduct) {
-  if (product.id === '4000000000001004') {
-    return Array.from({ length: product.quantity }).flatMap(() => [adultSlotRule, childSlotRule]);
-  }
-
-  if (product.id === '4000000000001002') {
-    return repeatSlotRules(seniorSlotRule, product.quantity);
-  }
-
-  if (product.id === '4000000000001003') {
-    return repeatSlotRules(childSlotRule, product.quantity);
-  }
-
-  if (product.id === '4000000000002002') {
-    return repeatSlotRules(annualChildSlotRule, product.quantity);
-  }
-
-  if (product.id === '4000000000002001') {
-    return repeatSlotRules(annualAdultSlotRule, product.quantity);
-  }
-
-  if (product.id === '4000000000002003') {
-    return Array.from({ length: product.quantity }).flatMap(() => [
-      annualAdultSlotRule,
-      annualAdultSlotRule,
-      annualChildSlotRule,
-    ]);
-  }
-
-  if (product.id === '4000000000002004') {
-    return Array.from({ length: product.quantity }).flatMap(() => [
-      annualAdultSlotRule,
-      annualAdultSlotRule,
-      annualChildSlotRule,
-      annualChildSlotRule,
-    ]);
-  }
-
-  if (product.id === '4000000000002005') {
-    return Array.from({ length: product.quantity }).flatMap(() => [
-      annualAdultSlotRule,
-      annualChildSlotRule,
-    ]);
-  }
-
-  return repeatSlotRules(adultSlotRule, product.quantity);
+function isTicketOrderIssued(orderStatus?: string, ticketVouchers?: BffTicketVoucher[]) {
+  return orderStatus === 'WAIT_USE' || orderStatus === 'FULFILLING' || Boolean(ticketVouchers?.length);
 }
 
 // 生成门票实名出游人列表，旧草稿缺少该字段时也用这里补齐。
@@ -412,7 +396,9 @@ export function createTicketOrderTravelers(
         roleText: rule.roleText,
         title: `${product.title} ${rule.label}${sequenceText}`,
         requirementText: rule.requirementText,
+        nameRequired: Boolean(rule.nameRequired),
         mobileRequired: Boolean(rule.mobileRequired),
+        certificateRequired: Boolean(rule.certificateRequired),
         qualificationText: rule.qualificationText,
         name: isFirstTraveler ? seedContact?.name ?? '' : '',
         mobile: isFirstTraveler ? seedContact?.mobile ?? '' : '',
@@ -426,9 +412,9 @@ export function createTicketOrderTravelers(
 export function createTicketOrderDraft(payload: CreateTicketOrderDraftPayload) {
   const now = createLocalOrderTime();
   const contact = {
-    name: ticketCheckoutData.contact.name,
-    mobile: ticketCheckoutData.contact.mobile,
-    idCard: ticketCheckoutData.contact.idCard,
+    name: '',
+    mobile: '',
+    idCard: '',
   };
   const draft: TicketOrderDraft = {
     id: createLocalOrderId('TICKET-DRAFT-'),
@@ -471,22 +457,47 @@ export function updateTicketOrderDraft(draftId: string, patch: Partial<TicketOrd
   return nextDraft;
 }
 
-// 提交门票订单草稿，走 BFF 统一订单创建，后端会在门票场景跳过支付并调用智游宝出票。
-export async function submitTicketOrderDraft(draftId: string, payload: SubmitTicketOrderDraftPayload) {
+// 提交门票订单草稿并创建真实统一订单；新后端门票创建成功即出票，旧后端仍兼容支付参数。
+export async function submitTicketOrderDraft(draftId: string, payload: SubmitTicketOrderDraftPayload): Promise<TicketOrderSubmitResult | undefined> {
   const draft = getTicketOrderDraft(draftId);
   if (!draft) return undefined;
 
-  updateTicketOrderDraft(draftId, {
+  const nextDraft = updateTicketOrderDraft(draftId, {
     selectedDate: payload.selectedDate,
     selectedCouponId: payload.selectedCouponId,
     addonQuantity: payload.addonQuantity,
     contact: payload.contact,
     travelers: payload.travelers,
-  });
+  }) || draft;
 
-  const response = await createBffOrder(createTicketOrderRequest(draft, payload));
-  const record = createBffTicketLocalOrder(response.order, draft, payload);
-  saveLocalOrder(record);
+  const createResult = await createBffOrder(buildTicketUnifiedOrderRequest(nextDraft, payload));
+  const orderNo = createResult.order?.orderNo;
+  if (!orderNo) {
+    throw new Error('订单创建失败：缺少订单编号');
+  }
 
-  return record;
+  const createPayableAmountCent = createResult.order?.payableAmountCent ?? createResult.confirmation?.payableAmountCent;
+  if (isTicketOrderIssued(createResult.order?.orderStatus, createResult.order?.ticketVouchers)) {
+    return {
+      id: orderNo,
+      orderNo,
+      orderStatus: createResult.order?.orderStatus,
+      payableAmount: Number((resolveTicketPayableAmountCent(createPayableAmountCent) / 100).toFixed(2)),
+      ticketVouchers: createResult.order?.ticketVouchers,
+      paymentSkipped: true,
+    };
+  }
+
+  const payment = await payBffOrder(orderNo, 'WECHAT');
+  const payableAmountCent = payment.order?.payableAmountCent ?? createResult.order?.payableAmountCent;
+  return {
+    id: orderNo,
+    orderNo,
+    orderStatus: payment.order?.orderStatus ?? createResult.order?.orderStatus,
+    payableAmount: Number((resolveTicketPayableAmountCent(payableAmountCent) / 100).toFixed(2)),
+    ticketVouchers: payment.order?.ticketVouchers ?? createResult.order?.ticketVouchers,
+    paymentSkipped: Boolean(payment.prepay?.paymentSkipped)
+      || isTicketOrderIssued(payment.order?.orderStatus, payment.order?.ticketVouchers),
+    payment,
+  };
 }

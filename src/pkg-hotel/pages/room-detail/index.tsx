@@ -19,7 +19,7 @@ import {
   summarizeHotelOccupancy,
   type HotelRatePlanData,
   type HotelStayRange,
-} from '@/pkg-hotel/services/mock-data';
+} from '@/pkg-hotel/services/model';
 import { createHotelOrderDraft } from '@/pkg-hotel/services/order-draft';
 import './index.scss';
 
@@ -72,15 +72,18 @@ const RoomDetailPage = observer(function RoomDetailPage() {
       return;
     }
 
-    const authed = await pageRuntime.ensureLogin(LOGIN_REASON);
-    if (!authed) return;
-
     const draft = createHotelOrderDraft({
       hotelId: roomDetailData.hotelId,
+      hotelName: roomDetailData.hotelName,
+      hotelAddress: roomDetailData.hotelAddress,
+      hotelPhone: roomDetailData.phoneNumber,
       productId: roomDetailData.product.id,
+      product: roomDetailData.product,
       ratePlanId: ratePlan.id,
       stayRange: roomDetailData.stayRange,
       occupancy: roomDetailData.occupancy,
+      checkInTimeText: roomDetailData.checkInTimeText,
+      checkOutTimeText: roomDetailData.checkOutTimeText,
     });
 
     if (!draft) {

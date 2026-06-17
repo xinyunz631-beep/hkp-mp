@@ -2,6 +2,7 @@ import Taro from '@tarojs/taro';
 import { getRuntimeConfig } from '@/core/config/runtime';
 import { rootStore } from '@/core/store';
 import { createSignatureNonce, hmacSha256Base64Url, sha256Hex } from '@/core/utils/crypto';
+import { devApiLog } from '@/core/utils/dev-api-log';
 import { resolveErrorMessage } from '@/core/utils/error-message';
 import { getCurrentMiniProgramAppId, getWechatLoginCode } from '@/core/wechat/auth';
 
@@ -508,17 +509,36 @@ export class ApiRequestClient {
     let authRefreshed = false;
 
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      let requestStartedAt = Date.now();
+      let requestData: TData | undefined;
+      let signedRequest: { data: TData | string | undefined; header: Record<string, string> } | undefined;
       try {
         const data = preparedRequest.createData ? await preparedRequest.createData() : preparedRequest.data;
-        const signedRequest = this.resolveSignedRequest(preparedRequest, data);
+        requestData = data;
+        signedRequest = this.resolveSignedRequest(preparedRequest, data);
+        requestStartedAt = Date.now();
         const response = await Taro.request<TResponse>({
           url: preparedRequest.url,
           method: preparedRequest.method,
           data: signedRequest.data as TData,
           header: signedRequest.header,
         });
-
+        const responseFinishedAt = Date.now();
         const responseError = this.resolveResponseError(response, preparedRequest.responseMode) || preparedRequest.validateResponse?.(response);
+
+        devApiLog({
+          method: preparedRequest.method,
+          url: preparedRequest.url,
+          data: requestData,
+          headers: signedRequest.header,
+          status: response.statusCode,
+          response: response.data,
+          error: responseError,
+          attempt,
+          requestStartedAt,
+          responseFinishedAt,
+        });
+
         if (responseError) {
           if (this.shouldRefreshAuthForRequest(responseError, preparedRequest, authRefreshed)) {
             await this.applyRefreshedAuthToRequest(preparedRequest);
@@ -538,6 +558,16 @@ export class ApiRequestClient {
         return response;
       } catch (error) {
         lastError = this.normalizeRequestError(error);
+        devApiLog({
+          method: preparedRequest.method,
+          url: preparedRequest.url,
+          data: requestData ?? signedRequest?.data,
+          headers: signedRequest?.header ?? preparedRequest.header,
+          error: lastError,
+          attempt,
+          requestStartedAt,
+          responseFinishedAt: Date.now(),
+        });
         if (this.shouldRefreshAuthForRequest(lastError, preparedRequest, authRefreshed)) {
           await this.applyRefreshedAuthToRequest(preparedRequest);
           authRefreshed = true;

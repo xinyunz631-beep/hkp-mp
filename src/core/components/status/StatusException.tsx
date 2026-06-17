@@ -131,11 +131,11 @@ function resolveDescriptionFromError(
 ) {
   if (error instanceof ApiRequestError) {
     if (error.statusCode === HttpStatusCode.NotFound) {
-      return '接口服务未找到，请稍后重试。';
+      return '当前服务未找到，请稍后重试。';
     }
 
     if (error.statusCode === HttpStatusCode.Unauthorized) {
-      return '请求凭证已失效，请重新加载页面。';
+      return '登录状态已失效，请重新加载页面。';
     }
 
     if (errorMessage) return errorMessage;
@@ -147,21 +147,37 @@ function resolveDescriptionFromError(
 
 // 获取错误的原始 message，作为更具体的补充信息展示。
 function resolveErrorDetail(error: unknown) {
-  if (error instanceof ApiRequestError) return error.message;
-  if (error instanceof Error) return error.message;
+  if (error instanceof ApiRequestError) return normalizeVisibleErrorMessage(error.message);
+  if (error instanceof Error) return normalizeVisibleErrorMessage(error.message);
   if (!error || typeof error !== 'object') return undefined;
 
   const candidate = (error as { message?: unknown; errMsg?: unknown; msg?: unknown }).message
     || (error as { message?: unknown; errMsg?: unknown; msg?: unknown }).errMsg
     || (error as { message?: unknown; errMsg?: unknown; msg?: unknown }).msg;
 
-  return typeof candidate === 'string' && candidate.trim() ? candidate : undefined;
+  return typeof candidate === 'string' && candidate.trim() ? normalizeVisibleErrorMessage(candidate) : undefined;
 }
 
 // 获取错误的优先 message，供说明文案优先展示。
 function resolveErrorMessage(error: unknown) {
   const detail = resolveErrorDetail(error);
   return detail?.trim() || undefined;
+}
+
+// 过滤 URL、内部路径和底层 failed 这类技术错误，避免直接展示到 C 端页面。
+function normalizeVisibleErrorMessage(message: string) {
+  const text = message.trim();
+  if (!text) return undefined;
+  const normalizedText = text.toLowerCase();
+  const hasInternalPath = /(^|[\s"'`])\/?api\/[a-z0-9/_?=&.-]+/i.test(text);
+  const hasUrl = /https?:\/\//i.test(text);
+  const hasTechnicalFailure = normalizedText.includes(' failed')
+    || normalizedText.includes('network error')
+    || normalizedText.includes('timeout')
+    || normalizedText.includes('stack');
+
+  if ((hasInternalPath || hasUrl) && hasTechnicalFailure) return undefined;
+  return text;
 }
 
 // 根据异常类型返回默认说明，保持项目状态页统一口径。

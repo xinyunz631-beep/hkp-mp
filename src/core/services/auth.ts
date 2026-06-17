@@ -47,8 +47,7 @@ setAuthSessionChangedHandler(async () => {
 
 // 完成登录流程，并自动续执行登录前缓存的业务动作。
 function finishCurrentLogin() {
-  const callback = rootStore.app.finishLogin();
-  callback?.();
+  rootStore.app.completeLogin();
   return true;
 }
 
@@ -145,6 +144,12 @@ export async function silentLogin() {
 export async function ensureLogin(reason = '登录后可继续使用该服务') {
   if (isLoggedIn()) return true;
   return rootStore.app.requestLogin(reason);
+}
+
+// 可选登录提示：登录成功或用户选择暂不登录后，都由调用方继续业务流程。
+export async function promptLogin(reason = '登录后可享受更多会员服务') {
+  if (isLoggedIn()) return 'success';
+  return rootStore.app.requestLoginResult(reason);
 }
 
 // 登录后自动续执行业务动作，适合页面方法内的异步流程前置拦截。

@@ -31,7 +31,7 @@ import {
   type HotelOccupancy,
   type HotelProductCardData,
   type HotelStayRange,
-} from '@/pkg-hotel/services/mock-data';
+} from '@/pkg-hotel/services/model';
 import { createHotelOrderDraft } from '@/pkg-hotel/services/order-draft';
 import './index.scss';
 
@@ -334,15 +334,18 @@ const HotelIndexPage = observer(function HotelIndexPage() {
   }
 
   async function handleProductBooking(product: HotelProductCardData) {
-    const authed = await pageRuntime.ensureLogin(LOGIN_REASON);
-    if (!authed) return;
-
     const draft = createHotelOrderDraft({
       hotelId: activeHotel?.id ?? '',
+      hotelName: activeHotel?.heroTitle ?? '',
+      hotelAddress: activeHotel?.address ?? '',
+      hotelPhone: activeHotel?.phoneNumber ?? '',
       productId: product.id,
+      product,
       ratePlanId: product.ratePlans[0]?.id,
       stayRange,
       occupancy,
+      checkInTimeText: activeHotel?.checkInTimeText ?? '',
+      checkOutTimeText: activeHotel?.checkOutTimeText ?? '',
     });
 
     if (!draft) {

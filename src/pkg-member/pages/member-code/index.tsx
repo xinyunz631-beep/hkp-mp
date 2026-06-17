@@ -50,6 +50,7 @@ const MemberCodePage = observer(function MemberCodePage() {
   const [canvasSizeRpx] = useState(resolveCanvasSizeRpx);
   const [memberCode, setMemberCode] = useState('');
   const [memberCodeImageSrc, setMemberCodeImageSrc] = useState('');
+  const [memberCodeRefreshId, setMemberCodeRefreshId] = useState(0);
   const [pageVisible, setPageVisible] = useState(false);
   const hiddenCanvasStyle: CSSProperties = {
     width: `${canvasSizeRpx}rpx`,
@@ -60,6 +61,7 @@ const MemberCodePage = observer(function MemberCodePage() {
   const refreshMemberCode = useCallback(async () => {
     const nextMemberCode = await fetchMemberCode();
     setMemberCode(nextMemberCode);
+    setMemberCodeRefreshId((id) => id + 1);
   }, []);
 
   const pageRuntime = usePageRuntime({
@@ -71,6 +73,7 @@ const MemberCodePage = observer(function MemberCodePage() {
   // 先在隐藏 canvas 中生成二维码，再转成图片给页面展示，避免 canvas 直接渲染被裁切。
   const drawMemberCode = useCallback((code: string) => {
     if (!code) return;
+    setMemberCodeImageSrc('');
 
     Taro.nextTick(() => {
       drawQrcode({
@@ -90,11 +93,11 @@ const MemberCodePage = observer(function MemberCodePage() {
     });
   }, []);
 
-  // 每次会员码变化后重绘二维码，保证 30 秒刷新后画面同步更新。
+  // 每次会员码拉取成功后重绘二维码，保证 30 秒刷新后画面同步更新。
   useEffect(() => {
     if (pageRuntime.phase !== 'ready' || !memberCode) return;
     drawMemberCode(memberCode);
-  }, [drawMemberCode, memberCode, pageRuntime.phase]);
+  }, [drawMemberCode, memberCode, pageRuntime.phase, memberCodeRefreshId]);
 
   // 页面可见且初始化完成后启动 30 秒刷新，离开页面时自动回收。
   useEffect(() => {
@@ -141,6 +144,7 @@ const MemberCodePage = observer(function MemberCodePage() {
             <View className="_pg-qrcode_shell">
               {memberCodeImageSrc ? (
                 <AppImage
+                  key={memberCodeRefreshId}
                   className="_pg-qrcode_image"
                   src={memberCodeImageSrc}
                   mode="aspectFit"

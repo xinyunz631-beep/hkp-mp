@@ -8,7 +8,6 @@ import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import { navigateToMiniRoute } from '@/core/utils/navigation';
 import { showWechatConfirm } from '@/core/utils/wechat-actions';
 import {
-  MEMBER_COUPON_USE_TYPE_ONLINE,
   fetchCouponsData,
   type MemberCouponItem,
   type MemberCouponStatus,
@@ -28,14 +27,6 @@ function resolveCouponClassName(coupon: MemberCouponItem) {
     '_pg-coupon',
     `_pg-coupon--${coupon.status}`,
   ].join(' ');
-}
-
-function resolveCouponUseRoute(coupon: MemberCouponItem) {
-  if (coupon.useType === MEMBER_COUPON_USE_TYPE_ONLINE) {
-    return `${MINI_PACKAGE_ROUTES.mallProducts}?couponId=${encodeURIComponent(coupon.id)}`;
-  }
-
-  return MINI_PACKAGE_ROUTES.memberCode;
 }
 
 function resolveCouponSideTextColumns(sideText: string) {
@@ -65,7 +56,7 @@ const CouponsPage = observer(function CouponsPage() {
   });
 
   async function handleCouponPress(coupon: MemberCouponItem) {
-    if (coupon.status !== 'claimed') {
+    if (!coupon.useEnabled) {
       await showWechatConfirm({
         title: coupon.title,
         content: `${coupon.validityText}，该优惠券仅作为记录展示。`,
@@ -75,7 +66,7 @@ const CouponsPage = observer(function CouponsPage() {
       return;
     }
 
-    navigateToMiniRoute(resolveCouponUseRoute(coupon));
+    navigateToMiniRoute(coupon.targetRoute);
   }
 
   function handleMoreCouponPress() {

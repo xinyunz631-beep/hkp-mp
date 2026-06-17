@@ -13,8 +13,7 @@ import {
   showWechatToast,
 } from '@/core/utils/wechat-actions';
 import {
-  getOrderAddress,
-  listOrderAddresses,
+  fetchAddressData,
   ORDER_ADDRESS_MAX_COUNT,
   saveOrderAddress,
 } from '@/pkg-order/services/address';
@@ -122,8 +121,8 @@ const AddressEditPage = observer(function AddressEditPage() {
   const pageRuntime = usePageRuntime({
     initPage: async () => {
       const addressId = resolveRouteAddressId();
-      const addresses = listOrderAddresses();
-      const currentAddress = getOrderAddress(addressId);
+      const { addresses } = await fetchAddressData();
+      const currentAddress = addressId ? addresses.find((address) => address.id === addressId) : undefined;
       setAddressCount(addresses.length);
       setIsEditMode(Boolean(currentAddress));
       setForm(normalizeFormFromAddress(currentAddress));
@@ -189,7 +188,7 @@ const AddressEditPage = observer(function AddressEditPage() {
 
     try {
       await pageRuntime.withLoading(async () => {
-        saveOrderAddress({
+        await saveOrderAddress({
           ...nextForm,
           region: nextForm.locationAddress || nextForm.region,
         });

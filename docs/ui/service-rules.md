@@ -6,7 +6,7 @@
 
 - 页面只负责渲染、交互和状态组合。
 - 页面直接 `await service`，不在页面到处写 `.catch`。
-- service 不是薄转发，要处理当前接口的默认值、轻量字段归一和失败兜底。
+- service 不是薄转发，要处理当前接口的默认值、轻量字段归一和异常态/空态转译。
 - 单接口轻量处理直接写在方法内部，不为每个 API 抽一堆 helper。
 - request 负责通用网络、授权、header、业务成功码等基础能力。
 - 长任务 UI 开发阶段可用 `src/core/services/mock.ts` 的 `resolveMockData()` 返回本地数据；真实接口文档到来后只替换 service 内部 request 和 mapper。

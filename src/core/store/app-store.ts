@@ -1,10 +1,12 @@
 import { makeAutoObservable } from 'mobx';
 
+export type LoginRequestResult = 'success' | 'cancel' | 'superseded';
+
 export class AppStore {
   loginVisible = false;
   loginReason = '登录后可继续使用该服务';
-  loginSuccessCallback?: () => void;
-  loginResolve?: (success: boolean) => void;
+  loginSuccessCallback?: () => void | Promise<void>;
+  loginResolve?: (result: LoginRequestResult) => void;
   loginStateResolver?: () => boolean;
 
   // 初始化应用运行时 store，并让 MobX 自动追踪登录弹窗状态。
@@ -29,35 +31,44 @@ export class AppStore {
   // 打开登录弹窗，登录态为全局事实源，所有页面宿主共享同一份弹窗状态。
   openLogin(reason = '登录后可继续使用该服务', onSuccess?: () => void) {
     if (this.isAlreadyLoggedIn) {
-      const callback = this.finishLogin();
-      callback?.();
+      this.completeLogin();
       onSuccess?.();
       return;
     }
 
-    this.resetLoginState(false);
+    this.resetLoginState('superseded');
     this.loginReason = reason;
     this.loginSuccessCallback = onSuccess;
     this.loginVisible = true;
   }
 
-  // 请求登录，返回 Promise 方便页面事件方法里 await 拦截。
-  requestLogin(reason = '登录后可继续使用该服务') {
+  // 请求登录，返回显式结果，区分用户取消和被后续弹窗/生命周期中止。
+  requestLoginResult(reason = '登录后可继续使用该服务') {
     if (this.isAlreadyLoggedIn) {
-      const callback = this.finishLogin();
-      callback?.();
-      return Promise.resolve(true);
+      this.completeLogin();
+      return Promise.resolve<LoginRequestResult>('success');
     }
 
     this.openLogin(reason);
-    return new Promise<boolean>((resolve) => {
+    return new Promise<LoginRequestResult>((resolve) => {
       this.loginResolve = resolve;
     });
   }
 
-  // 关闭登录弹窗，用于页面隐藏、用户取消或退出登录。
+  // 请求登录，返回 Promise 方便页面事件方法里 await 拦截。
+  async requestLogin(reason = '登录后可继续使用该服务') {
+    const result = await this.requestLoginResult(reason);
+    return result === 'success';
+  }
+
+  // 用户明确取消登录，允许可选登录场景继续游客流程。
+  cancelLogin() {
+    this.resetLoginState('cancel');
+  }
+
+  // 关闭登录弹窗，用于页面隐藏、弹窗覆盖或退出登录，不代表用户主动选择暂不登录。
   closeLogin() {
-    this.resetLoginState(false);
+    this.resetLoginState('superseded');
   }
 
   // 完成登录流程并取出待续执行动作，确保所有页面登录弹窗同步关闭。
@@ -67,16 +78,25 @@ export class AppStore {
     this.loginVisible = false;
     this.loginSuccessCallback = undefined;
     this.loginResolve = undefined;
-    resolve?.(true);
+    resolve?.('success');
     return callback;
   }
 
+  // 完成登录并立即续执行缓存动作，避免调用方只关闭弹窗却遗漏登录前动作。
+  completeLogin() {
+    const callback = this.finishLogin();
+    const result = callback?.();
+    if (result && typeof result.catch === 'function') {
+      result.catch(() => undefined);
+    }
+  }
+
   // 重置登录弹窗状态，并按需通知等待中的登录守卫。
-  private resetLoginState(result?: boolean) {
+  private resetLoginState(result?: LoginRequestResult) {
     const resolve = this.loginResolve;
     this.loginVisible = false;
     this.loginSuccessCallback = undefined;
     this.loginResolve = undefined;
-    if (typeof result === 'boolean') resolve?.(result);
+    if (result) resolve?.(result);
   }
 }

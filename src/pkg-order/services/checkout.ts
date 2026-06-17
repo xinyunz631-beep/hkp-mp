@@ -15,7 +15,7 @@ import {
 } from '@/core/services/mall-checkout-draft';
 import { formatCurrency } from '@/core/utils/money';
 import { orderCheckoutData, orderList, type OrderCheckoutData, type OrderHomeActionData } from './mock-data';
-import { formatOrderAddress, getDefaultOrderAddress, getOrderAddress } from './address';
+import { fetchAddressData, formatOrderAddress } from './address';
 
 export type { OrderCheckoutData } from './mock-data';
 
@@ -42,17 +42,21 @@ function formatPayExpireText(payExpireAt?: string) {
   return `${pad(expireDate.getHours())}:${pad(expireDate.getMinutes())}前`;
 }
 
-function resolveCheckoutAddress(options: FetchCheckoutDataOptions) {
+async function resolveCheckoutAddress(options: FetchCheckoutDataOptions) {
   const selectedAddressId = options.addressId ?? getMallCheckoutSelectedAddressId(options.draftId);
-  const selectedAddress = getOrderAddress(selectedAddressId);
-  return selectedAddress ?? getDefaultOrderAddress() ?? orderCheckoutData.address;
+  const { addresses } = await fetchAddressData();
+  const selectedAddress = addresses.find((address) => address.id === selectedAddressId);
+  const defaultAddress = addresses.find((address) => address.isDefault) ?? addresses[0];
+  const address = selectedAddress ?? defaultAddress;
+  if (!address) throw new Error('请先维护收货地址');
+  return address;
 }
 
-function createCheckoutDataFromDraft(
+async function createCheckoutDataFromDraft(
   draft: MallCheckoutDraft,
   options: FetchCheckoutDataOptions,
-): OrderCheckoutData {
-  const address = resolveCheckoutAddress(options);
+): Promise<OrderCheckoutData> {
+  const address = await resolveCheckoutAddress(options);
   if (options.addressId) {
     setMallCheckoutSelectedAddressId(draft.id, options.addressId);
   }
@@ -180,19 +184,19 @@ function createStaticPaidMallOrder(orderId: string) {
   return saveLocalOrder(record);
 }
 
-// 获取确认订单页面数据，后续接真实接口时在这里处理字段归一和失败兜底。
+// 获取确认订单页面数据，后续接真实接口时在这里处理字段归一和异常态/空态转译。
 export function fetchCheckoutData(options: FetchCheckoutDataOptions = {}) {
   const draft = getMallCheckoutDraft(options.draftId);
   if (draft) {
-    return resolveMockData<OrderCheckoutData>(createCheckoutDataFromDraft(draft, options));
+    return createCheckoutDataFromDraft(draft, options);
   }
 
-  return resolveMockData<OrderCheckoutData>({
+  return resolveCheckoutAddress(options).then((address) => resolveMockData<OrderCheckoutData>({
     ...orderCheckoutData,
-    address: resolveCheckoutAddress(options),
+    address,
     canSubmit: true,
     deliveryErrors: [],
-  });
+  }));
 }
 
 // 模拟商城确认订单提交，写入本地订单中心；支付成功和暂不支付都保留可恢复状态。

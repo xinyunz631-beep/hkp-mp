@@ -4,14 +4,15 @@ import Taro from '@tarojs/taro';
 import { observer } from 'mobx-react';
 import { AppIcon } from '@/core/components/AppIcon';
 import { AppImage } from '@/core/components/AppImage';
-import { FixedSubmitBar, QuantityStepper } from '@/core/components/commerce';
-import { PageShell } from '@/core/components/PageShell';
+import { CouponSelectionPopup, FixedSubmitBar, QuantityStepper } from '@/core/components/commerce';
+import { PageShare, PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
+import { resolveErrorMessage } from '@/core/utils/error-message';
 import { navigateToMiniRoute } from '@/core/utils/navigation';
-import { showWechatConfirm, showWechatToast } from '@/core/utils/wechat-actions';
+import { requestWechatPayment, showWechatToast } from '@/core/utils/wechat-actions';
 import { fetchCheckoutData, submitHotelCheckoutOrder, type HotelCheckoutData } from '@/pkg-hotel/services/checkout';
-import { serializeHotelOccupancy } from '@/pkg-hotel/services/mock-data';
+import { serializeHotelOccupancy } from '@/pkg-hotel/services/model';
 import './index.scss';
 
 function isValidMainlandMobile(value: string) {
@@ -25,6 +26,8 @@ const CheckoutPage = observer(function CheckoutPage() {
   const [mobile, setMobile] = useState('');
   const [roomCount, setRoomCount] = useState(1);
   const [activeRoomIndex, setActiveRoomIndex] = useState(0);
+  const [selectedCouponId, setSelectedCouponId] = useState<string>();
+  const [couponPopupVisible, setCouponPopupVisible] = useState(false);
   const pageRuntime = usePageRuntime({
     initPage: async () => {
       const params = Taro.getCurrentInstance().router?.params ?? {};
@@ -37,6 +40,8 @@ const CheckoutPage = observer(function CheckoutPage() {
       setCheckoutData(nextData);
       setRoomCount(nextData.roomCount);
       setActiveRoomIndex(0);
+      setSelectedCouponId(nextData.selectedCouponId);
+      setCouponPopupVisible(false);
       setGuestNames(
         nextData.guestFields.reduce<Record<string, string>>((result, field) => {
           result[field.id] = field.value;
@@ -46,8 +51,6 @@ const CheckoutPage = observer(function CheckoutPage() {
       setContactName(nextData.contactNameValue);
       setMobile(nextData.mobileValue);
     },
-    loginRequired: true,
-    loginReason: '登录后可提交酒店订单',
   });
 
   const guestFields = useMemo(() => {
@@ -63,12 +66,37 @@ const CheckoutPage = observer(function CheckoutPage() {
     });
   }, [checkoutData, roomCount]);
   const activeGuestField = guestFields[activeRoomIndex] ?? guestFields[0];
-  const totalAmount = checkoutData ? Number((checkoutData.unitAmount * roomCount - checkoutData.discountAmount).toFixed(2)) : 0;
-  const hasCouponDiscount = Boolean(checkoutData && checkoutData.discountAmount > 0 && checkoutData.couponText.trim());
+  const totalAmount = checkoutData ? checkoutData.totalAmount : 0;
+  const couponOptions = checkoutData?.coupons ?? [];
+  const selectedCoupon = couponOptions.find((coupon) => coupon.id === selectedCouponId);
+  const hasCoupons = couponOptions.length > 0;
+  const couponText = selectedCoupon
+    ? `${selectedCoupon.amountText} ${selectedCoupon.thresholdText}`
+    : '请选择优惠券';
+  const hasCouponDiscount = Boolean(checkoutData && checkoutData.discountAmount > 0);
+
+  async function refreshHotelCheckout(nextRoomCount = roomCount, nextCouponId = selectedCouponId) {
+    if (!checkoutData) return;
+
+    try {
+      const nextData = await pageRuntime.withLoading(() => fetchCheckoutData({
+        draftId: checkoutData.draftId,
+        roomCount: nextRoomCount,
+        selectedCouponId: nextCouponId,
+      }));
+      setCheckoutData(nextData);
+      setRoomCount(nextData.roomCount);
+      setSelectedCouponId(nextCouponId);
+      setCouponPopupVisible(false);
+    } catch (error) {
+      await showWechatToast(resolveErrorMessage(error, '优惠券暂不可用，请稍后再试'));
+    }
+  }
 
   function handleRoomCountChange(nextRoomCount: number) {
     setRoomCount(nextRoomCount);
     setActiveRoomIndex((current) => Math.min(current, nextRoomCount - 1));
+    void refreshHotelCheckout(nextRoomCount, selectedCouponId);
   }
 
   function handleDetailPress() {
@@ -106,22 +134,14 @@ const CheckoutPage = observer(function CheckoutPage() {
       return;
     }
 
-    const confirmed = await showWechatConfirm({
-      title: '确认支付',
-      content: `确认支付 ¥${totalAmount.toFixed(2)} 预订 ${roomCount} 间？`,
-      confirmText: '支付',
-      cancelText: '再看看',
-    });
-
-    if (!confirmed) return;
-
-    const order = submitHotelCheckoutOrder(checkoutData.draftId, {
+    const order = await submitHotelCheckoutOrder(checkoutData.draftId, {
       roomCount,
       guestNames: guestFields.map((field) => guestNames[field.id]?.trim()).filter(Boolean),
       contact: {
         name: contactName.trim(),
         mobile: mobile.trim(),
       },
+      selectedCouponId,
       totalAmount,
       discountAmount: checkoutData.discountAmount,
     });
@@ -131,8 +151,22 @@ const CheckoutPage = observer(function CheckoutPage() {
       return;
     }
 
+    const paymentParams = order.payment?.prepay?.paymentParams || order.payment?.prepay?.payParams;
+    if (!paymentParams) {
+      await showWechatToast('支付参数缺失，请稍后再试');
+      return;
+    }
+
+    const paymentStatus = await requestWechatPayment({
+      amount: order.payableAmount || totalAmount,
+      paymentParams: paymentParams as unknown as Parameters<typeof Taro.requestPayment>[0],
+    });
+    if (paymentStatus !== 'success') return;
+
     await showWechatToast('支付成功', 'success');
-    navigateToMiniRoute(`${MINI_PACKAGE_ROUTES.orderDetail}?orderId=${encodeURIComponent(order.id)}`);
+    navigateToMiniRoute(`${MINI_PACKAGE_ROUTES.orderDetail}?orderId=${encodeURIComponent(order.orderNo)}`, {
+      loginMode: 'none',
+    });
   }
 
   return pageRuntime.renderPage(() => {
@@ -240,6 +274,18 @@ const CheckoutPage = observer(function CheckoutPage() {
               </View>
             </View>
 
+            {hasCoupons ? (
+              <View className="_pg-card _pg-card--compact">
+                <View className="_pg-line-row _pg-line-row--link" onClick={() => setCouponPopupVisible(true)}>
+                  <Text className="_pg-line-row_label">优惠券</Text>
+                  <View className="_pg-line-row_value">
+                    <Text>{couponText}</Text>
+                    <AppIcon name="arrowRight" size={16} color="#9ca3af" />
+                  </View>
+                </View>
+              </View>
+            ) : null}
+
             <View className="_pg-card _pg-card--compact">
               <View className="_pg-line-row">
                 <Text className="_pg-line-row_label">取消规则</Text>
@@ -255,6 +301,23 @@ const CheckoutPage = observer(function CheckoutPage() {
               </View>
             </View>
           </View>
+          <PageShare>
+            {hasCoupons ? (
+              <CouponSelectionPopup
+                visible={couponPopupVisible}
+                coupons={couponOptions}
+                selectedCouponId={selectedCouponId}
+                clearText="不使用优惠券"
+                onClose={() => setCouponPopupVisible(false)}
+                onClear={() => {
+                  void refreshHotelCheckout(roomCount, undefined);
+                }}
+                onSelect={(coupon) => {
+                  void refreshHotelCheckout(roomCount, coupon.id);
+                }}
+              />
+            ) : null}
+          </PageShare>
         </PageShell>
       </View>
     );

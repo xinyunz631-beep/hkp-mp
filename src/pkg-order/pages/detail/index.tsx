@@ -1,13 +1,14 @@
 import Taro from '@tarojs/taro';
 import { Text, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
+import { AppImage } from '@/core/components/AppImage';
 import { PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import { useState } from 'react';
 import { navigateToMiniRoute } from '@/core/utils/navigation';
-import { requestWechatPayment, showWechatToast } from '@/core/utils/wechat-actions';
-import { payPendingMallOrder } from '@/pkg-order/services/checkout';
+import { requestWechatPayment, showWechatConfirm, showWechatToast } from '@/core/utils/wechat-actions';
+import { payBffOrder, refundBffOrder } from '@/core/services/bff-order-api';
 import { fetchDetailData, type OrderDetailData } from '@/pkg-order/services/detail';
 import './index.scss';
 
@@ -52,26 +53,43 @@ const DetailPage = observer(function DetailPage() {
     if (!detailData) return;
 
     if (detailData.primaryActionType === 'pay') {
+      const payment = await payBffOrder(detailData.id, 'WECHAT');
+      const paymentParams = payment.prepay?.paymentParams || payment.prepay?.payParams;
+      if (!paymentParams) {
+        await showWechatToast('支付参数缺失，请稍后再试');
+        return;
+      }
       const paymentStatus = await requestWechatPayment({
         title: '继续支付',
         amount: Number(detailData.paidAmountText.replace(/[^\d.]/g, '')),
-        allowPending: true,
+        paymentParams: paymentParams as unknown as Parameters<typeof Taro.requestPayment>[0],
       });
 
       if (paymentStatus !== 'success') {
-        await showWechatToast('订单已保留，可稍后继续支付');
-        return;
-      }
-
-      const nextOrder = payPendingMallOrder(detailData.id);
-      if (!nextOrder) {
-        await showWechatToast('订单状态更新失败，请稍后再试');
+        await showWechatToast('支付未完成');
         return;
       }
 
       const nextData = await fetchDetailData(detailData.id);
       setDetailData(nextData);
       await showWechatToast('支付成功', 'success');
+      return;
+    }
+
+    if (detailData.primaryActionType === 'refund') {
+      const confirmed = await showWechatConfirm({
+        title: '申请退款',
+        content: '确认提交整单退款申请？退款金额和可退状态将以后端校验结果为准。',
+        confirmText: '提交',
+        cancelText: '再看看',
+      });
+
+      if (!confirmed) return;
+
+      await refundBffOrder(detailData.id, { reason: '用户小程序申请退款' });
+      const nextData = await fetchDetailData(detailData.id);
+      setDetailData(nextData);
+      await showWechatToast('退款申请已提交', 'success');
       return;
     }
 
@@ -108,6 +126,56 @@ const DetailPage = observer(function DetailPage() {
                 </View>
               ))}
             </View>
+
+            {detailData.ticketInstances.length ? (
+              <View className="_pg-card">
+                <Text className="_pg-card_section-title">入园凭证</Text>
+                {detailData.ticketInstances.map((ticket) => (
+                  <View className="_pg-ticket-code" key={ticket.ticketNo || ticket.qrCodePayload}>
+                    <View className="_pg-ticket-code_header">
+                      <Text className="_pg-ticket-code_title">{ticket.productName}</Text>
+                      <Text className="_pg-ticket-code_status">{ticket.statusText}</Text>
+                    </View>
+                    {ticket.qrImageSrc ? (
+                      <AppImage className="_pg-ticket-code_qr" src={ticket.qrImageSrc} mode="aspectFit" />
+                    ) : null}
+                    {ticket.qrCodePayload ? (
+                      <Text className="_pg-ticket-code_payload">{ticket.qrCodePayload}</Text>
+                    ) : null}
+                    {ticket.ticketNo ? (
+                      <View className="_pg-line-row">
+                        <Text className="_pg-line-row_label">票码</Text>
+                        <Text className="_pg-line-row_value">{ticket.ticketNo}</Text>
+                      </View>
+                    ) : null}
+                    {ticket.skuName ? (
+                      <View className="_pg-line-row">
+                        <Text className="_pg-line-row_label">票种</Text>
+                        <Text className="_pg-line-row_value">{ticket.skuName}</Text>
+                      </View>
+                    ) : null}
+                    {ticket.visitDate ? (
+                      <View className="_pg-line-row">
+                        <Text className="_pg-line-row_label">游玩日期</Text>
+                        <Text className="_pg-line-row_value">{ticket.visitDate}</Text>
+                      </View>
+                    ) : null}
+                    {ticket.validTimeText ? (
+                      <View className="_pg-line-row">
+                        <Text className="_pg-line-row_label">有效期</Text>
+                        <Text className="_pg-line-row_value">{ticket.validTimeText}</Text>
+                      </View>
+                    ) : null}
+                    {ticket.useTimesText ? (
+                      <View className="_pg-line-row">
+                        <Text className="_pg-line-row_label">次数</Text>
+                        <Text className="_pg-line-row_value">{ticket.useTimesText}</Text>
+                      </View>
+                    ) : null}
+                  </View>
+                ))}
+              </View>
+            ) : null}
 
             <View className="_pg-card">
               {detailData.ticketFields.map((item) => (

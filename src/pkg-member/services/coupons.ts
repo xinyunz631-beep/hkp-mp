@@ -1,4 +1,10 @@
-import { resolveMockData } from '@/core/services/mock';
+import {
+  fetchBffMemberCoupons,
+  type BffCouponAssetView,
+  type BffCouponSceneType,
+  type BffCouponStatus,
+} from '@/core/services/bff-coupon-api';
+import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 
 export type MemberCouponStatus = 'claimed' | 'used' | 'expired';
 export const MEMBER_COUPON_USE_TYPE_OFFLINE = 1;
@@ -19,6 +25,7 @@ export interface MemberCouponTab {
 export interface MemberCouponItem {
   id: string;
   status: MemberCouponStatus;
+  bffStatus: BffCouponStatus;
   sideText: string;
   amountText: string;
   couponTypeText: string;
@@ -27,6 +34,9 @@ export interface MemberCouponItem {
   title: string;
   actionText: string;
   useType: MemberCouponUseType;
+  sceneType?: BffCouponSceneType;
+  useEnabled: boolean;
+  targetRoute: string;
 }
 
 export interface MemberCouponsData {
@@ -35,104 +45,129 @@ export interface MemberCouponsData {
   moreButtonText: string;
 }
 
-const coupons: MemberCouponItem[] = [
-  {
-    id: '7000000000001001',
-    status: 'claimed',
-    sideText: '园内时光驿站店铺领取',
-    amountText: '免费',
-    couponTypeText: '特价券',
-    currencyText: 'RMB',
-    validityText: '有效期:2026.03.03-2026.06.03',
-    title: '新人礼品券',
-    actionText: '立即使用',
-    useType: MEMBER_COUPON_USE_TYPE_OFFLINE,
-  },
-  {
-    id: '7000000000001002',
-    status: 'claimed',
-    sideText: '线上及园内消费皆可使用',
-    amountText: '5',
-    couponTypeText: '满减券',
-    currencyText: 'RMB',
-    validityText: '有效期:2026.03.03-2026.06.03',
-    title: '满￥150减￥5商品抵扣券',
-    actionText: '立即使用',
-    useType: MEMBER_COUPON_USE_TYPE_ONLINE,
-  },
-  {
-    id: '7000000000001003',
-    status: 'claimed',
-    sideText: '线上及园内消费皆可使用',
-    amountText: '5',
-    couponTypeText: '满减券',
-    currencyText: 'RMB',
-    validityText: '有效期:2026.03.03-2026.06.03',
-    title: '满￥150减￥5商品抵扣券',
-    actionText: '立即使用',
-    useType: MEMBER_COUPON_USE_TYPE_ONLINE,
-  },
-  {
-    id: '7000000000001004',
-    status: 'claimed',
-    sideText: '限园内餐饮店铺使用',
-    amountText: '5',
-    couponTypeText: '满减券',
-    currencyText: 'RMB',
-    validityText: '有效期:2026.03.03-2026.06.03',
-    title: '满￥60减￥5餐饮抵扣券',
-    actionText: '立即使用',
-    useType: MEMBER_COUPON_USE_TYPE_OFFLINE,
-  },
-  {
-    id: '7000000000001005',
-    status: 'claimed',
-    sideText: '限园内餐饮店铺使用',
-    amountText: '5',
-    couponTypeText: '满减券',
-    currencyText: 'RMB',
-    validityText: '有效期:2026.03.03-2026.06.03',
-    title: '满￥60减￥5餐饮抵扣券',
-    actionText: '立即使用',
-    useType: MEMBER_COUPON_USE_TYPE_OFFLINE,
-  },
-  {
-    id: '7000000000001006',
-    status: 'used',
-    sideText: '线上及园内消费皆可使用',
-    amountText: '5',
-    couponTypeText: '满减券',
-    currencyText: 'RMB',
-    validityText: '已使用:2026.04.18',
-    title: '满￥150减￥5商品抵扣券',
-    actionText: '已使用',
-    useType: MEMBER_COUPON_USE_TYPE_ONLINE,
-  },
-  {
-    id: '7000000000001007',
-    status: 'expired',
-    sideText: '限园内餐饮店铺使用',
-    amountText: '5',
-    couponTypeText: '满减券',
-    currencyText: 'RMB',
-    validityText: '已过期:2026.04.30',
-    title: '满￥60减￥5餐饮抵扣券',
-    actionText: '已过期',
-    useType: MEMBER_COUPON_USE_TYPE_OFFLINE,
-  },
-];
+function formatYuan(amountCent = 0) {
+  const amount = amountCent / 100;
+  if (Number.isInteger(amount)) return String(amount);
+  return amount.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
+}
 
-const memberCouponsData: MemberCouponsData = {
-  tabs: [
+function formatDate(dateText?: string) {
+  if (!dateText) return '';
+  return dateText.slice(0, 10).replace(/-/g, '.');
+}
+
+function resolveMemberCouponStatus(status?: BffCouponStatus): MemberCouponStatus {
+  if (status === 'USED') return 'used';
+  if (status === 'EXPIRED') return 'expired';
+  return 'claimed';
+}
+
+function resolveSceneText(sceneType?: BffCouponSceneType) {
+  if (sceneType === 'TICKET') return '限门票订单使用';
+  if (sceneType === 'HOTEL') return '限酒店订单使用';
+  if (sceneType === 'MALL') return '限商城订单使用';
+  if (sceneType === 'DINING') return '限餐饮订单使用';
+  return '乐园消费可使用';
+}
+
+function resolveUseType(sceneType?: BffCouponSceneType): MemberCouponUseType {
+  if (sceneType === 'MALL' || sceneType === 'TICKET' || sceneType === 'HOTEL') {
+    return MEMBER_COUPON_USE_TYPE_ONLINE;
+  }
+
+  if (sceneType === 'DINING' || sceneType === 'ALL') {
+    return MEMBER_COUPON_USE_TYPE_OFFLINE;
+  }
+
+  return MEMBER_COUPON_USE_TYPE_UNKNOWN;
+}
+
+function resolveUseRoute(coupon: BffCouponAssetView) {
+  if (coupon.sceneType === 'TICKET') return MINI_PACKAGE_ROUTES.ticketBooking;
+  if (coupon.sceneType === 'HOTEL') return MINI_PACKAGE_ROUTES.hotelHome;
+  if (coupon.sceneType === 'MALL') {
+    return `${MINI_PACKAGE_ROUTES.mallProducts}?couponId=${encodeURIComponent(coupon.couponNo)}`;
+  }
+
+  return MINI_PACKAGE_ROUTES.memberCode;
+}
+
+function resolveCouponTypeText(couponType?: string) {
+  const normalizedType = String(couponType || '').toUpperCase();
+  if (normalizedType.includes('DISCOUNT')) return '折扣券';
+  if (normalizedType.includes('EXCHANGE')) return '兑换券';
+  if (normalizedType.includes('FREIGHT')) return '配送券';
+  if (normalizedType.includes('UPGRADE')) return '权益券';
+  return '优惠券';
+}
+
+function resolveAmountText(coupon: BffCouponAssetView) {
+  if (coupon.discountAmountCent && coupon.discountAmountCent > 0) {
+    return formatYuan(coupon.discountAmountCent);
+  }
+
+  return '券';
+}
+
+function resolveValidityText(coupon: BffCouponAssetView, status: MemberCouponStatus) {
+  if (status === 'used') {
+    return coupon.usedAt ? `已使用:${formatDate(coupon.usedAt)}` : '已使用';
+  }
+
+  if (status === 'expired') {
+    return coupon.validEndAt ? `已过期:${formatDate(coupon.validEndAt)}` : '已过期';
+  }
+
+  const startAt = formatDate(coupon.validStartAt);
+  const endAt = formatDate(coupon.validEndAt);
+  if (startAt && endAt) return `有效期:${startAt}-${endAt}`;
+  if (endAt) return `有效期至:${endAt}`;
+  return '按券规则生效';
+}
+
+function resolveActionText(status?: BffCouponStatus) {
+  if (status === 'USED') return '已使用';
+  if (status === 'EXPIRED') return '已过期';
+  if (status === 'LOCKED') return '使用中';
+  if (status === 'AVAILABLE') return '立即使用';
+  return '查看';
+}
+
+function toMemberCouponItem(coupon: BffCouponAssetView): MemberCouponItem {
+  const status = resolveMemberCouponStatus(coupon.status);
+  return {
+    id: coupon.couponNo,
+    status,
+    bffStatus: coupon.status,
+    sideText: resolveSceneText(coupon.sceneType),
+    amountText: resolveAmountText(coupon),
+    couponTypeText: resolveCouponTypeText(coupon.couponType),
+    currencyText: coupon.discountAmountCent ? 'RMB' : '权益',
+    validityText: resolveValidityText(coupon, status),
+    title: coupon.couponName || '会员优惠券',
+    actionText: resolveActionText(coupon.status),
+    useType: resolveUseType(coupon.sceneType),
+    sceneType: coupon.sceneType,
+    useEnabled: coupon.status === 'AVAILABLE',
+    targetRoute: resolveUseRoute(coupon),
+  };
+}
+
+function buildTabs(coupons: MemberCouponItem[]): MemberCouponTab[] {
+  return [
     { key: 'claimed', text: '已领取', count: coupons.filter((coupon) => coupon.status === 'claimed').length },
     { key: 'used', text: '已使用', count: coupons.filter((coupon) => coupon.status === 'used').length },
     { key: 'expired', text: '已过期', count: coupons.filter((coupon) => coupon.status === 'expired').length },
-  ],
-  coupons,
-  moreButtonText: '获取更多好券',
-};
+  ];
+}
 
-// 获取优惠券页面数据，真实接口接入后在这里归一字段、状态和跳转目标。
-export function fetchCouponsData() {
-  return resolveMockData<MemberCouponsData>(memberCouponsData);
+// 获取我的优惠券页面数据，只读取真实 BFF 券资产。
+export async function fetchCouponsData(): Promise<MemberCouponsData> {
+  const response = await fetchBffMemberCoupons();
+  const coupons = (response.coupons ?? []).map(toMemberCouponItem);
+  return {
+    tabs: buildTabs(coupons),
+    coupons,
+    moreButtonText: '获取更多好券',
+  };
 }

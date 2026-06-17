@@ -6,7 +6,7 @@ import { OrderCard } from '@/core/components/commerce';
 import { PageShell } from '@/core/components/PageShell';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import { showWechatConfirm, showWechatToast } from '@/core/utils/wechat-actions';
-import { fetchCancelData, type OrderCancelData } from '@/pkg-order/services/cancel';
+import { fetchCancelData, submitOrderCancel, type OrderCancelData } from '@/pkg-order/services/cancel';
 import './index.scss';
 
 const CancelPage = observer(function CancelPage() {
@@ -15,7 +15,8 @@ const CancelPage = observer(function CancelPage() {
   const [remarkText, setRemarkText] = useState('');
   const pageRuntime = usePageRuntime({
     initPage: async () => {
-      const nextData = await fetchCancelData();
+      const orderId = Taro.getCurrentInstance().router?.params?.orderId;
+      const nextData = await fetchCancelData(orderId);
       setPageData(nextData);
     },
     loginRequired: true,
@@ -23,6 +24,8 @@ const CancelPage = observer(function CancelPage() {
   });
 
   async function handleSubmit() {
+    if (!pageData) return;
+
     if (!selectedReason) {
       await showWechatToast('请选择取消原因');
       return;
@@ -37,6 +40,7 @@ const CancelPage = observer(function CancelPage() {
 
     if (!confirmed) return;
 
+    await submitOrderCancel(pageData.order.id, `${selectedReason}${remarkText ? `：${remarkText}` : ''}`);
     await showWechatToast('取消申请已提交', 'success');
     setTimeout(() => {
       Taro.navigateBack({ delta: 1 });

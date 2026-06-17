@@ -21,6 +21,6 @@ export const RUNTIME_ENV_CONFIGS: Record<RuntimeEnv, RuntimeEnvConfig> = {
     name: '生产',
     host: 'https://weapp.hefunoodles.com',
     tokenPath: '/hll-auth-client/oauth2/login/V2',
-    appIdFallback: 'wx00261f550fdbc7ea',
+    appIdFallback: 'wx72b9e08ce45d3e79',
   },
 };

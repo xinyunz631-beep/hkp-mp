@@ -114,8 +114,10 @@ const ProductDetailPage = observer(function ProductDetailPage() {
       return;
     }
 
-    const authed = await pageRuntime.ensureLogin(skuAction === 'buy' ? '登录后可购买商品' : '登录后可加入购物车');
-    if (!authed) return;
+    if (skuAction !== 'buy') {
+      const authed = await pageRuntime.ensureLogin('登录后可加入购物车');
+      if (!authed) return;
+    }
 
     setSkuVisible(false);
 

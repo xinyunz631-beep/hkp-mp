@@ -1,13 +1,16 @@
 import { HKP_PARK_LOCATION } from '@/core/constants/park-location';
-import { withServiceFallback } from '@/core/services/mock';
-import { ticketCoupons, ticketDates } from './mock-data';
 import {
-  fetchPurchaseMenus,
   fetchPurchaseResources,
   type CmsResourceSlotApiItem,
-  type PurchaseMenuApiItem,
 } from './purchase-api';
-import type { HkpCouponSummary } from '@/core/types/hkp';
+import {
+  fetchBffTicketCalendar,
+  fetchBffTicketProducts,
+  type BffTicketInventoryDay,
+  type BffTicketProduct,
+  type BffTicketSkuRule,
+} from './ticket-api';
+import type { HkpCouponSummary, HkpDateOption } from '@/core/types/hkp';
 
 export interface TicketBookingMapLocation {
   latitude: number;
@@ -40,20 +43,31 @@ export interface TicketBookingParkInfo {
 
 export interface TicketProduct {
   id: string;
-  category: 'ticket' | 'annualCard';
-  productType?: string;
-  categorySection?: string;
-  publishStatus?: string;
+  productCode: string;
+  skuId: string;
+  skuName: string;
+  category: 'ticket' | 'annualCard' | 'fastPass';
   title: string;
   description: string;
   priceLabel: string;
   price: number;
+  unitPriceCent: number;
   noticeText: string;
   tags: string[];
   validityText: string;
   stockText: string;
   limitText: string;
   defaultQuantity?: number;
+  availableStock: number;
+  maxQuantity: number;
+  saleable: boolean;
+  publishStatus?: string;
+  travelerRoles?: string[];
+  requiredFields?: string[];
+  mobileRequired?: boolean;
+  certificateRequired?: boolean;
+  verificationMethod?: string;
+  ruleTexts: string[];
 }
 
 export interface TicketPackageProduct {
@@ -65,7 +79,7 @@ export interface TicketPackageProduct {
 }
 
 export type TicketBookingSectionKey = string;
-export type TicketBookingSectionType = 'ticket' | 'annualCard' | 'package';
+export type TicketBookingSectionType = 'ticket' | 'annualCard' | 'fastPass' | 'package';
 
 export interface TicketBookingSectionBadge {
   text: string;
@@ -84,7 +98,7 @@ export interface TicketBookingSection {
 export interface TicketBookingData {
   parkInfo: TicketBookingParkInfo;
   sections: TicketBookingSection[];
-  dates: typeof ticketDates;
+  dates: HkpDateOption[];
   products: TicketProduct[];
   packages: TicketPackageProduct[];
   coupons: TicketCoupon[];
@@ -95,16 +109,58 @@ export interface FetchTicketBookingDataOptions {
 }
 
 const ENABLED_STATUS = 'ENABLED';
+const TICKET_BOOKING_AVAILABLE_DAYS = 30;
+const TICKET_WEEKDAY_TITLES = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+const DEFAULT_SERVICE_PHONE = '4009778899';
+const DEFAULT_ENTRY_ADDRESS = '浙江安吉县昌硕街道天使大道1号';
+const TICKET_REQUEST_CACHE_TTL = 10 * 1000;
+const MINI_PROGRAM_CHANNELS = ['miniProgram', 'wechatMiniProgram', 'WECHAT_MINI_PROGRAM', 'weapp'];
+
+interface TicketRequestCacheEntry<TData> {
+  request: Promise<TData>;
+  completedAt?: number;
+}
+
+const ticketBookingRequestCache = new Map<string, TicketRequestCacheEntry<TicketBookingData>>();
+const ticketCalendarRequestCache = new Map<string, TicketRequestCacheEntry<BffTicketInventoryDay[]>>();
+
+// 补齐日期控件基础可选日期，真实库存可售性由统一订单确认接口校验。
+function createTicketDates(): HkpDateOption[] {
+  const today = new Date();
+  return Array.from({ length: TICKET_BOOKING_AVAILABLE_DAYS + 1 }, (_, index) => {
+    const date = new Date(today.getFullYear(), today.getMonth(), today.getDate() + index);
+    const month = `${date.getMonth() + 1}`.padStart(2, '0');
+    const day = `${date.getDate()}`.padStart(2, '0');
+    return {
+      date: `${date.getFullYear()}-${month}-${day}`,
+      title: index === 0 ? '今天' : index === 1 ? '明天' : TICKET_WEEKDAY_TITLES[date.getDay()],
+      subtitle: '可选',
+    };
+  });
+}
+
+function formatTicketDate(date: Date) {
+  const month = `${date.getMonth() + 1}`.padStart(2, '0');
+  const day = `${date.getDate()}`.padStart(2, '0');
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+
+function getTicketDateRange(dates: HkpDateOption[]) {
+  return {
+    startDate: dates[0]?.date || formatTicketDate(new Date()),
+    endDate: dates[dates.length - 1]?.date || dates[0]?.date || formatTicketDate(new Date()),
+  };
+}
 
 const ticketBookingData: TicketBookingData = {
   parkInfo: {
     name: '杭州 Hello Kitty 乐园',
     subtitle: '官方直营 · 主题乐园门票',
     openTime: '10:00~17:00',
-    hotline: '4009778899',
+    hotline: DEFAULT_SERVICE_PHONE,
     notice: '详细节目单，欢迎戳一戳～',
-    address: '浙江安吉县昌硕街道天使大道1号',
-    travelDate: ticketDates[0].date,
+    address: DEFAULT_ENTRY_ADDRESS,
+    travelDate: createTicketDates()[0].date,
     imageCount: 1,
     heroImages: [''],
     sellingPoints: ['官方出票', '未使用可退', '身份证入园', '当日可订'],
@@ -130,286 +186,16 @@ const ticketBookingData: TicketBookingData = {
       ...HKP_PARK_LOCATION,
     },
   },
-  dates: ticketDates,
+  dates: createTicketDates(),
   sections: [],
-  coupons: ticketCoupons.map((coupon) => ({
-    ...coupon,
-    minimumAmount: 230,
-    discountAmount: 30,
-  })),
-  products: [
-    {
-      id: '4000000000001001',
-      category: 'ticket',
-      title: '当日成人票',
-      description: '1.4米（含1.4米）以上儿童及成人',
-      priceLabel: '网购价',
-      price: 230,
-      noticeText: '预定须知',
-      tags: [],
-      validityText: '所选游玩日当天有效',
-      stockText: '今日库存充足',
-      limitText: '每单最多购买 6 张',
-    },
-    {
-      id: '4000000000001002',
-      category: 'ticket',
-      title: '当日优惠票',
-      description: '70周岁以上长者及符合园区优待政策游客',
-      priceLabel: '网购价',
-      price: 140,
-      noticeText: '预定须知',
-      tags: [],
-      validityText: '所选游玩日当天有效',
-      stockText: '今日库存充足',
-      limitText: '入园需出示有效证件',
-    },
-    {
-      id: '4000000000001003',
-      category: 'ticket',
-      title: '当日儿童票',
-      description: '1米（含1米）-1.4米（不含1.4米）儿童',
-      priceLabel: '网购价',
-      price: 140,
-      noticeText: '预定须知',
-      tags: [],
-      validityText: '所选游玩日当天有效',
-      stockText: '今日库存充足',
-      limitText: '入园需成人陪同',
-    },
-    {
-      id: '4000000000002001',
-      category: 'annualCard',
-      title: '成人年卡',
-      description: '1.4米以上儿童以及成人',
-      priceLabel: '网购价',
-      price: 660,
-      noticeText: '预定须知',
-      tags: [],
-      validityText: '激活后 365 天内有效',
-      stockText: '限量发售中',
-      limitText: '每个身份证限购 1 张',
-    },
-    {
-      id: '4000000000002002',
-      category: 'annualCard',
-      title: '儿童年卡',
-      description: '1-1.4米（不含1.4米）以上儿童',
-      priceLabel: '网购价',
-      price: 660,
-      noticeText: '预定须知',
-      tags: [],
-      validityText: '激活后 365 天内有效',
-      stockText: '限量发售中',
-      limitText: '实名年卡，入园需核验证件',
-    },
-    {
-      id: '4000000000002003',
-      category: 'annualCard',
-      title: '家庭年卡A',
-      description: '2名成人携带1名身高1米（含1米）-1.4米的儿童或2名成人携带1名优待者',
-      priceLabel: '网购价',
-      price: 1380,
-      noticeText: '预定须知',
-      tags: [],
-      validityText: '激活后 365 天内有效',
-      stockText: '限量发售中',
-      limitText: '每单最多购买 1 套',
-    },
-    {
-      id: '4000000000002004',
-      category: 'annualCard',
-      title: '家庭年卡B',
-      description: '2名成人携带2名身高1米（含1米）-1.4米的儿童或2名成人携带2名优待者',
-      priceLabel: '网购价',
-      price: 1580,
-      noticeText: '预定须知',
-      tags: [],
-      validityText: '激活后 365 天内有效',
-      stockText: '限量发售中',
-      limitText: '每单最多购买 1 套',
-    },
-    {
-      id: '4000000000002005',
-      category: 'annualCard',
-      title: '家庭年卡C',
-      description: '1名成人携带1名身高1米（含1米）-1.4米的儿童或1名成人携带1名优待者',
-      priceLabel: '网购价',
-      price: 980,
-      noticeText: '预定须知',
-      tags: [],
-      validityText: '激活后 365 天内有效',
-      stockText: '限量发售中',
-      limitText: '每单最多购买 1 套',
-    },
-    {
-      id: '4000000000001004',
-      category: 'ticket',
-      title: '亲子畅玩票',
-      description: '1名成人携带1名1米-1.4米儿童',
-      priceLabel: '网购价',
-      price: 330,
-      noticeText: '预定须知',
-      tags: [],
-      validityText: '所选游玩日当天有效',
-      stockText: '亲子专享',
-      limitText: '每单最多购买 3 套',
-    },
-    {
-      id: '4000000000001005',
-      category: 'ticket',
-      title: '午后入园票',
-      description: '14:00后入园，适合半日轻游玩',
-      priceLabel: '网购价',
-      price: 168,
-      noticeText: '预定须知',
-      tags: [],
-      validityText: '所选游玩日当天有效',
-      stockText: '限时发售',
-      limitText: '每单最多购买 6 张',
-    },
-    {
-      id: '4000000000001006',
-      category: 'ticket',
-      title: '限时成人特惠票',
-      description: '指定日期限量发售，售完即止',
-      priceLabel: '网购价',
-      price: 199,
-      noticeText: '预定须知',
-      tags: [],
-      validityText: '所选游玩日当天有效',
-      stockText: '限量库存',
-      limitText: '每单最多购买 4 张',
-    },
-  ],
-  packages: [
-    {
-      id: '4000000000003001',
-      title: '任意日单人票+日料餐厅抵用券',
-      soldText: '已售200',
-      priceText: '¥110起',
-      imageSrc: '',
-    },
-    {
-      id: '4000000000001003-dino-dining',
-      title: '儿童票及优待票+小恐龙餐厅抵用券',
-      soldText: '已售200',
-      priceText: '¥188起',
-      imageSrc: '',
-    },
-    {
-      id: '4000000000003003',
-      title: '家庭票+园区餐饮抵用券',
-      soldText: '已售126',
-      priceText: '¥299起',
-      imageSrc: '',
-    },
-    {
-      id: '4000000000003004',
-      title: '年卡+限定周边礼包',
-      soldText: '已售86',
-      priceText: '¥660起',
-      imageSrc: '',
-    },
-  ],
+  coupons: [],
+  products: [],
+  packages: [],
 };
 
-const ticketSectionCatalog: TicketBookingSection[] = [
-  {
-    key: 'ticket',
-    type: 'ticket',
-    title: '门票',
-    productIds: ['4000000000001001', '4000000000001002', '4000000000001003'],
-  },
-  {
-    key: 'annual-card',
-    type: 'annualCard',
-    title: '年卡',
-    badge: { text: 'hot', color: 'red' },
-    productIds: ['4000000000002001', '4000000000002002'],
-  },
-  {
-    key: 'family-card',
-    type: 'annualCard',
-    title: '家庭年卡',
-    badge: { text: 'hot', color: 'red' },
-    productIds: ['4000000000002003', '4000000000002004', '4000000000002005'],
-  },
-  {
-    key: 'parent-child',
-    type: 'ticket',
-    title: '亲子票',
-    badge: { text: '亲子', color: 'red' },
-    productIds: ['4000000000001004'],
-  },
-  {
-    key: 'package',
-    type: 'package',
-    title: '门票套餐',
-    packageIds: ['4000000000003001', '4000000000001003-dino-dining'],
-  },
-  {
-    key: 'limited-ticket',
-    type: 'ticket',
-    title: '限时特惠',
-    badge: { text: '限时', color: 'red' },
-    productIds: ['4000000000001005', '4000000000001006'],
-  },
-];
-
-const packageBasePrices: Record<string, number> = {
-  '4000000000003001': 110,
-  '4000000000001003-dino-dining': 188,
-  '4000000000003003': 299,
-  '4000000000003004': 660,
-};
-
-function getTravelDateSeed(travelDate?: string) {
-  const dateText = travelDate || ticketBookingData.parkInfo.travelDate;
-  const day = Number(dateText.slice(-2));
-
-  if (Number.isFinite(day) && day > 0) return day;
-
-  return Array.from(dateText).reduce((total, char) => total + char.charCodeAt(0), 0);
-}
-
-function buildSectionsForDate(travelDate?: string) {
-  const seed = getTravelDateSeed(travelDate);
-  const sectionCounts = [2, 4, 5, 6];
-  const count = sectionCounts[seed % sectionCounts.length];
-  const startIndex = seed % ticketSectionCatalog.length;
-  const rotatedSections = [
-    ...ticketSectionCatalog.slice(startIndex),
-    ...ticketSectionCatalog.slice(0, startIndex),
-  ];
-
-  return rotatedSections.slice(0, count);
-}
-
-function buildProductsForDate(sections: TicketBookingSection[], travelDate?: string) {
-  const seed = getTravelDateSeed(travelDate);
-  const ticketOffset = (seed % 4) * 5;
-  const annualCardOffset = (seed % 3) * 20;
-
-  return ticketBookingData.products.map((product) => ({
-    ...product,
-    price: product.price + (product.category === 'annualCard' ? annualCardOffset : ticketOffset),
-  }));
-}
-
-function buildPackagesForDate(travelDate?: string) {
-  const seed = getTravelDateSeed(travelDate);
-  const packageOffset = (seed % 3) * 10;
-
-  return ticketBookingData.packages.map((product) => ({
-    ...product,
-    priceText: `¥${(packageBasePrices[product.id] ?? 100) + packageOffset}起`,
-  }));
-}
-
+// 生成购票页基础壳数据，票种、套餐和价格必须由真实接口补齐。
 function buildTicketBookingData(options: FetchTicketBookingDataOptions = {}): TicketBookingData {
   const travelDate = options.travelDate || ticketBookingData.parkInfo.travelDate;
-  const sections = buildSectionsForDate(travelDate);
 
   return {
     ...ticketBookingData,
@@ -417,9 +203,10 @@ function buildTicketBookingData(options: FetchTicketBookingDataOptions = {}): Ti
       ...ticketBookingData.parkInfo,
       travelDate,
     },
-    sections,
-    products: buildProductsForDate(sections, travelDate),
-    packages: buildPackagesForDate(travelDate),
+    dates: createTicketDates(),
+    sections: [],
+    products: [],
+    packages: [],
   };
 }
 
@@ -428,64 +215,232 @@ function isEnabledApiItem(status?: string) {
   return !status || status === ENABLED_STATUS;
 }
 
-// 按后端字段优先判断票种类型，缺字段时再按 menuNo 和标题兼容旧数据。
-function resolveProductCategory(item: PurchaseMenuApiItem): TicketProduct['category'] {
-  const backendType = `${item.productType || ''} ${item.categorySection || ''}`.toLowerCase();
+// 按后端商品类型和标题粗分票种类型。
+function resolveProductCategory(item: BffTicketProduct): TicketProduct['category'] {
+  const categoryText = `${item.productType || ''} ${item.categorySection || ''} ${item.title || ''} ${item.subtitle || ''}`.toLowerCase();
+  if (categoryText.includes('fastpass') || categoryText.includes('快速通') || categoryText.includes('速通')) {
+    return 'fastPass';
+  }
 
-  if (backendType.includes('annual')) return 'annualCard';
-
-  const categoryText = `${item.menuNo || ''} ${item.menuName || ''}`.toLowerCase();
   return categoryText.includes('annual') || categoryText.includes('年卡') ? 'annualCard' : 'ticket';
 }
 
 // 将后端分为单位的价格转为页面使用的元单位价格。
-function resolvePrice(item: PurchaseMenuApiItem) {
-  const priceCent = firstFiniteNumber(item.priceCent, item.minPrice, item.maxPrice);
-
-  if (priceCent === undefined) return 0;
-  return Math.max(0, priceCent / 100);
+function resolvePrice(priceCent?: number) {
+  if (!Number.isFinite(priceCent)) return 0;
+  return Math.max(0, Number(priceCent) / 100);
 }
 
-function firstFiniteNumber(...values: Array<number | undefined>) {
-  for (const value of values) {
-    if (Number.isFinite(value)) return Number(value);
+function sameSkuInventoryDay(day: BffTicketInventoryDay, sku: BffTicketSkuRule) {
+  return day.skuId === sku.id || Boolean(sku.variantCode && day.skuId === sku.variantCode);
+}
+
+// 根据所选日期的库存日历取当前票种价量。
+function resolveInventoryDay(sku: BffTicketSkuRule, inventoryDays: BffTicketInventoryDay[], visitDate: string) {
+  return inventoryDays.find((day) => day.date === visitDate && sameSkuInventoryDay(day, sku));
+}
+
+function isPublishedTicketProduct(item: BffTicketProduct) {
+  return !item.publishStatus || item.publishStatus === 'published';
+}
+
+function isMiniProgramTicketProduct(item: BffTicketProduct) {
+  if (!item.channels?.length) return true;
+
+  return item.channels.some((channel) => {
+    const normalizedChannel = channel.trim();
+    return MINI_PROGRAM_CHANNELS.some((miniChannel) => normalizedChannel.toLowerCase() === miniChannel.toLowerCase());
+  });
+}
+
+function getTicketBookingRequestKey(travelDate: string) {
+  return `ticket-booking:${travelDate}`;
+}
+
+function getTicketCalendarRequestKey(productCode: string, startDate: string, endDate: string) {
+  return `${productCode}:${startDate}:${endDate}`;
+}
+
+function getCachedTicketRequest<TData>(cache: Map<string, TicketRequestCacheEntry<TData>>, requestKey: string) {
+  const cachedRequest = cache.get(requestKey);
+
+  if (!cachedRequest) return undefined;
+
+  if (!cachedRequest.completedAt) return cachedRequest.request;
+
+  if (Date.now() - cachedRequest.completedAt <= TICKET_REQUEST_CACHE_TTL) {
+    return cachedRequest.request;
   }
+
+  cache.delete(requestKey);
   return undefined;
 }
 
-// 将购票列表 BFF 字段归一为页面票种模型。
-function normalizePurchaseMenuItem(item: PurchaseMenuApiItem): TicketProduct | undefined {
-  if (!item.menuNo || !item.menuName || !isEnabledApiItem(item.status)) return undefined;
-  const holidayUnavailable = item.holidayAvailable === false;
+function setCachedTicketRequest<TData>(
+  cache: Map<string, TicketRequestCacheEntry<TData>>,
+  requestKey: string,
+  requestFactory: () => Promise<TData>,
+) {
+  const cacheEntry = {} as TicketRequestCacheEntry<TData>;
+  const request = requestFactory()
+    .then((data) => {
+      cacheEntry.completedAt = Date.now();
+      return data;
+    })
+    .catch((error) => {
+      cache.delete(requestKey);
+      throw error;
+    });
+
+  cacheEntry.request = request;
+  cache.set(requestKey, cacheEntry);
+  return request;
+}
+
+// 同一次页面加载内合并相同商品和日期范围的日历请求，避免 initPage 或后端重复商品导致接口风暴。
+function fetchBffTicketCalendarOnce(productCode: string, startDate: string, endDate: string) {
+  const requestKey = getTicketCalendarRequestKey(productCode, startDate, endDate);
+  const cachedRequest = getCachedTicketRequest(ticketCalendarRequestCache, requestKey);
+
+  if (cachedRequest) return cachedRequest;
+
+  return setCachedTicketRequest(
+    ticketCalendarRequestCache,
+    requestKey,
+    () => fetchBffTicketCalendar(productCode, startDate, endDate),
+  );
+}
+
+function uniquePublishedTicketProductCodes(ticketProducts: BffTicketProduct[]) {
+  const productCodes = ticketProducts
+    .filter(isMiniProgramTicketProduct)
+    .filter(isPublishedTicketProduct)
+    .map((product) => product.productCode)
+    .filter(Boolean);
+
+  return Array.from(new Set(productCodes));
+}
+
+function resolvePublishStatusText(status?: string) {
+  if (!status) return '';
+  if (status === 'published') return '';
+  if (status === 'offline' || status === 'archived') return '暂不可订';
+  return '待上线';
+}
+
+function resolveUnavailableStockText(
+  item: BffTicketProduct,
+  inventoryDay: BffTicketInventoryDay | undefined,
+  availableStock: number,
+) {
+  if (!isPublishedTicketProduct(item)) return resolvePublishStatusText(item.publishStatus);
+  if (!inventoryDay) return item.availableDateSummary || '暂无可售日期';
+  if (inventoryDay.saleStatus !== 'onSale') return inventoryDay.restrictionReason || '暂不可订';
+  if (availableStock <= 0) return '已售罄';
+  return '暂不可订';
+}
+
+function compactTags(tags: Array<string | undefined>) {
+  return Array.from(new Set(tags.filter((tag): tag is string => Boolean(tag))));
+}
+
+function compactRules(rules: Array<string | undefined>) {
+  return Array.from(new Set(rules.map((rule) => rule?.trim()).filter((rule): rule is string => Boolean(rule))));
+}
+
+function resolveVerificationMethodText(method?: string) {
+  if (method === 'idCard') return '入园时请携带购票证件核验。';
+  if (method === 'memberCode') return '入园时可出示会员码核验。';
+  if (method === 'ticketCode') return '入园时请出示订单入园码核验。';
+  if (method === 'manual') return '入园时可由现场工作人员人工核验。';
+  return undefined;
+}
+
+function buildProductRuleTexts(item: BffTicketProduct, sku: BffTicketSkuRule, stockText: string) {
+  return compactRules([
+    item.notice,
+    sku.qualificationRule,
+    sku.refundRule || item.refundRule,
+    resolveVerificationMethodText(sku.verificationMethod),
+    item.entryAddress ? `入园地点：${item.entryAddress}` : undefined,
+    stockText ? `当前日期：${stockText}` : undefined,
+  ]);
+}
+
+// 将票务商品和 SKU 归一为页面票种模型。
+function normalizeTicketProduct(
+  item: BffTicketProduct,
+  sku: BffTicketSkuRule,
+  visitDate: string,
+  inventoryDay?: BffTicketInventoryDay,
+): TicketProduct | undefined {
+  if (!item.productCode || !item.title || !sku.id) return undefined;
+  const availableStock = inventoryDay?.availableStock ?? 0;
+  const unitPriceCent = inventoryDay?.price ?? sku.basePrice ?? item.minPrice ?? 0;
+  const skuName = sku.name || '标准票';
+  const saleable = isPublishedTicketProduct(item) && inventoryDay?.saleStatus === 'onSale' && availableStock > 0;
+  const skuMaxQuantity = sku.maxQuantity && sku.maxQuantity > 0 ? sku.maxQuantity : availableStock;
+  const maxQuantity = saleable ? Math.max(0, Math.min(availableStock, skuMaxQuantity)) : 0;
+  const unavailableStockText = saleable ? '' : resolveUnavailableStockText(item, inventoryDay, availableStock);
+  const publishStatusTag = resolvePublishStatusText(item.publishStatus);
+  const stockText = saleable ? `余票 ${availableStock}` : unavailableStockText;
 
   return {
-    id: item.menuNo,
+    id: `${item.productCode}__${sku.id}`,
+    productCode: item.productCode,
+    skuId: sku.id,
+    skuName,
     category: resolveProductCategory(item),
-    productType: item.productType,
-    categorySection: item.categorySection,
-    publishStatus: item.publishStatus,
-    title: item.menuName,
-    description: item.subtitle || item.description || '官方直营票种',
+    title: skuName === '标准票' ? item.title : `${item.title} ${skuName}`,
+    description: item.subtitle || sku.audience || item.availableDateSummary || '官方直营票种',
     priceLabel: '网购价',
-    price: resolvePrice(item),
+    price: resolvePrice(unitPriceCent),
+    unitPriceCent,
     noticeText: '预定须知',
-    tags: [item.badgeText, item.publishStatus && item.publishStatus !== 'published' ? '待上线' : undefined]
-      .filter((tag): tag is string => Boolean(tag)),
+    tags: compactTags([publishStatusTag, item.badgeText, ...(item.tags || [])]),
     validityText: '所选游玩日当天有效',
-    stockText: holidayUnavailable ? '节假日不可用' : '当前可订',
-    limitText: item.description || '请以下单页实名和库存规则为准',
+    stockText,
+    limitText: saleable
+      ? sku.qualificationRule || item.refundRule || '请以下单页实名和库存规则为准'
+      : unavailableStockText,
+    availableStock,
+    maxQuantity,
+    saleable,
+    publishStatus: item.publishStatus,
+    travelerRoles: sku.travelerRoles,
+    requiredFields: sku.requiredFields,
+    mobileRequired: sku.mobileRequired,
+    certificateRequired: sku.certificateRequired,
+    verificationMethod: sku.verificationMethod,
+    ruleTexts: buildProductRuleTexts(item, sku, stockText),
   };
 }
 
-// 根据真实票种生成页面分区，套餐能力暂沿用本地兜底数据。
-function buildSectionsFromProducts(products: TicketProduct[], fallback: TicketBookingData) {
-  const fastPassProductIds = products
-    .filter((product) => product.productType === 'fastPass' || product.categorySection === 'fastPass')
-    .map((product) => product.id);
-  const ticketProductIds = products
-    .filter((product) => product.category === 'ticket' && !fastPassProductIds.includes(product.id))
-    .map((product) => product.id);
+function resolveDateAvailabilityText(products: TicketProduct[]) {
+  const saleableCount = products.filter((product) => product.saleable).length;
+  if (saleableCount > 0) return `${saleableCount} 个票种可订`;
+  if (products.some((product) => product.publishStatus && product.publishStatus !== 'published')) return '部分票种待上线';
+  if (products.length > 0) return '当前日期暂无余票';
+  return '暂无可售门票';
+}
+
+function resolveParkInfoFromProducts(fallback: TicketBookingParkInfo, ticketProducts: BffTicketProduct[]) {
+  const firstConfiguredProduct = ticketProducts.find((product) => product.entryAddress || product.servicePhone || product.notice || product.refundRule);
+  const noticeRules = compactRules(ticketProducts.flatMap((product) => [product.notice, product.refundRule]));
+
+  return {
+    ...fallback,
+    hotline: firstConfiguredProduct?.servicePhone || fallback.hotline,
+    address: firstConfiguredProduct?.entryAddress || fallback.address,
+    rules: noticeRules.length ? noticeRules : fallback.rules,
+  };
+}
+
+// 根据真实票种生成页面分区。
+function buildSectionsFromProducts(products: TicketProduct[]) {
+  const ticketProductIds = products.filter((product) => product.category === 'ticket').map((product) => product.id);
   const annualCardProductIds = products.filter((product) => product.category === 'annualCard').map((product) => product.id);
+  const fastPassProductIds = products.filter((product) => product.category === 'fastPass').map((product) => product.id);
   const sections: TicketBookingSection[] = [];
 
   if (ticketProductIds.length) {
@@ -510,63 +465,97 @@ function buildSectionsFromProducts(products: TicketProduct[], fallback: TicketBo
   if (fastPassProductIds.length) {
     sections.push({
       key: 'fast-pass',
-      type: 'ticket',
+      type: 'fastPass',
       title: '快速通',
-      badge: { text: 'fast', color: 'red' },
       productIds: fastPassProductIds,
     });
   }
 
-  const packageSection = ticketSectionCatalog.find((section) => section.type === 'package');
-  if (packageSection && fallback.packages.length) sections.push(packageSection);
-
-  return sections.length ? sections : fallback.sections;
+  return sections;
 }
 
 // 从购票页 CMS 资源位中提取可用图片，优先使用移动端图片。
-function resolveHeroImages(resources: CmsResourceSlotApiItem[], fallback: TicketBookingData) {
-  const images = resources
+function resolveHeroImages(resources: CmsResourceSlotApiItem[]) {
+  return resources
     .filter((item) => isEnabledApiItem(item.status))
     .map((item) => item.mobileImageUrl || item.imageUrl || '')
     .filter(Boolean);
-
-  return images.length ? images : fallback.parkInfo.heroImages;
 }
 
-// 将真实接口数据和本地静态兜底内容合并为页面数据。
+// 将真实接口数据归一成页面数据，接口缺失时不回退旧本地票种。
 function buildTicketBookingDataFromApi(
   fallback: TicketBookingData,
-  menus: PurchaseMenuApiItem[],
+  ticketProducts: BffTicketProduct[],
+  inventoryMap: Record<string, BffTicketInventoryDay[]>,
   resources: CmsResourceSlotApiItem[],
 ) {
-  const products = menus
-    .map(normalizePurchaseMenuItem)
+  const miniProgramTicketProducts = ticketProducts.filter(isMiniProgramTicketProduct);
+  const products = miniProgramTicketProducts
+    .flatMap((product) => {
+      const skuRules = product.skuRules?.length ? product.skuRules : [{
+        id: `${product.productCode}_standard`,
+        name: '标准票',
+        basePrice: product.minPrice,
+      }];
+      const inventoryDays = inventoryMap[product.productCode] || [];
+
+      return skuRules.map((sku) => normalizeTicketProduct(
+        product,
+        sku,
+        fallback.parkInfo.travelDate,
+        resolveInventoryDay(sku, inventoryDays, fallback.parkInfo.travelDate),
+      ));
+    })
     .filter((item): item is TicketProduct => Boolean(item));
 
-  if (!products.length) return fallback;
-
-  const heroImages = resolveHeroImages(resources, fallback);
+  const heroImages = resolveHeroImages(resources);
+  const parkInfo = resolveParkInfoFromProducts(fallback.parkInfo, miniProgramTicketProducts);
+  const dateAvailabilityText = resolveDateAvailabilityText(products);
 
   return {
     ...fallback,
     parkInfo: {
-      ...fallback.parkInfo,
+      ...parkInfo,
+      notice: dateAvailabilityText,
       heroImages,
-      imageCount: heroImages.filter(Boolean).length || fallback.parkInfo.imageCount,
+      imageCount: heroImages.filter(Boolean).length,
     },
-    sections: buildSectionsFromProducts(products, fallback),
+    sections: buildSectionsFromProducts(products),
     products,
+    packages: [],
+    coupons: [],
   };
 }
 
-// 获取门票预定页面数据，优先使用后端登录态 GET，失败时回落到本地兜底。
-export function fetchTicketBookingData(options: FetchTicketBookingDataOptions = {}) {
+async function fetchTicketBookingDataUncached(fallback: TicketBookingData) {
+  const { startDate, endDate } = getTicketDateRange(fallback.dates);
+  const [ticketProducts, resources] = await Promise.all([
+    fetchBffTicketProducts(),
+    fetchPurchaseResources().catch(() => []),
+  ]);
+  const calendarEntries = await Promise.all(uniquePublishedTicketProductCodes(ticketProducts).map(async (productCode) => ({
+    productCode,
+    days: await fetchBffTicketCalendarOnce(productCode, startDate, endDate),
+  })));
+  const inventoryMap = calendarEntries.reduce<Record<string, BffTicketInventoryDay[]>>((result, entry) => {
+    result[entry.productCode] = entry.days;
+    return result;
+  }, {});
+
+  return buildTicketBookingDataFromApi(fallback, ticketProducts, inventoryMap, resources);
+}
+
+// 获取门票预定页面真实数据，接口失败时由页面异常态承接。
+export async function fetchTicketBookingData(options: FetchTicketBookingDataOptions = {}) {
   const fallback = buildTicketBookingData(options);
+  const requestKey = getTicketBookingRequestKey(fallback.parkInfo.travelDate);
+  const cachedRequest = getCachedTicketRequest(ticketBookingRequestCache, requestKey);
 
-  return withServiceFallback(async () => {
-    const menus = await fetchPurchaseMenus();
-    const resources = await fetchPurchaseResources().catch(() => []);
+  if (cachedRequest) return cachedRequest;
 
-    return buildTicketBookingDataFromApi(fallback, menus, resources);
-  }, fallback);
+  return setCachedTicketRequest(
+    ticketBookingRequestCache,
+    requestKey,
+    () => fetchTicketBookingDataUncached(fallback),
+  );
 }

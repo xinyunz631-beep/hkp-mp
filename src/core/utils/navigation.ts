@@ -1,6 +1,6 @@
 import Taro from '@tarojs/taro';
 import { MINI_MAIN_ROUTES, MINI_PACKAGE_ROUTES, type MiniRoute } from '@/core/constants/routes';
-import { requireLogin } from '@/core/services/auth';
+import { promptLogin, requireLogin } from '@/core/services/auth';
 
 const MAIN_TAB_ROUTE_SET = new Set<string>(Object.values(MINI_MAIN_ROUTES));
 const LOGIN_REQUIRED_ROUTE_REASONS: Partial<Record<MiniRoute, string>> = {
@@ -19,7 +19,6 @@ const LOGIN_REQUIRED_ROUTE_REASONS: Partial<Record<MiniRoute, string>> = {
   [MINI_PACKAGE_ROUTES.mallGiftSelect]: '登录后可选择赠品',
   [MINI_PACKAGE_ROUTES.orderHome]: '登录后可查看订单',
   [MINI_PACKAGE_ROUTES.orderDetail]: '登录后可查看订单详情',
-  [MINI_PACKAGE_ROUTES.orderCheckout]: '登录后可提交订单',
   [MINI_PACKAGE_ROUTES.orderAddress]: '登录后可管理地址',
   [MINI_PACKAGE_ROUTES.orderAddressEdit]: '登录后可编辑地址',
   [MINI_PACKAGE_ROUTES.orderCancel]: '登录后可取消订单',
@@ -29,12 +28,18 @@ const LOGIN_REQUIRED_ROUTE_REASONS: Partial<Record<MiniRoute, string>> = {
   [MINI_PACKAGE_ROUTES.orderAftersaleProgress]: '登录后可查看售后进度',
   [MINI_PACKAGE_ROUTES.orderLogistics]: '登录后可查看物流',
   [MINI_PACKAGE_ROUTES.orderReviewCreate]: '登录后可评价订单',
-  [MINI_PACKAGE_ROUTES.ticketCheckout]: '登录后可提交门票订单',
-  [MINI_PACKAGE_ROUTES.hotelCheckout]: '登录后可提交酒店订单',
 };
+const LOGIN_OPTIONAL_ROUTE_REASONS: Partial<Record<MiniRoute, string>> = {
+  [MINI_PACKAGE_ROUTES.ticketCheckout]: '登录后可同步本次门票订单',
+  [MINI_PACKAGE_ROUTES.hotelCheckout]: '登录后可同步本次酒店订单',
+  [MINI_PACKAGE_ROUTES.orderCheckout]: '登录后可同步本次订单',
+};
+
+type NavigateLoginMode = 'required' | 'optional' | 'none';
 
 interface NavigateToMiniRouteOptions {
   loginReason?: string;
+  loginMode?: NavigateLoginMode;
   forceLogin?: boolean;
 }
 
@@ -56,26 +61,56 @@ export function getMiniRouteLoginReason(url: string) {
   return LOGIN_REQUIRED_ROUTE_REASONS[routePath];
 }
 
+// 获取交易类可选登录原因：用户取消登录时仍继续跳转。
+export function getMiniRouteOptionalLoginReason(url: string) {
+  const routePath = resolveRoutePathFromUrl(url) as MiniRoute;
+  return LOGIN_OPTIONAL_ROUTE_REASONS[routePath];
+}
+
 // 判断路由是否属于需要登录的业务能力入口。
 export function isLoginRequiredMiniRoute(url: string) {
   return Boolean(getMiniRouteLoginReason(url));
 }
 
-// 项目内跳转分包页时优先使用本方法，受保护路由会先登录拦截，目标页再自行兜底。
-export function navigateToMiniRoute(url: string, options: NavigateToMiniRouteOptions = {}) {
-  const loginReason = options.loginReason ?? getMiniRouteLoginReason(url);
+function resolveMiniRouteLoginMode(url: string, options: NavigateToMiniRouteOptions): NavigateLoginMode {
+  if (options.forceLogin) return 'required';
+  if (options.loginMode) return options.loginMode;
+  if (getMiniRouteLoginReason(url)) return 'required';
+  if (getMiniRouteOptionalLoginReason(url)) return 'optional';
+  return 'none';
+}
 
-  if (options.forceLogin || loginReason) {
+function navigateToMiniRouteDirectly(url: string) {
+  Taro.navigateTo({ url });
+}
+
+// 项目内跳转分包页时优先使用本方法，受保护路由会先登录拦截，交易确认路由允许暂不登录继续。
+export function navigateToMiniRoute(url: string, options: NavigateToMiniRouteOptions = {}) {
+  const loginMode = resolveMiniRouteLoginMode(url, options);
+  const loginReason = options.loginReason
+    ?? getMiniRouteLoginReason(url)
+    ?? getMiniRouteOptionalLoginReason(url);
+
+  if (loginMode === 'required') {
     requireLogin({
       reason: loginReason,
       onSuccess: () => {
-        Taro.navigateTo({ url });
+        navigateToMiniRouteDirectly(url);
       },
     }).catch(() => undefined);
     return false;
   }
 
-  Taro.navigateTo({ url });
+  if (loginMode === 'optional') {
+    promptLogin(loginReason).then((result) => {
+      if (result === 'success' || result === 'cancel') {
+        navigateToMiniRouteDirectly(url);
+      }
+    }).catch(() => undefined);
+    return false;
+  }
+
+  navigateToMiniRouteDirectly(url);
   return true;
 }
 

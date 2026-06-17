@@ -7,6 +7,7 @@ import { observer } from 'mobx-react';
 import { AppIcon } from '@/core/components/AppIcon';
 import { AppImage } from '@/core/components/AppImage';
 import { AppShareButton } from '@/core/components/AppShareButton';
+import { BaseEmpty } from '@/core/components/BaseEmpty';
 import { CouponSelectionPopup, DateSelectionPopup, QuantityStepper } from '@/core/components/commerce';
 import { AppPopup } from '@/core/components/AppPopup';
 import { PageShare, PageShell } from '@/core/components/PageShell';
@@ -156,6 +157,10 @@ function createInitialQuantities(products: TicketProduct[]) {
   }, {});
 }
 
+function compactVisibleTexts(items: Array<string | undefined>) {
+  return Array.from(new Set(items.map((item) => item?.trim()).filter((item): item is string => Boolean(item))));
+}
+
 function TicketBookingHero({ imageCount, imageSrcs, onPreview }: TicketBookingHeroProps) {
   const imageSrc = imageSrcs[0] || '';
   const hasPreviewImages = imageSrcs.some(Boolean);
@@ -297,11 +302,17 @@ function TicketSectionTitle({
 }
 
 function ProductCard({ product, quantity, onQuantityChange, onShowRules }: ProductCardProps) {
+  const maxQuantity = product.saleable ? product.maxQuantity : 0;
+  const stockClassName = product.saleable
+    ? '_pg-product_stock'
+    : '_pg-product_stock _pg-product_stock--disabled';
+
   return (
     <View className="_pg-product">
       <View className="_pg-product_main">
         <Text className="_pg-product_title">{product.title}</Text>
         <Text className="_pg-product_desc">{product.description}</Text>
+        <Text className={stockClassName}>{product.stockText}</Text>
         <View className="_pg-product_tags">
           {product.tags.map((tag) => (
             <Text className="_pg-product_tag" key={tag}>{tag}</Text>
@@ -317,7 +328,14 @@ function ProductCard({ product, quantity, onQuantityChange, onShowRules }: Produ
         <Text className="_pg-product_price">¥{product.price}</Text>
       </View>
       <View className="_pg-product_stepper-wrap">
-        <QuantityStepper className="_pg-product_stepper" value={quantity} min={0} onChange={onQuantityChange} />
+        <QuantityStepper
+          className="_pg-product_stepper"
+          value={Math.min(quantity, maxQuantity)}
+          min={0}
+          max={maxQuantity}
+          disabled={!product.saleable}
+          onChange={(value) => onQuantityChange(Math.min(value, maxQuantity))}
+        />
       </View>
     </View>
   );
@@ -348,6 +366,7 @@ const TicketBookingPage = observer(function TicketBookingPage() {
   const [datePopupVisible, setDatePopupVisible] = useState(false);
   const [couponPopupVisible, setCouponPopupVisible] = useState(false);
   const [rulesPopupVisible, setRulesPopupVisible] = useState(false);
+  const [selectedRuleProductId, setSelectedRuleProductId] = useState<string>();
   const [selectedCouponId, setSelectedCouponId] = useState<string>();
   const [activeSectionKey, setActiveSectionKey] = useState<TicketBookingSectionKey>('ticket');
   const [sectionOffsets, setSectionOffsets] = useState<TicketSectionOffsets>({});
@@ -368,8 +387,23 @@ const TicketBookingPage = observer(function TicketBookingPage() {
     return bookingData.sections.filter((section) => hasTicketSectionContent(section, products, packages));
   }, [bookingData, packages, products]);
   const selectedProducts = useMemo(() => products.filter((product) => (quantities[product.id] ?? 0) > 0), [products, quantities]);
+  const hasSelectedProducts = selectedProducts.length > 0;
   const totalAmount = products.reduce((total, product) => total + (quantities[product.id] ?? 0) * product.price, 0);
   const selectedCoupon = bookingData?.coupons.find((coupon) => coupon.id === selectedCouponId);
+  const selectedRuleProduct = selectedRuleProductId
+    ? products.find((product) => product.id === selectedRuleProductId)
+    : undefined;
+  const selectedRuleTexts = selectedRuleProduct?.ruleTexts ?? [];
+  const rulesPopupTitle = selectedRuleProduct ? selectedRuleProduct.title : '预定须知';
+  const rulesPopupItems = bookingData ? compactVisibleTexts(
+    selectedRuleTexts.length
+      ? selectedRuleTexts
+      : [
+          bookingData.parkInfo.notice,
+          ...bookingData.parkInfo.rules,
+          ...bookingData.parkInfo.warmTips,
+        ],
+  ) : [];
   const selectedCouponUsable = Boolean(
     selectedCoupon
     && selectedCoupon.status === 'available'
@@ -411,6 +445,7 @@ const TicketBookingPage = observer(function TicketBookingPage() {
     setQuantities(createInitialQuantities(nextData.products));
     setSelectedDate(nextData.parkInfo.travelDate);
     setSelectedCouponId(undefined);
+    setSelectedRuleProductId(undefined);
     setActiveSectionKey(nextActiveSectionKey);
     setSectionOffsets({});
     setStickyPanelHeight(0);
@@ -512,7 +547,10 @@ const TicketBookingPage = observer(function TicketBookingPage() {
                 product={product}
                 quantity={quantities[product.id] ?? 0}
                 onQuantityChange={(value) => setQuantities((current) => ({ ...current, [product.id]: value }))}
-                onShowRules={() => setRulesPopupVisible(true)}
+                onShowRules={() => {
+                  setSelectedRuleProductId(product.id);
+                  setRulesPopupVisible(true);
+                }}
               />
             ))}
           </View>
@@ -535,14 +573,17 @@ const TicketBookingPage = observer(function TicketBookingPage() {
   }
 
   async function submitSelectedProducts(addonQuantity = 0) {
-    if (totalAmount <= 0) {
+    if (!hasSelectedProducts) {
       showWechatToast('请选择门票数量');
       return;
     }
 
     if (!bookingData) return;
-    const authed = await pageRuntime.ensureLogin('登录后可提交门票订单');
-    if (!authed) return;
+    const oversoldProduct = selectedProducts.find((product) => (quantities[product.id] ?? 0) > product.maxQuantity);
+    if (oversoldProduct) {
+      await showWechatToast(`${oversoldProduct.title} 当前库存不足，请重新选择数量`);
+      return;
+    }
 
     const draft = createTicketOrderDraft({
       parkName: bookingData.parkInfo.name,
@@ -552,11 +593,19 @@ const TicketBookingPage = observer(function TicketBookingPage() {
       addonQuantity,
       products: selectedProducts.map((product) => ({
         id: product.id,
+        productCode: product.productCode,
+        skuId: product.skuId,
+        skuName: product.skuName,
         title: product.title,
         category: product.category,
         price: product.price,
+        unitPriceCent: product.unitPriceCent,
         quantity: quantities[product.id] ?? 0,
         noticeText: product.noticeText,
+        travelerRoles: product.travelerRoles,
+        requiredFields: product.requiredFields,
+        mobileRequired: product.mobileRequired,
+        certificateRequired: product.certificateRequired,
       })),
     });
 
@@ -568,7 +617,7 @@ const TicketBookingPage = observer(function TicketBookingPage() {
   }
 
   async function handlePackageReserve(product: TicketPackageProduct) {
-    if (totalAmount <= 0) {
+    if (!hasSelectedProducts) {
       await showWechatToast('请先选择门票或年卡数量');
       return;
     }
@@ -595,7 +644,7 @@ const TicketBookingPage = observer(function TicketBookingPage() {
             label="订单总金额:"
             amountText={`¥${payableAmount}`}
             buttonText="提交订单"
-            disabled={totalAmount <= 0}
+            disabled={!hasSelectedProducts}
             discountText={discountAmount > 0 ? `已优惠 ¥${discountAmount.toFixed(2)}` : undefined}
             onSubmit={handleSubmit}
           />
@@ -614,7 +663,13 @@ const TicketBookingPage = observer(function TicketBookingPage() {
                 imageSrcs={bookingData.parkInfo.heroImages}
                 onPreview={() => previewWechatImages({ urls: bookingData.parkInfo.heroImages })}
               />
-              <TicketBookingInfo data={bookingData} onShowRules={() => setRulesPopupVisible(true)} />
+              <TicketBookingInfo
+                data={bookingData}
+                onShowRules={() => {
+                  setSelectedRuleProductId(undefined);
+                  setRulesPopupVisible(true);
+                }}
+              />
             </View>
             <Sticky className="_pg-sticky" threshold={0} zIndex={12}>
               <View className="_pg-sticky-content">
@@ -645,7 +700,17 @@ const TicketBookingPage = observer(function TicketBookingPage() {
               </View>
             </Sticky>
 
-            {visibleSections.map((section) => renderBookingSection(section))}
+            {visibleSections.length ? visibleSections.map((section) => renderBookingSection(section)) : (
+              <View className="_pg-empty-wrap">
+                <BaseEmpty
+                  className="_pg-empty"
+                  title="暂无可预订门票"
+                  description="请更换游玩日期，或稍后查看新的可订票种。"
+                  actionText="更换日期"
+                  onAction={() => setDatePopupVisible(true)}
+                />
+              </View>
+            )}
             <View className="_pg-tips">
               <Text className="_pg-tips_title">温馨提示</Text>
               <View className="_pg-tips_list">
@@ -682,13 +747,13 @@ const TicketBookingPage = observer(function TicketBookingPage() {
                 onClose={() => setRulesPopupVisible(false)}
               >
                 <View className="_pg-rules-popup_header">
-                  <Text className="_pg-rules-popup_title">预定须知</Text>
+                  <Text className="_pg-rules-popup_title">{rulesPopupTitle}</Text>
                   <View className="_pg-rules-popup_close" onClick={() => setRulesPopupVisible(false)}>
                     <AppIcon name="close" size={16} color="#8b909a" />
                   </View>
                 </View>
                 <View className="_pg-rules-popup_list">
-                  {bookingData.parkInfo.rules.map((rule) => (
+                  {rulesPopupItems.map((rule) => (
                     <Text className="_pg-rules-popup_item" key={rule}>{rule}</Text>
                   ))}
                 </View>

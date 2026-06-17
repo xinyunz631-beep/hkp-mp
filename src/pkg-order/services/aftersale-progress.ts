@@ -11,7 +11,7 @@ interface FetchAftersaleProgressOptions {
   reasonText?: string;
 }
 
-// 获取售后进度页面数据，后续接真实接口时在这里处理字段归一和失败兜底。
+// 获取售后进度页面数据，后续接真实接口时在这里处理字段归一和异常态/空态转译。
 export function fetchAftersaleProgressData(options: FetchAftersaleProgressOptions = {}) {
   const order = resolveAftersaleOrder(options.orderId) ?? aftersaleProgressData.order;
   const typeText = options.typeText || aftersaleProgressData.typeText;

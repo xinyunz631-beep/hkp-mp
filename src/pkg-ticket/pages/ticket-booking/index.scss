@@ -313,6 +313,18 @@
     line-height: 1.45;
   }
 
+  &_stock {
+    display: block;
+    margin-top: 12px;
+    color: #2b7a55;
+    font-size: 24px;
+    line-height: 1.35;
+
+    &--disabled {
+      color: #999999;
+    }
+  }
+
   &_tags {
     display: none;
   }
@@ -390,6 +402,15 @@
 ._pg-package-section {
   margin-bottom: 16px;
   background: #ffffff;
+}
+
+._pg-empty-wrap {
+  padding: 48px 30px 56px;
+  background: #ffffff;
+}
+
+._pg-empty {
+  min-height: 360px;
 }
 
 ._pg-package-list {

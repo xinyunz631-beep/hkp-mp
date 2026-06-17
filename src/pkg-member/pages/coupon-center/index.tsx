@@ -3,8 +3,11 @@ import { Text, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
 import { PageHeader, PageShell } from '@/core/components/PageShell';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
+import { resolveErrorMessage } from '@/core/utils/error-message';
+import { navigateToMiniRoute } from '@/core/utils/navigation';
 import { showWechatToast } from '@/core/utils/wechat-actions';
 import {
+  claimMemberCoupon,
   fetchMemberCouponCenterData,
   type MemberCouponCenterCoupon,
   type MemberCouponCenterData,
@@ -43,9 +46,27 @@ const MemberCouponCenterPage = observer(function MemberCouponCenterPage() {
     setActiveTabKey(tabKey);
   }
 
-  // 点击券项时按当前券类型给出领取或兑换反馈，真实接口接入后替换为提交动作。
   async function handleCouponPress(coupon: MemberCouponCenterCoupon) {
-    await showWechatToast(coupon.tabKey === 'kcoin' ? '兑换成功' : '领取成功', 'success');
+    if (coupon.source === 'kcoin' && coupon.targetRoute) {
+      navigateToMiniRoute(coupon.targetRoute);
+      return;
+    }
+
+    if (!coupon.claimable) {
+      await showWechatToast(coupon.disabledReason || '当前优惠券暂不可领取');
+      return;
+    }
+
+    try {
+      await pageRuntime.withLoading(async () => {
+        await claimMemberCoupon(coupon);
+        const nextData = await fetchMemberCouponCenterData();
+        setPageData(nextData);
+      });
+      await showWechatToast('领取成功', 'success');
+    } catch (error) {
+      await showWechatToast(resolveErrorMessage(error, '领取失败，请稍后再试'));
+    }
   }
 
   return pageRuntime.renderPage(() => {

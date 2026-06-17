@@ -20,7 +20,6 @@ export interface MiniProgramAdClickTarget {
 }
 
 export interface AdClickOptions {
-  fallbackPath?: string;
   emptyText?: string;
 }
 
@@ -160,11 +159,9 @@ async function executeCustomAdValue(target: MiniProgramAdClickTarget, customValu
 // 统一执行小程序广告点击，所有页面广告位必须通过本方法承接跳转、复制、地图、电话和富文本详情。
 export async function adClick(target: MiniProgramAdClickTarget | MiniProgramAdView | undefined, options: AdClickOptions = {}) {
   const clickTarget = target ? resolveMiniProgramAdClickTarget(target) : undefined;
-  const fallbackPath = normalizeAdMiniProgramPath(options.fallbackPath);
   const emptyText = options.emptyText || '内容准备中，请稍后再试';
 
   if (!clickTarget) {
-    if (fallbackPath) return navigateByMiniProgramPath(fallbackPath);
     await showWechatToast(emptyText);
     return false;
   }
@@ -204,8 +201,6 @@ export async function adClick(target: MiniProgramAdClickTarget | MiniProgramAdVi
   }
 
   if (miniPath) return navigateByMiniProgramPath(miniPath);
-
-  if (fallbackPath) return navigateByMiniProgramPath(fallbackPath);
 
   await showWechatToast(emptyText);
   return false;

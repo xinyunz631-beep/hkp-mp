@@ -31,8 +31,6 @@ const CheckoutPage = observer(function CheckoutPage() {
       setCheckoutData(nextData);
     },
     refreshOnShow: true,
-    loginRequired: true,
-    loginReason: '登录后可提交订单',
   });
 
   async function handleCouponPress() {
@@ -77,7 +75,9 @@ const CheckoutPage = observer(function CheckoutPage() {
       paymentStatus: paymentStatus === 'success' ? 'paid' : 'pending',
     });
     await showWechatToast(paymentStatus === 'success' ? '支付成功' : '订单已提交，可稍后继续支付', 'success');
-    navigateToMiniRoute(`${MINI_PACKAGE_ROUTES.orderDetail}?orderId=${encodeURIComponent(order.id)}`);
+    navigateToMiniRoute(`${MINI_PACKAGE_ROUTES.orderDetail}?orderId=${encodeURIComponent(order.id)}`, {
+      loginMode: 'none',
+    });
   }
 
   function handleAddressPress() {

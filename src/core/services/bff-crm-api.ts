@@ -118,6 +118,11 @@ export interface BffCrmMemberCode {
   updatedAt?: string;
 }
 
+export interface FetchBffCrmMemberCodeParams {
+  // 给微信缓存层做防抖，避免在动态码场景下出现旧响应复用。
+  cacheBuster?: number;
+}
+
 export interface BffCrmLegacyBindResult {
   phone?: string;
   bound?: boolean;
@@ -207,10 +212,15 @@ export function setDefaultBffCrmAddress(addressNo: string) {
   });
 }
 
-export function fetchBffCrmMemberCode() {
+export function fetchBffCrmMemberCode(params?: FetchBffCrmMemberCodeParams) {
   return request<BffCrmMemberCode>({
     url: '/api/bff/crm/member-code',
     method: 'GET',
+    header: {
+      'Cache-Control': 'no-cache',
+      Pragma: 'no-cache',
+    },
+    data: params,
   });
 }
 
