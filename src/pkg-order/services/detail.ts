@@ -1,4 +1,4 @@
-import { fetchBffOrderDetail, type BffOrder, type BffTicketVoucher } from '@/core/services/bff-order-api';
+import { fetchBffOrderDetail, isBffTicketVoucherReady, type BffOrder, type BffTicketVoucher } from '@/core/services/bff-order-api';
 import type { OrderDetailData, OrderDetailFieldData, OrderTicketInstanceData } from './model';
 
 export type { OrderDetailData } from './model';
@@ -63,7 +63,9 @@ function compactFields(fields: OrderDetailFieldData[]) {
 }
 
 function mapTicketInstances(order: BffOrder): OrderTicketInstanceData[] {
-  const voucherInstances = (order.ticketVouchers || []).map((voucher) => mapTicketVoucher(order, voucher))
+  const voucherInstances = (order.ticketVouchers || [])
+    .filter(isBffTicketVoucherReady)
+    .map((voucher) => mapTicketVoucher(order, voucher))
     .filter((ticket): ticket is OrderTicketInstanceData => Boolean(ticket));
   if (voucherInstances.length) return voucherInstances;
 

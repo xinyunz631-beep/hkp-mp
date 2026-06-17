@@ -82,6 +82,29 @@ export interface BffTicketVoucher {
   [key: string]: unknown;
 }
 
+// 判断票务凭证是否可用于入园，避免把后端 FAILED 凭证误当出票成功。
+export function isBffTicketVoucherReady(voucher?: BffTicketVoucher) {
+  const status = String(voucher?.ticketStatus || voucher?.status || voucher?.useStatus || '').toUpperCase();
+  const hasVoucherCode = Boolean(
+    voucher?.ticketCode
+      || voucher?.voucherCode
+      || voucher?.codeImage
+      || voucher?.qrImage
+      || voucher?.qrCodeUrl
+  );
+  const blockedStatuses = ['FAILED', 'FAIL', 'VOIDED', 'CANCELED', 'CANCELLED', 'REFUNDED', 'EXPIRED'];
+
+  return hasVoucherCode && !blockedStatuses.includes(status);
+}
+
+// 判断订单是否已经拿到真实可用票券，不能只看 ticketVouchers 数组长度。
+export function isBffTicketOrderIssued(orderStatus?: string, ticketVouchers?: BffTicketVoucher[]) {
+  const normalizedStatus = String(orderStatus || '').toUpperCase();
+  const waitUseStatus = normalizedStatus === 'WAIT_USE' || normalizedStatus === 'FULFILLING';
+
+  return waitUseStatus && Boolean(ticketVouchers?.some((voucher) => isBffTicketVoucherReady(voucher)));
+}
+
 export interface BffOrder {
   orderNo: string;
   sceneType?: BffOrderSceneType;

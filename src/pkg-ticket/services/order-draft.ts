@@ -2,6 +2,7 @@ import { MINI_STORAGE_KEYS } from '@/core/constants/storage';
 import { createLocalOrderId, createLocalOrderTime } from '@/core/services/local-order';
 import {
   createBffOrder,
+  isBffTicketOrderIssued,
   payBffOrder,
   type BffOrderPaymentResponse,
   type BffTicketVoucher,
@@ -366,10 +367,6 @@ function resolveTicketPayableAmountCent(value?: number) {
   return value;
 }
 
-function isTicketOrderIssued(orderStatus?: string, ticketVouchers?: BffTicketVoucher[]) {
-  return orderStatus === 'WAIT_USE' || orderStatus === 'FULFILLING' || Boolean(ticketVouchers?.length);
-}
-
 // 生成门票实名出游人列表，旧草稿缺少该字段时也用这里补齐。
 export function createTicketOrderTravelers(
   products: TicketOrderDraftProduct[],
@@ -477,7 +474,7 @@ export async function submitTicketOrderDraft(draftId: string, payload: SubmitTic
   }
 
   const createPayableAmountCent = createResult.order?.payableAmountCent ?? createResult.confirmation?.payableAmountCent;
-  if (isTicketOrderIssued(createResult.order?.orderStatus, createResult.order?.ticketVouchers)) {
+  if (isBffTicketOrderIssued(createResult.order?.orderStatus, createResult.order?.ticketVouchers)) {
     return {
       id: orderNo,
       orderNo,
@@ -488,16 +485,20 @@ export async function submitTicketOrderDraft(draftId: string, payload: SubmitTic
     };
   }
 
+  if (String(createResult.order?.orderStatus || '').toUpperCase() === 'CLOSED') {
+    throw new Error('门票出票失败，请稍后重试或联系工作人员');
+  }
+
   const payment = await payBffOrder(orderNo, 'WECHAT');
   const payableAmountCent = payment.order?.payableAmountCent ?? createResult.order?.payableAmountCent;
+  const issuedAfterPayment = isBffTicketOrderIssued(payment.order?.orderStatus, payment.order?.ticketVouchers);
   return {
     id: orderNo,
     orderNo,
     orderStatus: payment.order?.orderStatus ?? createResult.order?.orderStatus,
     payableAmount: Number((resolveTicketPayableAmountCent(payableAmountCent) / 100).toFixed(2)),
     ticketVouchers: payment.order?.ticketVouchers ?? createResult.order?.ticketVouchers,
-    paymentSkipped: Boolean(payment.prepay?.paymentSkipped)
-      || isTicketOrderIssued(payment.order?.orderStatus, payment.order?.ticketVouchers),
+    paymentSkipped: issuedAfterPayment,
     payment,
   };
 }

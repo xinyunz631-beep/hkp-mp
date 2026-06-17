@@ -9,6 +9,7 @@ import { StatusException } from '@/core/components/status';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { PageShare, PageShell } from '@/core/components/PageShell';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
+import { isBffTicketOrderIssued } from '@/core/services/bff-order-api';
 import { resolveErrorMessage } from '@/core/utils/error-message';
 import { navigateBackInPageStack, navigateToMiniRoute } from '@/core/utils/navigation';
 import { requestWechatPayment, showWechatConfirm, showWechatToast } from '@/core/utils/wechat-actions';
@@ -361,20 +362,26 @@ const CheckoutPage = observer(function CheckoutPage() {
     });
     if (!confirmed) return;
 
-    const nextOrder = await pageRuntime.withLoading(() => submitTicketOrderDraft(draftId, {
-      selectedDate,
-      selectedCouponId: selectedCouponUsable ? selectedCouponId : undefined,
-      addonQuantity,
-      contact: nextContact,
-      travelers: nextTravelers,
-    }));
+    let nextOrder: Awaited<ReturnType<typeof submitTicketOrderDraft>>;
+    try {
+      nextOrder = await pageRuntime.withLoading(() => submitTicketOrderDraft(draftId, {
+        selectedDate,
+        selectedCouponId: selectedCouponUsable ? selectedCouponId : undefined,
+        addonQuantity,
+        contact: nextContact,
+        travelers: nextTravelers,
+      }));
+    } catch (error) {
+      await showWechatToast(resolveErrorMessage(error, '门票订单提交暂不可用，请稍后再试'));
+      return;
+    }
 
     if (!nextOrder) {
       await showWechatToast('订单提交失败，请重新选择门票');
       return;
     }
 
-    if (nextOrder.paymentSkipped || nextOrder.orderStatus === 'WAIT_USE' || nextOrder.ticketVouchers?.length) {
+    if (nextOrder.paymentSkipped || isBffTicketOrderIssued(nextOrder.orderStatus, nextOrder.ticketVouchers)) {
       await showWechatToast('出票成功', 'success');
       navigateToMiniRoute(`${MINI_PACKAGE_ROUTES.orderDetail}?orderId=${encodeURIComponent(nextOrder.orderNo)}`, {
         loginMode: 'none',
