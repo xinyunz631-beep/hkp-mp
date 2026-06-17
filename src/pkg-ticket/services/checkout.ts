@@ -1,5 +1,14 @@
 import { confirmBffOrder } from '@/core/services/bff-order-api';
-import { fetchBffCouponAvailable, type BffAvailableCouponView } from '@/core/services/bff-coupon-api';
+import {
+  fetchBffCouponAvailable,
+  getBffAvailableCouponList,
+  getBffCouponAmountCent,
+  getBffCouponReason,
+  getBffCouponThresholdCent,
+  getBffCouponTitle,
+  isBffCouponAvailable,
+  type BffAvailableCouponView,
+} from '@/core/services/bff-coupon-api';
 import { quoteBffTickets } from './ticket-api';
 import type { HkpDateOption } from '@/core/types/hkp';
 import {
@@ -91,18 +100,20 @@ function calculateDraftOrderAmountCent(draft: TicketOrderDraft) {
 }
 
 function toTicketCoupon(coupon: BffAvailableCouponView): TicketCoupon {
-  const thresholdAmount = centToYuan(coupon.thresholdAmountCent);
-  const discountAmount = centToYuan(coupon.discountAmountCent);
+  const thresholdCent = getBffCouponThresholdCent(coupon);
+  const discountCent = getBffCouponAmountCent(coupon);
+  const thresholdAmount = centToYuan(thresholdCent);
+  const discountAmount = centToYuan(discountCent);
   const validDate = coupon.validEndAt ? coupon.validEndAt.slice(0, 10) : '';
 
   return {
     id: coupon.couponNo,
-    title: coupon.couponName || '门票优惠券',
-    amountText: discountAmount > 0 ? `¥${formatYuan(coupon.discountAmountCent)}` : '优惠券',
+    title: getBffCouponTitle(coupon, '门票优惠券'),
+    amountText: discountAmount > 0 ? `¥${formatYuan(discountCent)}` : '优惠券',
     thresholdText: thresholdAmount > 0 ? `满¥${thresholdAmount.toFixed(2)}可用` : '无门槛',
     validityText: validDate ? `有效期至 ${validDate}` : '按券规则生效',
-    status: coupon.status === 'AVAILABLE' ? 'available' : 'disabled',
-    tag: coupon.reason || '可用',
+    status: isBffCouponAvailable(coupon) ? 'available' : 'disabled',
+    tag: getBffCouponReason(coupon),
     minimumAmount: thresholdAmount,
     discountAmount,
   };
@@ -181,13 +192,16 @@ export async function fetchCheckoutData(draftId?: string, selectedCouponId?: str
     fetchBffCouponAvailable({
       sceneType: 'TICKET',
       orderAmountCent: calculateDraftOrderAmountCent(draft),
+      itemIds: draft.products.map((product) => product.productCode || product.id),
+      skuIds: draft.products.map((product) => product.skuId || `${product.productCode || product.id}_standard`),
+      visitDate: draft.selectedDate,
     }),
   ]);
   const originalAmount = centToYuan(confirmation.originalAmountCent || ticketQuote.originalAmountCent);
   const discountAmount = centToYuan(confirmation.discountAmountCent);
   const payableAmount = centToYuan(confirmation.payableAmountCent || ticketQuote.payableAmountCent);
   const totalQuantity = draft.products.reduce((total, product) => total + product.quantity, 0);
-  const coupons = (availableCouponsResponse.coupons ?? []).map(toTicketCoupon);
+  const coupons = getBffAvailableCouponList(availableCouponsResponse).map(toTicketCoupon);
   const nextDraft = {
     ...draft,
     selectedCouponId: selectedCouponId ?? draft.selectedCouponId,

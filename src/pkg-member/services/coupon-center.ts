@@ -2,6 +2,7 @@ import { fetchBffCrmP1Coupons, type BffCrmP1ConfigItem } from '@/core/services/b
 import {
   claimBffCoupon,
   fetchBffMemberCouponPackages,
+  getBffCouponPackageList,
   type BffCouponPackageView,
   type BffCouponTemplateView,
 } from '@/core/services/bff-coupon-api';
@@ -78,13 +79,15 @@ function readExtraText(extraPayload: Record<string, unknown>, keys: string[]) {
 }
 
 function resolveTemplateAmountText(template?: BffCouponTemplateView) {
-  if (template?.discountAmountCent && template.discountAmountCent > 0) return formatYuan(template.discountAmountCent);
+  const amountCent = template?.discountAmountCent ?? template?.discountAmount ?? template?.amount ?? 0;
+  if (amountCent > 0) return formatYuan(amountCent);
   return '券';
 }
 
 function resolveTemplateThresholdText(template?: BffCouponTemplateView) {
-  if (template?.thresholdAmountCent && template.thresholdAmountCent > 0) {
-    return `满¥${formatYuan(template.thresholdAmountCent)}可用`;
+  const thresholdCent = template?.thresholdAmountCent ?? template?.thresholdAmount ?? 0;
+  if (thresholdCent > 0) {
+    return `满¥${formatYuan(thresholdCent)}可用`;
   }
 
   return '无门槛优惠';
@@ -100,7 +103,7 @@ function resolveTemplateValidityText(template?: BffCouponTemplateView) {
 
 function toPackageCoupon(couponPackage: BffCouponPackageView): MemberCouponCenterCoupon {
   const firstCoupon = couponPackage.coupons?.[0];
-  const templateNo = firstCoupon?.templateNo;
+  const templateNo = firstCoupon?.templateNo || firstCoupon?.templateId;
   const claimable = couponPackage.claimable !== false && Boolean(templateNo);
   const disabledReason = couponPackage.reason || (templateNo ? undefined : '当前优惠券暂不可领取');
 
@@ -108,7 +111,7 @@ function toPackageCoupon(couponPackage: BffCouponPackageView): MemberCouponCente
     id: couponPackage.packageNo,
     tabKey: 'recommend',
     source: 'package',
-    title: firstCoupon?.templateName || couponPackage.packageName,
+    title: firstCoupon?.templateName || firstCoupon?.title || couponPackage.packageName || '会员优惠券',
     amountText: resolveTemplateAmountText(firstCoupon),
     thresholdText: resolveTemplateThresholdText(firstCoupon),
     validityText: resolveTemplateValidityText(firstCoupon),
@@ -147,7 +150,7 @@ export async function fetchMemberCouponCenterData() {
     fetchBffMemberCouponPackages(),
     fetchBffCrmP1Coupons(),
   ]);
-  const packageCoupons = (packagesResponse.packages ?? []).map(toPackageCoupon);
+  const packageCoupons = getBffCouponPackageList(packagesResponse).map(toPackageCoupon);
   const kcoinCoupons = crmCoupons.map(toKcoinCoupon).filter((coupon): coupon is MemberCouponCenterCoupon => Boolean(coupon));
 
   return {

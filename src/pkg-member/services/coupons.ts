@@ -1,5 +1,10 @@
 import {
   fetchBffMemberCoupons,
+  getBffCouponAmountCent,
+  getBffCouponTitle,
+  getBffMemberCouponList,
+  isBffCouponAvailable,
+  normalizeBffCouponStatus,
   type BffCouponAssetView,
   type BffCouponSceneType,
   type BffCouponStatus,
@@ -57,25 +62,28 @@ function formatDate(dateText?: string) {
 }
 
 function resolveMemberCouponStatus(status?: BffCouponStatus): MemberCouponStatus {
-  if (status === 'USED') return 'used';
-  if (status === 'EXPIRED') return 'expired';
+  const normalizedStatus = normalizeBffCouponStatus(status);
+  if (normalizedStatus === 'USED') return 'used';
+  if (normalizedStatus === 'EXPIRED') return 'expired';
   return 'claimed';
 }
 
 function resolveSceneText(sceneType?: BffCouponSceneType) {
-  if (sceneType === 'TICKET') return '限门票订单使用';
-  if (sceneType === 'HOTEL') return '限酒店订单使用';
-  if (sceneType === 'MALL') return '限商城订单使用';
-  if (sceneType === 'DINING') return '限餐饮订单使用';
+  const normalizedSceneType = String(sceneType || '').toUpperCase();
+  if (normalizedSceneType === 'TICKET') return '限门票订单使用';
+  if (normalizedSceneType === 'HOTEL') return '限酒店订单使用';
+  if (normalizedSceneType === 'MALL') return '限商城订单使用';
+  if (normalizedSceneType === 'DINING') return '限餐饮订单使用';
   return '乐园消费可使用';
 }
 
 function resolveUseType(sceneType?: BffCouponSceneType): MemberCouponUseType {
-  if (sceneType === 'MALL' || sceneType === 'TICKET' || sceneType === 'HOTEL') {
+  const normalizedSceneType = String(sceneType || '').toUpperCase();
+  if (normalizedSceneType === 'MALL' || normalizedSceneType === 'TICKET' || normalizedSceneType === 'HOTEL') {
     return MEMBER_COUPON_USE_TYPE_ONLINE;
   }
 
-  if (sceneType === 'DINING' || sceneType === 'ALL') {
+  if (normalizedSceneType === 'DINING' || normalizedSceneType === 'ALL') {
     return MEMBER_COUPON_USE_TYPE_OFFLINE;
   }
 
@@ -83,9 +91,10 @@ function resolveUseType(sceneType?: BffCouponSceneType): MemberCouponUseType {
 }
 
 function resolveUseRoute(coupon: BffCouponAssetView) {
-  if (coupon.sceneType === 'TICKET') return MINI_PACKAGE_ROUTES.ticketBooking;
-  if (coupon.sceneType === 'HOTEL') return MINI_PACKAGE_ROUTES.hotelHome;
-  if (coupon.sceneType === 'MALL') {
+  const normalizedSceneType = String(coupon.sceneType || '').toUpperCase();
+  if (normalizedSceneType === 'TICKET') return MINI_PACKAGE_ROUTES.ticketBooking;
+  if (normalizedSceneType === 'HOTEL') return MINI_PACKAGE_ROUTES.hotelHome;
+  if (normalizedSceneType === 'MALL') {
     return `${MINI_PACKAGE_ROUTES.mallProducts}?couponId=${encodeURIComponent(coupon.couponNo)}`;
   }
 
@@ -102,8 +111,9 @@ function resolveCouponTypeText(couponType?: string) {
 }
 
 function resolveAmountText(coupon: BffCouponAssetView) {
-  if (coupon.discountAmountCent && coupon.discountAmountCent > 0) {
-    return formatYuan(coupon.discountAmountCent);
+  const amountCent = getBffCouponAmountCent(coupon);
+  if (amountCent > 0) {
+    return formatYuan(amountCent);
   }
 
   return '券';
@@ -126,29 +136,31 @@ function resolveValidityText(coupon: BffCouponAssetView, status: MemberCouponSta
 }
 
 function resolveActionText(status?: BffCouponStatus) {
-  if (status === 'USED') return '已使用';
-  if (status === 'EXPIRED') return '已过期';
-  if (status === 'LOCKED') return '使用中';
-  if (status === 'AVAILABLE') return '立即使用';
+  const normalizedStatus = normalizeBffCouponStatus(status);
+  if (normalizedStatus === 'USED') return '已使用';
+  if (normalizedStatus === 'EXPIRED') return '已过期';
+  if (normalizedStatus === 'LOCKED') return '使用中';
+  if (normalizedStatus === 'AVAILABLE') return '立即使用';
   return '查看';
 }
 
 function toMemberCouponItem(coupon: BffCouponAssetView): MemberCouponItem {
   const status = resolveMemberCouponStatus(coupon.status);
+  const amountCent = getBffCouponAmountCent(coupon);
   return {
     id: coupon.couponNo,
     status,
-    bffStatus: coupon.status,
+    bffStatus: coupon.status || '',
     sideText: resolveSceneText(coupon.sceneType),
     amountText: resolveAmountText(coupon),
     couponTypeText: resolveCouponTypeText(coupon.couponType),
-    currencyText: coupon.discountAmountCent ? 'RMB' : '权益',
+    currencyText: amountCent > 0 ? 'RMB' : '权益',
     validityText: resolveValidityText(coupon, status),
-    title: coupon.couponName || '会员优惠券',
+    title: getBffCouponTitle(coupon, '会员优惠券'),
     actionText: resolveActionText(coupon.status),
     useType: resolveUseType(coupon.sceneType),
     sceneType: coupon.sceneType,
-    useEnabled: coupon.status === 'AVAILABLE',
+    useEnabled: isBffCouponAvailable(coupon),
     targetRoute: resolveUseRoute(coupon),
   };
 }
@@ -164,7 +176,7 @@ function buildTabs(coupons: MemberCouponItem[]): MemberCouponTab[] {
 // 获取我的优惠券页面数据，只读取真实 BFF 券资产。
 export async function fetchCouponsData(): Promise<MemberCouponsData> {
   const response = await fetchBffMemberCoupons();
-  const coupons = (response.coupons ?? []).map(toMemberCouponItem);
+  const coupons = getBffMemberCouponList(response).map(toMemberCouponItem);
   return {
     tabs: buildTabs(coupons),
     coupons,

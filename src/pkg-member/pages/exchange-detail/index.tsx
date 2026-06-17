@@ -100,7 +100,7 @@ const MemberExchangeDetailPage = observer(function MemberExchangeDetailPage() {
           ? { ...currentData, memberKCoins: response.afterBalance ?? currentData.memberKCoins }
           : currentData);
       }
-      await showWechatToast('兑换已受理，请稍后查看', 'success');
+      await showWechatToast(response.message || '兑换已受理，请稍后查看', 'success');
     } catch (error) {
       await showWechatToast(resolveErrorMessage(error, '兑换失败，请稍后再试'));
     }

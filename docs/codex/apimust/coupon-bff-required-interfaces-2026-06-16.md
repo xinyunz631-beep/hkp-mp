@@ -1,8 +1,16 @@
 # 小程序优惠券 BFF 必须接口清单
 
-更新时间：2026-06-16
+更新时间：2026-06-17
 
 后端核验基线：`backend-server origin/uat@abbe80b feat(multi): 补齐票券K币P0接口`
+最新核验：`backend-server origin/uat@320a014 docs(admin-config): 回填会员券接口UAT验证`
+
+2026-06-17 追加结论：
+
+- `320a014` 本批真实变更只覆盖 `admin-config`：会员补录、门店字典、CRM 会员券实例延期/冻结/解冻/人工退款返还和发券失败 CSV 导出。
+- 后端 release `2026-06-17-admin-member-coupon-gap-closure.md` 明确写明未包含“CRM 券实例与小程序 promotion 券资产完全同源”。
+- 本次未修改 `hellokitty-park-bff-service` 的 `BffMemberCouponController`、`BffMemberKcoinController`、`BffPromotionController`，未修改 `member-service` K 币兑换写券逻辑，也未修改 `promotion-service` 会员券查询/可用券 mapper。
+- 小程序可继续调用已有 BFF，但 `POST /api/bff/member/kcoin/exchanges` 返回的 `couponNos` 仍来自 `crm_member_coupon_instance`，`GET /api/bff/member/coupons` 和 `GET /api/bff/promotion/coupons/available` 仍读取 `promotion_member_coupon`；“兑换成功后我的券/下单可用券可见”仍不可验收。
 
 ## 1. 本文件边界
 
@@ -139,7 +147,7 @@
 
 领取接口：`POST /api/bff/promotion/coupons/claim`
 
-当前 `backend-server origin/uat@abbe80b` 真实请求体：
+当前 `backend-server origin/uat@320a014` 真实请求体未变，仍为：
 
 | 字段 | 类型 | 必填 | 说明 |
 | --- | --- | --- | --- |
@@ -175,6 +183,8 @@
 
 领取成功或重复领取时，新券必须能立即通过 `GET /api/bff/member/coupons` 或券包接口查询到。
 
+当前核验补充：`320a014` 没有修改 `PromotionCouponClaimRequest`，BFF 领取仍只转发 `templateNo`，领取成功写入 `promotion_member_coupon`。
+
 ### 3.5 K 币兑换
 
 余额接口：`GET /api/bff/member/kcoin/balance`
@@ -209,6 +219,8 @@
 - 兑换成功扣 K 币和发券必须在同一事务或可恢复事务链路内。
 - `couponNos/packageNos` 必须进入我的券和下单可用券，不允许只写 `crm_member_coupon_instance` 而 promotion 资产不可见。
 - 失败时必须返回业务错误，不能扣 K 币后无券、也不能发券后 K 币流水缺失。
+
+当前核验补充：`320a014` 的 `CrmMemberRepository.issueKcoinCoupons()` 仍只 `INSERT INTO crm_member_coupon_instance`，`kcoinExchangeResponse()` 返回 `exchangeNo/itemNo/quantity/couponNos/packageNos/pointsCost/beforeBalance/afterBalance/pointsBalance`；未写入 `promotion_member_coupon`，也未在 BFF 层做 CRM 到 promotion 的资产桥接。
 
 ### 3.6 下单可用券
 
@@ -284,6 +296,6 @@
 | --- | --- | --- |
 | MP-COUPON-001 | CRM 会员券实例与 promotion 会员券资产未同源 | K 币兑换、后台发券、券包赠送可能无法进入我的券和下单可用券 |
 | MP-COUPON-002 | `member/coupons` 和 `available` 状态字段需要统一枚举和分页字段 | 小程序无法稳定展示已领取、已使用、已过期、锁定和返还状态 |
-| MP-COUPON-003 | K 币兑换响应需要稳定返回 `couponNos/packageNos/exchangeNo/pointsCost/beforeBalance/afterBalance` | 兑换成功后无法即时刷新资产和余额 |
+| MP-COUPON-003 | K 币兑换响应当前已返回 `couponNos/packageNos/exchangeNo/pointsCost/beforeBalance/afterBalance`，但仍缺稳定 `status/message` 且 `couponNos` 未进入 promotion 同源资产 | 兑换后只能刷新余额或展示受理结果，不能宣称券已可下单使用 |
 | MP-COUPON-004 | 退款返还需要回写同一券实例状态机 | 售后后我的券和可用券状态可能不一致 |
 | MP-COUPON-005 | 管理后台配置闭环仍有未补能力 | 后台配置、三方券、券包、预算和互斥需继续按管理后台文档推进，小程序只消费完成后的 BFF 结果 |

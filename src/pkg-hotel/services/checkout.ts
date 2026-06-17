@@ -1,5 +1,14 @@
 import { confirmBffOrder, createBffOrder, payBffOrder, type BffOrderUnifiedRequest, type BffOrderPaymentResponse } from '@/core/services/bff-order-api';
-import { fetchBffCouponAvailable, type BffAvailableCouponView } from '@/core/services/bff-coupon-api';
+import {
+  fetchBffCouponAvailable,
+  getBffAvailableCouponList,
+  getBffCouponAmountCent,
+  getBffCouponReason,
+  getBffCouponThresholdCent,
+  getBffCouponTitle,
+  isBffCouponAvailable,
+  type BffAvailableCouponView,
+} from '@/core/services/bff-coupon-api';
 import {
   ensureHotelOrderDraft,
   resolveHotelDraftAmount,
@@ -70,18 +79,20 @@ function formatYuan(amountCent = 0) {
 }
 
 function toHotelCoupon(coupon: BffAvailableCouponView): HotelCheckoutCouponData {
-  const thresholdAmount = centToYuan(coupon.thresholdAmountCent);
-  const discountAmount = centToYuan(coupon.discountAmountCent);
+  const thresholdCent = getBffCouponThresholdCent(coupon);
+  const discountCent = getBffCouponAmountCent(coupon);
+  const thresholdAmount = centToYuan(thresholdCent);
+  const discountAmount = centToYuan(discountCent);
   const validDate = coupon.validEndAt ? coupon.validEndAt.slice(0, 10) : '';
 
   return {
     id: coupon.couponNo,
-    title: coupon.couponName || '酒店优惠券',
-    amountText: discountAmount > 0 ? `¥${formatYuan(coupon.discountAmountCent)}` : '优惠券',
+    title: getBffCouponTitle(coupon, '酒店优惠券'),
+    amountText: discountAmount > 0 ? `¥${formatYuan(discountCent)}` : '优惠券',
     thresholdText: thresholdAmount > 0 ? `满¥${thresholdAmount.toFixed(2)}可用` : '无门槛',
     validityText: validDate ? `有效期至 ${validDate}` : '按券规则生效',
-    status: coupon.status === 'AVAILABLE' ? 'available' : 'disabled',
-    tag: coupon.reason || '可用',
+    status: isBffCouponAvailable(coupon) ? 'available' : 'disabled',
+    tag: getBffCouponReason(coupon),
     minimumAmount: thresholdAmount,
     discountAmount,
   };
@@ -157,12 +168,16 @@ export async function fetchCheckoutData(params: FetchHotelCheckoutParams = {}) {
     fetchBffCouponAvailable({
       sceneType: 'HOTEL',
       orderAmountCent: yuanToCent(resolveHotelDraftAmount(draft, roomCount)),
+      itemIds: [draft.hotelId, draft.product.id],
+      skuIds: [draft.ratePlan.id],
+      checkInDate: draft.stayRange.checkIn,
+      checkOutDate: draft.stayRange.checkOut,
     }),
   ]);
   const payableAmountCent = resolveHotelPayableAmountCent(confirmation.payableAmountCent);
   const totalAmount = Number((payableAmountCent / 100).toFixed(2));
   const discountAmount = Number(((confirmation.discountAmountCent ?? 0) / 100).toFixed(2));
-  const coupons = (availableCouponsResponse.coupons ?? []).map(toHotelCoupon);
+  const coupons = getBffAvailableCouponList(availableCouponsResponse).map(toHotelCoupon);
   const selectedCoupon = coupons.find((coupon) => coupon.id === selectedCouponId);
   const checkoutData: HotelCheckoutData = {
     draftId: draft.id,
