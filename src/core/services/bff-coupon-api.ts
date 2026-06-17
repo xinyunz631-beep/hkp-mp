@@ -1,7 +1,16 @@
 import { request } from '@/core/request';
 
 export type BffCouponSceneType = 'TICKET' | 'MALL' | 'HOTEL' | 'DINING' | 'ALL' | string;
-export type BffCouponStatus = 'AVAILABLE' | 'LOCKED' | 'USED' | 'EXPIRED' | string;
+export type BffCouponStatus =
+  | 'AVAILABLE'
+  | 'LOCKED'
+  | 'USED'
+  | 'EXPIRED'
+  | 'DISABLED'
+  | 'VOIDED'
+  | 'RETURNED'
+  | 'FROZEN'
+  | string;
 
 export interface BffCouponAssetView {
   couponNo: string;
@@ -18,12 +27,23 @@ export interface BffCouponAssetView {
   validEndAt?: string;
   lockedAt?: string;
   usedAt?: string;
+  source?: string;
+  sourceName?: string;
+  packageNo?: string;
+  lockedOrderNo?: string;
+  usedOrderNo?: string;
+  refundReturnStatus?: string;
 }
 
 export interface BffMemberCouponsResponse {
   sceneType?: BffCouponSceneType;
   status?: BffCouponStatus;
   coupons?: BffCouponAssetView[];
+  list?: BffCouponAssetView[];
+  total?: number;
+  page?: number;
+  size?: number;
+  hasMore?: boolean;
   statusCounts?: Partial<Record<BffCouponStatus, number>>;
 }
 
@@ -78,8 +98,13 @@ export interface BffAvailableCouponView {
   discountAmountCent?: number;
   status: BffCouponStatus;
   selected?: boolean;
+  available?: boolean;
   reason?: string;
+  unavailableReason?: string;
   validEndAt?: string;
+  discountAmount?: number;
+  priority?: number;
+  mutexGroup?: string;
 }
 
 export interface BffAvailableCouponsResponse {
@@ -90,6 +115,11 @@ export interface BffAvailableCouponsResponse {
 export interface FetchBffAvailableCouponsParams {
   sceneType: BffCouponSceneType;
   orderAmountCent?: number;
+  itemIds?: string;
+  skuIds?: string;
+  visitDate?: string;
+  checkInDate?: string;
+  checkOutDate?: string;
 }
 
 export interface BffKcoinBalance {
@@ -136,15 +166,23 @@ export interface BffKcoinExchangeResponse {
   itemNo?: string;
   quantity?: number;
   couponNos?: string[];
+  packageNos?: string[];
   pointsCost?: number;
   beforeBalance?: number;
   afterBalance?: number;
+  status?: 'success' | 'pending' | 'failed' | string;
+  message?: string;
   idempotent?: boolean;
 }
 
 export interface BffCouponRefundReturnRequest {
   orderNo: string;
   refundNo: string;
+  sceneType?: BffCouponSceneType;
+  couponNos?: string[];
+  refundAmount?: number;
+  refundType?: string;
+  idempotencyKey?: string;
   reason?: string;
 }
 
@@ -202,6 +240,11 @@ export function fetchBffCouponAvailable(params: FetchBffAvailableCouponsParams) 
     url: appendQuery('/api/bff/promotion/coupons/available', {
       sceneType: params.sceneType,
       orderAmountCent: params.orderAmountCent,
+      itemIds: params.itemIds,
+      skuIds: params.skuIds,
+      visitDate: params.visitDate,
+      checkInDate: params.checkInDate,
+      checkOutDate: params.checkOutDate,
     }),
     method: 'GET',
   });

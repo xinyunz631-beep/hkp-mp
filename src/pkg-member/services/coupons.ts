@@ -164,7 +164,7 @@ function buildTabs(coupons: MemberCouponItem[]): MemberCouponTab[] {
 // 获取我的优惠券页面数据，只读取真实 BFF 券资产。
 export async function fetchCouponsData(): Promise<MemberCouponsData> {
   const response = await fetchBffMemberCoupons();
-  const coupons = (response.coupons ?? []).map(toMemberCouponItem);
+  const coupons = (response.coupons ?? response.list ?? []).map(toMemberCouponItem);
   return {
     tabs: buildTabs(coupons),
     coupons,

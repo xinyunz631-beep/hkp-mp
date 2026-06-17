@@ -181,6 +181,11 @@ export async function fetchCheckoutData(draftId?: string, selectedCouponId?: str
     fetchBffCouponAvailable({
       sceneType: 'TICKET',
       orderAmountCent: calculateDraftOrderAmountCent(draft),
+      itemIds: draft.products.map((product) => product.productCode || product.id).join(','),
+      skuIds: draft.products
+        .map((product) => product.skuId || `${product.productCode || product.id}_standard`)
+        .join(','),
+      visitDate: draft.selectedDate,
     }),
   ]);
   const originalAmount = centToYuan(confirmation.originalAmountCent || ticketQuote.originalAmountCent);
