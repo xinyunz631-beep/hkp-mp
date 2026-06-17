@@ -14,6 +14,7 @@
 | 文件 | 用途 |
 | --- | --- |
 | `coupon-bff-required-interfaces-2026-06-16.md` | 小程序优惠券、K 币兑换、我的券、下单可用券、锁券核销和退款返还必补清单 |
+| `coupon-bff-required-interfaces-2026-06-17.md` | 后端 `origin/uat@320a014` 复核后的优惠券同源资产 P0 缺口和验收用例 |
 | `route-api-map.md` | 小程序页面路由到 BFF 接口、状态和后端缺口的长期映射 |
 
 ## 更新规则

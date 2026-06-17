@@ -1,8 +1,10 @@
 # 小程序路由接口映射
 
-更新时间：2026-06-16
+更新时间：2026-06-17
 
 本文件用于后端按页面理解小程序 BFF 依赖。新增或切换页面接口时必须同步更新。
+
+最新复核：2026-06-17 按 `backend-server origin/uat@320a014` 核验，K 币兑换和管理端会员券运营仍写 `crm_member_coupon_instance`，小程序我的券、下单可用券、锁券、核销、释放和退款返还仍读写 `promotion_member_coupon`。同源资产 P0 缺口见 `coupon-bff-required-interfaces-2026-06-17.md`。
 
 ## 会员优惠券链路
 
@@ -10,10 +12,10 @@
 | --- | --- | --- | --- | --- | --- |
 | `pkg-member/pages/coupon-center/index` | 领券中心列表 | `GET /api/bff/member/coupon-packages`、`GET /api/bff/crm/entries/coupons` | 否 | 免费券包已读 promotion BFF；K 币入口继续读真实 CRM 入口 | 券包、领取结果、我的券和下单可用券必须统一 `couponNo/templateNo` |
 | `pkg-member/pages/coupon-center/index` | 领取免费券 | `POST /api/bff/promotion/coupons/claim` | 是 | 已按当前真实 `templateNo` DTO 接入，成功后刷新列表 | 领取生成券必须进入 `member/coupons` 和 `available` |
-| `pkg-member/pages/coupons/index` | 我的优惠券 | `GET /api/bff/member/coupons` | 否 | 已替换本地运行时 mock，只读真实会员券资产 | 需要分页、状态、同源 `couponNo`、使用范围、退款返还字段 |
+| `pkg-member/pages/coupons/index` | 我的优惠券 | `GET /api/bff/member/coupons` | 否 | 已替换本地运行时 mock，只读真实会员券资产 | 当前后端仍读 `promotion_member_coupon`，必须补分页、状态、同源 `couponNo`、使用范围、退款返还字段 |
 | `pkg-member/pages/exchange/index` | K 币兑换列表 | `GET /api/bff/crm/entries/exchanges` | 否 | 已读真实 CRM 入口 | 兑换项需稳定标识发放券或券包 |
 | `pkg-member/pages/exchange-detail/index` | 兑换详情 | `GET /api/bff/crm/entries/items/{itemNo}`、`GET /api/bff/member/kcoin/balance` | 否 | 详情和余额已接真实 BFF | 详情需返回库存、兑换限制、发券结果预期 |
-| `pkg-member/pages/exchange-detail/index` | 提交 K 币兑换 | `POST /api/bff/member/kcoin/exchanges` | 是 | 已接入真实提交，成功提示克制，不承诺下单可用 | 当前兑换写 CRM 实例，但我的券/下单可用券读 promotion，存在同源断链 |
+| `pkg-member/pages/exchange-detail/index` | 提交 K 币兑换 | `POST /api/bff/member/kcoin/exchanges` | 是 | 已接入真实提交，成功提示克制，不承诺下单可用 | 当前兑换写 `crm_member_coupon_instance`，但我的券/下单可用券读 `promotion_member_coupon`，存在同源断链 |
 
 ## 交易用券链路
 
