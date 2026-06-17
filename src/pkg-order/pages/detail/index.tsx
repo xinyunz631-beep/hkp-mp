@@ -1,16 +1,19 @@
-import Taro from '@tarojs/taro';
+import Taro, { useDidHide, useDidShow } from '@tarojs/taro';
 import { Text, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
 import { AppImage } from '@/core/components/AppImage';
 import { PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { navigateToMiniRoute } from '@/core/utils/navigation';
 import { requestWechatPayment, showWechatConfirm, showWechatToast } from '@/core/utils/wechat-actions';
 import { payBffOrder, refundBffOrder } from '@/core/services/bff-order-api';
 import { fetchDetailData, type OrderDetailData } from '@/pkg-order/services/detail';
 import './index.scss';
+
+const TICKET_ORDER_DETAIL_POLL_INTERVAL_MS = 15000;
+const TICKET_ORDER_DETAIL_POLLING_STATUSES = ['PAID', 'WAIT_USE', 'FULFILLING'];
 
 function formatPayExpireAt(payExpireAt?: string) {
   if (!payExpireAt) return '30分钟内';
@@ -37,17 +40,62 @@ function resolveAmountLabel(detailData: OrderDetailData) {
   return detailData.primaryActionType === 'pay' ? '待支付金额' : '实付金额';
 }
 
+function shouldPollTicketOrderDetail(detailData?: OrderDetailData) {
+  if (!detailData) return false;
+  if (detailData.sceneType !== 'TICKET') return false;
+  if (!detailData.ticketInstances.length) return false;
+
+  const normalizedStatus = String(detailData.orderStatus || '').toUpperCase();
+  return TICKET_ORDER_DETAIL_POLLING_STATUSES.includes(normalizedStatus);
+}
+
 const DetailPage = observer(function DetailPage() {
   const [detailData, setDetailData] = useState<OrderDetailData>();
+  const pageVisibleRef = useRef(true);
+  const pollingRequestRef = useRef(false);
+
+  async function loadDetailData() {
+    const orderId = Taro.getCurrentInstance().router?.params?.orderId;
+    const nextData = await fetchDetailData(orderId);
+    setDetailData(nextData);
+    return nextData;
+  }
+
   const pageRuntime = usePageRuntime({
     initPage: async () => {
-      const orderId = Taro.getCurrentInstance().router?.params?.orderId;
-      const nextData = await fetchDetailData(orderId);
-      setDetailData(nextData);
+      await loadDetailData();
     },
+    refreshOnShow: true,
     loginRequired: true,
     loginReason: '登录后可查看订单详情',
   });
+
+  useDidShow(() => {
+    pageVisibleRef.current = true;
+  });
+
+  useDidHide(() => {
+    pageVisibleRef.current = false;
+  });
+
+  useEffect(() => {
+    if (!shouldPollTicketOrderDetail(detailData)) return undefined;
+
+    const timer = setInterval(() => {
+      if (!pageVisibleRef.current || pollingRequestRef.current) return;
+
+      pollingRequestRef.current = true;
+      loadDetailData()
+        .catch(() => undefined)
+        .finally(() => {
+          pollingRequestRef.current = false;
+        });
+    }, TICKET_ORDER_DETAIL_POLL_INTERVAL_MS);
+
+    return () => {
+      clearInterval(timer);
+    };
+  }, [detailData?.id, detailData?.orderStatus, detailData?.sceneType, detailData?.ticketInstances.length]);
 
   async function handlePrimaryAction() {
     if (!detailData) return;

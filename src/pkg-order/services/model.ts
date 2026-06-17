@@ -54,6 +54,8 @@ export interface OrderTicketInstanceData {
 
 export interface OrderDetailData {
   id: string;
+  sceneType?: string;
+  orderStatus?: string;
   statusText: string;
   paidAmountText: string;
   primaryActionType?: 'pay' | 'aftersale' | 'refund' | 'none';

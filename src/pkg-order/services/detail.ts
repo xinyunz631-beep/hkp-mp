@@ -126,6 +126,8 @@ function mapOrderToDetail(order: BffOrder): OrderDetailData {
 
   return {
     id: order.orderNo,
+    sceneType: order.sceneType,
+    orderStatus: order.orderStatus,
     statusText: resolveStatusText(order.orderStatus, order.sceneType),
     paidAmountText: formatCent(order.payableAmountCent),
     primaryActionType,
