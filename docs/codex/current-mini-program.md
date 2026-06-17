@@ -1,7 +1,7 @@
 # 当前小程序状态
 ## 更新时间
-- 更新时间：`2026-06-17 22:18 CST`
-- 当前状态：登录、请求、会员状态、页面初始化闸门、页面显式 runtime hook、页面单例 loading、统一 loading 组件入口和白色渐变淡出蒙层、全局登录态弹窗、webpack5 prebundle/cache 关闭、NutUI 按需样式、`@tarojs/plugin-html` 和 `@nutui/icons-react-taro` 显式依赖、BaseSkeleton/BaseEmpty/BaseException、中性页面底色+粉色品牌点缀、自定义 tabbar、独立 PageNavbar 和页面级 header/layout 已完成代码收口并通过本地校验；系统 custom-tab-bar 已压成 0 高度占位，可见 tabbar 已下沉到页面内 fixed 底部容器，`AppTabBar` 已从 `AppIcon` 切为直接 `Image` 小图并在组件顶部集中维护图片链接；会员授权登录已按后端真实接口重接，启动默认 `login -> member/status` 并把头像、昵称、手机号、等级统一维护到 MobX `rootStore.memberInfo`，页面可直接读 `rootStore.isLoggedIn`；登录弹窗只保留手机号授权和关闭；个人信息页新增退出登录；会员资料、头像上传、会员码和会员中心首页不再失败回旧会员 mock；酒店首页、房型详情、酒店确认单、酒店下单支付、订单中心列表和订单详情已切后端真实 BFF，酒店分包运行时 mock 数据文件已删除，订单中心核心列表/详情不再读取本地订单；门票预定页已切 `/api/bff/tickets/**`，支持快速通、草稿/待审核待上线展示、已发布库存加购、票种规则弹窗、0 元票和按 SKU 实名字段提交、无可订票种空态；门票确认单当前已通，创建订单和订单详情仍返回 `CLOSED/FAILED` 且无可用 `ticketVouchers`，最新 traceId=`ticket-closure-mqi5llz4-05/06`；订单详情已对票务待使用凭证增加 15 秒静默轮询，覆盖用户停留在券码页被扫码核销不会触发 `onShow` 的场景；优惠券链路已新增 `src/core/services/bff-coupon-api.ts`，我的券、领券中心领取、K 币余额/兑换、门票和酒店确认单可用券已切真实 BFF；2026-06-17 按后端 `origin/uat@320a014` 复核，K 币兑换和管理端会员券运营仍写 `crm_member_coupon_instance`，我的券、下单可用券、锁券、核销、释放和退款返还仍读写 `promotion_member_coupon`；小程序优惠券 BFF 后端必补文档已迁入 `admin-frontend/docs/codex/admin-api-requirements/mp-bff-requirements/`，旧 `docs/codex/apimust/` 只保留迁移指针；同源未补前不能验收“后台发券或 K 币兑换券能在 C 端小程序看到并下单使用”。
+- 更新时间：`2026-06-17 23:22 CST`
+- 当前状态：登录、请求、会员状态、页面初始化闸门、页面显式 runtime hook、页面单例 loading、统一 loading 组件入口和白色渐变淡出蒙层、全局登录态弹窗、webpack5 prebundle/cache 关闭、NutUI 按需样式、`@tarojs/plugin-html` 和 `@nutui/icons-react-taro` 显式依赖、BaseSkeleton/BaseEmpty/BaseException、中性页面底色+粉色品牌点缀、自定义 tabbar、独立 PageNavbar 和页面级 header/layout 已完成代码收口并通过本地校验；系统 custom-tab-bar 已压成 0 高度占位，可见 tabbar 已下沉到页面内 fixed 底部容器，`AppTabBar` 已从 `AppIcon` 切为直接 `Image` 小图并在组件顶部集中维护图片链接；会员授权登录已按后端真实接口重接，启动默认 `login -> member/status` 并把头像、昵称、手机号、等级统一维护到 MobX `rootStore.memberInfo`，页面可直接读 `rootStore.isLoggedIn`；登录弹窗只保留手机号授权和关闭；个人信息页新增退出登录；会员资料、头像上传、会员码和会员中心首页不再失败回旧会员 mock；酒店首页、房型详情、酒店确认单、酒店下单支付、订单中心列表和订单详情已切后端真实 BFF，酒店分包运行时 mock 数据文件已删除，订单中心核心列表/详情不再读取本地订单；门票预定页已切 `/api/bff/tickets/**`，支持快速通、草稿/待审核待上线展示、已发布库存加购、票种规则弹窗、0 元票和按 SKU 实名字段提交、无可订票种空态；门票确认单当前已通，创建订单当前被后端前置拦截为 `ORDER_TICKET_ZHIYOUBAO_GOODS_CODE_MISSING`，最新 traceId=`ticket-closure-mqi83tij-05`，需要管理后台为水上项目快速通 SKU 配置真实智游宝 `goodsCode` 后再复验 `WAIT_USE + ticketVouchers[]`；订单详情已对票务待使用凭证增加 15 秒静默轮询，覆盖用户停留在券码页被扫码核销不会触发 `onShow` 的场景；优惠券链路已新增 `src/core/services/bff-coupon-api.ts`，我的券、领券中心领取、K 币余额/兑换、门票和酒店确认单可用券已切真实 BFF；2026-06-17 按后端 `origin/uat@320a014` 复核，K 币兑换和管理端会员券运营仍写 `crm_member_coupon_instance`，我的券、下单可用券、锁券、核销、释放和退款返还仍读写 `promotion_member_coupon`；小程序优惠券 BFF 后端必补文档已迁入 `admin-frontend/docs/codex/admin-api-requirements/mp-bff-requirements/`，旧 `docs/codex/apimust/` 只保留迁移指针；同源未补前不能验收“后台发券或 K 币兑换券能在 C 端小程序看到并下单使用”。
 - 恢复优先级：下一步优先完成优惠券链路微信开发工具验收，并等待后端补齐 CRM 券实例与 promotion 会员券资产同源；同源未补前不能验收“K 币兑换后我的券/下单可用券可见”。微信开发工具仍需验证真实 BFF 授权响应、`member/status` 登录态判断、手机号授权 `code`、资料保存签名、退出登录、首页广告聚合、门票预定页加减号和提交出票、酒店首页/房型/确认单/下单支付、订单中心列表/详情、我的券、领券中心领取、K 币兑换、门票/酒店用券、页面内自定义 tabbar 跳转/选中态、弹层覆盖关系和自定义 navbar 安全区表现。
 ## 恢复时先看
 1. 根目录 `codex/current/current-task-list.md`、`codex/current/current-mini-program.md` 和本文件。
@@ -39,15 +39,15 @@
 - 酒店详情接口：`GET https://hellokitty-uat.yoursite.xin/api/bff/hotels/{hotelId}`，需小程序登录态。
 - 酒店房型接口：`GET https://hellokitty-uat.yoursite.xin/api/bff/hotels/{hotelId}/rooms?checkInDate=YYYY-MM-DD&checkOutDate=YYYY-MM-DD`，需小程序登录态。
 - 酒店房态价量接口：`GET https://hellokitty-uat.yoursite.xin/api/bff/hotels/{hotelId}/inventory?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD`，需小程序登录态；前端按入住日至离店前一日查询夜间库存。
-- 统一订单确认接口：`POST https://hellokitty-uat.yoursite.xin/api/bff/orders/confirm`，需小程序登录态 + HMAC 签名。
-- 统一订单创建接口：`POST https://hellokitty-uat.yoursite.xin/api/bff/orders`，需小程序登录态 + HMAC 签名；酒店链路使用 `sceneType=HOTEL`。
-- 统一订单支付接口：`POST https://hellokitty-uat.yoursite.xin/api/bff/orders/{orderNo}/pay`，需小程序登录态 + HMAC 签名。
+- 统一订单确认接口：`POST https://hellokitty-uat.yoursite.xin/api/bff/orders/confirm`，需小程序登录态 Bearer，不需要 HMAC 签名。
+- 统一订单创建接口：`POST https://hellokitty-uat.yoursite.xin/api/bff/orders`，需小程序登录态 Bearer，不需要 HMAC 签名；酒店链路使用 `sceneType=HOTEL`。
+- 统一订单支付接口：`POST https://hellokitty-uat.yoursite.xin/api/bff/orders/{orderNo}/pay`，需小程序登录态 Bearer，不需要 HMAC 签名。
 - 订单列表接口：`GET https://hellokitty-uat.yoursite.xin/api/bff/orders?sceneType=TICKET|MALL|HOTEL`，需小程序登录态。
 - 订单详情接口：`GET https://hellokitty-uat.yoursite.xin/api/bff/orders/{orderNo}`，需小程序登录态。
-- 门票确认单接口：`POST https://hellokitty-uat.yoursite.xin/api/bff/orders/confirm`，需小程序登录态 + HMAC 签名；门票链路使用 `sceneType=TICKET`、`itemId=票务商品 productCode`、`skuId=${productCode}_standard` 和 `context.visitDate`。
-- 门票创建订单接口：`POST https://hellokitty-uat.yoursite.xin/api/bff/orders`，需小程序登录态 + HMAC 签名；`sceneType=TICKET` 创建成功后后端直接生成内部免支付流水并调用智游宝出票，响应 `order.orderStatus=WAIT_USE` 和 `order.ticketVouchers[]` 时前端直接进入订单详情；当前 UAT 创建订单仍返回 `CLOSED/FAILED` 且无可用票码/二维码，不能算闭环。
+- 门票确认单接口：`POST https://hellokitty-uat.yoursite.xin/api/bff/orders/confirm`，需小程序登录态 Bearer，不需要 HMAC 签名；门票链路使用 `sceneType=TICKET`、`itemId=票务商品 productCode`、`skuId=${productCode}_standard` 和 `context.visitDate`。
+- 门票创建订单接口：`POST https://hellokitty-uat.yoursite.xin/api/bff/orders`，需小程序登录态 Bearer，不需要 HMAC 签名；`sceneType=TICKET` 创建成功后后端直接生成内部免支付流水并调用智游宝出票，响应 `order.orderStatus=WAIT_USE` 和 `order.ticketVouchers[]` 时前端直接进入订单详情；当前 UAT 返回 `ORDER_TICKET_ZHIYOUBAO_GOODS_CODE_MISSING`，需管理后台配置真实智游宝 `goodsCode` 后复验，未返回可用票码/二维码前不能算闭环。
 - 门票订单详情轮询：票务订单详情展示入园凭证且订单仍处于 `PAID/WAIT_USE/FULFILLING` 时，每 15 秒静默重读 `GET /api/bff/orders/{orderNo}`；核销后必须以后端订单详情返回的票码状态和订单状态刷新页面，不依赖用户离开页面后的 `onShow`。
-- 门票支付兼容接口：`POST https://hellokitty-uat.yoursite.xin/api/bff/orders/{orderNo}/pay`，需小程序登录态 + HMAC 签名；旧链路调用时若返回 `prepay.paymentSkipped=true` 不调用微信支付。
+- 门票支付兼容接口：`POST https://hellokitty-uat.yoursite.xin/api/bff/orders/{orderNo}/pay`，需小程序登录态 Bearer，不需要 HMAC 签名；旧链路调用时若返回 `prepay.paymentSkipped=true` 不调用微信支付。
 - 我的优惠券接口：`GET https://hellokitty-uat.yoursite.xin/api/bff/member/coupons`，需小程序登录态；必须返回分页、状态、`couponNo`、券面、适用业态、退款返还状态，并与领券、K 币兑换和券包发券同源。
 - 我的券包接口：`GET https://hellokitty-uat.yoursite.xin/api/bff/member/coupon-packages`，需小程序登录态；券包内券必须能按同一 `couponNo` 出现在我的券和下单可用券。
 - 领券接口：`POST https://hellokitty-uat.yoursite.xin/api/bff/promotion/coupons/claim`，需小程序登录态 + HMAC 签名；当前后端真实入参为 `templateNo`，小程序不提交会员身份字段。
