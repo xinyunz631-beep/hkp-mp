@@ -214,3 +214,48 @@ BFF 从登录态注入会员身份，小程序不得传 `memberNo/openId/userId/
 6. 发起退款后，`refund-return` 更新券状态；我的券、下单可用券和管理端会员券实例状态一致。
 
 以上验收未通过前，小程序只能认为“券接口已接入，但优惠券全链路未闭环”。
+
+## 7. 小程序侧可重复探针
+
+小程序仓库已提供只读默认探针：
+
+```bash
+cd mini-program
+yarn probe:coupon-closure
+```
+
+默认探针只读取：
+
+- `GET /api/bff/member/coupons`
+- `GET /api/bff/promotion/coupons/available`
+- `GET /api/bff/member/coupon-packages`
+- `GET /api/bff/member/kcoin/balance`
+
+它会复用 `COUPON_PROBE_SESSION_FILE`，默认 `/tmp/hkitty-ticket-closure/mini-session.json`，并在 accessToken 过期时自动调用 `/api/bff/auth/refresh` 后重放一次。输出只包含 HTTP 状态、业务码、traceId、券号交集和阻塞原因，不打印 token、refreshToken 或 signSecret。
+
+后端完成同源修复后，用目标券号做严格验收：
+
+```bash
+COUPON_PROBE_EXPECT_COUPON_NO=后端发放的couponNo \
+COUPON_PROBE_STRICT=1 \
+yarn probe:coupon-closure
+```
+
+如需显式触发写操作，必须手动打开开关，避免 UAT 误发券：
+
+```bash
+COUPON_PROBE_CLAIM=1 \
+COUPON_PROBE_CLAIM_TEMPLATE_NO=promotion模板编号 \
+COUPON_PROBE_STRICT=1 \
+yarn probe:coupon-closure
+```
+
+```bash
+COUPON_PROBE_KCOIN_EXCHANGE=1 \
+COUPON_PROBE_KCOIN_ITEM_NO=兑换商品编号 \
+COUPON_PROBE_KCOIN_QUANTITY=1 \
+COUPON_PROBE_STRICT=1 \
+yarn probe:coupon-closure
+```
+
+严格模式通过条件：目标 `couponNo` 必须同时出现在 `member/coupons` 和 `promotion/coupons/available`。如果只存在候选交集但没有目标券号，探针只作为只读观察，不证明后台发券或 K 币兑换券闭环。

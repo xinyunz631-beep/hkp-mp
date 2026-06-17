@@ -14,6 +14,7 @@
     "inspect:weapp": "taro build --type weapp --preview",
     "typecheck": "tsc --noEmit",
     "mp:page": "node scripts/create-mp-page.mjs",
+    "probe:coupon-closure": "node scripts/probe-coupon-closure.mjs",
     "check:page-convention": "node scripts/check-page-convention.mjs",
     "check:main-package": "node scripts/check-main-package-size.mjs",
     "check:main-package:build": "node scripts/check-main-package-isolated.mjs",
