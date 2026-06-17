@@ -1,4 +1,10 @@
-import { fetchBffOrderDetail, isBffTicketVoucherReady, type BffOrder, type BffTicketVoucher } from '@/core/services/bff-order-api';
+import {
+  fetchBffOrderDetail,
+  getBffTicketVoucherText,
+  isBffTicketVoucherReady,
+  type BffOrder,
+  type BffTicketVoucher,
+} from '@/core/services/bff-order-api';
 import type { OrderDetailData, OrderDetailFieldData, OrderTicketInstanceData } from './model';
 
 export type { OrderDetailData } from './model';
@@ -85,19 +91,14 @@ function mapTicketInstances(order: BffOrder): OrderTicketInstanceData[] {
   })).filter((ticket) => ticket.ticketNo || ticket.qrCodePayload);
 }
 
-function getVoucherText(voucher: BffTicketVoucher, key: keyof BffTicketVoucher) {
-  const value = voucher[key];
-  return typeof value === 'string' ? value : '';
-}
-
 function mapTicketVoucher(order: BffOrder, voucher: BffTicketVoucher): OrderTicketInstanceData | undefined {
-  const ticketNo = getVoucherText(voucher, 'ticketCode') || getVoucherText(voucher, 'voucherCode');
-  const qrImageSrc = getVoucherText(voucher, 'qrImage')
-    || getVoucherText(voucher, 'codeImage')
-    || getVoucherText(voucher, 'qrCodeUrl');
-  const qrCodePayload = getVoucherText(voucher, 'voucherCode')
-    || getVoucherText(voucher, 'ticketCode')
-    || getVoucherText(voucher, 'qrCodeUrl');
+  const ticketNo = getBffTicketVoucherText(voucher, 'ticketCode') || getBffTicketVoucherText(voucher, 'voucherCode');
+  const qrImageSrc = getBffTicketVoucherText(voucher, 'qrImage')
+    || getBffTicketVoucherText(voucher, 'codeImage')
+    || getBffTicketVoucherText(voucher, 'qrCodeUrl');
+  const qrCodePayload = getBffTicketVoucherText(voucher, 'voucherCode')
+    || getBffTicketVoucherText(voucher, 'ticketCode')
+    || getBffTicketVoucherText(voucher, 'qrCodeUrl');
 
   if (!ticketNo && !qrCodePayload && !qrImageSrc) return undefined;
 
@@ -107,7 +108,7 @@ function mapTicketVoucher(order: BffOrder, voucher: BffTicketVoucher): OrderTick
     qrImageSrc,
     productName: resolveTitle(order),
     skuName: order.items?.[0]?.skuId || '',
-    statusText: resolveTicketStatusText(getVoucherText(voucher, 'ticketStatus')),
+    statusText: resolveTicketStatusText(getBffTicketVoucherText(voucher, 'ticketStatus')),
     visitDate: order.context?.visitDate || '',
     validTimeText: '',
     useTimesText: typeof voucher.totalNum === 'number'

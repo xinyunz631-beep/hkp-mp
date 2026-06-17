@@ -82,16 +82,25 @@ export interface BffTicketVoucher {
   [key: string]: unknown;
 }
 
+const BFF_TICKET_VOUCHER_CODE_FIELDS = ['ticketCode', 'voucherCode', 'codeImage', 'qrImage', 'qrCodeUrl'];
+
+export function getBffTicketVoucherText(voucher: BffTicketVoucher | undefined, key: string) {
+  const directValue = voucher?.[key];
+  if (typeof directValue === 'string' && directValue) return directValue;
+
+  const rawValue = voucher?.rawFields?.[key];
+  return typeof rawValue === 'string' ? rawValue : '';
+}
+
 // 判断票务凭证是否可用于入园，避免把后端 FAILED 凭证误当出票成功。
 export function isBffTicketVoucherReady(voucher?: BffTicketVoucher) {
-  const status = String(voucher?.ticketStatus || voucher?.status || voucher?.useStatus || '').toUpperCase();
-  const hasVoucherCode = Boolean(
-    voucher?.ticketCode
-      || voucher?.voucherCode
-      || voucher?.codeImage
-      || voucher?.qrImage
-      || voucher?.qrCodeUrl
-  );
+  const status = String(
+    getBffTicketVoucherText(voucher, 'ticketStatus')
+      || getBffTicketVoucherText(voucher, 'status')
+      || getBffTicketVoucherText(voucher, 'useStatus')
+      || '',
+  ).toUpperCase();
+  const hasVoucherCode = BFF_TICKET_VOUCHER_CODE_FIELDS.some((key) => getBffTicketVoucherText(voucher, key));
   const blockedStatuses = ['FAILED', 'FAIL', 'VOIDED', 'CANCELED', 'CANCELLED', 'REFUNDED', 'EXPIRED'];
 
   return hasVoucherCode && !blockedStatuses.includes(status);
