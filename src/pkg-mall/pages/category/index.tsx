@@ -166,6 +166,7 @@ const CategoryPage = observer(function CategoryPage() {
       subtitle: variant.skuText,
     } : detailData.product, {
       quantity,
+      skuId: variant?.id,
       skuText: variant?.skuText || detailData.product.subtitle || '默认规格',
       giftText: variant?.giftText,
       shippingRule: variant?.shippingRule,

@@ -9,6 +9,7 @@ import { FixedSubmitBar } from '@/core/components/commerce';
 import { PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
+import { resolveErrorMessage } from '@/core/utils/error-message';
 import { navigateToMiniRoute } from '@/core/utils/navigation';
 import { previewWechatImages, requestWechatPayment, showWechatConfirm, showWechatToast } from '@/core/utils/wechat-actions';
 import { fetchCheckoutData, submitOrderCheckoutOrder, type OrderCheckoutData } from '@/pkg-order/services/checkout';
@@ -63,19 +64,41 @@ const CheckoutPage = observer(function CheckoutPage() {
       return;
     }
 
+    let order: Awaited<ReturnType<typeof submitOrderCheckoutOrder>>;
+    try {
+      order = await pageRuntime.withLoading(() => submitOrderCheckoutOrder(checkoutData));
+    } catch (error) {
+      await showWechatToast(resolveErrorMessage(error, '商城订单提交暂不可用，请稍后再试'));
+      return;
+    }
+
+    if (!order) {
+      await showWechatToast('订单信息已失效，请重新选择商品');
+      return;
+    }
+
+    if (order.payableAmount <= 0) {
+      await showWechatToast('下单成功', 'success');
+      navigateToMiniRoute(`${MINI_PACKAGE_ROUTES.orderDetail}?orderId=${encodeURIComponent(order.orderNo)}`, {
+        loginMode: 'none',
+      });
+      return;
+    }
+
+    const paymentParams = order.payment?.prepay?.paymentParams || order.payment?.prepay?.payParams;
+    if (!paymentParams) {
+      await showWechatToast('支付参数缺失，请稍后再试');
+      return;
+    }
+
     const paymentStatus = await requestWechatPayment({
-      title: '微信支付',
-      amount: checkoutData.totalAmount,
-      allowPending: true,
+      amount: order.payableAmount || checkoutData.totalAmount,
+      paymentParams: paymentParams as unknown as Parameters<typeof Taro.requestPayment>[0],
     });
+    if (paymentStatus !== 'success') return;
 
-    if (paymentStatus === 'failed') return;
-
-    const order = submitOrderCheckoutOrder(checkoutData, {
-      paymentStatus: paymentStatus === 'success' ? 'paid' : 'pending',
-    });
-    await showWechatToast(paymentStatus === 'success' ? '支付成功' : '订单已提交，可稍后继续支付', 'success');
-    navigateToMiniRoute(`${MINI_PACKAGE_ROUTES.orderDetail}?orderId=${encodeURIComponent(order.id)}`, {
+    await showWechatToast('支付成功', 'success');
+    navigateToMiniRoute(`${MINI_PACKAGE_ROUTES.orderDetail}?orderId=${encodeURIComponent(order.orderNo)}`, {
       loginMode: 'none',
     });
   }

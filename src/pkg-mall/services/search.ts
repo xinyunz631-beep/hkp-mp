@@ -1,7 +1,7 @@
 import { getCache, removeCache, setCache } from '@/core/utils/cache';
-import { resolveMockData } from '@/core/services/mock';
+import { fetchBffMallProducts } from '@/core/services/bff-mall-api';
 import type { HkpProductSummary } from '@/core/types/hkp';
-import { mallProducts } from './mock-data';
+import { toMallProductSummary } from './bff-adapter';
 
 const MALL_SEARCH_HISTORY_KEY = 'hkp_mall_search_history';
 const MALL_SEARCH_HISTORY_LIMIT = 10;
@@ -50,18 +50,23 @@ export function getMallSearchData(): MallSearchData {
   return {
     placeholder: '搜索 Hello Kitty 伴手礼',
     hotKeywords: MALL_SEARCH_HOT_KEYWORDS,
-    products: mallProducts,
+    products: [],
   };
 }
 
-// 获取搜索输入后的相关商品，当前用本地 mock 模拟接口，后续接真实搜索接口只替换这里。
-export function fetchMallSearchRelatedProducts(keyword?: string) {
+// 获取搜索输入后的相关商品，直接查询商城 BFF。
+export async function fetchMallSearchRelatedProducts(keyword?: string) {
   const nextKeyword = String(keyword || '').trim();
-
-  return resolveMockData<MallSearchRelatedData>({
+  const response = await fetchBffMallProducts({
     keyword: nextKeyword,
-    products: filterMallProductsByKeyword(mallProducts, nextKeyword).slice(0, 6),
-  }, 260);
+    page: 1,
+    size: 6,
+  });
+
+  return {
+    keyword: nextKeyword,
+    products: (response.list ?? []).map(toMallProductSummary),
+  };
 }
 
 // 清洗历史搜索缓存，保证最多保留最新 10 条且不出现空值或重复项。

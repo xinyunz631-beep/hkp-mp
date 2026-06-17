@@ -1,11 +1,11 @@
-import { resolveMockData } from '@/core/services/mock';
 import {
-  createLocalOrderId,
-  createLocalOrderTime,
-  saveLocalOrder,
-  updateLocalOrder,
-  type LocalOrderRecord,
-} from '@/core/services/local-order';
+  confirmBffOrder,
+  createBffOrder,
+  payBffOrder,
+  type BffOrderPaymentResponse,
+  type BffOrderUnifiedRequest,
+} from '@/core/services/bff-order-api';
+import { fetchBffCouponAvailable, type BffAvailableCouponView } from '@/core/services/bff-coupon-api';
 import {
   getMallCheckoutDraft,
   getMallCheckoutSelectedAddressId,
@@ -14,7 +14,7 @@ import {
   type MallCheckoutDraft,
 } from '@/core/services/mall-checkout-draft';
 import { formatCurrency } from '@/core/utils/money';
-import { orderCheckoutData, orderList, type OrderCheckoutData, type OrderHomeActionData } from './mock-data';
+import type { OrderCheckoutData } from './mock-data';
 import { fetchAddressData, formatOrderAddress } from './address';
 
 export type { OrderCheckoutData } from './mock-data';
@@ -24,22 +24,27 @@ interface FetchCheckoutDataOptions {
   addressId?: string;
 }
 
-interface SubmitOrderCheckoutOptions {
-  paymentStatus: 'pending' | 'paid';
+export interface MallCheckoutOrderResult {
+  orderNo: string;
+  payableAmount: number;
+  payment?: BffOrderPaymentResponse;
 }
 
-function createPayExpireAt() {
-  return new Date(Date.now() + 30 * 60 * 1000).toISOString();
+function yuanToCent(value: number) {
+  return Math.round(value * 100);
 }
 
-function formatPayExpireText(payExpireAt?: string) {
-  if (!payExpireAt) return '30分钟内';
+function centToYuan(value?: number) {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return 0;
+  return Number((value / 100).toFixed(2));
+}
 
-  const expireDate = new Date(payExpireAt);
-  if (Number.isNaN(expireDate.getTime())) return '30分钟内';
+function resolvePayableAmountCent(value?: number) {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
+    throw new Error('商城确认单金额暂不可用，请稍后再试');
+  }
 
-  const pad = (value: number) => `${value}`.padStart(2, '0');
-  return `${pad(expireDate.getHours())}:${pad(expireDate.getMinutes())}前`;
+  return value;
 }
 
 async function resolveCheckoutAddress(options: FetchCheckoutDataOptions) {
@@ -52,24 +57,64 @@ async function resolveCheckoutAddress(options: FetchCheckoutDataOptions) {
   return address;
 }
 
-async function createCheckoutDataFromDraft(
+function buildMallUnifiedOrderRequest(
   draft: MallCheckoutDraft,
-  options: FetchCheckoutDataOptions,
-): Promise<OrderCheckoutData> {
-  const address = await resolveCheckoutAddress(options);
-  if (options.addressId) {
-    setMallCheckoutSelectedAddressId(draft.id, options.addressId);
-  }
-
-  const deliveryCheck = validateMallCheckoutDelivery(draft, address);
-  const productsAmount = draft.products.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
-  const discountAmount = 0;
-  const totalAmount = Number((productsAmount + deliveryCheck.freightAmount - discountAmount).toFixed(2));
-
+  address: Awaited<ReturnType<typeof resolveCheckoutAddress>>,
+): BffOrderUnifiedRequest {
   return {
-    ...orderCheckoutData,
+    sceneType: 'MALL',
+    channel: 'MINI_PROGRAM',
+    paymentChannel: 'WECHAT',
+    freightAmountCent: yuanToCent(validateMallCheckoutDelivery(draft, address).freightAmount),
+    contactName: address.name,
+    contactPhone: address.mobile,
+    context: {
+      addressId: address.id,
+      addressText: formatOrderAddress(address),
+    },
+    items: draft.products.map((item, index) => ({
+      lineNo: String(index + 1),
+      itemId: item.productId,
+      skuId: item.id,
+      itemType: 'SKU',
+      quantity: item.quantity,
+      attributes: {
+        productId: item.productId,
+        spuId: item.productId,
+        skuId: item.id,
+        skuName: item.specText,
+        specName: item.specText,
+        imageUrl: item.imageSrc,
+        giftText: item.giftText || '',
+      },
+    })),
+  };
+}
+
+function couponDiscountCent(coupon: BffAvailableCouponView) {
+  return typeof coupon.discountAmount === 'number' ? coupon.discountAmount : coupon.discountAmountCent ?? 0;
+}
+
+function resolveCouponText(coupons: BffAvailableCouponView[], discountAmountCent = 0) {
+  if (discountAmountCent <= 0) return '';
+  const bestCoupon = [...coupons]
+    .filter((coupon) => coupon.available !== false && coupon.status === 'AVAILABLE')
+    .sort((prev, next) => couponDiscountCent(next) - couponDiscountCent(prev))[0];
+
+  if (bestCoupon) return bestCoupon.couponName || '优惠券已自动匹配';
+  return '优惠券已自动匹配';
+}
+
+function buildReadonlyCheckoutData(
+  draft: MallCheckoutDraft,
+  address: Awaited<ReturnType<typeof resolveCheckoutAddress>>,
+  deliveryCheck: ReturnType<typeof validateMallCheckoutDelivery>,
+  productsAmount: number,
+): OrderCheckoutData {
+  return {
     draftId: draft.id,
     address,
+    paymentMethodText: '微信支付',
     products: draft.products.map((item) => ({
       id: item.id,
       title: item.title,
@@ -90,210 +135,78 @@ async function createCheckoutDataFromDraft(
       { label: '商品金额', value: formatCurrency(productsAmount) },
       { label: '运费', value: deliveryCheck.freightAmount > 0 ? formatCurrency(deliveryCheck.freightAmount) : '¥0.00' },
     ],
+    totalAmount: Number((productsAmount + deliveryCheck.freightAmount).toFixed(2)),
+    discountAmount: 0,
+  };
+}
+
+// 获取商城确认单真实数据，金额和优惠以统一订单确认接口为准。
+export async function fetchCheckoutData(options: FetchCheckoutDataOptions = {}) {
+  const draft = getMallCheckoutDraft(options.draftId);
+  if (!draft) throw new Error('订单信息已失效，请重新选择商品');
+
+  const address = await resolveCheckoutAddress(options);
+  if (options.addressId) {
+    setMallCheckoutSelectedAddressId(draft.id, options.addressId);
+  }
+
+  const deliveryCheck = validateMallCheckoutDelivery(draft, address);
+  const productsAmount = draft.products.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
+  const readonlyData = buildReadonlyCheckoutData(draft, address, deliveryCheck, productsAmount);
+  if (!deliveryCheck.canSubmit) return readonlyData;
+
+  const [confirmation, availableCouponsResponse] = await Promise.all([
+    confirmBffOrder(buildMallUnifiedOrderRequest(draft, address)),
+    fetchBffCouponAvailable({
+      sceneType: 'MALL',
+      orderAmountCent: yuanToCent(productsAmount + deliveryCheck.freightAmount),
+      itemIds: draft.products.map((item) => item.productId),
+      skuIds: draft.products.map((item) => item.id),
+    }),
+  ]);
+  const totalAmount = centToYuan(resolvePayableAmountCent(confirmation.payableAmountCent));
+  const discountAmount = centToYuan(confirmation.discountAmountCent);
+  const couponText = resolveCouponText(availableCouponsResponse.coupons ?? [], confirmation.discountAmountCent);
+
+  return {
+    ...readonlyData,
+    couponText,
+    discountText: discountAmount > 0 ? `已优惠 ${formatCurrency(discountAmount)}` : '',
+    amountFields: [
+      { label: '商品金额', value: formatCurrency(centToYuan(confirmation.originalAmountCent)) },
+      { label: '运费', value: (confirmation.freightAmountCent ?? 0) > 0 ? formatCurrency(centToYuan(confirmation.freightAmountCent)) : '¥0.00' },
+    ],
     totalAmount,
     discountAmount,
   };
 }
 
-function formatMallOrderProductSummary(products: OrderCheckoutData['products']) {
-  return products
-    .map((product) => `${product.title} ${product.specText} x${product.quantity}`)
-    .join('\n');
-}
+// 创建商城统一订单并发起真实预支付。
+export async function submitOrderCheckoutOrder(data: OrderCheckoutData): Promise<MallCheckoutOrderResult | undefined> {
+  const draft = getMallCheckoutDraft(data.draftId);
+  if (!draft) return undefined;
 
-// 根据商品售后能力生成订单列表操作按钮，后续接真实接口时可直接映射后端操作字段。
-function createMallOrderHomeActions(isPendingPay: boolean, canAfterSale: boolean) {
-  if (isPendingPay) {
-    return [{ text: '继续支付', tone: 'primary' as const }];
+  const createResult = await createBffOrder(buildMallUnifiedOrderRequest(draft, data.address));
+  const orderNo = createResult.order?.orderNo;
+  if (!orderNo) {
+    throw new Error('订单创建失败：缺少订单编号');
   }
 
-  const actions: OrderHomeActionData[] = [
-    { text: '查看物流', tone: 'default' as const },
-    { text: '查看详情', tone: 'default' as const },
-  ];
-
-  if (canAfterSale) {
-    actions.push({ text: '申请售后', tone: 'primary' as const });
+  const createPayableAmountCent = resolvePayableAmountCent(createResult.order?.payableAmountCent);
+  if (createPayableAmountCent === 0) {
+    return {
+      orderNo,
+      payableAmount: 0,
+    };
   }
 
-  return actions;
-}
+  const payment = await payBffOrder(orderNo, 'WECHAT');
+  const payableAmountCent = payment.order?.payableAmountCent ?? createPayableAmountCent;
+  const payableAmount = centToYuan(resolvePayableAmountCent(payableAmountCent));
 
-function createStaticPaidMallOrder(orderId: string) {
-  const pendingOrder = orderList.find((order) => order.id === orderId && order.statusText === '待付款');
-  if (!pendingOrder) return undefined;
-
-  const now = createLocalOrderTime();
-  const totalQuantity = pendingOrder.products.reduce((total, product) => total + product.quantity, 0);
-  const record: LocalOrderRecord = {
-    id: pendingOrder.id,
-    source: 'mall',
-    tabKey: 'pendingShip',
-    paymentStatus: 'paid',
-    primaryActionType: 'aftersale',
-    dateText: now.split(' ')[0],
-    statusText: '待发货',
-    paidAmountText: formatCurrency(pendingOrder.totalAmount),
-    title: pendingOrder.products[0]?.title || '乐园商城订单',
-    quantityText: `x${totalQuantity}`,
-    totalText: `共${totalQuantity}件商品 合计:${formatCurrency(pendingOrder.totalAmount)}`,
-    productFields: [
-      {
-        label: '商品信息',
-        value: pendingOrder.products
-          .map((product) => `${product.title} ${product.skuText ?? '默认规格'} x${product.quantity}`)
-          .join('\n'),
-      },
-      { label: '配送方式', value: '快递配送 包邮' },
-    ],
-    ticketFields: [
-      { label: '支付方式', value: '微信支付' },
-      { label: '发货说明', value: '商家将在 48 小时内安排发货' },
-      { label: '售后规则', value: '未发货支持取消，发货后按商品规则申请售后' },
-    ],
-    contactFields: [
-      { label: '收货人', value: '晓晓 15512345697' },
-      { label: '收货地址', value: '上海市浦东新区张江路368号开文大厦22号楼1201室' },
-    ],
-    amountFields: [
-      { label: '商品金额', value: formatCurrency(pendingOrder.totalAmount) },
-      { label: '运费', value: '¥0.00' },
-      { label: '实付款', value: formatCurrency(pendingOrder.totalAmount) },
-    ],
-    orderFields: [
-      { label: '订单编号', value: pendingOrder.id },
-      { label: '下单时间', value: '2026-05-16 15:20' },
-      { label: '支付方式', value: '微信支付' },
-      { label: '支付时间', value: now },
-    ],
-    refundButtonText: '申请售后',
-    homeItems: pendingOrder.products.map((product) => ({
-      id: `${pendingOrder.id}-${product.id}`,
-      orderId: pendingOrder.id,
-      title: product.title,
-      subtitle: product.skuText,
-      imageSrc: product.image.src,
-      quantity: product.quantity,
-      priceText: formatCurrency(product.price),
-      actionText: '查看详情',
-      actions: createMallOrderHomeActions(false, true),
-    })),
-    createdAt: now,
+  return {
+    orderNo,
+    payableAmount,
+    payment,
   };
-
-  return saveLocalOrder(record);
-}
-
-// 获取确认订单页面数据，后续接真实接口时在这里处理字段归一和异常态/空态转译。
-export function fetchCheckoutData(options: FetchCheckoutDataOptions = {}) {
-  const draft = getMallCheckoutDraft(options.draftId);
-  if (draft) {
-    return createCheckoutDataFromDraft(draft, options);
-  }
-
-  return resolveCheckoutAddress(options).then((address) => resolveMockData<OrderCheckoutData>({
-    ...orderCheckoutData,
-    address,
-    canSubmit: true,
-    deliveryErrors: [],
-  }));
-}
-
-// 模拟商城确认订单提交，写入本地订单中心；支付成功和暂不支付都保留可恢复状态。
-export function submitOrderCheckoutOrder(data: OrderCheckoutData, options: SubmitOrderCheckoutOptions) {
-  const orderId = createLocalOrderId('MALL-');
-  const now = createLocalOrderTime();
-  const payExpireAt = options.paymentStatus === 'pending' ? createPayExpireAt() : undefined;
-  const firstProduct = data.products[0];
-  const hasCouponDiscount = data.discountAmount > 0 && data.couponText.trim().length > 0;
-  const isPendingPay = options.paymentStatus === 'pending';
-  const canAfterSale = data.products.some((product) => product.canAfterSale !== false);
-  const totalQuantity = data.products.reduce((total, item) => total + item.quantity, 0);
-  const record: LocalOrderRecord = {
-    id: orderId,
-    source: 'mall',
-    tabKey: isPendingPay ? 'pendingPay' : 'pendingShip',
-    paymentStatus: options.paymentStatus,
-    payExpireAt,
-    primaryActionType: isPendingPay ? 'pay' : canAfterSale ? 'aftersale' : 'none',
-    dateText: now.split(' ')[0],
-    statusText: isPendingPay ? '待付款' : '待发货',
-    paidAmountText: `¥${data.totalAmount.toFixed(2)}`,
-    title: firstProduct?.title || '乐园商城订单',
-    quantityText: `x${totalQuantity}`,
-    totalText: `共${totalQuantity}件商品 合计:¥${data.totalAmount.toFixed(2)}`,
-    productFields: [
-      { label: '商品信息', value: formatMallOrderProductSummary(data.products) },
-      { label: '配送方式', value: data.shippingText },
-    ],
-    ticketFields: [
-      { label: '支付方式', value: data.paymentMethodText },
-      { label: '发货说明', value: isPendingPay ? `请在${formatPayExpireText(payExpireAt)}完成支付` : '商家将在 48 小时内安排发货' },
-      { label: '售后规则', value: isPendingPay ? '未支付订单可继续支付或超时自动关闭' : '未发货支持取消，发货后按商品规则申请售后' },
-    ],
-    contactFields: [
-      { label: '收货人', value: `${data.address.name} ${data.address.mobile}` },
-      { label: '收货地址', value: formatOrderAddress(data.address) },
-    ],
-    amountFields: [
-      ...data.amountFields,
-      ...(hasCouponDiscount ? [{ label: '优惠券', value: data.couponText }] : []),
-      { label: '实付款', value: `¥${data.totalAmount.toFixed(2)}` },
-    ],
-    orderFields: [
-      { label: '订单编号', value: orderId },
-      { label: '下单时间', value: now },
-      { label: '支付方式', value: data.paymentMethodText },
-      ...(isPendingPay
-        ? [{ label: '支付剩余时间', value: `请在${formatPayExpireText(payExpireAt)}完成支付` }]
-        : [{ label: '支付时间', value: now }]),
-    ],
-    refundButtonText: isPendingPay ? '继续支付' : canAfterSale ? '申请售后' : '',
-    homeItems: data.products.map((product) => ({
-      id: `${orderId}-${product.id}`,
-      orderId,
-      title: product.title,
-      subtitle: product.specText,
-      extraText: product.giftText,
-      imageSrc: product.imageSrc,
-      quantity: product.quantity,
-      priceText: product.priceText,
-      actionText: isPendingPay ? '继续支付' : '查看详情',
-      actions: createMallOrderHomeActions(isPendingPay, canAfterSale),
-    })),
-    createdAt: now,
-  };
-
-  return saveLocalOrder(record);
-}
-
-export function payPendingMallOrder(orderId: string) {
-  const now = createLocalOrderTime();
-  const localOrder = updateLocalOrder(orderId, (order) => ({
-    ...order,
-    tabKey: 'pendingShip',
-    paymentStatus: 'paid',
-    payExpireAt: undefined,
-    primaryActionType: 'aftersale',
-    statusText: '待发货',
-    refundButtonText: '申请售后',
-    ticketFields: order.ticketFields.map((field) => (
-      field.label === '发货说明'
-        ? { ...field, value: '商家将在 48 小时内安排发货' }
-        : field.label === '售后规则'
-          ? { ...field, value: '未发货支持取消，发货后按商品规则申请售后' }
-          : field
-    )),
-    orderFields: [
-      ...order.orderFields.filter((field) => field.label !== '支付剩余时间' && field.label !== '支付时间'),
-      { label: '支付时间', value: now },
-    ],
-    homeItems: order.homeItems.map((item) => ({
-      ...item,
-      actionText: '查看详情',
-      actions: createMallOrderHomeActions(false, true),
-    })),
-  }));
-
-  return localOrder ?? createStaticPaidMallOrder(orderId);
 }

@@ -1,13 +1,28 @@
-import { resolveMockData } from '@/core/services/mock';
-import { mallProducts } from './mock-data';
+import { fetchBffMallAvailableGifts, fetchBffMallProducts } from '@/core/services/bff-mall-api';
+import type { HkpProductSummary } from '@/core/types/hkp';
+import { toMallProductSummary } from './bff-adapter';
 
 export interface MallGiftSelectData {
-  gifts: typeof mallProducts;
+  gifts: HkpProductSummary[];
 }
 
-// 获取赠品选择页面数据，后续接真实接口时在这里处理字段归一和失败兜底。
-export function fetchGiftSelectData() {
-  return resolveMockData<MallGiftSelectData>({
-    gifts: mallProducts,
-  });
+// 获取赠品选择真实数据，赠品规则未配置时返回空态。
+export async function fetchGiftSelectData() {
+  const [giftResponse, productResponse] = await Promise.all([
+    fetchBffMallAvailableGifts({ page: 1, size: 50 }),
+    fetchBffMallProducts({ page: 1, size: 100 }),
+  ]);
+  const giftProductIds = new Set(
+    (giftResponse.list ?? [])
+      .flatMap((gift) => gift.giftProductIds ?? [])
+      .filter(Boolean),
+  );
+  const gifts = (productResponse.list ?? [])
+    .filter((product) => {
+      const productId = product.spuId || product.productCode;
+      return productId && giftProductIds.has(productId);
+    })
+    .map(toMallProductSummary);
+
+  return { gifts };
 }

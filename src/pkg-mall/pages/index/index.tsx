@@ -121,6 +121,7 @@ const MallIndexPage = observer(function MallIndexPage() {
       subtitle: variant.skuText,
     } : detailData.product, {
       quantity,
+      skuId: variant?.id,
       skuText: variant?.skuText || detailData.product.subtitle || '默认规格',
       giftText: variant?.giftText,
       shippingRule: variant?.shippingRule,
@@ -226,38 +227,40 @@ const MallIndexPage = observer(function MallIndexPage() {
         </PageHeader>
 
         <View className="_pg-page">
-          <View className="_pg-hero">
-            <Swiper
-              className="_pg-hero_swiper"
-              autoplay
-              circular
-              interval={4500}
-              onChange={(event) => {
-                setActiveBannerIndex(event.detail.current);
-              }}
-            >
-              {banners.map((banner) => (
-                <SwiperItem key={banner.id}>
-                  <View className="_pg-hero_item" onClick={() => openPackagePage(banner.path as MiniPackageRoute)}>
-                    <AppImage className="_pg-hero_image" src={banner.imageSrc} mode="aspectFill" emptyState="error" />
-                    <View className="_pg-hero_mask" />
-                    <View className="_pg-hero_copy">
-                      <Text className="_pg-hero_title">{banner.title}</Text>
-                      <Text className="_pg-hero_subtitle">{banner.subtitle}</Text>
+          {banners.length > 0 ? (
+            <View className="_pg-hero">
+              <Swiper
+                className="_pg-hero_swiper"
+                autoplay
+                circular
+                interval={4500}
+                onChange={(event) => {
+                  setActiveBannerIndex(event.detail.current);
+                }}
+              >
+                {banners.map((banner) => (
+                  <SwiperItem key={banner.id}>
+                    <View className="_pg-hero_item" onClick={() => openPackagePage(banner.path as MiniPackageRoute)}>
+                      <AppImage className="_pg-hero_image" src={banner.imageSrc} mode="aspectFill" emptyState="error" />
+                      <View className="_pg-hero_mask" />
+                      <View className="_pg-hero_copy">
+                        <Text className="_pg-hero_title">{banner.title}</Text>
+                        <Text className="_pg-hero_subtitle">{banner.subtitle}</Text>
+                      </View>
                     </View>
-                  </View>
-                </SwiperItem>
-              ))}
-            </Swiper>
-            <View className="_pg-hero_dots">
-              {banners.map((banner, index) => (
-                <View
-                  className={`_pg-hero_dot ${index === activeBannerIndex ? '_pg-hero_dot--active' : ''}`}
-                  key={banner.id}
-                />
-              ))}
+                  </SwiperItem>
+                ))}
+              </Swiper>
+              <View className="_pg-hero_dots">
+                {banners.map((banner, index) => (
+                  <View
+                    className={`_pg-hero_dot ${index === activeBannerIndex ? '_pg-hero_dot--active' : ''}`}
+                    key={banner.id}
+                  />
+                ))}
+              </View>
             </View>
-          </View>
+          ) : null}
 
           <View className="_pg-category">
             {categories.map((item) => (
@@ -275,24 +278,26 @@ const MallIndexPage = observer(function MallIndexPage() {
             ))}
           </View>
 
-          <View className="_pg-promo">
-            {promos.map((card, index) => (
-              <View
-                className={`_pg-promo_card ${promoAccentClassMap[card.accent]} ${index === 0 ? '_pg-promo_card--large' : '_pg-promo_card--small'}`}
-                key={card.id}
-                onClick={() => handlePromoPress(card)}
-              >
-                <View className="_pg-promo_content">
-                  <Text className="_pg-promo_title">{card.title}</Text>
-                  <Text className="_pg-promo_subtitle">{card.subtitle}</Text>
-                  <View className="_pg-promo_arrow">
-                    <AppIcon name="arrowRight" size={14} color="#ffffff" />
+          {promos.length > 0 ? (
+            <View className="_pg-promo">
+              {promos.map((card, index) => (
+                <View
+                  className={`_pg-promo_card ${promoAccentClassMap[card.accent]} ${index === 0 ? '_pg-promo_card--large' : '_pg-promo_card--small'}`}
+                  key={card.id}
+                  onClick={() => handlePromoPress(card)}
+                >
+                  <View className="_pg-promo_content">
+                    <Text className="_pg-promo_title">{card.title}</Text>
+                    <Text className="_pg-promo_subtitle">{card.subtitle}</Text>
+                    <View className="_pg-promo_arrow">
+                      <AppIcon name="arrowRight" size={14} color="#ffffff" />
+                    </View>
                   </View>
+                  {card.imageSrc ? <AppImage className="_pg-promo_image" src={card.imageSrc} mode="aspectFit" emptyState="error" /> : null}
                 </View>
-                <AppImage className="_pg-promo_image" src={card.imageSrc} mode="aspectFit" emptyState="error" />
-              </View>
-            ))}
-          </View>
+              ))}
+            </View>
+          ) : null}
 
           <View className="_pg-section">
             <View className="_pg-section_header">

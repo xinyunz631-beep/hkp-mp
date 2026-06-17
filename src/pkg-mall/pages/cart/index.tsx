@@ -11,9 +11,16 @@ import { PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { createMallCheckoutDraft } from '@/core/services/mall-checkout-draft';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
+import { resolveErrorMessage } from '@/core/utils/error-message';
 import { navigateToMiniRoute } from '@/core/utils/navigation';
 import { previewWechatImages, showWechatConfirm, showWechatToast } from '@/core/utils/wechat-actions';
-import { fetchCartData, replaceMallCartGroups } from '@/pkg-mall/services/cart';
+import {
+  deleteMallCartItem,
+  deleteMallCartItems,
+  fetchCartData,
+  updateMallCartCheckedItems,
+  updateMallCartItem,
+} from '@/pkg-mall/services/cart';
 import { addMallFavoriteItem } from '@/pkg-mall/services/favorites';
 import type { MallCartData, MallCartMerchantGroup, MallCartItem } from '@/pkg-mall/services/mock-data';
 import './index.scss';
@@ -43,30 +50,24 @@ const CartPage = observer(function CartPage() {
   const allChecked = flatItems.length > 0 && checkedItems.length === flatItems.length;
   const hasCartItems = flatItems.length > 0;
 
-  function commitGroups(nextGroups: MallCartMerchantGroup[]) {
-    setGroups(nextGroups);
-    replaceMallCartGroups(nextGroups);
+  function applyCartData(nextData: MallCartData) {
+    setCartData(nextData);
+    setGroups(nextData.groups);
   }
 
-  function updateGroups(updater: (currentGroups: MallCartMerchantGroup[]) => MallCartMerchantGroup[]) {
-    setGroups((currentGroups) => {
-      const nextGroups = updater(currentGroups);
-      replaceMallCartGroups(nextGroups);
-      return nextGroups;
-    });
+  async function handleCartMutation(task: () => Promise<MallCartData>, fallbackMessage = '购物车更新失败') {
+    try {
+      const nextData = await task();
+      applyCartData(nextData);
+      return nextData;
+    } catch (error) {
+      await showWechatToast(resolveErrorMessage(error, fallbackMessage));
+      return undefined;
+    }
   }
 
-  function updateItem(productId: string, updater: (item: MallCartItem) => MallCartItem) {
-    updateGroups((currentGroups) => currentGroups
-      .map((group) => ({
-        ...group,
-        items: group.items.map((item) => (item.id === productId ? updater(item) : item)),
-      }))
-      .filter((group) => group.items.length > 0));
-  }
-
-  function handleToggleItem(productId: string) {
-    updateItem(productId, (item) => ({ ...item, checked: !item.checked }));
+  function handleToggleItem(item: MallCartItem) {
+    void handleCartMutation(() => updateMallCartItem(item.id, { checked: !item.checked }));
   }
 
   async function handleQuantityChange(item: MallCartItem, value: number) {
@@ -75,11 +76,11 @@ const CartPage = observer(function CartPage() {
       return;
     }
 
-    updateItem(item.id, (currentItem) => ({ ...currentItem, quantity: value }));
+    await handleCartMutation(() => updateMallCartItem(item.id, { quantity: value }));
   }
 
   function resolveCartProductId(item: MallCartItem) {
-    return item.id.split(':')[0] || item.id;
+    return item.productId || item.id.split(':')[0] || item.id;
   }
 
   function handleProductPress(item: MallCartItem) {
@@ -94,22 +95,9 @@ const CartPage = observer(function CartPage() {
     });
   }
 
-  function handleToggleAll() {
+  async function handleToggleAll() {
     const nextChecked = !allChecked;
-    updateGroups((currentGroups) => currentGroups.map((group) => ({
-      ...group,
-      items: group.items.map((item) => ({ ...item, checked: nextChecked })),
-    })));
-  }
-
-  function removeCheckedItems(itemIds: string[]) {
-    const idSet = new Set(itemIds);
-    updateGroups((currentGroups) => currentGroups
-      .map((group) => ({
-        ...group,
-        items: group.items.filter((item) => !idSet.has(item.id)),
-      }))
-      .filter((group) => group.items.length > 0));
+    await handleCartMutation(() => updateMallCartCheckedItems(flatItems, nextChecked));
   }
 
   async function handleDeleteSingleItem(item: MallCartItem) {
@@ -122,13 +110,15 @@ const CartPage = observer(function CartPage() {
 
     if (!confirmed) return;
 
-    removeCheckedItems([item.id]);
+    const nextData = await handleCartMutation(() => deleteMallCartItem(item.id), '商品删除失败');
+    if (!nextData) return;
     await showWechatToast('已删除商品', 'success');
   }
 
   async function handleMoveToFavorite(item: MallCartItem) {
     addMallFavoriteItem(item);
-    removeCheckedItems([item.id]);
+    const nextData = await handleCartMutation(() => deleteMallCartItem(item.id), '商品移入收藏失败');
+    if (!nextData) return;
     await showWechatToast(`已将「${item.title.slice(0, 8)}」移入收藏`, 'success');
   }
 
@@ -139,7 +129,8 @@ const CartPage = observer(function CartPage() {
     }
 
     checkedItems.forEach((item) => addMallFavoriteItem(item));
-    removeCheckedItems(checkedItems.map((item) => item.id));
+    const nextData = await handleCartMutation(() => deleteMallCartItems(checkedItems.map((item) => item.id)), '商品移入收藏失败');
+    if (!nextData) return;
     await showWechatToast('已移入收藏', 'success');
   }
 
@@ -158,7 +149,8 @@ const CartPage = observer(function CartPage() {
       });
       if (!confirmed) return;
 
-      removeCheckedItems(checkedItems.map((item) => item.id));
+      const nextData = await handleCartMutation(() => deleteMallCartItems(checkedItems.map((item) => item.id)), '商品删除失败');
+      if (!nextData) return;
       await showWechatToast('已删除选中商品', 'success');
       return;
     }
@@ -170,8 +162,8 @@ const CartPage = observer(function CartPage() {
 
     const draft = createMallCheckoutDraft({
       products: checkedItems.map((item) => ({
-        id: item.id,
-        productId: item.id.split(':')[0] || item.id,
+        id: item.skuId || item.id,
+        productId: item.productId || item.id.split(':')[0] || item.id,
         title: item.title,
         specText: item.skuText || item.subtitle || '默认规格',
         quantity: item.quantity,
@@ -206,7 +198,6 @@ const CartPage = observer(function CartPage() {
             onClick={() => {
               setEditMode((currentValue) => {
                 const nextEditMode = !currentValue;
-                if (!nextEditMode) commitGroups(groups);
                 return nextEditMode;
               });
             }}
@@ -277,7 +268,7 @@ const CartPage = observer(function CartPage() {
 
                 {group.items.map((item) => (
                   <View className="_pg-item" key={item.id}>
-                    <View className="_pg-item_check" onClick={() => handleToggleItem(item.id)}>
+                    <View className="_pg-item_check" onClick={() => handleToggleItem(item)}>
                       <View className={`_pg-item_checkbox ${item.checked ? '_pg-item_checkbox--checked' : ''}`}>
                         {item.checked ? <AppIcon name="check" size={10} color="#ffffff" /> : null}
                       </View>

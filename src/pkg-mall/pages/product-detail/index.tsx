@@ -155,6 +155,7 @@ const ProductDetailPage = observer(function ProductDetailPage() {
       subtitle: selectedVariant.skuText,
     }, {
       quantity,
+      skuId: selectedVariant.id,
       skuText: selectedVariant.skuText,
       giftText: selectedVariant.giftText,
       shippingRule: selectedVariant.shippingRule,

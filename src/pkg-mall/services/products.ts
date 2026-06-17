@@ -1,7 +1,6 @@
-import { resolveMockData } from '@/core/services/mock';
-import { fetchCouponApplicableProductsData } from './coupon-products';
-import { mallProductListData } from './mock-data';
-import { filterMallProductsByKeyword } from './search';
+import { fetchBffMallProducts } from '@/core/services/bff-mall-api';
+import { toMallProductSummary } from './bff-adapter';
+import type { MallProductListData } from './mock-data';
 
 interface FetchProductsDataOptions {
   keyword?: string;
@@ -9,50 +8,30 @@ interface FetchProductsDataOptions {
   couponId?: string;
 }
 
-const mallProductCategoryMap: Record<string, string[]> = {
-  new: ['sanrio-icebox-sticker', 'kitty-stationery-set'],
-  recommend: ['sanrio-icebox-sticker', 'kitty-cake-set', 'park-plush-doll', 'my-melody-plush'],
-  'digital-home': ['kitty-mug-home', 'kitty-kids-bag'],
-  'home-life': ['kitty-mug-home', 'kitty-stationery-set', 'kitty-cake-set'],
-  toy: ['sanrio-icebox-sticker', 'kitty-cake-set', 'park-plush-doll', 'my-melody-plush'],
-  wear: ['kitty-park-shirt', 'kitty-kids-bag'],
-  mother: ['kitty-kids-bag', 'park-plush-doll'],
-  care: ['kitty-mug-home', 'kitty-stationery-set'],
-  stationery: ['kitty-stationery-set'],
-  travel: ['kitty-kids-bag', 'kitty-cake-set'],
-};
+const mallProductListTabs: MallProductListData['tabs'] = [
+  { key: 'comprehensive', text: '综合' },
+  { key: 'sales', text: '销量' },
+  { key: 'price', text: '价格' },
+  { key: 'filter', text: '筛选' },
+];
 
-function filterMallProductsByCategory(products: typeof mallProductListData.products, categoryId?: string) {
-  if (!categoryId) return products;
-
-  const productIds = mallProductCategoryMap[categoryId];
-  if (!productIds || productIds.length === 0) return products;
-
-  return products.filter((product) => productIds.includes(product.id));
-}
-
-function filterMallProductsByProductIds(products: typeof mallProductListData.products, productIds?: string[]) {
-  if (!productIds) return products;
-  if (productIds.length === 0) return [];
-
-  const productIdSet = new Set(productIds);
-
-  return products.filter((product) => productIdSet.has(product.id));
-}
-
-// 获取商品列表页面数据，后续接真实接口时在这里处理字段归一和失败兜底。
+// 获取商品列表真实数据，筛选条件直接透传 BFF。
 export async function fetchProductsData(options: FetchProductsDataOptions = {}) {
   const keyword = (options.keyword || '').trim();
-  const couponProductsData = options.couponId
-    ? await fetchCouponApplicableProductsData(options.couponId)
-    : undefined;
-  const categoryProducts = filterMallProductsByCategory(mallProductListData.products, options.categoryId);
-  const couponProducts = filterMallProductsByProductIds(categoryProducts, couponProductsData?.productIds);
-  const products = filterMallProductsByKeyword(couponProducts, keyword);
-
-  return resolveMockData({
-    ...mallProductListData,
+  const response = await fetchBffMallProducts({
     keyword,
-    products,
+    categoryId: options.categoryId,
+    couponId: options.couponId,
+    page: 1,
+    size: 100,
   });
+
+  return {
+    tabs: mallProductListTabs,
+    keyword,
+    products: (response.list ?? []).map(toMallProductSummary),
+    discountText: '',
+    discountAmount: 0,
+    previewAmount: 0,
+  };
 }

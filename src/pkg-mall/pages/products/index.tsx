@@ -270,6 +270,7 @@ const ProductsPage = observer(function ProductsPage() {
       subtitle: variant.skuText,
     } : detailData.product, {
       quantity,
+      skuId: variant?.id,
       skuText: variant?.skuText || detailData.product.subtitle || '默认规格',
       giftText: variant?.giftText,
       shippingRule: variant?.shippingRule,

@@ -187,7 +187,7 @@ export interface BffCouponRefundReturnRequest {
   refundNo: string;
   sceneType?: BffCouponSceneType;
   couponNos?: string[];
-  refundAmount?: number;
+  refundAmountCent?: number;
   refundType?: string;
   idempotencyKey?: string;
   reason?: string;

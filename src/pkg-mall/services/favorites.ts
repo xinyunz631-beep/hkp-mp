@@ -1,10 +1,8 @@
-import { resolveMockData } from '@/core/services/mock';
 import { MINI_STORAGE_KEYS } from '@/core/constants/storage';
 import type { HkpProductSummary } from '@/core/types/hkp';
 import { getCache, setCache } from '@/core/utils/cache';
-import { mallProducts } from './mock-data';
 
-export type MallFavoriteItem = (typeof mallProducts)[number] & {
+export type MallFavoriteItem = HkpProductSummary & {
   invalid?: boolean;
 };
 
@@ -27,30 +25,15 @@ function writeLocalFavorites(items: MallFavoriteItem[]) {
   setCache(MINI_STORAGE_KEYS.mallFavorites, items.slice(0, 50));
 }
 
-// 获取我的收藏页面数据，后续接真实接口时在这里处理字段归一和失败兜底。
+// 获取我的收藏页面数据。后端未提供收藏 BFF 前只展示本地收藏，不注入默认商品。
 export function fetchFavoritesData() {
   const localFavorites = readLocalFavorites();
 
-  return resolveMockData<MallFavoritesData>({
+  return {
     filters: ['所有分类', '仅看有货'],
     activeFilter: '所有分类',
-    items: [
-      ...localFavorites,
-      {
-        ...mallProducts[0],
-        price: 189.9,
-      },
-      {
-        ...mallProducts[2],
-        invalid: true,
-      },
-      {
-        ...mallProducts[0],
-        id: 'favorite-third',
-        price: 189.9,
-      },
-    ],
-  });
+    items: localFavorites,
+  };
 }
 
 export function addMallFavoriteItem(product: HkpProductSummary) {

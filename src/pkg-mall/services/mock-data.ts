@@ -96,6 +96,8 @@ export interface MallSkuVariant extends HkpSkuVariantBase {
 }
 
 export interface MallCartItem extends HkpProductSummary {
+  productId?: string;
+  skuId?: string;
   quantity: number;
   checked: boolean;
   skuText: string;
