@@ -122,8 +122,8 @@ export interface BffAvailableCouponsResponse {
 export interface FetchBffAvailableCouponsParams {
   sceneType: BffCouponSceneType;
   orderAmountCent?: number;
-  itemIds?: string;
-  skuIds?: string;
+  itemIds?: string | string[];
+  skuIds?: string | string[];
   visitDate?: string;
   checkInDate?: string;
   checkOutDate?: string;
@@ -201,10 +201,15 @@ export interface BffCouponRefundReturnResponse {
   operatedAt?: string;
 }
 
-function appendQuery(url: string, params: Record<string, string | number | undefined>) {
+function appendQuery(url: string, params: Record<string, string | number | string[] | undefined>) {
   const query = Object.entries(params)
     .filter(([, value]) => typeof value !== 'undefined' && value !== '')
-    .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`)
+    .flatMap(([key, value]) => {
+      const values = Array.isArray(value) ? value : [value];
+      return values
+        .filter((item): item is string | number => typeof item !== 'undefined' && item !== '')
+        .map((item) => `${encodeURIComponent(key)}=${encodeURIComponent(String(item))}`);
+    })
     .join('&');
 
   return query ? `${url}?${query}` : url;

@@ -5,7 +5,7 @@ import { rootStore } from '@/core/store';
 import { resolveErrorMessage } from '@/core/utils/error-message';
 import type { BffCrmProfile } from '@/core/services/bff-crm-api';
 
-export type BffSceneType = 'TICKET' | 'MALL' | 'DINING' | string;
+export type BffSceneType = 'TICKET' | 'MALL' | 'HOTEL' | 'DINING' | string;
 export type BffPayChannel = 'WECHAT' | 'ALIPAY' | string;
 
 export interface BffAuthTokenResponse {
@@ -77,6 +77,11 @@ export interface BffPromotionReleaseRequest {
 export interface BffAvailableCouponsParams {
   sceneType: BffSceneType;
   orderAmountCent?: number;
+  itemIds?: string | string[];
+  skuIds?: string | string[];
+  visitDate?: string;
+  checkInDate?: string;
+  checkOutDate?: string;
 }
 
 export interface BffHolidaySyncOptions {
@@ -146,10 +151,15 @@ const UPLOAD_CREDENTIAL_INVALID_CODES = new Set([
 ]);
 
 // 将查询参数拼到接口地址上，保证签名时 query 与真实请求一致。
-function appendQuery(url: string, params: Record<string, string | number | undefined>) {
+function appendQuery(url: string, params: Record<string, string | number | string[] | undefined>) {
   const query = Object.entries(params)
     .filter(([, value]) => typeof value !== 'undefined' && value !== '')
-    .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`)
+    .flatMap(([key, value]) => {
+      const values = Array.isArray(value) ? value : [value];
+      return values
+        .filter((item): item is string | number => typeof item !== 'undefined' && item !== '')
+        .map((item) => `${encodeURIComponent(key)}=${encodeURIComponent(String(item))}`);
+    })
     .join('&');
 
   return query ? `${url}?${query}` : url;
@@ -292,6 +302,11 @@ export function fetchBffAvailableCoupons(params: BffAvailableCouponsParams) {
     url: appendQuery('/api/bff/promotion/coupons/available', {
       sceneType: params.sceneType,
       orderAmountCent: params.orderAmountCent,
+      itemIds: params.itemIds,
+      skuIds: params.skuIds,
+      visitDate: params.visitDate,
+      checkInDate: params.checkInDate,
+      checkOutDate: params.checkOutDate,
     }),
     method: 'GET',
   });

@@ -159,7 +159,7 @@ export async function fetchCheckoutData(params: FetchHotelCheckoutParams = {}) {
     fetchBffCouponAvailable({
       sceneType: 'HOTEL',
       orderAmountCent: yuanToCent(resolveHotelDraftAmount(draft, roomCount)),
-      itemIds: draft.hotelId,
+      itemIds: [draft.hotelId, draft.product.id],
       skuIds: draft.ratePlan.id,
       checkInDate: draft.stayRange.checkIn,
       checkOutDate: draft.stayRange.checkOut,
