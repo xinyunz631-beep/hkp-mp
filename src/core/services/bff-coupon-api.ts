@@ -47,6 +47,13 @@ export interface BffMemberCouponsResponse {
   statusCounts?: Partial<Record<BffCouponStatus, number>>;
 }
 
+export interface FetchBffMemberCouponsParams {
+  sceneType?: BffCouponSceneType;
+  status?: BffCouponStatus;
+  page?: number;
+  size?: number;
+}
+
 export interface BffCouponTemplateView {
   templateNo: string;
   templateName: string;
@@ -204,11 +211,13 @@ function appendQuery(url: string, params: Record<string, string | number | undef
 }
 
 // 查询当前会员名下 promotion 同源券资产，前端不传任何会员身份字段。
-export function fetchBffMemberCoupons(params: { sceneType?: BffCouponSceneType; status?: BffCouponStatus } = {}) {
+export function fetchBffMemberCoupons(params: FetchBffMemberCouponsParams = {}) {
   return request<BffMemberCouponsResponse>({
     url: appendQuery('/api/bff/member/coupons', {
       sceneType: params.sceneType,
       status: params.status,
+      page: params.page,
+      size: params.size,
     }),
     method: 'GET',
   });
@@ -270,7 +279,7 @@ export function fetchBffKcoinLedgers(params: FetchBffKcoinLedgersParams = {}) {
   });
 }
 
-// 提交 K 币兑换，当前后端会写 CRM 券实例；promotion 资产同源仍需后端补齐。
+// 提交 K 币兑换，后端会同步生成同一 couponNo 的会员券资产。
 export function exchangeBffKcoin(data: BffKcoinExchangeRequest) {
   return request<BffKcoinExchangeResponse, BffKcoinExchangeRequest>({
     url: '/api/bff/member/kcoin/exchanges',

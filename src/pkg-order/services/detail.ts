@@ -18,12 +18,16 @@ function formatDateTime(value?: string) {
   return value.replace('T', ' ').slice(0, 16);
 }
 
+// 归一订单主状态，避免后端履约中间态直接暴露为内部状态码。
 function resolveStatusText(status?: string, sceneType?: string) {
-  if (['PENDING_PAYMENT', 'PAYING'].includes(status || '')) return '待付款';
-  if (['PAID', 'WAIT_USE', 'FULFILLING'].includes(status || '')) return sceneType === 'HOTEL' ? '待入住' : '待使用';
-  if (['FULFILLED', 'USED', 'COMPLETED'].includes(status || '')) return '已完成';
-  if (['CANCELED', 'CANCELLED'].includes(status || '')) return '已取消';
-  if (['REFUNDING', 'REFUNDED'].includes(status || '')) return '退款中';
+  const normalizedStatus = String(status || '').toUpperCase();
+
+  if (['PENDING_PAYMENT', 'PAYING'].includes(normalizedStatus)) return '待付款';
+  if (['PAID', 'WAIT_USE', 'FULFILLING'].includes(normalizedStatus)) return sceneType === 'HOTEL' ? '待入住' : '待使用';
+  if (['PART_USED', 'PARTIALLY_USED', 'PARTIALLYUSED'].includes(normalizedStatus)) return '部分使用';
+  if (['FULFILLED', 'USED', 'COMPLETED'].includes(normalizedStatus)) return '已完成';
+  if (['CANCELED', 'CANCELLED'].includes(normalizedStatus)) return '已取消';
+  if (['REFUNDING', 'REFUNDED'].includes(normalizedStatus)) return '退款中';
   return status || '处理中';
 }
 
@@ -39,10 +43,11 @@ function resolveRefundButtonText(primaryActionType: OrderDetailData['primaryActi
   return '';
 }
 
+// 归一票码状态，展示核销进度而不是第三方原始状态值。
 function resolveTicketStatusText(status?: string) {
   const normalizedStatus = status?.toLowerCase();
   if (normalizedStatus === 'unused' || normalizedStatus === 'wait_use') return '待入园';
-  if (normalizedStatus === 'partiallyused' || normalizedStatus === 'partially_used') return '部分核销';
+  if (['part_used', 'partiallyused', 'partially_used', 'partial_used'].includes(normalizedStatus || '')) return '部分核销';
   if (normalizedStatus === 'used') return '已核销';
   if (normalizedStatus === 'voided' || normalizedStatus === 'canceled' || normalizedStatus === 'cancelled') return '已作废';
   if (normalizedStatus === 'refunded') return '已退款';

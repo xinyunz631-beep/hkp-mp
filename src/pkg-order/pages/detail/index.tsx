@@ -13,7 +13,14 @@ import { fetchDetailData, type OrderDetailData } from '@/pkg-order/services/deta
 import './index.scss';
 
 const TICKET_ORDER_DETAIL_POLL_INTERVAL_MS = 15000;
-const TICKET_ORDER_DETAIL_POLLING_STATUSES = ['PAID', 'WAIT_USE', 'FULFILLING'];
+const TICKET_ORDER_DETAIL_POLLING_STATUSES = [
+  'PAID',
+  'WAIT_USE',
+  'FULFILLING',
+  'PART_USED',
+  'PARTIALLY_USED',
+  'PARTIALLYUSED',
+];
 
 function formatPayExpireAt(payExpireAt?: string) {
   if (!payExpireAt) return '30分钟内';
@@ -40,6 +47,7 @@ function resolveAmountLabel(detailData: OrderDetailData) {
   return detailData.primaryActionType === 'pay' ? '待支付金额' : '实付金额';
 }
 
+// 判断票务凭证页是否需要继续静默刷新，覆盖停留券码页被外部核销的场景。
 function shouldPollTicketOrderDetail(detailData?: OrderDetailData) {
   if (!detailData) return false;
   if (detailData.sceneType !== 'TICKET') return false;

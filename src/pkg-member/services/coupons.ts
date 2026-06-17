@@ -110,6 +110,10 @@ function resolveAmountText(coupon: BffCouponAssetView) {
 }
 
 function resolveValidityText(coupon: BffCouponAssetView, status: MemberCouponStatus) {
+  if (coupon.status === 'RETURNED') return '已返还';
+  if (coupon.status === 'VOIDED' || coupon.status === 'DISABLED') return '已失效';
+  if (coupon.status === 'FROZEN') return '暂不可用';
+
   if (status === 'used') {
     return coupon.usedAt ? `已使用:${formatDate(coupon.usedAt)}` : '已使用';
   }
@@ -129,6 +133,9 @@ function resolveActionText(status?: BffCouponStatus) {
   if (status === 'USED') return '已使用';
   if (status === 'EXPIRED') return '已过期';
   if (status === 'LOCKED') return '使用中';
+  if (status === 'RETURNED') return '已返还';
+  if (status === 'VOIDED' || status === 'DISABLED') return '已失效';
+  if (status === 'FROZEN') return '暂不可用';
   if (status === 'AVAILABLE') return '立即使用';
   return '查看';
 }
@@ -163,8 +170,8 @@ function buildTabs(coupons: MemberCouponItem[]): MemberCouponTab[] {
 
 // 获取我的优惠券页面数据，只读取真实 BFF 券资产。
 export async function fetchCouponsData(): Promise<MemberCouponsData> {
-  const response = await fetchBffMemberCoupons();
-  const coupons = (response.coupons ?? response.list ?? []).map(toMemberCouponItem);
+  const response = await fetchBffMemberCoupons({ page: 1, size: 100 });
+  const coupons = (response.list ?? response.coupons ?? []).map(toMemberCouponItem);
   return {
     tabs: buildTabs(coupons),
     coupons,

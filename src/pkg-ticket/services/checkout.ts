@@ -92,17 +92,19 @@ function calculateDraftOrderAmountCent(draft: TicketOrderDraft) {
 
 function toTicketCoupon(coupon: BffAvailableCouponView): TicketCoupon {
   const thresholdAmount = centToYuan(coupon.thresholdAmountCent);
-  const discountAmount = centToYuan(coupon.discountAmountCent);
+  const discountAmountCent = typeof coupon.discountAmount === 'number' ? coupon.discountAmount : coupon.discountAmountCent;
+  const discountAmount = centToYuan(discountAmountCent);
   const validDate = coupon.validEndAt ? coupon.validEndAt.slice(0, 10) : '';
+  const available = coupon.available !== false && coupon.status === 'AVAILABLE';
 
   return {
     id: coupon.couponNo,
     title: coupon.couponName || '门票优惠券',
-    amountText: discountAmount > 0 ? `¥${formatYuan(coupon.discountAmountCent)}` : '优惠券',
+    amountText: discountAmount > 0 ? `¥${formatYuan(discountAmountCent)}` : '优惠券',
     thresholdText: thresholdAmount > 0 ? `满¥${thresholdAmount.toFixed(2)}可用` : '无门槛',
     validityText: validDate ? `有效期至 ${validDate}` : '按券规则生效',
-    status: coupon.status === 'AVAILABLE' ? 'available' : 'disabled',
-    tag: coupon.reason || '可用',
+    status: available ? 'available' : 'disabled',
+    tag: available ? (coupon.reason || '可用') : (coupon.unavailableReason || coupon.reason || '暂不可用'),
     minimumAmount: thresholdAmount,
     discountAmount,
   };
