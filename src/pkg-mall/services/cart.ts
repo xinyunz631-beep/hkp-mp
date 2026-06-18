@@ -112,7 +112,17 @@ function toMallCartItem(item: BffMallCartItem): MallCartItem {
 }
 
 function toMallCartData(data: BffMallCartData): MallCartData {
-  const groups: MallCartMerchantGroup[] = (data.groups ?? [])
+  const sourceGroups = data.groups && data.groups.length > 0
+    ? data.groups
+    : data.items && data.items.length > 0
+      ? [{
+        id: 'default',
+        merchantName: 'Hello Kitty 官方商城',
+        promotionTags: [],
+        items: data.items,
+      }]
+      : [];
+  const groups: MallCartMerchantGroup[] = sourceGroups
     .map((group) => ({
       id: group.id,
       merchantName: normalizeString(group.merchantName) || 'Hello Kitty 官方商城',
@@ -121,8 +131,9 @@ function toMallCartData(data: BffMallCartData): MallCartData {
     }))
     .filter((group) => group.items.length > 0);
   const recommendProducts = (data.recommendProducts ?? []).map(toMallProductSummary);
-  const totalAmount = typeof data.totalAmountCent === 'number'
-    ? centToYuan(data.totalAmountCent)
+  const totalAmountCent = typeof data.summary?.totalAmountCent === 'number' ? data.summary.totalAmountCent : data.totalAmountCent;
+  const totalAmount = typeof totalAmountCent === 'number'
+    ? centToYuan(totalAmountCent)
     : typeof data.totalAmount === 'number' ? data.totalAmount : 0;
 
   return {

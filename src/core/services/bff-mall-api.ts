@@ -172,8 +172,16 @@ export interface BffMallCartMerchantGroup {
   items?: BffMallCartItem[];
 }
 
+export interface BffMallCartSummary {
+  totalAmount?: number;
+  totalAmountCent?: number;
+  totalQuantity?: number;
+}
+
 export interface BffMallCartData {
   groups?: BffMallCartMerchantGroup[];
+  items?: BffMallCartItem[];
+  summary?: BffMallCartSummary;
   recommendProducts?: BffMallProduct[];
   totalAmount?: number;
   totalAmountCent?: number;
