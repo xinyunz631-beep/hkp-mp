@@ -319,6 +319,7 @@ export function buildTicketUnifiedOrderRequest(
   payload: SubmitTicketOrderDraftPayload,
 ): BffOrderUnifiedRequest {
   const selectedCouponNos = payload.selectedCouponId ? [payload.selectedCouponId] : [];
+  const certificateNo = payload.travelers.find((traveler) => Boolean(traveler.idCard))?.idCard || payload.contact.idCard;
   const travelerSummary = payload.travelers
     .map((traveler) => `${traveler.name}/${traveler.idCard}/${traveler.productId}`)
     .join(';');
@@ -334,6 +335,7 @@ export function buildTicketUnifiedOrderRequest(
     context: {
       visitDate: payload.selectedDate,
       parkName: draft.parkName,
+      certificateNo,
       travelerSummary,
     },
     items: draft.products.map((product, index) => ({
