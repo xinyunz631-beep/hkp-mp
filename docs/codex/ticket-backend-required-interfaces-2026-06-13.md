@@ -21,11 +21,12 @@
 
 ## 2026-06-18 验收更新
 
-- 后端 `origin/uat@12ac189` 已交付并发布履约状态约束扩展、智游宝证件号来源修复、二维码 `img` 兼容和裸 base64 图片 data URI 归一；`img` 会映射到既有 `ticketVouchers[].codeImage/qrImage`，小程序不新增 `rawFields.img` 运行时依赖。
-- `TICKET_PROBE_CREATE=1 TICKET_PROBE_STRICT=1 node scripts/probe-ticket-closure.mjs` 已退出 0，traceId=`ticket-closure-mqj62irg-01..06`，订单 `TKT202606181516448D71CD09` 进入 `WAIT_USE`，创建响应和订单详情均有可用 `ticketVouchers[]`。
+- 后端 `origin/uat@6ecc3be` 已交付并发布履约状态约束扩展、智游宝证件号来源修复、二维码 `img` 兼容、裸 base64 图片 data URI 归一和直出票退款跳过 pay-service；`img` 会映射到既有 `ticketVouchers[].codeImage/qrImage`，小程序不新增 `rawFields.img` 运行时依赖。
+- `TICKET_PROBE_CREATE=1 TICKET_PROBE_STRICT=1 node scripts/probe-ticket-closure.mjs` 已对 `6ecc3be` 退出 0，traceId=`ticket-closure-mqj7yaw3-01..06`，订单 `TKT202606181609268A8727B2` 进入 `WAIT_USE`，创建响应和订单详情均有可用 `ticketVouchers[]`。
 - 订单详情复查确认 `ticketVouchers[0]` 同时包含 `ticketCode/voucherCode`，`codeImage/qrImage` 均为可直接渲染的 `data:image/jpeg;base64,...` 且长度均为 13583，`ticketStatus=WAIT_USE`、`usedNum=0`、`totalNum=1`。TICKET-MP-P0-04、TICKET-MP-P0-05、TICKET-MP-P0-08 的“创建即出票和凭证回读”部分已满足。
 - TICKET-MP-P0-07 已完成订单详情状态刷新层验证：同单标准化智游宝回调 traceId=`ticket-callback-mqj6ptam` 成功后，`GET /api/bff/orders/{orderNo}` traceId=`ticket-callback-mqj6ptc6` 已读到 `orderStatus=USED/ticketStatus=FULFILLED/usedNum=1/totalNum=1`；小程序 3 秒后台静默轮询只做变化探针，发现变化后走正常详情刷新入口，不能本地伪造已核销。
-- 剩余必须验收项：有效后台登录态下复查 `GET /api/admin-config/ticket/instances?orderNo=...` 与 `GET /api/admin-config/ticket/verifications?orderNo=...`，证明同一订单的票码实例和核销流水也与订单详情状态一致。本轮尝试使用历史 admin session 只读复查失败，返回 `ADMIN_AUTH_TOKEN_EXPIRED` 且 refresh 返回 `ADMIN_AUTH_REFRESH_TOKEN_INVALID`。
+- 直出票退款已验证：订单 `TKT202606181609268A8727B2` 调用 `POST /api/bff/orders/{orderNo}/refunds` traceId=`ticket-refund-mqj81o00-01` 返回 `REFUNDED`，详情 traceId=`ticket-refund-mqj81o00-02` 回读 `orderStatus=REFUNDED/ticketStatus=REFUNDED`；DB 只读确认 `park_order_refund.payNo=BYPASS_...`、`payStatus=SKIPPED`、`payReason=PAYMENT_BYPASSED`。
+- 剩余必须补齐项：后台登录 traceId=`ticket-admin-closure-mqj7npe7` 已成功，但 `GET /api/admin-config/ticket/instances?orderNo=...` traceId=`ticket-admin-closure-mqj7nplg`、`verifications?orderNo/keyword=...` traceId=`ticket-admin-closure-mqj7npmp/mqj7npnj` 均为 200 空结果；按真实票码查询实例 traceId=`ticket-admin-read-ticket-mqj7q6b4` 仍为空，详情 traceId=`ticket-admin-read-ticket-mqj7q6bp` 返回 `ADMIN_TICKET_INSTANCE_NOT_FOUND`，流水 traceId=`ticket-admin-read-ticket-mqj7q6cc` 为空。后端需把 order-service 出票、核销回调和退款履约同步到 admin-config 票码实例与核销流水。
 
 ## 后端需要提供的 UAT 数据
 
