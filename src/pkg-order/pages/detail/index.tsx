@@ -12,7 +12,7 @@ import { payBffOrder, refundBffOrder } from '@/core/services/bff-order-api';
 import { fetchDetailData, type OrderDetailData } from '@/pkg-order/services/detail';
 import './index.scss';
 
-const TICKET_ORDER_DETAIL_POLL_INTERVAL_MS = 15000;
+const TICKET_ORDER_DETAIL_POLL_INTERVAL_MS = 3000;
 const TICKET_ORDER_DETAIL_POLLING_STATUSES = [
   'PAID',
   'WAIT_USE',
@@ -56,16 +56,50 @@ function shouldPollTicketOrderDetail(detailData?: OrderDetailData) {
   return TICKET_ORDER_DETAIL_POLLING_STATUSES.includes(normalizedStatus);
 }
 
+function resolveTicketOrderPollingSnapshot(detailData?: OrderDetailData) {
+  if (!detailData) return '';
+
+  return JSON.stringify({
+    orderStatus: detailData.orderStatus || '',
+    statusText: detailData.statusText || '',
+    primaryActionType: detailData.primaryActionType || '',
+    refundButtonText: detailData.refundButtonText || '',
+    ticketInstances: detailData.ticketInstances.map((ticket) => ({
+      ticketNo: ticket.ticketNo,
+      hasVoucherCode: Boolean(ticket.qrCodePayload || ticket.qrImageSrc),
+      statusText: ticket.statusText,
+      useTimesText: ticket.useTimesText,
+    })),
+  });
+}
+
 const DetailPage = observer(function DetailPage() {
   const [detailData, setDetailData] = useState<OrderDetailData>();
   const pageVisibleRef = useRef(true);
   const pollingRequestRef = useRef(false);
+  const pollingSnapshotRef = useRef('');
 
-  async function loadDetailData() {
-    const orderId = Taro.getCurrentInstance().router?.params?.orderId;
-    const nextData = await fetchDetailData(orderId);
+  function applyDetailData(nextData: OrderDetailData) {
+    pollingSnapshotRef.current = resolveTicketOrderPollingSnapshot(nextData);
     setDetailData(nextData);
+  }
+
+  async function loadDetailData(options: { showErrorToast?: boolean } = {}) {
+    const orderId = Taro.getCurrentInstance().router?.params?.orderId;
+    const nextData = await fetchDetailData(orderId, {
+      showErrorToast: options.showErrorToast,
+    });
+    applyDetailData(nextData);
     return nextData;
+  }
+
+  async function pollTicketOrderDetailSilently(orderId: string) {
+    const probeData = await fetchDetailData(orderId, { showErrorToast: false });
+    const nextSnapshot = resolveTicketOrderPollingSnapshot(probeData);
+
+    if (nextSnapshot !== pollingSnapshotRef.current) {
+      await loadDetailData({ showErrorToast: false });
+    }
   }
 
   const pageRuntime = usePageRuntime({
@@ -86,13 +120,14 @@ const DetailPage = observer(function DetailPage() {
   });
 
   useEffect(() => {
-    if (!shouldPollTicketOrderDetail(detailData)) return undefined;
+    if (!detailData || !shouldPollTicketOrderDetail(detailData)) return undefined;
 
+    const pollingOrderId = detailData.id;
     const timer = setInterval(() => {
       if (!pageVisibleRef.current || pollingRequestRef.current) return;
 
       pollingRequestRef.current = true;
-      loadDetailData()
+      pollTicketOrderDetailSilently(pollingOrderId)
         .catch(() => undefined)
         .finally(() => {
           pollingRequestRef.current = false;
@@ -126,7 +161,7 @@ const DetailPage = observer(function DetailPage() {
       }
 
       const nextData = await fetchDetailData(detailData.id);
-      setDetailData(nextData);
+      applyDetailData(nextData);
       await showWechatToast('支付成功', 'success');
       return;
     }
@@ -143,7 +178,7 @@ const DetailPage = observer(function DetailPage() {
 
       await refundBffOrder(detailData.id, { reason: '用户小程序申请退款' });
       const nextData = await fetchDetailData(detailData.id);
-      setDetailData(nextData);
+      applyDetailData(nextData);
       await showWechatToast('退款申请已提交', 'success');
       return;
     }

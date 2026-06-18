@@ -276,10 +276,11 @@ export function refundBffOrder(orderNo: string, data: BffOrderRefundRequest = {}
   });
 }
 
-export function fetchBffOrderDetail(orderNo: string) {
+export function fetchBffOrderDetail(orderNo: string, options: { showErrorToast?: boolean } = {}) {
   return request<BffOrder>({
     url: `/api/bff/orders/${encodeURIComponent(orderNo)}`,
     method: 'GET',
+    showErrorToast: options.showErrorToast,
   });
 }
 

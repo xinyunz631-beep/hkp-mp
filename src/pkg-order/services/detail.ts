@@ -9,6 +9,10 @@ import type { OrderDetailData, OrderDetailFieldData, OrderTicketInstanceData } f
 
 export type { OrderDetailData } from './model';
 
+export interface FetchDetailDataOptions {
+  showErrorToast?: boolean;
+}
+
 function formatCent(value?: number) {
   return `¥${((value || 0) / 100).toFixed(2)}`;
 }
@@ -175,8 +179,10 @@ function mapOrderToDetail(order: BffOrder): OrderDetailData {
 }
 
 // 获取真实订单详情，接口失败时由页面异常态承接，不回退本地订单。
-export async function fetchDetailData(orderId?: string) {
+export async function fetchDetailData(orderId?: string, options: FetchDetailDataOptions = {}) {
   if (!orderId) throw new Error('缺少订单编号');
-  const order = await fetchBffOrderDetail(orderId);
+  const order = await fetchBffOrderDetail(orderId, {
+    showErrorToast: options.showErrorToast,
+  });
   return mapOrderToDetail(order);
 }

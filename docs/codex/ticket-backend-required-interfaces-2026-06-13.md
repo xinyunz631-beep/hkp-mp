@@ -16,7 +16,7 @@
 | TICKET-MP-P0-04 | `POST /api/bff/orders`，`sceneType=TICKET` | 新票务链路要求创建订单即出票；前端不再强制拉微信支付。 | 创建成功返回 `order.orderStatus=WAIT_USE` 或明确待使用状态，并返回 `order.ticketVouchers[]`；智游宝失败时释放库存/优惠锁并关闭订单。 |
 | TICKET-MP-P0-05 | `GET /api/bff/orders/{orderNo}` | 订单详情只展示后端真实凭证；无凭证就无法闭环。 | 票务订单详情返回 `ticketVouchers[]`，字段至少含 `source/ticketCode/voucherCode/codeImage/qrImage/qrCodeUrl/ticketStatus/usedNum/totalNum`；二维码字段至少一个可展示。 |
 | TICKET-MP-P0-06 | `POST /api/bff/orders/{orderNo}/pay` | 滚动发布期间兼容旧链路；空支付参数会阻断。 | 已免支付出票的门票订单返回 `prepay.paymentSkipped=true`、`prepay.reason=TICKET_PAYMENT_BYPASSED`，并带最新 `order.orderStatus/ticketVouchers`。 |
-| TICKET-MP-P0-07 | `GET /api/bff/orders/{orderNo}` 与后台/闸机/三方核销事件 | 用户展示券码被扫码核销时，小程序页面不会触发 `onShow`，只靠回到页面刷新不够；异步出票前也可能尚无 `ticketVouchers[]`。 | 核销成功后后端必须把票码状态更新为 `used/partiallyUsed`，并把订单汇总推进到 `USED/COMPLETED/FULFILLED` 或返回明确履约状态；小程序订单详情会在 `TICKET` 未终态订单上每 15 秒静默轮询订单详情，不以已有入园凭证为启动条件，必须能读到出票后券码和核销后的最新状态。 |
+| TICKET-MP-P0-07 | `GET /api/bff/orders/{orderNo}` 与后台/闸机/三方核销事件 | 用户展示券码被扫码核销时，小程序页面不会触发 `onShow`，只靠回到页面刷新不够；异步出票前也可能尚无 `ticketVouchers[]`。 | 核销成功后后端必须把票码状态更新为 `used/partiallyUsed`，并把订单汇总推进到 `USED/COMPLETED/FULFILLED` 或返回明确履约状态；小程序订单详情会在 `TICKET` 未终态订单上每 3 秒后台静默轮询订单详情，失败不弹窗、不展示 loading，状态未变化不触发页面重渲染；探针响应只用于比较状态变化，发现变化后再走正常订单详情刷新入口更新页面，不以已有入园凭证为启动条件，必须能读到出票后券码和核销后的最新状态。 |
 | TICKET-MP-P0-08 | `POST /api/bff/orders` 与 `park_order_fulfillment` 履约表 | 2026-06-18 11:52 UAT 已证明智游宝发码成功后，本地履约表旧状态约束不允许 `WAIT_USE`，导致订单事务回滚且外部票已生成。 | UAT/生产 schema 必须允许 order-service 实际写入的票务履约状态，至少覆盖 `WAIT_USE/PART_USED/USED/FULFILLED/FAILED/CANCELED` 或统一服务状态映射；三方发码成功后本地落库失败必须有补偿记录/取消策略，不能只返回 `INTERNAL_ERROR`。 |
 
 ## 后端需要提供的 UAT 数据
