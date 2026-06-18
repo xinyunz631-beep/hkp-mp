@@ -19,6 +19,14 @@
 | TICKET-MP-P0-07 | `GET /api/bff/orders/{orderNo}` 与后台/闸机/三方核销事件 | 用户展示券码被扫码核销时，小程序页面不会触发 `onShow`，只靠回到页面刷新不够；异步出票前也可能尚无 `ticketVouchers[]`。 | 核销成功后后端必须把票码状态更新为 `used/partiallyUsed`，并把订单汇总推进到 `USED/COMPLETED/FULFILLED` 或返回明确履约状态；小程序订单详情会在 `TICKET` 未终态订单上每 3 秒后台静默轮询订单详情，失败不弹窗、不展示 loading，状态未变化不触发页面重渲染；探针响应只用于比较状态变化，发现变化后再走正常订单详情刷新入口更新页面，不以已有入园凭证为启动条件，必须能读到出票后券码和核销后的最新状态。 |
 | TICKET-MP-P0-08 | `POST /api/bff/orders` 与 `park_order_fulfillment` 履约表 | 2026-06-18 11:52 UAT 已证明智游宝发码成功后，本地履约表旧状态约束不允许 `WAIT_USE`，导致订单事务回滚且外部票已生成。 | UAT/生产 schema 必须允许 order-service 实际写入的票务履约状态，至少覆盖 `WAIT_USE/PART_USED/USED/FULFILLED/FAILED/CANCELED` 或统一服务状态映射；三方发码成功后本地落库失败必须有补偿记录/取消策略，不能只返回 `INTERNAL_ERROR`。 |
 
+## 2026-06-18 验收更新
+
+- 后端 `origin/uat@12ac189` 已交付并发布履约状态约束扩展、智游宝证件号来源修复、二维码 `img` 兼容和裸 base64 图片 data URI 归一；`img` 会映射到既有 `ticketVouchers[].codeImage/qrImage`，小程序不新增 `rawFields.img` 运行时依赖。
+- `TICKET_PROBE_CREATE=1 TICKET_PROBE_STRICT=1 node scripts/probe-ticket-closure.mjs` 已退出 0，traceId=`ticket-closure-mqj62irg-01..06`，订单 `TKT202606181516448D71CD09` 进入 `WAIT_USE`，创建响应和订单详情均有可用 `ticketVouchers[]`。
+- 订单详情复查确认 `ticketVouchers[0]` 同时包含 `ticketCode/voucherCode`，`codeImage/qrImage` 均为可直接渲染的 `data:image/jpeg;base64,...` 且长度均为 13583，`ticketStatus=WAIT_USE`、`usedNum=0`、`totalNum=1`。TICKET-MP-P0-04、TICKET-MP-P0-05、TICKET-MP-P0-08 的“创建即出票和凭证回读”部分已满足。
+- TICKET-MP-P0-07 已完成订单详情状态刷新层验证：同单标准化智游宝回调 traceId=`ticket-callback-mqj6ptam` 成功后，`GET /api/bff/orders/{orderNo}` traceId=`ticket-callback-mqj6ptc6` 已读到 `orderStatus=USED/ticketStatus=FULFILLED/usedNum=1/totalNum=1`；小程序 3 秒后台静默轮询只做变化探针，发现变化后走正常详情刷新入口，不能本地伪造已核销。
+- 剩余必须验收项：有效后台登录态下复查 `GET /api/admin-config/ticket/instances?orderNo=...` 与 `GET /api/admin-config/ticket/verifications?orderNo=...`，证明同一订单的票码实例和核销流水也与订单详情状态一致。本轮尝试使用历史 admin session 只读复查失败，返回 `ADMIN_AUTH_TOKEN_EXPIRED` 且 refresh 返回 `ADMIN_AUTH_REFRESH_TOKEN_INVALID`。
+
 ## 后端需要提供的 UAT 数据
 
 1. 至少一个 `published + miniProgram + 普通门票` 商品，今天或未来 7 天有 `onSale` 库存。
