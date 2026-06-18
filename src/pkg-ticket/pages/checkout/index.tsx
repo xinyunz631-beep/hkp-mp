@@ -381,7 +381,7 @@ const CheckoutPage = observer(function CheckoutPage() {
       return;
     }
 
-    if (nextOrder.paymentSkipped || isBffTicketOrderIssued(nextOrder.orderStatus, nextOrder.ticketVouchers)) {
+    if (isBffTicketOrderIssued(nextOrder.orderStatus, nextOrder.ticketVouchers)) {
       await showWechatToast('出票成功', 'success');
       navigateToMiniRoute(`${MINI_PACKAGE_ROUTES.orderDetail}?orderId=${encodeURIComponent(nextOrder.orderNo)}`, {
         loginMode: 'none',

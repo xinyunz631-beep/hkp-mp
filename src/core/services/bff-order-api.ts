@@ -147,7 +147,6 @@ export interface BffOrderPrepay {
   status?: string;
   payParams?: Record<string, unknown>;
   paymentParams?: Record<string, unknown>;
-  paymentSkipped?: boolean;
   reason?: string;
   [key: string]: unknown;
 }

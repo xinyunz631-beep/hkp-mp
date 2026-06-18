@@ -2,7 +2,6 @@ import { MINI_STORAGE_KEYS } from '@/core/constants/storage';
 import { createLocalOrderId, createLocalOrderTime } from '@/core/services/local-order';
 import {
   createBffOrder,
-  isBffTicketOrderIssued,
   payBffOrder,
   type BffOrderPaymentResponse,
   type BffTicketVoucher,
@@ -96,7 +95,6 @@ export interface TicketOrderSubmitResult {
   orderStatus?: string;
   payableAmount: number;
   ticketVouchers?: BffTicketVoucher[];
-  paymentSkipped?: boolean;
   payment?: BffOrderPaymentResponse;
 }
 
@@ -456,7 +454,7 @@ export function updateTicketOrderDraft(draftId: string, patch: Partial<TicketOrd
   return nextDraft;
 }
 
-// 提交门票订单草稿并创建真实统一订单；新后端门票创建成功即出票，旧后端仍兼容支付参数。
+// 提交门票订单草稿并创建真实统一订单；门票创建后必须继续发起真实微信预支付。
 export async function submitTicketOrderDraft(draftId: string, payload: SubmitTicketOrderDraftPayload): Promise<TicketOrderSubmitResult | undefined> {
   const draft = getTicketOrderDraft(draftId);
   if (!draft) return undefined;
@@ -475,32 +473,18 @@ export async function submitTicketOrderDraft(draftId: string, payload: SubmitTic
     throw new Error('订单创建失败：缺少订单编号');
   }
 
-  const createPayableAmountCent = createResult.order?.payableAmountCent ?? createResult.confirmation?.payableAmountCent;
-  if (isBffTicketOrderIssued(createResult.order?.orderStatus, createResult.order?.ticketVouchers)) {
-    return {
-      id: orderNo,
-      orderNo,
-      orderStatus: createResult.order?.orderStatus,
-      payableAmount: Number((resolveTicketPayableAmountCent(createPayableAmountCent) / 100).toFixed(2)),
-      ticketVouchers: createResult.order?.ticketVouchers,
-      paymentSkipped: true,
-    };
-  }
-
   if (String(createResult.order?.orderStatus || '').toUpperCase() === 'CLOSED') {
     throw new Error('门票出票失败，请稍后重试或联系工作人员');
   }
 
   const payment = await payBffOrder(orderNo, 'WECHAT');
   const payableAmountCent = payment.order?.payableAmountCent ?? createResult.order?.payableAmountCent;
-  const issuedAfterPayment = isBffTicketOrderIssued(payment.order?.orderStatus, payment.order?.ticketVouchers);
   return {
     id: orderNo,
     orderNo,
     orderStatus: payment.order?.orderStatus ?? createResult.order?.orderStatus,
     payableAmount: Number((resolveTicketPayableAmountCent(payableAmountCent) / 100).toFixed(2)),
     ticketVouchers: payment.order?.ticketVouchers ?? createResult.order?.ticketVouchers,
-    paymentSkipped: issuedAfterPayment,
     payment,
   };
 }
