@@ -105,6 +105,20 @@ interface FetchRoomDetailParams extends FetchHotelHomeParams {
 
 type InventoryLookup = Map<string, BffHotelInventoryDayView[]>;
 
+const FILTER_LABELS: Record<string, string> = {
+  family: '亲子',
+  breakfast: '含早餐',
+  nearPark: '近园区',
+  cancelable: '可取消',
+  cancellable: '可取消',
+  suite: '套房',
+  birthday: '生日',
+  ticketBundle: '乐园套票',
+  ticketPackage: '乐园套票',
+  queenBed: '大床房',
+  standard: '基础价',
+};
+
 function appendQuery(url: string, params: Record<string, string | number | undefined>) {
   const query = Object.entries(params)
     .filter(([, value]) => typeof value !== 'undefined' && value !== '')
@@ -266,7 +280,7 @@ function mapFilterOptions(products: HotelProductCardData[]): HotelFilterOption[]
   const options = products.flatMap((product) => product.filterKeys);
   return Array.from(new Set(options)).map((key) => ({
     key,
-    label: key,
+    label: FILTER_LABELS[key] || key,
   }));
 }
 
