@@ -23,8 +23,11 @@ export interface BffPrepayRequest {
   channel: BffPayChannel;
   amountCent: number;
   subject: string;
-  appId?: string;
   description?: string;
+}
+
+interface BffPrepayPayload extends BffPrepayRequest {
+  appId: string;
 }
 
 export interface BffPaymentStatus {
@@ -242,7 +245,7 @@ export function fetchBffAdminConfigDefaults() {
 
 // 创建小程序支付预支付单，高风险写接口必须携带 HMAC 签名。
 export function createBffPrepayOrder(data: BffPrepayRequest) {
-  return request<BffPaymentStatus, BffPrepayRequest>({
+  return request<BffPaymentStatus, BffPrepayPayload>({
     url: '/api/bff/pay/prepay',
     method: 'POST',
     data: {

@@ -36,8 +36,9 @@ function resolveStatusText(status?: string, sceneType?: string) {
 }
 
 function resolvePrimaryAction(status?: string): OrderDetailData['primaryActionType'] {
-  if (['PENDING_PAYMENT', 'PAYING'].includes(status || '')) return 'pay';
-  if (['PAID', 'WAIT_USE', 'FULFILLING'].includes(status || '')) return 'refund';
+  const normalizedStatus = String(status || '').toUpperCase();
+  if (['PENDING_PAYMENT', 'PAYING'].includes(normalizedStatus)) return 'pay';
+  if (['PAID', 'WAIT_USE', 'FULFILLING'].includes(normalizedStatus)) return 'refund';
   return 'none';
 }
 
@@ -50,9 +51,9 @@ function resolveRefundButtonText(primaryActionType: OrderDetailData['primaryActi
 // 归一票码状态，展示核销进度而不是第三方原始状态值。
 function resolveTicketStatusText(status?: string) {
   const normalizedStatus = status?.toLowerCase();
-  if (normalizedStatus === 'unused' || normalizedStatus === 'wait_use') return '待入园';
+  if (normalizedStatus === 'unused' || normalizedStatus === 'wait_use' || normalizedStatus === 'waituse') return '待入园';
   if (['part_used', 'partiallyused', 'partially_used', 'partial_used'].includes(normalizedStatus || '')) return '部分核销';
-  if (normalizedStatus === 'used') return '已核销';
+  if (['used', 'fulfilled', 'completed', 'success'].includes(normalizedStatus || '')) return '已核销';
   if (normalizedStatus === 'voided' || normalizedStatus === 'canceled' || normalizedStatus === 'cancelled') return '已作废';
   if (normalizedStatus === 'refunded') return '已退款';
   if (normalizedStatus === 'expired') return '已过期';
@@ -105,7 +106,8 @@ function mapTicketVoucher(order: BffOrder, voucher: BffTicketVoucher): OrderTick
   const qrImageSrc = getBffTicketVoucherText(voucher, 'qrImage')
     || getBffTicketVoucherText(voucher, 'codeImage')
     || getBffTicketVoucherText(voucher, 'qrCodeUrl');
-  const qrCodePayload = getBffTicketVoucherText(voucher, 'voucherCode')
+  const qrCodePayload = getBffTicketVoucherText(voucher, 'qrCodePayload')
+    || getBffTicketVoucherText(voucher, 'voucherCode')
     || getBffTicketVoucherText(voucher, 'ticketCode')
     || getBffTicketVoucherText(voucher, 'qrCodeUrl');
 

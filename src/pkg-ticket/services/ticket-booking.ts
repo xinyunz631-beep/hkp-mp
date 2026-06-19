@@ -139,19 +139,6 @@ function createTicketDates(): HkpDateOption[] {
   });
 }
 
-function formatTicketDate(date: Date) {
-  const month = `${date.getMonth() + 1}`.padStart(2, '0');
-  const day = `${date.getDate()}`.padStart(2, '0');
-  return `${date.getFullYear()}-${month}-${day}`;
-}
-
-function getTicketDateRange(dates: HkpDateOption[]) {
-  return {
-    startDate: dates[0]?.date || formatTicketDate(new Date()),
-    endDate: dates[dates.length - 1]?.date || dates[0]?.date || formatTicketDate(new Date()),
-  };
-}
-
 const ticketBookingData: TicketBookingData = {
   parkInfo: {
     name: '杭州 Hello Kitty 乐园',
@@ -528,7 +515,8 @@ function buildTicketBookingDataFromApi(
 }
 
 async function fetchTicketBookingDataUncached(fallback: TicketBookingData) {
-  const { startDate, endDate } = getTicketDateRange(fallback.dates);
+  const startDate = fallback.parkInfo.travelDate;
+  const endDate = fallback.parkInfo.travelDate;
   const [ticketProducts, resources] = await Promise.all([
     fetchBffTicketProducts(),
     fetchPurchaseResources().catch(() => []),

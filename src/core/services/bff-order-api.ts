@@ -73,6 +73,7 @@ export interface BffTicketVoucher {
   subOrderCode?: string;
   ticketCode?: string;
   voucherCode?: string;
+  qrCodePayload?: string;
   codeImage?: string;
   qrImage?: string;
   qrCodeUrl?: string;
@@ -83,7 +84,7 @@ export interface BffTicketVoucher {
   [key: string]: unknown;
 }
 
-const BFF_TICKET_VOUCHER_CODE_FIELDS = ['ticketCode', 'voucherCode', 'codeImage', 'qrImage', 'qrCodeUrl'];
+const BFF_TICKET_VOUCHER_CODE_FIELDS = ['ticketCode', 'voucherCode', 'qrCodePayload', 'codeImage', 'qrImage', 'qrCodeUrl'];
 
 export function getBffTicketVoucherText(voucher: BffTicketVoucher | undefined, key: string) {
   const directValue = voucher?.[key];
@@ -110,9 +111,10 @@ export function isBffTicketVoucherReady(voucher?: BffTicketVoucher) {
 // 判断订单是否已经拿到真实可用票券，不能只看 ticketVouchers 数组长度。
 export function isBffTicketOrderIssued(orderStatus?: string, ticketVouchers?: BffTicketVoucher[]) {
   const normalizedStatus = String(orderStatus || '').toUpperCase();
-  const waitUseStatus = normalizedStatus === 'WAIT_USE' || normalizedStatus === 'FULFILLING';
+  const issuedStatus = ['WAIT_USE', 'FULFILLING', 'PART_USED', 'PARTIALLY_USED', 'PARTIALLYUSED', 'USED', 'FULFILLED', 'COMPLETED']
+    .includes(normalizedStatus);
 
-  return waitUseStatus && Boolean(ticketVouchers?.some((voucher) => isBffTicketVoucherReady(voucher)));
+  return issuedStatus && Boolean(ticketVouchers?.some((voucher) => isBffTicketVoucherReady(voucher)));
 }
 
 export interface BffOrder {
@@ -187,7 +189,7 @@ export interface BffOrderPaymentResponse {
   prepay?: BffOrderPrepay;
 }
 
-export interface BffOrderPaymentRequest {
+interface BffOrderPaymentPayload {
   paymentChannel: BffOrderPaymentChannel;
   appId: string;
 }
@@ -254,7 +256,7 @@ export function createBffOrder(data: BffOrderUnifiedRequest) {
 
 // 为已创建订单发起支付，显式携带当前运行小程序 AppID，避免支付预下单串到错误主体。
 export function payBffOrder(orderNo: string, paymentChannel: BffOrderPaymentChannel = 'WECHAT') {
-  return request<BffOrderPaymentResponse, BffOrderPaymentRequest>({
+  return request<BffOrderPaymentResponse, BffOrderPaymentPayload>({
     url: `/api/bff/orders/${encodeURIComponent(orderNo)}/pay`,
     method: 'POST',
     data: {

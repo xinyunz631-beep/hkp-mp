@@ -23,18 +23,21 @@ function formatDate(value?: string) {
 }
 
 function resolveStatusText(status?: string, sceneType?: string) {
-  if (['PENDING_PAYMENT', 'PAYING'].includes(status || '')) return '待付款';
-  if (['PAID', 'WAIT_USE', 'FULFILLING'].includes(status || '')) return sceneType === 'HOTEL' ? '待入住' : '待使用';
-  if (['FULFILLED', 'USED', 'COMPLETED'].includes(status || '')) return '已完成';
-  if (['CANCELED', 'CANCELLED'].includes(status || '')) return '已取消';
-  if (['REFUNDING', 'REFUNDED'].includes(status || '')) return '退款中';
+  const normalizedStatus = String(status || '').toUpperCase();
+  if (['PENDING_PAYMENT', 'PAYING'].includes(normalizedStatus)) return '待付款';
+  if (['PAID', 'WAIT_USE', 'FULFILLING'].includes(normalizedStatus)) return sceneType === 'HOTEL' ? '待入住' : '待使用';
+  if (['PART_USED', 'PARTIALLY_USED', 'PARTIALLYUSED'].includes(normalizedStatus)) return '部分使用';
+  if (['FULFILLED', 'USED', 'COMPLETED'].includes(normalizedStatus)) return '已完成';
+  if (['CANCELED', 'CANCELLED'].includes(normalizedStatus)) return '已取消';
+  if (['REFUNDING', 'REFUNDED'].includes(normalizedStatus)) return '退款中';
   return status || '处理中';
 }
 
 function resolveTabKey(status?: string) {
-  if (['PENDING_PAYMENT', 'PAYING'].includes(status || '')) return 'pendingPay';
-  if (['REFUNDING', 'REFUNDED'].includes(status || '')) return 'aftersale';
-  if (['FULFILLED', 'USED', 'COMPLETED'].includes(status || '')) return 'pendingReview';
+  const normalizedStatus = String(status || '').toUpperCase();
+  if (['PENDING_PAYMENT', 'PAYING'].includes(normalizedStatus)) return 'pendingPay';
+  if (['REFUNDING', 'REFUNDED'].includes(normalizedStatus)) return 'aftersale';
+  if (['FULFILLED', 'USED', 'COMPLETED'].includes(normalizedStatus)) return 'pendingReview';
   return 'pendingReceive';
 }
 
