@@ -21,8 +21,7 @@ import {
   updateMallCartCheckedItems,
   updateMallCartItem,
 } from '@/pkg-mall/services/cart';
-import { addMallFavoriteItem } from '@/pkg-mall/services/favorites';
-import type { MallCartData, MallCartMerchantGroup, MallCartItem } from '@/pkg-mall/services/mock-data';
+import type { MallCartData, MallCartMerchantGroup, MallCartItem } from '@/pkg-mall/services/types';
 import './index.scss';
 
 // 购物车首版按截图补齐商户分组、数量修改、猜你喜欢和底部结算栏，并串到订单确认页。
@@ -115,25 +114,6 @@ const CartPage = observer(function CartPage() {
     await showWechatToast('已删除商品', 'success');
   }
 
-  async function handleMoveToFavorite(item: MallCartItem) {
-    addMallFavoriteItem(item);
-    const nextData = await handleCartMutation(() => deleteMallCartItem(item.id), '商品移入收藏失败');
-    if (!nextData) return;
-    await showWechatToast(`已将「${item.title.slice(0, 8)}」移入收藏`, 'success');
-  }
-
-  async function handleBatchMoveToFavorite() {
-    if (!selectedCount) {
-      await showWechatToast('请先选择商品');
-      return;
-    }
-
-    checkedItems.forEach((item) => addMallFavoriteItem(item));
-    const nextData = await handleCartMutation(() => deleteMallCartItems(checkedItems.map((item) => item.id)), '商品移入收藏失败');
-    if (!nextData) return;
-    await showWechatToast('已移入收藏', 'success');
-  }
-
   async function handlePrimaryAction() {
     if (editMode) {
       if (!selectedCount) {
@@ -165,7 +145,7 @@ const CartPage = observer(function CartPage() {
         id: item.skuId || item.id,
         productId: item.productId || item.id.split(':')[0] || item.id,
         title: item.title,
-        specText: item.skuText || item.subtitle || '默认规格',
+        specText: item.skuText || item.subtitle || '',
         quantity: item.quantity,
         unitPrice: item.price,
         imageSrc: item.image.src,
@@ -173,7 +153,7 @@ const CartPage = observer(function CartPage() {
         giftText: item.giftText,
         canRefund: item.canRefund ?? true,
         canAfterSale: item.canAfterSale ?? true,
-        shippingRule: item.shippingRule ?? { mode: 'express', freightAmount: 0, supportedRegionKeywords: ['上海', '浙江', '江苏'] },
+        shippingRule: item.shippingRule ?? { mode: 'unsupported', reasonText: '当前商品暂不可配送，请返回商品页重新选择' },
       })),
     });
 
@@ -223,12 +203,6 @@ const CartPage = observer(function CartPage() {
                 </View>
                 <View className="_pg-footer_actions">
                   <View
-                    className={classNames('_pg-footer_button', '_pg-footer_button--ghost')}
-                    onClick={() => void handleBatchMoveToFavorite()}
-                  >
-                    <Text>移入收藏</Text>
-                  </View>
-                  <View
                     className={classNames('_pg-footer_button', '_pg-footer_button--danger')}
                     onClick={() => void handlePrimaryAction()}
                   >
@@ -255,7 +229,7 @@ const CartPage = observer(function CartPage() {
           {hasCartItems ? (
             groups.map((group) => (
               <View className="_pg-group" key={group.id}>
-                <Text className="_pg-group_title">{group.merchantName}</Text>
+                <Text className="_pg-group_title">{group.merchantName || '商城商品'}</Text>
                 {group.promotionTags.length > 0 ? (
                   <View className="_pg-group_tags">
                     {group.promotionTags.map((tag) => (
@@ -282,9 +256,11 @@ const CartPage = observer(function CartPage() {
                     />
                     <View className="_pg-item_body">
                       <Text className="_pg-item_title" onClick={() => handleProductPress(item)}>{item.title}</Text>
-                      <View className="_pg-item_sku">
-                        <Text>{item.skuText}</Text>
-                      </View>
+                      {item.skuText ? (
+                        <View className="_pg-item_sku">
+                          <Text>{item.skuText}</Text>
+                        </View>
+                      ) : null}
                       <View className="_pg-item_footer">
                         <Text className="_pg-item_price">¥ {item.price}</Text>
                         <QuantityStepper value={item.quantity} min={0} onChange={(value) => void handleQuantityChange(item, value)} />
@@ -292,9 +268,6 @@ const CartPage = observer(function CartPage() {
                       {item.giftText ? <Text className="_pg-item_gift">{item.giftText}</Text> : null}
                       {editMode ? (
                         <View className="_pg-item_edit-actions">
-                          <View className="_pg-item_edit-action" onClick={() => void handleMoveToFavorite(item)}>
-                            <Text>移入收藏</Text>
-                          </View>
                           <View
                             className="_pg-item_edit-action _pg-item_edit-action--danger"
                             onClick={() => void handleDeleteSingleItem(item)}

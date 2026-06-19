@@ -47,7 +47,7 @@ const CheckoutPage = observer(function CheckoutPage() {
     try {
       const nextData = await pageRuntime.withLoading(() => fetchCheckoutData({
         draftId: checkoutData.draftId,
-        addressId: checkoutData.address.id,
+        addressId: checkoutData.address?.id,
         selectedCouponId: nextCouponId,
       }));
       setCheckoutData(nextData);
@@ -117,13 +117,21 @@ const CheckoutPage = observer(function CheckoutPage() {
   }
 
   function handleAddressPress() {
+    if (!checkoutData?.requiresAddress) return;
+
     if (!checkoutData?.draftId) {
       navigateToMiniRoute(MINI_PACKAGE_ROUTES.orderAddress);
       return;
     }
 
+    const query = [
+      `mode=select`,
+      `draftId=${encodeURIComponent(checkoutData.draftId)}`,
+      checkoutData.address?.id ? `selectedId=${encodeURIComponent(checkoutData.address.id)}` : '',
+    ].filter(Boolean).join('&');
+
     navigateToMiniRoute(
-      `${MINI_PACKAGE_ROUTES.orderAddress}?mode=select&draftId=${encodeURIComponent(checkoutData.draftId)}&selectedId=${encodeURIComponent(checkoutData.address.id)}`,
+      `${MINI_PACKAGE_ROUTES.orderAddress}?${query}`,
     );
   }
 
@@ -135,9 +143,17 @@ const CheckoutPage = observer(function CheckoutPage() {
     const couponText = selectedCoupon
       ? `${selectedCoupon.amountText} ${selectedCoupon.thresholdText}`
       : '请选择优惠券';
+    const merchantName = checkoutData.merchantName?.trim() || '商城商品';
     const hasCouponDiscount = checkoutData.discountAmount > 0;
     const deliveryErrors = checkoutData.deliveryErrors ?? [];
     const deliveryUnavailable = checkoutData.canSubmit === false;
+    const requiresAddress = checkoutData.requiresAddress;
+    const address = checkoutData.address;
+    const deliveryLabel = requiresAddress ? '配送' : '交付';
+    const addressActionText = requiresAddress ? (address ? '更换' : '去填写') : '';
+    const addressHintText = requiresAddress
+      ? '当前订单需要可配送收货地址后才可提交'
+      : '该商品下单后将按虚拟权益或服务内容发放';
 
     return (
       <View className="_pg">
@@ -159,28 +175,38 @@ const CheckoutPage = observer(function CheckoutPage() {
           )}
         >
           <View className="_pg-content">
-            <View className="_pg-card _pg-card--address" onClick={handleAddressPress}>
+            <View className="_pg-card _pg-card--address" onClick={requiresAddress ? handleAddressPress : undefined}>
               <View className="_pg-address_topline">
                 <View className="_pg-address_title">
                   <AppIcon name="location" size={16} color="#d94a88" />
-                  <Text>收货地址</Text>
+                  <Text>{requiresAddress ? '收货地址' : '交付方式'}</Text>
                 </View>
-                <Text className="_pg-address_action">更换</Text>
+                {addressActionText ? <Text className="_pg-address_action">{addressActionText}</Text> : null}
               </View>
-              <View className="_pg-address">
-                <View className="_pg-address_header">
-                  <Text className="_pg-address_name">{checkoutData.address.name}</Text>
-                  <Text className="_pg-address_mobile">{checkoutData.address.mobile}</Text>
-                  {checkoutData.address.isDefault ? <Text className="_pg-address_tag">默认</Text> : null}
+              {address ? (
+                <View className="_pg-address">
+                  <View className="_pg-address_header">
+                    <Text className="_pg-address_name">{address.name}</Text>
+                    <Text className="_pg-address_mobile">{address.mobile}</Text>
+                    {address.isDefault ? <Text className="_pg-address_tag">默认</Text> : null}
+                  </View>
+                  <View className="_pg-address_row">
+                    <Text className="_pg-address_detail">
+                      {address.region}
+                      {address.detail}
+                    </Text>
+                    {requiresAddress ? <AppIcon name="arrowRight" className="_pg-address_chevron" size={16} color="#c0c5cf" /> : null}
+                  </View>
                 </View>
-                <View className="_pg-address_row">
-                  <Text className="_pg-address_detail">
-                    {checkoutData.address.region}
-                    {checkoutData.address.detail}
-                  </Text>
-                  <AppIcon name="arrowRight" className="_pg-address_chevron" size={16} color="#c0c5cf" />
+              ) : (
+                <View className="_pg-address">
+                  <Text className="_pg-address_empty-title">{requiresAddress ? '请先新增收货地址' : '无需收货地址'}</Text>
+                  <View className="_pg-address_row">
+                    <Text className="_pg-address_detail">{addressHintText}</Text>
+                    {requiresAddress ? <AppIcon name="arrowRight" className="_pg-address_chevron" size={16} color="#c0c5cf" /> : null}
+                  </View>
                 </View>
-              </View>
+              )}
             </View>
 
             {deliveryUnavailable ? (
@@ -192,10 +218,12 @@ const CheckoutPage = observer(function CheckoutPage() {
                 {deliveryErrors.map((errorText) => (
                   <Text className="_pg-delivery-alert_item" key={errorText}>{errorText}</Text>
                 ))}
-                <View className="_pg-delivery-alert_action" onClick={handleAddressPress}>
-                  <Text>更换收货地址</Text>
-                  <AppIcon name="arrowRight" size={14} color="#d97706" />
-                </View>
+                {requiresAddress ? (
+                  <View className="_pg-delivery-alert_action" onClick={handleAddressPress}>
+                    <Text>{address ? '更换收货地址' : '去填写收货地址'}</Text>
+                    <AppIcon name="arrowRight" size={14} color="#d97706" />
+                  </View>
+                ) : null}
               </View>
             ) : null}
 
@@ -210,7 +238,7 @@ const CheckoutPage = observer(function CheckoutPage() {
               <View className="_pg-products-header">
                 <View className="_pg-products-header_title">
                   <AppIcon name="shop" size={16} color="#23262f" />
-                  <Text>Hello Kitty 官方商城</Text>
+                  <Text>{merchantName}</Text>
                 </View>
                 <Text className="_pg-products-header_count">共{checkoutData.products.reduce((total, item) => total + item.quantity, 0)}件</Text>
               </View>
@@ -227,7 +255,7 @@ const CheckoutPage = observer(function CheckoutPage() {
                   />
                   <View className="_pg-product_main">
                     <Text className="_pg-product_title">{item.title}</Text>
-                    <Text className="_pg-product_spec">{item.specText}</Text>
+                    {item.specText ? <Text className="_pg-product_spec">{item.specText}</Text> : null}
                     {item.giftText ? <Text className="_pg-product_gift">{item.giftText}</Text> : null}
                     <Text className="_pg-product_price">{item.priceText}</Text>
                   </View>
@@ -238,7 +266,7 @@ const CheckoutPage = observer(function CheckoutPage() {
 
             <View className={classNames('_pg-card', '_pg-card--compact', deliveryUnavailable && '_pg-card--delivery-error')}>
               <View className="_pg-line-row">
-                <Text className="_pg-line-row_label">配送</Text>
+                <Text className="_pg-line-row_label">{deliveryLabel}</Text>
                 <Text className={classNames('_pg-line-row_value', deliveryUnavailable && '_pg-line-row_value--error')}>
                   {checkoutData.shippingText}
                 </Text>

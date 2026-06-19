@@ -13,10 +13,11 @@ import { navigateBackOrHome } from '@/core/utils/navigation';
 import { showWechatConfirm, showWechatToast } from '@/core/utils/wechat-actions';
 import {
   clearMallSearchHistory,
+  fetchMallSearchData,
   fetchMallSearchRelatedProducts,
-  getMallSearchData,
   readMallSearchHistory,
   saveMallSearchKeyword,
+  type MallSearchData,
   type MallSearchRelatedData,
 } from '@/pkg-mall/services/search';
 import './index.scss';
@@ -31,8 +32,6 @@ function resolveSearchRouteKeyword() {
     return keyword;
   }
 }
-
-const searchData = getMallSearchData();
 
 // 将商品名中命中的关键词分段渲染，命中片段用页面样式标红。
 function renderHighlightedName(text: string, keyword: string) {
@@ -70,6 +69,11 @@ function renderHighlightedName(text: string, keyword: string) {
 // 商品搜索页承接首页搜索入口，完成相关商品展示、键盘搜索和商城商品列表结果页闭环。
 const SearchPage = observer(function SearchPage() {
   const [query, setQuery] = useState(resolveSearchRouteKeyword);
+  const [searchData, setSearchData] = useState<MallSearchData>({
+    placeholder: '搜索商城商品',
+    hotKeywords: [],
+    products: [],
+  });
   const [historyKeywords, setHistoryKeywords] = useState<string[]>([]);
   const [relatedProducts, setRelatedProducts] = useState<MallSearchRelatedData['products']>([]);
   const [relatedLoading, setRelatedLoading] = useState(false);
@@ -77,6 +81,16 @@ const SearchPage = observer(function SearchPage() {
   const pageRuntime = usePageRuntime({
     initPage: async () => {
       setHistoryKeywords(readMallSearchHistory());
+      try {
+        const nextSearchData = await fetchMallSearchData();
+        setSearchData(nextSearchData);
+      } catch {
+        setSearchData({
+          placeholder: '搜索商城商品',
+          hotKeywords: [],
+          products: [],
+        });
+      }
     },
   });
   const activeKeyword = query.trim();

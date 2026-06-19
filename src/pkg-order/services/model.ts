@@ -1,3 +1,5 @@
+import type { HkpAddressSummary, HkpCouponSummary, HkpFilterTab, HkpOrderSummary } from '@/core/types/hkp';
+
 export interface OrderHomeTabData {
   key: string;
   text: string;
@@ -35,6 +37,42 @@ export interface OrderHomeData {
   sections: OrderHomeSectionData[];
 }
 
+export interface OrderCheckoutProductData {
+  id: string;
+  title: string;
+  specText: string;
+  quantity: number;
+  priceText: string;
+  imageSrc: string;
+  giftText?: string;
+  canRefund?: boolean;
+  canAfterSale?: boolean;
+}
+
+export interface OrderCheckoutData {
+  draftId?: string;
+  merchantName?: string;
+  address?: HkpAddressSummary;
+  requiresAddress: boolean;
+  paymentMethodText: string;
+  products: OrderCheckoutProductData[];
+  shippingText: string;
+  canSubmit?: boolean;
+  deliveryErrors?: string[];
+  couponText: string;
+  selectedCouponId?: string;
+  coupons: HkpCouponSummary[];
+  discountText: string;
+  amountFields: OrderDetailFieldData[];
+  totalAmount: number;
+  discountAmount: number;
+}
+
+export interface OrderAddressData {
+  addresses: HkpAddressSummary[];
+  maxCount: number;
+}
+
 export interface OrderDetailFieldData {
   label: string;
   value: string;
@@ -69,4 +107,141 @@ export interface OrderDetailData {
   amountFields: OrderDetailFieldData[];
   orderFields: OrderDetailFieldData[];
   refundButtonText: string;
+}
+
+export interface OrderLogisticsTraceItem {
+  id: string;
+  timeText: string;
+  detailText: string;
+}
+
+export interface OrderLogisticsData {
+  productImageSrc: string;
+  statusText: string;
+  companyText: string;
+  trackingNumberText: string;
+  hotlineText: string;
+  quantityText: string;
+  totalAmountText: string;
+  confirmButtonText?: string;
+  traces: OrderLogisticsTraceItem[];
+}
+
+export interface OrderCancelData {
+  order: HkpOrderSummary;
+  reasons: string[];
+  tips: string[];
+  submitButtonText: string;
+}
+
+export interface OrderReviewCreateTagData {
+  key: string;
+  text: string;
+}
+
+export interface OrderReviewCreateImageData {
+  id: string;
+  src: string;
+}
+
+export interface OrderReviewCreateData {
+  productImageSrc: string;
+  productTitle: string;
+  hintText: string;
+  tags: OrderReviewCreateTagData[];
+  defaultTagKey: string;
+  placeholderText: string;
+  maxLength: number;
+  images: OrderReviewCreateImageData[];
+  anonymousText: string;
+  submitButtonText: string;
+  unavailableReason?: string;
+}
+
+export interface OrderReviewItemData {
+  id: string;
+  userName: string;
+  avatarSrc: string;
+  timeText: string;
+  content: string;
+  imageSrcs: string[];
+}
+
+export interface OrderReviewListData {
+  filters: OrderReviewCreateTagData[];
+  reviews: OrderReviewItemData[];
+  unavailableReason?: string;
+}
+
+export interface OrderAftersaleTypeOptionData {
+  key: string;
+  title: string;
+  desc: string;
+  amountText: string;
+  tagText?: string;
+}
+
+export interface OrderAftersaleTypeData {
+  order: HkpOrderSummary;
+  tipText: string;
+  types: OrderAftersaleTypeOptionData[];
+}
+
+export interface OrderAftersaleApplyData {
+  order: HkpOrderSummary;
+  selectedTypeText: string;
+  reasons: string[];
+  defaultReason: string;
+  refundAmountText: string;
+  contactName: string;
+  contactMobile: string;
+  placeholderText: string;
+  uploadHintText: string;
+  serviceTipText: string;
+  submitButtonText: string;
+}
+
+export interface OrderAftersaleRecordData {
+  id: string;
+  tabKey: string;
+  serviceNo: string;
+  typeText: string;
+  statusText: string;
+  statusDesc: string;
+  amountText: string;
+  createdAt: string;
+  buttonText: string;
+  order: HkpOrderSummary;
+}
+
+export interface OrderAftersaleListData {
+  tabs: HkpFilterTab[];
+  records: OrderAftersaleRecordData[];
+  unavailableReason?: string;
+}
+
+export interface OrderAftersaleProgressStepData {
+  id: string;
+  title: string;
+  timeText: string;
+  detailText?: string;
+}
+
+export interface OrderAftersaleFieldData {
+  label: string;
+  value: string;
+}
+
+export interface OrderAftersaleProgressData {
+  order: HkpOrderSummary;
+  serviceNo: string;
+  typeText: string;
+  statusText: string;
+  statusDesc: string;
+  refundAmountText: string;
+  reasonText: string;
+  fields: OrderAftersaleFieldData[];
+  progress: OrderAftersaleProgressStepData[];
+  primaryButtonText: string;
+  unavailableReason?: string;
 }

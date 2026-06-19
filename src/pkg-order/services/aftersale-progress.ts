@@ -1,9 +1,18 @@
-import { resolveMockData } from '@/core/services/mock';
-import { formatCurrency } from '@/core/utils/money';
-import { resolveAftersaleOrder } from './aftersale-context';
-import { aftersaleProgressData, type OrderAftersaleProgressData } from './mock-data';
+import type { OrderAftersaleProgressData } from './model';
+import {
+  buildMallAftersaleProgress,
+  fetchMallAftersaleOrder,
+  mapAftersaleOrderSummary,
+  resolveMallAftersaleAmountText,
+  resolveMallAftersaleDateText,
+  resolveMallAftersaleReason,
+  resolveMallAftersaleServiceNo,
+  resolveMallAftersaleStatusDesc,
+  resolveMallAftersaleStatusText,
+  resolveMallAftersaleTypeText,
+} from './aftersale-context';
 
-export type { OrderAftersaleProgressData } from './mock-data';
+export type { OrderAftersaleProgressData } from './model';
 
 interface FetchAftersaleProgressOptions {
   orderId?: string;
@@ -11,23 +20,34 @@ interface FetchAftersaleProgressOptions {
   reasonText?: string;
 }
 
-// 获取售后进度页面数据，后续接真实接口时在这里处理字段归一和异常态/空态转译。
-export function fetchAftersaleProgressData(options: FetchAftersaleProgressOptions = {}) {
-  const order = resolveAftersaleOrder(options.orderId) ?? aftersaleProgressData.order;
-  const typeText = options.typeText || aftersaleProgressData.typeText;
-  const reasonText = options.reasonText || aftersaleProgressData.reasonText;
+function normalizeString(value?: string) {
+  return typeof value === 'string' ? value.trim() : '';
+}
 
-  return resolveMockData<OrderAftersaleProgressData>({
-    ...aftersaleProgressData,
-    order,
-    serviceNo: options.orderId ? `SH${order.id.replace(/\W/g, '').slice(-12).toUpperCase()}` : aftersaleProgressData.serviceNo,
-    typeText,
-    refundAmountText: formatCurrency(order.totalAmount),
+export async function fetchAftersaleProgressData(
+  options: FetchAftersaleProgressOptions = {},
+): Promise<OrderAftersaleProgressData> {
+  const order = await fetchMallAftersaleOrder(options.orderId);
+  const context = order.context || {};
+  const reasonText = options.reasonText || resolveMallAftersaleReason(order) || '用户在小程序提交退款申请';
+  const trackingNumber = normalizeString(context.trackingNumber || context.waybillNo || context.logisticsNo || context.deliveryNo);
+  const shippingAddress = normalizeString(context.addressText || context.deliveryAddress || context.shippingAddress);
+
+  return {
+    order: mapAftersaleOrderSummary(order),
+    serviceNo: resolveMallAftersaleServiceNo(order),
+    typeText: options.typeText || resolveMallAftersaleTypeText(order),
+    statusText: resolveMallAftersaleStatusText(order),
+    statusDesc: resolveMallAftersaleStatusDesc(order),
+    refundAmountText: resolveMallAftersaleAmountText(order),
     reasonText,
-    progress: aftersaleProgressData.progress.map((step, index) => (
-      index === 0
-        ? { ...step, detailText: `已提交${typeText}申请，等待平台审核。` }
-        : step
-    )),
-  });
+    fields: [
+      { label: '订单编号', value: order.orderNo },
+      { label: '申请时间', value: resolveMallAftersaleDateText(order) },
+      { label: '物流单号', value: trackingNumber },
+      { label: '收货地址', value: shippingAddress },
+    ].filter((field) => Boolean(field.value && field.value !== '-')),
+    progress: buildMallAftersaleProgress(order, reasonText),
+    primaryButtonText: '查看售后列表',
+  };
 }

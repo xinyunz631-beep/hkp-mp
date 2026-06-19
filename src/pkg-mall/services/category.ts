@@ -41,7 +41,7 @@ export async function fetchCategoryData() {
   ]);
   const categories = (categoryResponse.list ?? []).map((category) => ({
     id: category.categoryId || category.title || '',
-    title: category.title || '商品分类',
+    title: category.title || category.categoryId || '商品分类',
   })).filter((category) => category.id);
   const activeCategory = categories[0];
   const products = (productResponse.list ?? []).map(toMallProductSummary);
@@ -52,7 +52,7 @@ export async function fetchCategoryData() {
     categories,
     activeCategoryId: activeCategory?.id || '',
     heroTitle: activeCategory?.title || '商品分类',
-    heroSubtitle: '精选乐园周边',
+    heroSubtitle: activeCategory?.title ? '精选乐园周边' : '',
     heroImageSrc: categoryResponse.list?.find((category) => category.bannerUrl)?.bannerUrl || '',
     shortcuts: shortcuts.length > 0 ? shortcuts : [
       { id: 'all', title: '全部商品', iconSrc: '', path: MINI_PACKAGE_ROUTES.mallProducts },

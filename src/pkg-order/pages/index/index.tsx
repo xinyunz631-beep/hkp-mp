@@ -34,7 +34,7 @@ function resolveOrderItemActions(item: OrderHomeItemData): OrderHomeActionData[]
 }
 
 function shouldPassOrderId(actionText: string) {
-  return ['查看详情', '继续支付', '取消订单', '申请售后', '查看物流'].includes(actionText);
+  return ['查看详情', '继续支付', '取消订单', '申请售后', '查看物流', '去评价'].includes(actionText);
 }
 
 function resolveOrderActionClassName(action: OrderHomeActionData) {
@@ -152,7 +152,7 @@ const OrderIndexPage = observer(function OrderIndexPage() {
                         <Text className="_pg-order-item_price">{item.priceText}</Text>
                       </View>
                       <View className="_pg-order-item_aside">
-                        <Text className="_pg-order-item_quantity">x{item.quantity}</Text>
+                        {item.quantity > 0 ? <Text className="_pg-order-item_quantity">x{item.quantity}</Text> : null}
                         <View className="_pg-order-item_actions">
                           {resolveOrderItemActions(item).map((action) => (
                             <View

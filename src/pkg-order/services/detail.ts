@@ -17,6 +17,10 @@ function formatCent(value?: number) {
   return `¥${((value || 0) / 100).toFixed(2)}`;
 }
 
+function normalizeString(value?: string) {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
 function formatDateTime(value?: string) {
   if (!value) return '-';
   return value.replace('T', ' ').slice(0, 16);
@@ -70,8 +74,41 @@ function resolveTitle(order: BffOrder) {
 }
 
 function resolveQuantityText(order: BffOrder) {
-  const count = order.items?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 1;
-  return `x${count}`;
+  const count = order.items?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0;
+  return count > 0 ? `x${count}` : '';
+}
+
+function resolveMerchantName(order: BffOrder) {
+  return normalizeString(
+    order.context?.merchantName
+      || order.items?.[0]?.attributes?.merchantName
+      || order.items?.[0]?.attributes?.shopName,
+  );
+}
+
+function resolveMallSpecText(order: BffOrder) {
+  const firstItem = order.items?.[0];
+  return normalizeString(
+    firstItem?.attributes?.specName
+      || firstItem?.attributes?.skuName
+      || firstItem?.skuId,
+  );
+}
+
+function resolveAddressText(context: Record<string, string>) {
+  return normalizeString(
+    context.addressText
+      || context.deliveryAddress
+      || context.shippingAddress,
+  );
+}
+
+function resolveLogisticsField(context: Record<string, string>, keyCandidates: string[]) {
+  for (const key of keyCandidates) {
+    const value = normalizeString(context[key]);
+    if (value) return value;
+  }
+  return '';
 }
 
 function compactFields(fields: OrderDetailFieldData[]) {
@@ -134,6 +171,12 @@ function mapOrderToDetail(order: BffOrder): OrderDetailData {
   const primaryActionType = resolvePrimaryAction(order.orderStatus);
   const sceneType = order.sceneType || '-';
   const title = resolveTitle(order);
+  const merchantName = resolveMerchantName(order);
+  const mallSpecText = resolveMallSpecText(order);
+  const addressText = resolveAddressText(context);
+  const deliveryCompany = resolveLogisticsField(context, ['deliveryCompany', 'logisticsCompany', 'expressCompany']);
+  const trackingNumber = resolveLogisticsField(context, ['trackingNumber', 'waybillNo', 'logisticsNo', 'deliveryNo']);
+  const logisticsStatusText = resolveLogisticsField(context, ['logisticsStatusText', 'deliveryStatusText', 'shipmentStatusText']);
 
   return {
     id: order.orderNo,
@@ -147,7 +190,9 @@ function mapOrderToDetail(order: BffOrder): OrderDetailData {
     quantityText: resolveQuantityText(order),
     productFields: compactFields([
       { label: '订单业态', value: sceneType },
+      { label: '商户名称', value: merchantName || '' },
       { label: '商品信息', value: title },
+      { label: '规格信息', value: mallSpecText || '' },
       { label: '商品编码', value: firstItem?.itemId || '-' },
       { label: '规格编码', value: firstItem?.skuId || firstItem?.attributes?.ratePlanId || '-' },
     ]),
@@ -157,11 +202,15 @@ function mapOrderToDetail(order: BffOrder): OrderDetailData {
       { label: '房间数', value: context.roomCount ? `${context.roomCount}间` : '' },
       { label: '入住人', value: context.guestNames || '' },
       { label: '使用日期', value: context.visitDate || '' },
+      { label: '快递公司', value: deliveryCompany || '' },
+      { label: '物流单号', value: trackingNumber || '' },
+      { label: '物流状态', value: logisticsStatusText || '' },
       { label: '备注', value: order.remark || '' },
     ]),
     contactFields: compactFields([
       { label: '联系人', value: order.contactName || '' },
       { label: '手机号', value: order.contactPhone || '' },
+      { label: '收货地址', value: addressText || '' },
     ]),
     amountFields: [
       { label: '商品金额', value: formatCent(order.originalAmountCent) },

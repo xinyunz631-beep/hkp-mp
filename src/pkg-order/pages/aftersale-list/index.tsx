@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import Taro from '@tarojs/taro';
 import { Text, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
+import { BaseEmpty } from '@/core/components/BaseEmpty';
 import { AppImage } from '@/core/components/AppImage';
 import { FilterTabs } from '@/core/components/commerce';
 import { PageShell } from '@/core/components/PageShell';
@@ -44,14 +45,16 @@ const AftersaleListPage = observer(function AftersaleListPage() {
             />
 
             <View className="_pg-records">
-              {visibleRecords.map((record) => {
+              {visibleRecords.length > 0 ? visibleRecords.map((record) => {
                 const product = record.order.products[0];
 
                 return (
                   <View
                     className="_pg-record"
                     key={record.id}
-                    onClick={() => Taro.navigateTo({ url: MINI_PACKAGE_ROUTES.orderAftersaleProgress })}
+                    onClick={() => Taro.navigateTo({
+                      url: `${MINI_PACKAGE_ROUTES.orderAftersaleProgress}?orderId=${encodeURIComponent(record.order.id)}`,
+                    })}
                   >
                     <View className="_pg-record_header">
                       <Text className="_pg-record_service-no">{record.serviceNo}</Text>
@@ -70,7 +73,7 @@ const AftersaleListPage = observer(function AftersaleListPage() {
                         {product?.skuText ? <Text className="_pg-record_spec">{product.skuText}</Text> : null}
                         <Text className="_pg-record_amount">{record.amountText}</Text>
                       </View>
-                      <Text className="_pg-record_quantity">x{product?.quantity || 1}</Text>
+                      {product?.quantity ? <Text className="_pg-record_quantity">x{product.quantity}</Text> : null}
                     </View>
 
                     <View className="_pg-record_meta">
@@ -85,7 +88,13 @@ const AftersaleListPage = observer(function AftersaleListPage() {
                     </View>
                   </View>
                 );
-              })}
+              }) : (
+                <BaseEmpty
+                  className="_pg-empty"
+                  title="暂无商城售后记录"
+                  description="当前只展示真实退款/售后订单，未进入退款流程的商城订单不会出现在这里。"
+                />
+              )}
             </View>
           </View>
         </PageShell>

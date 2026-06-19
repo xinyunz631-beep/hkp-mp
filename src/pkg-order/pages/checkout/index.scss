@@ -105,6 +105,14 @@
     margin-top: 18px;
   }
 
+  &_empty-title {
+    display: block;
+    color: #23262f;
+    font-size: 28px;
+    font-weight: 500;
+    line-height: 1.5;
+  }
+
   &_detail {
     flex: 1;
     color: #9ca3af;

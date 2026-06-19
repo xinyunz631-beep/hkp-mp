@@ -208,7 +208,7 @@ const DetailPage = observer(function DetailPage() {
             <View className="_pg-card">
               <View className="_pg-card_header">
                 <Text className="_pg-card_title">{detailData.title}</Text>
-                <Text className="_pg-card_quantity">{detailData.quantityText}</Text>
+                {detailData.quantityText ? <Text className="_pg-card_quantity">{detailData.quantityText}</Text> : null}
               </View>
               {detailData.productFields.map((item) => (
                 <View className="_pg-line-row" key={item.label}>
@@ -268,24 +268,28 @@ const DetailPage = observer(function DetailPage() {
               </View>
             ) : null}
 
-            <View className="_pg-card">
-              {detailData.ticketFields.map((item) => (
-                <View className="_pg-line-row" key={item.label}>
-                  <Text className="_pg-line-row_label">{item.label}</Text>
-                  <Text className="_pg-line-row_value">{item.value}</Text>
-                </View>
-              ))}
-            </View>
+            {detailData.ticketFields.length ? (
+              <View className="_pg-card">
+                {detailData.ticketFields.map((item) => (
+                  <View className="_pg-line-row" key={item.label}>
+                    <Text className="_pg-line-row_label">{item.label}</Text>
+                    <Text className="_pg-line-row_value">{item.value}</Text>
+                  </View>
+                ))}
+              </View>
+            ) : null}
 
-            <View className="_pg-card">
-              <Text className="_pg-card_section-title">{resolveContactSectionTitle(detailData)}</Text>
-              {detailData.contactFields.map((item) => (
-                <View className="_pg-line-row" key={item.label}>
-                  <Text className="_pg-line-row_label">{item.label}</Text>
-                  <Text className="_pg-line-row_value">{item.value}</Text>
-                </View>
-              ))}
-            </View>
+            {detailData.contactFields.length ? (
+              <View className="_pg-card">
+                <Text className="_pg-card_section-title">{resolveContactSectionTitle(detailData)}</Text>
+                {detailData.contactFields.map((item) => (
+                  <View className="_pg-line-row" key={item.label}>
+                    <Text className="_pg-line-row_label">{item.label}</Text>
+                    <Text className="_pg-line-row_value">{item.value}</Text>
+                  </View>
+                ))}
+              </View>
+            ) : null}
 
             <View className="_pg-card">
               {detailData.amountFields.map((item) => (

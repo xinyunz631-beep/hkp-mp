@@ -241,6 +241,8 @@ export function OrderCard({
   onSecondaryAction,
 }: OrderCardProps) {
   const firstProduct = order.products[0];
+  const summaryCountText = order.countText
+    || (firstProduct?.quantity ? `共${firstProduct.quantity}件` : '');
 
   return (
     <View className={classNames('hkp-order-card', className)} onClick={() => onClick?.(order)}>
@@ -261,13 +263,13 @@ export function OrderCard({
             {firstProduct.skuText ? <Text className="hkp-order-card__sku">{firstProduct.skuText}</Text> : null}
             <View className="hkp-order-card__product-footer">
               <Text className="hkp-order-card__price">{formatCurrency(firstProduct.price)}</Text>
-              <Text className="hkp-order-card__quantity">x{firstProduct.quantity}</Text>
+              {firstProduct.quantity ? <Text className="hkp-order-card__quantity">x{firstProduct.quantity}</Text> : null}
             </View>
           </View>
         </View>
       ) : null}
       <View className="hkp-order-card__summary">
-        <Text>{order.countText || `共${order.products.length}件`}</Text>
+        <Text>{summaryCountText}</Text>
         <Text className="hkp-order-card__amount">{formatCurrency(order.totalAmount)}</Text>
       </View>
       {(order.secondaryActionText || order.primaryActionText) ? (

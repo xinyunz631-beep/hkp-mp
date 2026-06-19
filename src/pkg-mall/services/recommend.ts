@@ -15,8 +15,9 @@ export interface MallRecommendData {
 // 获取推荐商品真实数据。
 export async function fetchRecommendData() {
   const response = await fetchBffMallProducts({ page: 1, size: 100, sort: 'recommend' });
+  const query = (response.list ?? []).find((item) => item.title)?.title || '搜索商品';
   return {
-    query: 'Hello Kitty公仔',
+    query,
     tabs: [
       { key: 'comprehensive', text: '综合' },
       { key: 'sales', text: '销量' },

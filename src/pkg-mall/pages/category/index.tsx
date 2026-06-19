@@ -24,7 +24,7 @@ import { useMallCartCount } from '@/pkg-mall/hooks/use-mall-cart-count';
 import { addMallCartItem } from '@/pkg-mall/services/cart';
 import { fetchCategoryData } from '@/pkg-mall/services/category';
 import { fetchProductDetailData } from '@/pkg-mall/services/product-detail';
-import type { MallProductDetailData, MallSkuVariant } from '@/pkg-mall/services/mock-data';
+import type { MallProductDetailData, MallSkuVariant } from '@/pkg-mall/services/types';
 import './index.scss';
 
 interface MallFooterItem {
@@ -167,7 +167,7 @@ const CategoryPage = observer(function CategoryPage() {
     } : detailData.product, {
       quantity,
       skuId: variant?.id,
-      skuText: variant?.skuText || detailData.product.subtitle || '默认规格',
+      skuText: variant?.skuText || detailData.product.subtitle || '',
       giftText: variant?.giftText,
       shippingRule: variant?.shippingRule,
     });

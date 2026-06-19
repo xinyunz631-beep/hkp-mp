@@ -1,11 +1,12 @@
 import { getCache, removeCache, setCache } from '@/core/utils/cache';
-import { fetchBffMallProducts } from '@/core/services/bff-mall-api';
+import { fetchBffMallHome, fetchBffMallProducts } from '@/core/services/bff-mall-api';
 import type { HkpProductSummary } from '@/core/types/hkp';
 import { toMallProductSummary } from './bff-adapter';
 
 const MALL_SEARCH_HISTORY_KEY = 'hkp_mall_search_history';
 const MALL_SEARCH_HISTORY_LIMIT = 10;
-const MALL_SEARCH_HOT_KEYWORDS = ['公仔', 'Hello Kitty', '凯蒂猫', '服装', '文具', '马克杯'];
+const MALL_SEARCH_HOT_KEYWORDS_LIMIT = 8;
+const DEFAULT_MALL_SEARCH_PLACEHOLDER = '搜索商城商品';
 
 export interface MallSearchData {
   placeholder: string;
@@ -23,7 +24,7 @@ export function normalizeMallSearchKeyword(keyword?: string) {
   return (keyword || '').trim().toLowerCase();
 }
 
-// 判断商品是否命中当前搜索词，真实接口接入前先用本地字段完成搜索体验。
+// 判断商品是否命中当前搜索词，供相关商品高亮和结果页前端过滤复用。
 export function isMallProductMatched(product: HkpProductSummary, keyword?: string) {
   const normalizedKeyword = normalizeMallSearchKeyword(keyword);
 
@@ -45,12 +46,38 @@ export function filterMallProductsByKeyword(products: HkpProductSummary[], keywo
   return products.filter((product) => isMallProductMatched(product, normalizedKeyword));
 }
 
-// 获取搜索页静态数据，搜索页首屏不为这些本地配置制造初始化 loading。
-export function getMallSearchData(): MallSearchData {
+function pickSearchKeyword(value?: string) {
+  return String(value || '').trim();
+}
+
+function collectMallSearchHotKeywords(items: Array<string | undefined>) {
+  const existed = new Set<string>();
+  const result: string[] = [];
+
+  items.forEach((item) => {
+    const keyword = pickSearchKeyword(item);
+    const normalizedKeyword = normalizeMallSearchKeyword(keyword);
+    if (!keyword || existed.has(normalizedKeyword)) return;
+    existed.add(normalizedKeyword);
+    result.push(keyword);
+  });
+
+  return result.slice(0, MALL_SEARCH_HOT_KEYWORDS_LIMIT);
+}
+
+// 获取搜索页真实热词和首屏候选商品。
+export async function fetchMallSearchData(): Promise<MallSearchData> {
+  const response = await fetchBffMallHome();
+  const hotKeywords = collectMallSearchHotKeywords([
+    ...(response.recommendations ?? []).flatMap((item) => [item.keyword, item.title]),
+    ...(response.categories ?? []).map((item) => item.title),
+    ...(response.products ?? []).map((item) => item.title),
+  ]);
+
   return {
-    placeholder: '搜索 Hello Kitty 伴手礼',
-    hotKeywords: MALL_SEARCH_HOT_KEYWORDS,
-    products: [],
+    placeholder: hotKeywords[0] ? `搜索${hotKeywords[0]}` : DEFAULT_MALL_SEARCH_PLACEHOLDER,
+    hotKeywords,
+    products: (response.products ?? []).slice(0, 6).map(toMallProductSummary),
   };
 }
 

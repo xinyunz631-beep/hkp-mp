@@ -9,15 +9,16 @@ import { fetchBffCouponAvailable, type BffAvailableCouponView } from '@/core/ser
 import {
   getMallCheckoutDraft,
   getMallCheckoutSelectedAddressId,
+  isMallCheckoutAddressRequired,
   setMallCheckoutSelectedAddressId,
   validateMallCheckoutDelivery,
   type MallCheckoutDraft,
 } from '@/core/services/mall-checkout-draft';
 import { formatCurrency } from '@/core/utils/money';
-import type { OrderCheckoutData } from './mock-data';
+import type { OrderCheckoutData } from './model';
 import { fetchAddressData, formatOrderAddress } from './address';
 
-export type { OrderCheckoutData } from './mock-data';
+export type { OrderCheckoutData } from './model';
 
 interface FetchCheckoutDataOptions {
   draftId?: string;
@@ -62,14 +63,13 @@ function resolvePayableAmountCent(value?: number) {
   return value;
 }
 
-async function resolveCheckoutAddress(options: FetchCheckoutDataOptions) {
+async function resolveCheckoutAddress(options: FetchCheckoutDataOptions, required: boolean) {
+  if (!required) return undefined;
   const selectedAddressId = options.addressId ?? getMallCheckoutSelectedAddressId(options.draftId);
   const { addresses } = await fetchAddressData();
   const selectedAddress = addresses.find((address) => address.id === selectedAddressId);
   const defaultAddress = addresses.find((address) => address.isDefault) ?? addresses[0];
-  const address = selectedAddress ?? defaultAddress;
-  if (!address) throw new Error('请先维护收货地址');
-  return address;
+  return selectedAddress ?? defaultAddress;
 }
 
 function buildMallUnifiedOrderRequest(
@@ -83,12 +83,14 @@ function buildMallUnifiedOrderRequest(
     paymentChannel: 'WECHAT',
     freightAmountCent: yuanToCent(validateMallCheckoutDelivery(draft, address).freightAmount),
     selectedCouponNos: selectedCouponId ? [selectedCouponId] : undefined,
-    contactName: address.name,
-    contactPhone: address.mobile,
-    context: {
-      addressId: address.id,
-      addressText: formatOrderAddress(address),
-    },
+    contactName: address?.name,
+    contactPhone: address?.mobile,
+    context: address
+      ? {
+        addressId: address.id,
+        addressText: formatOrderAddress(address),
+      }
+      : undefined,
     items: draft.products.map((item, index) => ({
       lineNo: String(index + 1),
       itemId: item.productId,
@@ -99,6 +101,7 @@ function buildMallUnifiedOrderRequest(
         productId: item.productId,
         spuId: item.productId,
         skuId: item.id,
+        merchantName: item.merchantName,
         skuName: item.specText,
         specName: item.specText,
         imageUrl: item.imageSrc,
@@ -121,7 +124,7 @@ function toMallCoupon(coupon: BffAvailableCouponView) {
 
   return {
     id: coupon.couponNo,
-    title: coupon.couponName || '商城优惠券',
+    title: coupon.couponName || coupon.couponNo || '优惠资格待确认',
     amountText: discountAmount > 0 ? `¥${formatYuan(discountAmountCent)}` : (formatDiscountPercent(coupon.discountPercent) || '优惠券'),
     thresholdText: thresholdAmount > 0 ? `满¥${thresholdAmount.toFixed(2)}可用` : '无门槛',
     validityText: validDate ? `有效期至 ${validDate}` : '按券规则生效',
@@ -130,15 +133,38 @@ function toMallCoupon(coupon: BffAvailableCouponView) {
   };
 }
 
+function buildDeliveryAmountField(requiresAddress: boolean, freightAmount = 0) {
+  if (!requiresAddress) {
+    return { label: '交付', value: '无需物流' };
+  }
+
+  return {
+    label: '运费',
+    value: freightAmount > 0 ? formatCurrency(freightAmount) : '¥0.00',
+  };
+}
+
 function buildReadonlyCheckoutData(
   draft: MallCheckoutDraft,
   address: Awaited<ReturnType<typeof resolveCheckoutAddress>>,
   deliveryCheck: ReturnType<typeof validateMallCheckoutDelivery>,
   productsAmount: number,
+  requiresAddress: boolean,
 ): OrderCheckoutData {
+  const merchantNames = Array.from(new Set(
+    draft.products
+      .map((item) => item.merchantName?.trim())
+      .filter((item): item is string => Boolean(item)),
+  ));
+  const merchantName = merchantNames.length > 1
+    ? `${merchantNames.slice(0, 2).join(' / ')}${merchantNames.length > 2 ? ' 等' : ''}`
+    : merchantNames[0];
+
   return {
     draftId: draft.id,
+    merchantName,
     address,
+    requiresAddress,
     paymentMethodText: '微信支付',
     products: draft.products.map((item) => ({
       id: item.id,
@@ -160,7 +186,7 @@ function buildReadonlyCheckoutData(
     discountText: '',
     amountFields: [
       { label: '商品金额', value: formatCurrency(productsAmount) },
-      { label: '运费', value: deliveryCheck.freightAmount > 0 ? formatCurrency(deliveryCheck.freightAmount) : '¥0.00' },
+      buildDeliveryAmountField(requiresAddress, deliveryCheck.freightAmount),
     ],
     totalAmount: Number((productsAmount + deliveryCheck.freightAmount).toFixed(2)),
     discountAmount: 0,
@@ -172,14 +198,15 @@ export async function fetchCheckoutData(options: FetchCheckoutDataOptions = {}) 
   const draft = getMallCheckoutDraft(options.draftId);
   if (!draft) throw new Error('订单信息已失效，请重新选择商品');
 
-  const address = await resolveCheckoutAddress(options);
-  if (options.addressId) {
-    setMallCheckoutSelectedAddressId(draft.id, options.addressId);
+  const requiresAddress = isMallCheckoutAddressRequired(draft);
+  const address = await resolveCheckoutAddress(options, requiresAddress);
+  if (requiresAddress && address?.id) {
+    setMallCheckoutSelectedAddressId(draft.id, address.id);
   }
 
   const deliveryCheck = validateMallCheckoutDelivery(draft, address);
   const productsAmount = draft.products.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
-  const readonlyData = buildReadonlyCheckoutData(draft, address, deliveryCheck, productsAmount);
+  const readonlyData = buildReadonlyCheckoutData(draft, address, deliveryCheck, productsAmount, requiresAddress);
   if (!deliveryCheck.canSubmit) return readonlyData;
 
   const [confirmation, availableCouponsResponse] = await Promise.all([
@@ -209,7 +236,7 @@ export async function fetchCheckoutData(options: FetchCheckoutDataOptions = {}) 
     discountText: discountAmount > 0 ? `已优惠 ${formatCurrency(discountAmount)}` : '',
     amountFields: [
       { label: '商品金额', value: formatCurrency(centToYuan(confirmation.originalAmountCent)) },
-      { label: '运费', value: (confirmation.freightAmountCent ?? 0) > 0 ? formatCurrency(centToYuan(confirmation.freightAmountCent)) : '¥0.00' },
+      buildDeliveryAmountField(requiresAddress, centToYuan(confirmation.freightAmountCent)),
     ],
     totalAmount,
     discountAmount,

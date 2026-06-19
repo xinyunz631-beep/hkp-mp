@@ -9,9 +9,9 @@ import {
 } from '@/core/services/bff-crm-api';
 import type { HkpAddressSummary } from '@/core/types/hkp';
 import { getCache, setCache } from '@/core/utils/cache';
-import type { OrderAddressData } from './mock-data';
+import type { OrderAddressData } from './model';
 
-export type { OrderAddressData } from './mock-data';
+export type { OrderAddressData } from './model';
 
 export const ORDER_ADDRESS_MAX_COUNT = 10;
 

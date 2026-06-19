@@ -2,7 +2,7 @@ import { MINI_STORAGE_KEYS } from '@/core/constants/storage';
 import type { HkpAddressSummary } from '@/core/types/hkp';
 import { getCache, setCache } from '@/core/utils/cache';
 
-export type MallShippingMode = 'express' | 'pickupOnly' | 'unsupported';
+export type MallShippingMode = 'express' | 'none' | 'pickupOnly' | 'unsupported';
 
 export interface MallShippingRule {
   mode: MallShippingMode;
@@ -71,9 +71,9 @@ function normalizeProduct(product: MallCheckoutDraftProduct): MallCheckoutDraftP
     ...product,
     quantity: Math.max(1, Number(product.quantity) || 1),
     unitPrice: Math.max(0, Number(product.unitPrice) || 0),
-    merchantName: product.merchantName || 'Hello Kitty 官方商城',
-    specText: product.specText || '默认规格',
-    shippingRule: product.shippingRule ?? { mode: 'express', freightAmount: 0 },
+    merchantName: product.merchantName || '',
+    specText: product.specText || '',
+    shippingRule: product.shippingRule ?? { mode: 'unsupported', reasonText: '当前商品暂不可配送，请返回商品页重新选择' },
   };
 }
 
@@ -127,15 +127,25 @@ export function getMallCheckoutSelectedAddressId(draftId?: string) {
   return currentMap[draftId];
 }
 
+export function isMallCheckoutAddressRequired(draft: MallCheckoutDraft) {
+  return draft.products.some((product) => product.shippingRule?.mode === 'express');
+}
+
+function resolveNoLogisticsShippingText(draft: MallCheckoutDraft) {
+  const rule = draft.products.find((product) => product.shippingRule?.mode === 'none')?.shippingRule;
+  return rule?.reasonText || '无需物流';
+}
+
 export function validateMallCheckoutDelivery(
   draft: MallCheckoutDraft,
   address?: HkpAddressSummary,
 ): MallDeliveryCheckResult {
   const errors: string[] = [];
   const addressSearchText = getAddressSearchText(address);
+  const requiresAddress = isMallCheckoutAddressRequired(draft);
   let freightAmount = 0;
 
-  if (!address) {
+  if (requiresAddress && !address) {
     errors.push('请先选择收货地址');
   }
 
@@ -148,7 +158,11 @@ export function validateMallCheckoutDelivery(
     }
 
     if (rule.mode === 'pickupOnly') {
-      errors.push(rule.reasonText || `${product.title}仅支持乐园门店自提`);
+      errors.push(rule.reasonText || `${product.title}当前商城暂不支持自提`);
+      return;
+    }
+
+    if (rule.mode === 'none') {
       return;
     }
 
@@ -177,7 +191,9 @@ export function validateMallCheckoutDelivery(
     canSubmit,
     freightAmount: Number(freightAmount.toFixed(2)),
     shippingText: canSubmit
-      ? freightAmount > 0 ? `快递配送 ¥${freightAmount.toFixed(2)}` : '快递配送 包邮'
+      ? requiresAddress
+        ? freightAmount > 0 ? `第三方配送 ¥${freightAmount.toFixed(2)}` : '第三方配送 包邮'
+        : resolveNoLogisticsShippingText(draft)
       : uniqueErrors[0],
     errors: uniqueErrors,
   };

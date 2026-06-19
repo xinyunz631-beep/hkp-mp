@@ -1,3 +1,5 @@
+import { useEffect, useMemo, useState } from 'react';
+import { useDidShow } from '@tarojs/taro';
 import { Text, View, type ITouchEvent } from '@tarojs/components';
 import { observer } from 'mobx-react';
 import { AppIcon, type AppIconName } from '@/core/components/AppIcon';
@@ -5,6 +7,7 @@ import { AppImage } from '@/core/components/AppImage';
 import { AuthAction } from '@/core/components/AuthAction';
 import { PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
+import { fetchBffCrmProfile } from '@/core/services/bff-crm-api';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import { rootStore } from '@/core/store';
 import { resolveMemberAvatar, resolveMemberLevel } from '@/core/utils/member-profile';
@@ -38,31 +41,11 @@ interface ProfileServiceItem {
   action?: 'legacyBind' | 'invoice' | 'phone';
 }
 
-const PARK_PHONE = '4009778899';
-const metrics: ProfileMetricItem[] = [
-  {
-    key: 'favorites',
-    value: 0,
-    label: '商品收藏',
-    route: MINI_PACKAGE_ROUTES.mallFavorites,
-    reason: '登录后可查看商品收藏',
-  },
-  {
-    key: 'coupons',
-    value: 5,
-    label: '优惠券',
-    route: MINI_PACKAGE_ROUTES.memberCoupons,
-    reason: '登录后可查看优惠券',
-  },
-  {
-    key: 'income',
-    value: 0,
-    label: '分销收益',
-    action: 'shareIncome',
-    reason: '登录后可查看分销收益',
-  },
-];
+interface MemberMetricState {
+  favoriteCount?: number;
+}
 
+const PARK_PHONE = '4009778899';
 const orderActions: ProfileOrderItem[] = [
   {
     key: 'pendingPay',
@@ -266,10 +249,61 @@ function renderServiceAction(item: ProfileServiceItem) {
 
 const MemberPage = observer(function MemberPage() {
   const pageRuntime = usePageRuntime();
+  const [memberMetrics, setMemberMetrics] = useState<MemberMetricState>({});
   const memberProfile = rootStore.memberInfo;
   const memberLevel = resolveMemberLevel(memberProfile);
   const memberAvatar = resolveMemberAvatar(memberProfile);
   const displayName = memberProfile?.nickname || '微信用户';
+  const metrics = useMemo<ProfileMetricItem[]>(() => [
+    {
+      key: 'favorites',
+      value: typeof memberMetrics.favoriteCount === 'number' && Number.isFinite(memberMetrics.favoriteCount)
+        ? memberMetrics.favoriteCount
+        : '-',
+      label: '商品收藏',
+      route: MINI_PACKAGE_ROUTES.mallFavorites,
+      reason: '登录后可查看商品收藏',
+    },
+    {
+      key: 'coupons',
+      value: 5,
+      label: '优惠券',
+      route: MINI_PACKAGE_ROUTES.memberCoupons,
+      reason: '登录后可查看优惠券',
+    },
+    {
+      key: 'income',
+      value: 0,
+      label: '分销收益',
+      action: 'shareIncome',
+      reason: '登录后可查看分销收益',
+    },
+  ], [memberMetrics.favoriteCount]);
+
+  async function refreshMemberMetrics() {
+    if (!rootStore.isLoggedIn) {
+      setMemberMetrics({});
+      return;
+    }
+
+    try {
+      const profile = await fetchBffCrmProfile();
+      setMemberMetrics({
+        favoriteCount: profile.favoriteCount,
+      });
+    } catch {
+      // 会员页指标失败时保持现有页面可用，不回退假数据。
+      setMemberMetrics({});
+    }
+  }
+
+  useEffect(() => {
+    void refreshMemberMetrics();
+  }, [rootStore.isLoggedIn]);
+
+  useDidShow(() => {
+    void refreshMemberMetrics();
+  });
 
   return pageRuntime.renderPage(() => (
     <View className="_pg">

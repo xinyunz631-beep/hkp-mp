@@ -1,9 +1,49 @@
-import { resolveMockData } from '@/core/services/mock';
-import { aftersaleListData, type OrderAftersaleListData } from './mock-data';
+import type { OrderAftersaleListData, OrderAftersaleRecordData } from './model';
+import {
+  fetchMallAftersaleOrders,
+  mapAftersaleOrderSummary,
+  resolveMallAftersaleAmountText,
+  resolveMallAftersaleDateText,
+  resolveMallAftersaleServiceNo,
+  resolveMallAftersaleStatusDesc,
+  resolveMallAftersaleStatusText,
+  resolveMallAftersaleTypeText,
+} from './aftersale-context';
 
-export type { OrderAftersaleListData } from './mock-data';
+export type { OrderAftersaleListData } from './model';
 
-// 获取售后列表页面数据，后续接真实接口时在这里处理字段归一和异常态/空态转译。
-export function fetchAftersaleListData() {
-  return resolveMockData<OrderAftersaleListData>(aftersaleListData);
+function mapRecordTabKey(statusText: string) {
+  return statusText === '退款成功' ? 'refund' : 'processing';
+}
+
+function mapAftersaleRecord(order: Awaited<ReturnType<typeof fetchMallAftersaleOrders>>[number]): OrderAftersaleRecordData {
+  const statusText = resolveMallAftersaleStatusText(order);
+
+  return {
+    id: order.orderNo,
+    tabKey: mapRecordTabKey(statusText),
+    serviceNo: resolveMallAftersaleServiceNo(order),
+    typeText: resolveMallAftersaleTypeText(order),
+    statusText,
+    statusDesc: resolveMallAftersaleStatusDesc(order),
+    amountText: resolveMallAftersaleAmountText(order),
+    createdAt: resolveMallAftersaleDateText(order),
+    buttonText: '查看进度',
+    order: mapAftersaleOrderSummary(order),
+  };
+}
+
+export async function fetchAftersaleListData(): Promise<OrderAftersaleListData> {
+  const records = (await fetchMallAftersaleOrders()).map(mapAftersaleRecord);
+  const processingCount = records.filter((record) => record.tabKey === 'processing').length;
+  const refundCount = records.filter((record) => record.tabKey === 'refund').length;
+
+  return {
+    tabs: [
+      { key: 'all', text: '全部', count: records.length },
+      { key: 'processing', text: '处理中', count: processingCount },
+      { key: 'refund', text: '退款成功', count: refundCount },
+    ],
+    records,
+  };
 }

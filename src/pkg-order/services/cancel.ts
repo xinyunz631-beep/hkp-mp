@@ -1,8 +1,8 @@
 import { cancelBffOrder, fetchBffOrderDetail, type BffOrder } from '@/core/services/bff-order-api';
 import type { HkpOrderSummary } from '@/core/types/hkp';
-import type { OrderCancelData } from './mock-data';
+import type { OrderCancelData } from './model';
 
-export type { OrderCancelData } from './mock-data';
+export type { OrderCancelData } from './model';
 
 function formatCent(value?: number) {
   return Number(((value || 0) / 100).toFixed(2));
@@ -17,12 +17,39 @@ function resolveOrderTitle(order: BffOrder) {
     || `${order.sceneType || ''}订单`;
 }
 
+function resolveOrderStatusText(order: BffOrder) {
+  const normalizedStatus = String(order.orderStatus || '').toUpperCase();
+  if (['PENDING_PAYMENT', 'PAYING'].includes(normalizedStatus)) return '待付款';
+  if (['PAID', 'WAIT_USE', 'FULFILLING'].includes(normalizedStatus)) return order.sceneType === 'HOTEL' ? '待入住' : '待使用';
+  if (['PART_USED', 'PARTIALLY_USED', 'PARTIALLYUSED'].includes(normalizedStatus)) return '部分使用';
+  if (['FULFILLED', 'USED', 'COMPLETED'].includes(normalizedStatus)) return '已完成';
+  if (['CANCELED', 'CANCELLED'].includes(normalizedStatus)) return '已取消';
+  if (['REFUNDING', 'REFUNDED'].includes(normalizedStatus)) return '退款中';
+  return order.orderStatus || '处理中';
+}
+
+function resolveMerchantName(order: BffOrder) {
+  const merchantName = String(
+    order.context?.merchantName
+      || order.items?.[0]?.attributes?.merchantName
+      || order.items?.[0]?.attributes?.shopName
+      || '',
+  ).trim();
+  if (merchantName) return merchantName;
+  if (order.sceneType === 'MALL') return '商城订单';
+  if (order.sceneType === 'HOTEL') return '酒店商户';
+  if (order.sceneType === 'TICKET') return '票务商户';
+  return '订单商户';
+}
+
 function mapOrderSummary(order: BffOrder): HkpOrderSummary {
   const firstItem = order.items?.[0];
+  const quantity = Number(firstItem?.quantity);
+  const normalizedQuantity = Number.isFinite(quantity) && quantity > 0 ? quantity : 0;
   return {
     id: order.orderNo,
-    statusText: '待付款',
-    merchantName: 'Hello Kitty Park',
+    statusText: resolveOrderStatusText(order),
+    merchantName: resolveMerchantName(order),
     products: [
       {
         id: firstItem?.itemId || order.orderNo,
@@ -30,11 +57,11 @@ function mapOrderSummary(order: BffOrder): HkpOrderSummary {
         subtitle: firstItem?.skuId || firstItem?.attributes?.ratePlanId,
         image: { src: '' },
         price: formatCent(firstItem?.unitPriceCent || order.payableAmountCent),
-        quantity: firstItem?.quantity || 1,
+        quantity: normalizedQuantity,
       },
     ],
     totalAmount: formatCent(order.payableAmountCent),
-    countText: `共${firstItem?.quantity || 1}件`,
+    countText: normalizedQuantity > 0 ? `共${normalizedQuantity}件` : '',
   };
 }
 

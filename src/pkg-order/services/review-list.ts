@@ -1,9 +1,12 @@
-import { resolveMockData } from '@/core/services/mock';
-import { reviewListData, type OrderReviewListData } from './mock-data';
+import { ORDER_REVIEW_UNAVAILABLE_MESSAGE } from './review-create';
+import type { OrderReviewListData } from './model';
 
-export type { OrderReviewListData } from './mock-data';
+export type { OrderReviewListData } from './model';
 
-// 获取评价列表页面数据，后续接真实接口时在这里处理字段归一和异常态/空态转译。
-export function fetchReviewListData() {
-  return resolveMockData<OrderReviewListData>(reviewListData);
+export async function fetchReviewListData(): Promise<OrderReviewListData> {
+  return {
+    filters: [],
+    reviews: [],
+    unavailableReason: ORDER_REVIEW_UNAVAILABLE_MESSAGE,
+  };
 }

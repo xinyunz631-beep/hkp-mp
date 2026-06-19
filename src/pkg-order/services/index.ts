@@ -17,6 +17,10 @@ function formatCent(value?: number) {
   return `¥${((value || 0) / 100).toFixed(2)}`;
 }
 
+function normalizeString(value?: string) {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
 function formatDate(value?: string) {
   if (!value) return '';
   return value.slice(0, 10);
@@ -50,6 +54,55 @@ function resolveItemTitle(order: BffOrder) {
     || `${order.sceneType || ''}订单`;
 }
 
+function resolveMerchantName(order: BffOrder) {
+  return normalizeString(
+    order.context?.merchantName
+      || order.items?.[0]?.attributes?.merchantName
+      || order.items?.[0]?.attributes?.shopName,
+  );
+}
+
+function resolveItemImage(order: BffOrder) {
+  const firstItem = order.items?.[0];
+  return normalizeString(
+    firstItem?.attributes?.imageUrl
+      || firstItem?.attributes?.imageSrc
+      || firstItem?.attributes?.mainImageUrl,
+  );
+}
+
+function resolveItemSubtitle(order: BffOrder) {
+  const firstItem = order.items?.[0];
+  if (order.sceneType === 'HOTEL') {
+    return `${order.context?.checkInDate || ''} - ${order.context?.checkOutDate || ''}`;
+  }
+  if (order.sceneType === 'MALL') {
+    return normalizeString(
+      firstItem?.attributes?.specName
+        || firstItem?.attributes?.skuName
+        || firstItem?.skuId,
+    );
+  }
+  return normalizeString(firstItem?.attributes?.visitDate || order.context?.visitDate);
+}
+
+function resolveItemQuantity(order: BffOrder) {
+  const quantity = Number(order.items?.[0]?.quantity);
+  return Number.isFinite(quantity) && quantity > 0 ? quantity : 0;
+}
+
+function hasMallLogisticsContext(order: BffOrder) {
+  if (order.sceneType !== 'MALL') return false;
+  return Boolean(normalizeString(
+    order.context?.trackingNumber
+      || order.context?.waybillNo
+      || order.context?.logisticsNo
+      || order.context?.deliveryNo
+      || order.items?.[0]?.attributes?.trackingNumber
+      || order.items?.[0]?.attributes?.waybillNo,
+  ));
+}
+
 function resolveOrderActions(order: BffOrder): OrderHomeActionData[] {
   if (['PENDING_PAYMENT', 'PAYING'].includes(order.orderStatus || '')) {
     return [
@@ -57,21 +110,25 @@ function resolveOrderActions(order: BffOrder): OrderHomeActionData[] {
       { text: '继续支付', tone: 'primary' },
     ];
   }
+  if (hasMallLogisticsContext(order)) {
+    return [
+      { text: '查看物流', tone: 'default' },
+      { text: '查看详情', tone: 'default' },
+    ];
+  }
   return [{ text: '查看详情', tone: 'default' }];
 }
 
 function mapOrderItem(order: BffOrder): OrderHomeItemData {
-  const firstItem = order.items?.[0];
-  const subtitle = order.sceneType === 'HOTEL'
-    ? `${order.context?.checkInDate || ''} - ${order.context?.checkOutDate || ''}`
-    : firstItem?.attributes?.visitDate || order.context?.visitDate;
+  const merchantName = resolveMerchantName(order);
   return {
     id: order.orderNo,
     orderId: order.orderNo,
     title: resolveItemTitle(order),
-    subtitle,
-    imageSrc: '',
-    quantity: firstItem?.quantity || 1,
+    subtitle: resolveItemSubtitle(order),
+    extraText: order.sceneType === 'MALL' && merchantName ? merchantName : undefined,
+    imageSrc: resolveItemImage(order),
+    quantity: resolveItemQuantity(order),
     priceText: formatCent(order.payableAmountCent),
     actionText: '查看详情',
     actions: resolveOrderActions(order),

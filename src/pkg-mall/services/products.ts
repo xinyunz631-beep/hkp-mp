@@ -1,6 +1,6 @@
 import { fetchBffMallProducts } from '@/core/services/bff-mall-api';
 import { toMallProductSummary } from './bff-adapter';
-import type { MallProductListData } from './mock-data';
+import type { MallProductListData } from './types';
 
 interface FetchProductsDataOptions {
   keyword?: string;
@@ -30,8 +30,5 @@ export async function fetchProductsData(options: FetchProductsDataOptions = {}) 
     tabs: mallProductListTabs,
     keyword,
     products: (response.list ?? []).map(toMallProductSummary),
-    discountText: '',
-    discountAmount: 0,
-    previewAmount: 0,
   };
 }

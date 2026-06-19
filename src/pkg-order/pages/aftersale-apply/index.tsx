@@ -2,18 +2,13 @@ import { useState } from 'react';
 import Taro from '@tarojs/taro';
 import { Text, Textarea, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
-import { AppIcon } from '@/core/components/AppIcon';
-import { AppImage } from '@/core/components/AppImage';
+import { refundBffOrder } from '@/core/services/bff-order-api';
 import { OrderCard } from '@/core/components/commerce';
 import { PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import { navigateToMiniRoute } from '@/core/utils/navigation';
-import {
-  chooseWechatImages,
-  previewWechatImages,
-  showWechatToast,
-} from '@/core/utils/wechat-actions';
+import { showWechatToast } from '@/core/utils/wechat-actions';
 import { fetchAftersaleApplyData, type OrderAftersaleApplyData } from '@/pkg-order/services/aftersale-apply';
 import './index.scss';
 
@@ -21,7 +16,6 @@ const AftersaleApplyPage = observer(function AftersaleApplyPage() {
   const [pageData, setPageData] = useState<OrderAftersaleApplyData>();
   const [selectedReason, setSelectedReason] = useState('');
   const [remarkText, setRemarkText] = useState('');
-  const [proofImages, setProofImages] = useState<string[]>([]);
   const [routeOrderId, setRouteOrderId] = useState('');
   const pageRuntime = usePageRuntime({
     initPage: async () => {
@@ -39,23 +33,22 @@ const AftersaleApplyPage = observer(function AftersaleApplyPage() {
     loginReason: '登录后可申请售后',
   });
 
-  async function handleUploadProof() {
-    const nextImages = await chooseWechatImages({ count: Math.max(1, 3 - proofImages.length) });
-    if (nextImages.length === 0) return;
-
-    setProofImages((current) => [...current, ...nextImages].slice(0, 3));
-  }
-
   async function handleSubmit() {
     const currentPageData = pageData;
     if (!currentPageData) return;
+    if (!routeOrderId) {
+      await showWechatToast('缺少订单编号，请返回订单详情重试');
+      return;
+    }
 
     if (!selectedReason) {
       await showWechatToast('请选择售后原因');
       return;
     }
 
-    await showWechatToast('售后申请已提交', 'success');
+    const reasonPayload = [selectedReason, remarkText.trim()].filter(Boolean).join('；');
+    await refundBffOrder(routeOrderId, { reason: reasonPayload || selectedReason });
+    await showWechatToast('退款申请已提交', 'success');
     const query = [
       routeOrderId ? `orderId=${encodeURIComponent(routeOrderId)}` : '',
       currentPageData.selectedTypeText ? `type=${encodeURIComponent(currentPageData.selectedTypeText)}` : '',
@@ -119,31 +112,8 @@ const AftersaleApplyPage = observer(function AftersaleApplyPage() {
               <Text className="_pg-editor_count">{remarkText.length}/200</Text>
 
               <View className="_pg-upload">
-                <Text className="_pg-upload_title">{pageData.uploadHintText}</Text>
-                <View className="_pg-upload_list">
-                  {proofImages.map((imageSrc) => (
-                    <View className="_pg-upload_item" key={imageSrc}>
-                      <AppImage
-                        className="_pg-upload_preview"
-                        src={imageSrc}
-                        mode="aspectFill"
-                        onClick={() => previewWechatImages({ urls: proofImages, current: imageSrc })}
-                      />
-                      <View
-                        className="_pg-upload_remove"
-                        onClick={() => setProofImages((current) => current.filter((item) => item !== imageSrc))}
-                      >
-                        <AppIcon name="close" size={12} color="#ffffff" />
-                      </View>
-                    </View>
-                  ))}
-                  {proofImages.length < 3 ? (
-                    <View className="_pg-upload_add" onClick={() => void handleUploadProof()}>
-                      <AppIcon name="photograph" size={16} color="#6b7280" />
-                      <Text className="_pg-upload_text">添加图片</Text>
-                    </View>
-                  ) : null}
-                </View>
+                <Text className="_pg-upload_title">图片凭证</Text>
+                <Text className="_pg-card_hint">{pageData.uploadHintText}</Text>
               </View>
             </View>
 

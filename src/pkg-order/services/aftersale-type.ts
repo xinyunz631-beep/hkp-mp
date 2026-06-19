@@ -1,49 +1,28 @@
-import { resolveMockData } from '@/core/services/mock';
-import { formatCurrency } from '@/core/utils/money';
-import { resolveAftersaleOrder } from './aftersale-context';
-import { aftersaleTypeData, type OrderAftersaleTypeData } from './mock-data';
+import type { OrderAftersaleTypeData } from './model';
+import {
+  canApplyMallRefund,
+  fetchMallAftersaleOrder,
+  mapAftersaleOrderSummary,
+  resolveMallAftersaleAmountText,
+} from './aftersale-context';
 
-export type { OrderAftersaleTypeData } from './mock-data';
+export type { OrderAftersaleTypeData } from './model';
 
-function createAftersaleTypes(order: OrderAftersaleTypeData['order']) {
-  const refundAmountText = formatCurrency(order.totalAmount);
-  if (order.statusText === '待发货') {
-    return [{
-      key: 'refund-only',
-      title: '仅退款',
-      desc: '商品尚未发货，提交后商家会尽快审核',
-      amountText: `预计退款 ${refundAmountText}`,
-      tagText: '推荐',
-    }];
-  }
+export async function fetchAftersaleTypeData(orderId?: string): Promise<OrderAftersaleTypeData> {
+  const order = await fetchMallAftersaleOrder(orderId);
+  const canRefund = canApplyMallRefund(order);
 
-  return [
-    {
-      key: 'return-refund',
-      title: '退货退款',
-      desc: '收到商品后需要寄回时使用',
-      amountText: `最高可退 ${refundAmountText}`,
-      tagText: '推荐',
-    },
-    {
-      key: 'exchange',
-      title: '换货',
-      desc: '商品破损、少件或规格不合适时使用',
-      amountText: '审核通过后安排换货',
-    },
-  ];
-}
-
-// 获取售后类型页面数据，后续接真实接口时在这里处理字段归一和异常态/空态转译。
-export function fetchAftersaleTypeData(orderId?: string) {
-  const order = resolveAftersaleOrder(orderId) ?? aftersaleTypeData.order;
-
-  return resolveMockData<OrderAftersaleTypeData>({
-    ...aftersaleTypeData,
-    order,
-    tipText: order.statusText === '待发货'
-      ? '商品尚未发货，当前优先支持仅退款。'
-      : '根据商品状态可选择退货退款或换货，提交后平台会协助处理。',
-    types: createAftersaleTypes(order),
-  });
+  return {
+    order: mapAftersaleOrderSummary(order),
+    tipText: canRefund
+      ? '当前仅支持申请退款，最终退款金额和处理结果以审核结果为准。'
+      : '当前订单已进入退款处理流程或暂不支持再次申请，退货或换货请联系商家客服协助。',
+    types: [{
+      key: 'refund-request',
+      title: order.orderStatus === 'FULFILLING' ? '申请退款' : '仅退款',
+      desc: '当前仅开放退款申请入口，其他售后方式请联系商家客服。',
+      amountText: `预计退款 ${resolveMallAftersaleAmountText(order)}`,
+      tagText: canRefund ? '当前支持' : '以审核结果为准',
+    }],
+  };
 }

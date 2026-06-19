@@ -21,14 +21,14 @@ export async function fetchCategoryListData() {
   const response = await fetchBffMallCategories({ page: 1, size: 100 });
   const categories = (response.list ?? []).map((category) => ({
     id: category.categoryId || category.title || '',
-    title: category.title || '商品分类',
+    title: category.title || category.categoryId || '商品分类',
   })).filter((category) => category.id);
   const activeCategory = categories[0];
   const brands = (response.list ?? []).map((category) => {
     const id = category.categoryId || category.title || '';
     return {
       id,
-      title: category.title || '商品分类',
+      title: category.title || category.categoryId || '商品分类',
       imageSrc: category.iconUrl || category.bannerUrl || '',
       path: `${MINI_PACKAGE_ROUTES.mallProducts}?categoryId=${encodeURIComponent(id)}`,
     };

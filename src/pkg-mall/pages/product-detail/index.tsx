@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import Taro, { useShareAppMessage } from '@tarojs/taro';
 import { RichText, Swiper, SwiperItem, Text, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
+import { BaseEmpty } from '@/core/components/BaseEmpty';
 import { AppIcon } from '@/core/components/AppIcon';
 import { AppImage } from '@/core/components/AppImage';
 import { AppShareButton } from '@/core/components/AppShareButton';
@@ -27,14 +28,15 @@ import {
 import { MallCartBadge } from '@/pkg-mall/components/MallCartBadge';
 import { useMallCartCount } from '@/pkg-mall/hooks/use-mall-cart-count';
 import { addMallCartItem } from '@/pkg-mall/services/cart';
-import { addMallFavoriteItem } from '@/pkg-mall/services/favorites';
+import {
+  MALL_FAVORITES_UNAVAILABLE_MESSAGE,
+  addMallFavoriteItem,
+} from '@/pkg-mall/services/favorites';
 import { fetchProductDetailData } from '@/pkg-mall/services/product-detail';
-import type { MallProductDetailData, MallSkuVariant } from '@/pkg-mall/services/mock-data';
+import type { MallProductDetailData, MallSkuVariant } from '@/pkg-mall/services/types';
 import './index.scss';
 
 type MallSkuAction = 'cart' | 'buy';
-
-const MALL_SERVICE_PHONE = '4009778899';
 
 function resolveProductRouteId() {
   return Taro.getCurrentInstance().router?.params?.productId;
@@ -79,9 +81,19 @@ const ProductDetailPage = observer(function ProductDetailPage() {
       }
     : product;
   const displayPrice = selectedVariant?.price ?? product?.price;
+  const servicePhone = detailData?.servicePhone?.trim();
+  const merchantName = detailData?.merchantName?.trim() || '商城商品';
+  const attributeLines = detailData?.attributeLines ?? [];
+  const hasSkuConfig = skuVariants.length > 0;
+  const hasCouponCards = coupons.length > 0;
+  const reviewTitle = detailData?.reviewCountText?.trim()
+    ? `评论（${detailData.reviewCountText.trim()}）`
+    : '评论';
+  const hasReviewData = reviews.length > 0;
+  const promoText = detailData?.promoText?.trim() || '优惠信息以下单结算页为准';
 
   useShareAppMessage(() => ({
-    title: product?.title || 'Hello Kitty 乐园官方商城',
+    title: product?.title || '商品详情',
     path: product?.id
       ? `${MINI_PACKAGE_ROUTES.mallProductDetail}?productId=${encodeURIComponent(product.id)}`
       : MINI_PACKAGE_ROUTES.mallHome,
@@ -91,6 +103,10 @@ const ProductDetailPage = observer(function ProductDetailPage() {
   const selectedSkuText = skuState.selectedText;
 
   function openSkuPopup(nextAction: MallSkuAction) {
+    if (!hasSkuConfig) {
+      void showWechatToast('当前商品暂不可下单');
+      return;
+    }
     setSkuAction(nextAction);
     setSkuVisible(true);
   }
@@ -131,7 +147,7 @@ const ProductDetailPage = observer(function ProductDetailPage() {
           quantity,
           unitPrice: selectedVariant.price,
           imageSrc: selectedVariant.imageSrc || product.image.src,
-          merchantName: 'Hello Kitty 官方商城',
+          merchantName,
           giftText: selectedVariant.giftText,
           canRefund: true,
           canAfterSale: true,
@@ -170,16 +186,21 @@ const ProductDetailPage = observer(function ProductDetailPage() {
 
     await showWechatConfirm({
       title: '商品优惠券',
-      content: couponText || '当前暂无可领取优惠券',
+      content: couponText || '当前商品优惠以下单结算页可用结果为准',
       confirmText: '知道了',
       cancelText: '关闭',
     });
   }
 
   async function handleParamsPress() {
+    const paramsContent = [
+      ...attributeLines,
+      detailData?.shippingSummary ? `配送：${detailData.shippingSummary}` : '',
+      detailData?.afterSaleRule ? `售后：${detailData.afterSaleRule}` : '',
+    ].filter(Boolean).join('\n');
     await showWechatConfirm({
       title: '商品参数',
-      content: `品牌：Hello Kitty Park\n规格：${selectedSkuText || '默认规格'}\n材质：亲肤毛绒面料`,
+      content: paramsContent || (selectedSkuText ? `规格：${selectedSkuText}` : '当前暂无更多参数说明'),
       confirmText: '知道了',
       cancelText: '关闭',
     });
@@ -215,8 +236,12 @@ const ProductDetailPage = observer(function ProductDetailPage() {
     const authed = await pageRuntime.ensureLogin('登录后可收藏商品');
     if (!authed) return;
 
-    addMallFavoriteItem(product);
-    await showWechatToast('已收藏', 'success');
+    try {
+      addMallFavoriteItem(product);
+      await showWechatToast('已收藏', 'success');
+    } catch (error) {
+      await showWechatToast(error instanceof Error ? error.message : MALL_FAVORITES_UNAVAILABLE_MESSAGE);
+    }
   }
 
   return pageRuntime.renderPage(() => (
@@ -241,7 +266,11 @@ const ProductDetailPage = observer(function ProductDetailPage() {
               <View
                 className="_pg-footer_action"
                 onClick={() => {
-                  void callWechatPhone(MALL_SERVICE_PHONE);
+                  if (!servicePhone) {
+                    void showWechatToast('当前商品暂未配置客服电话');
+                    return;
+                  }
+                  void callWechatPhone(servicePhone);
                 }}
               >
                 <AppIcon name="service" size={16} color="#6b7280" />
@@ -302,7 +331,7 @@ const ProductDetailPage = observer(function ProductDetailPage() {
             <View className="_pg-info_price-row">
               <View className="_pg-info_price">
                 <Text className="_pg-info_price-current">¥{displayPrice}</Text>
-                <Text className="_pg-info_price-origin">¥{product?.marketPrice}</Text>
+                {typeof product?.marketPrice === 'number' ? <Text className="_pg-info_price-origin">¥{product.marketPrice}</Text> : null}
               </View>
               <View className="_pg-info_icons">
                 <View
@@ -321,42 +350,51 @@ const ProductDetailPage = observer(function ProductDetailPage() {
             <View className="_pg-benefit_row">
               <Text className="_pg-benefit_label">优惠</Text>
               <View className="_pg-benefit_tag">折扣</View>
-              <Text className="_pg-benefit_text">{detailData?.promoText}</Text>
+              <Text className="_pg-benefit_text">{promoText}</Text>
             </View>
-            <View className="_pg-benefit_row" onClick={() => void handleCouponPress()}>
-              <Text className="_pg-benefit_label">领券</Text>
-              <View className="_pg-benefit_coupon-list">
-                {coupons.map((coupon) => (
-                  <View className="_pg-benefit_coupon" key={coupon.id}>
-                    <Text>{coupon.amountText}</Text>
-                  </View>
-                ))}
+            {hasCouponCards ? (
+              <View className="_pg-benefit_row" onClick={() => void handleCouponPress()}>
+                <Text className="_pg-benefit_label">领券</Text>
+                <View className="_pg-benefit_coupon-list">
+                  {coupons.map((coupon) => (
+                    <View className="_pg-benefit_coupon" key={coupon.id}>
+                      <Text>{coupon.amountText}</Text>
+                    </View>
+                  ))}
+                </View>
               </View>
-            </View>
+            ) : (
+              <View className="_pg-benefit_row">
+                <Text className="_pg-benefit_label">优惠券</Text>
+                <Text className="_pg-benefit_text">以下单结算页可用优惠为准</Text>
+              </View>
+            )}
           </View>
 
           <View className="_pg-cells">
             <View className="_pg-cell" onClick={() => openSkuPopup('cart')}>
               <Text className="_pg-cell_label">选择</Text>
-              <Text className="_pg-cell_value">{selectedSkuText || '颜色、尺码'}</Text>
+              <Text className="_pg-cell_value">{selectedSkuText || (hasSkuConfig ? '请选择规格' : '查看商品规格')}</Text>
               <AppIcon name="arrowRight" className="_pg-cell_arrow" size={16} color="#a1a1aa" />
             </View>
             <View className="_pg-cell" onClick={() => void handleParamsPress()}>
               <Text className="_pg-cell_label">参数</Text>
-              <Text className="_pg-cell_value">品牌、型号、材质...</Text>
+              <Text className="_pg-cell_value">{attributeLines[0] || detailData?.shippingSummary || '查看商品参数与配送说明'}</Text>
               <AppIcon name="arrowRight" className="_pg-cell_arrow" size={16} color="#a1a1aa" />
             </View>
           </View>
 
           <View className="_pg-review">
             <View className="_pg-section_header">
-              <Text className="_pg-section_title">评论（{detailData?.reviewCountText || reviews.length}）</Text>
-              <View className="_pg-section_more" onClick={() => Taro.navigateTo({ url: MINI_PACKAGE_ROUTES.orderReviewList })}>
-                <Text>查看更多</Text>
-                <AppIcon name="arrowRight" className="_pg-section_more-icon" size={14} color="#a1a1aa" />
-              </View>
+              <Text className="_pg-section_title">{reviewTitle}</Text>
+              {hasReviewData ? (
+                <View className="_pg-section_more" onClick={() => Taro.navigateTo({ url: MINI_PACKAGE_ROUTES.orderReviewList })}>
+                  <Text>查看更多</Text>
+                  <AppIcon name="arrowRight" className="_pg-section_more-icon" size={14} color="#a1a1aa" />
+                </View>
+              ) : null}
             </View>
-            {reviews.map((review) => (
+            {hasReviewData ? reviews.map((review) => (
               <View className="_pg-review_card" key={review.id}>
                 <View className="_pg-review_tags">
                   {review.tags.map((tag) => (
@@ -380,7 +418,13 @@ const ProductDetailPage = observer(function ProductDetailPage() {
                   ))}
                 </View>
               </View>
-            ))}
+            )) : (
+              <BaseEmpty
+                className="_pg-review_empty"
+                title="暂无商品评价"
+                description="该商品暂时还没有可展示的评价内容"
+              />
+            )}
           </View>
 
           <View className="_pg-recommend">
@@ -435,7 +479,7 @@ const ProductDetailPage = observer(function ProductDetailPage() {
               selectionText={skuState.missingSelectionText || (skuState.selectedText ? `已选 ${skuState.selectedText}` : '')}
               stockText={skuState.stockText}
               maxQuantity={skuState.maxQuantity}
-              submitDisabled={!skuState.isPurchasable}
+              submitDisabled={!hasSkuConfig || !skuState.isPurchasable}
               submitText={skuAction === 'buy' ? '立即购买' : '加入购物车'}
               onClose={() => setSkuVisible(false)}
               onSubmit={() => void handleSkuSubmit()}

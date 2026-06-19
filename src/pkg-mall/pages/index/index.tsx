@@ -30,7 +30,7 @@ import type {
   MallProductDetailData,
   MallPromoCard,
   MallSkuVariant,
-} from '@/pkg-mall/services/mock-data';
+} from '@/pkg-mall/services/types';
 import './index.scss';
 
 interface MallFooterItem {
@@ -122,7 +122,7 @@ const MallIndexPage = observer(function MallIndexPage() {
     } : detailData.product, {
       quantity,
       skuId: variant?.id,
-      skuText: variant?.skuText || detailData.product.subtitle || '默认规格',
+      skuText: variant?.skuText || detailData.product.subtitle || '',
       giftText: variant?.giftText,
       shippingRule: variant?.shippingRule,
     });

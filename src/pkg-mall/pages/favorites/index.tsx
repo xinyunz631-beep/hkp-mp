@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import Taro, { useShareAppMessage } from '@tarojs/taro';
 import { Text, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
+import { BaseEmpty } from '@/core/components/BaseEmpty';
 import { AppImage } from '@/core/components/AppImage';
 import { AppShareButton } from '@/core/components/AppShareButton';
 import { PageShell } from '@/core/components/PageShell';
@@ -32,6 +33,8 @@ const FavoritesPage = observer(function FavoritesPage() {
 
   const filters = favoritesData?.filters ?? [];
   const items = favoritesData?.items ?? [];
+  const totalCount = favoritesData?.totalCount;
+  const unavailableReason = favoritesData?.unavailableReason;
   const selectedItem = items.find((item) => item.id === selectedItemId);
 
   const visibleItems = useMemo(() => {
@@ -43,7 +46,7 @@ const FavoritesPage = observer(function FavoritesPage() {
   }, [activeFilter, items]);
 
   useShareAppMessage(() => ({
-    title: selectedItem?.title || 'Hello Kitty 乐园官方商城',
+    title: selectedItem?.title || '我的收藏',
     path: selectedItem
       ? `${MINI_PACKAGE_ROUTES.mallProductDetail}?productId=${encodeURIComponent(selectedItem.id)}`
       : MINI_PACKAGE_ROUTES.mallFavorites,
@@ -101,77 +104,91 @@ const FavoritesPage = observer(function FavoritesPage() {
         className="_pg-shell"
         reserveTabBarSpace={false}
         scrollViewProps={{}}
-        navbarRight={(
+        navbarRight={visibleItems.length > 0 && !unavailableReason ? (
           <Text className="_pg-navbar_action" onClick={() => setEditMode((currentValue) => !currentValue)}>
             {editMode ? '完成' : '编辑'}
           </Text>
-        )}
+        ) : undefined}
       >
         <View className="_pg-page">
-          <View className="_pg-filter">
-            {filters.map((filter) => (
-              <View
-                className={`_pg-filter_item ${activeFilter === filter ? '_pg-filter_item--active' : ''}`}
-                key={filter}
-                onClick={() => setActiveFilter(filter)}
-              >
-                <Text>{filter}</Text>
-              </View>
-            ))}
-          </View>
+          {filters.length > 0 ? (
+            <View className="_pg-filter">
+              {filters.map((filter) => (
+                <View
+                  className={`_pg-filter_item ${activeFilter === filter ? '_pg-filter_item--active' : ''}`}
+                  key={filter}
+                  onClick={() => setActiveFilter(filter)}
+                >
+                  <Text>{filter}</Text>
+                </View>
+              ))}
+            </View>
+          ) : null}
 
-          <View className="_pg-list">
-            {visibleItems.map((item) => {
-              const selected = editMode && selectedItemId === item.id;
+          {visibleItems.length > 0 ? (
+            <View className="_pg-list">
+              {visibleItems.map((item) => {
+                const selected = editMode && selectedItemId === item.id;
 
-              return (
-                <View className="_pg-item" key={item.id} onClick={() => handleCardPress(item.id)}>
-                  <AppImage className="_pg-item_image" src={item.image.src} mode="aspectFit" emptyState="error" />
-                  <View className="_pg-item_body">
-                    <Text className="_pg-item_title">{item.title}</Text>
-                    {item.invalid ? (
-                      <Text className="_pg-item_status">失效</Text>
-                    ) : (
-                      <Text className="_pg-item_price">¥ {item.price}</Text>
-                    )}
-                  </View>
+                return (
+                  <View className="_pg-item" key={item.id} onClick={() => handleCardPress(item.id)}>
+                    <AppImage className="_pg-item_image" src={item.image.src} mode="aspectFit" emptyState="error" />
+                    <View className="_pg-item_body">
+                      <Text className="_pg-item_title">{item.title}</Text>
+                      {item.invalid ? (
+                        <Text className="_pg-item_status">失效</Text>
+                      ) : (
+                        <Text className="_pg-item_price">¥ {item.price}</Text>
+                      )}
+                    </View>
 
-                  {selected ? (
-                    <View className="_pg-item_overlay">
-                      <View className="_pg-item_actions">
-                        <View
-                          className="_pg-item_action"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            void handleEditAction(item, 'cart');
-                          }}
-                        >
-                          <Text>选规格</Text>
-                        </View>
-                        <AppShareButton
-                          className="_pg-item_action _pg-item_action--button"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                          }}
-                        >
-                          <Text>请分享</Text>
-                        </AppShareButton>
-                        <View
-                          className="_pg-item_action"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            void handleEditAction(item, 'delete');
-                          }}
-                        >
-                          <Text>删除</Text>
+                    {selected ? (
+                      <View className="_pg-item_overlay">
+                        <View className="_pg-item_actions">
+                          <View
+                            className="_pg-item_action"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              void handleEditAction(item, 'cart');
+                            }}
+                          >
+                            <Text>选规格</Text>
+                          </View>
+                          <AppShareButton
+                            className="_pg-item_action _pg-item_action--button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                            }}
+                          >
+                            <Text>请分享</Text>
+                          </AppShareButton>
+                          <View
+                            className="_pg-item_action"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              void handleEditAction(item, 'delete');
+                            }}
+                          >
+                            <Text>删除</Text>
+                          </View>
                         </View>
                       </View>
-                    </View>
-                  ) : null}
-                </View>
-              );
-            })}
-          </View>
+                    ) : null}
+                  </View>
+                );
+              })}
+            </View>
+          ) : (
+            <BaseEmpty
+              className="_pg-empty"
+              title={unavailableReason ? '收藏能力升级中' : '暂无收藏商品'}
+              description={unavailableReason
+                ? (typeof totalCount === 'number' && totalCount > 0
+                    ? `当前账号已有 ${totalCount} 条收藏记录，收藏列表暂未开放，请稍后再试。`
+                    : unavailableReason)
+                : '收藏的商品会展示在这里。'}
+            />
+          )}
         </View>
       </PageShell>
     </View>

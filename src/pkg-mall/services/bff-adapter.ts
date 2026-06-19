@@ -16,7 +16,7 @@ import type {
   MallPromoCard,
   MallReviewItem,
   MallSkuVariant,
-} from './mock-data';
+} from './types';
 
 function centToYuan(value?: number) {
   if (typeof value !== 'number' || !Number.isFinite(value)) return 0;
@@ -44,14 +44,14 @@ function normalizeShippingRule(rule?: BffMallShippingRule): MallShippingRule {
   const shippingMode = String(rule?.shippingMode || 'express');
   if (shippingMode === 'pickup') {
     return {
-      mode: 'pickupOnly',
-      reasonText: rule?.reasonText || '该商品仅支持乐园门店自提',
+      mode: 'unsupported',
+      reasonText: rule?.reasonText || '当前商城只支持第三方配送',
     };
   }
   if (shippingMode === 'none') {
     return {
-      mode: 'unsupported',
-      reasonText: rule?.reasonText || '该商品暂不支持配送',
+      mode: 'none',
+      reasonText: rule?.reasonText || '无需物流',
     };
   }
   return {
@@ -67,7 +67,7 @@ export function toMallProductSummary(product: BffMallProduct): HkpProductSummary
   const id = productIdOf(product);
   return {
     id,
-    title: product.title || '乐园商品',
+    title: firstText(product.title, id, '商品'),
     subtitle: product.subtitle || product.tags?.[0] || '',
     image: { src: productImageOf(product) },
     price: centToYuan(product.minPrice),
@@ -81,7 +81,7 @@ export function toMallCategoryItem(category: BffMallCategory): MallCategoryItem 
   const id = firstText(category.categoryId, category.title);
   return {
     id,
-    title: category.title || '商品分类',
+    title: firstText(category.title, category.categoryId, '商品分类'),
     iconSrc: firstText(category.iconUrl, category.bannerUrl),
     path: `${MINI_PACKAGE_ROUTES.mallProducts}?categoryId=${encodeURIComponent(id)}`,
   };
@@ -92,8 +92,8 @@ export function toMallBannerItem(category: BffMallCategory): MallBannerItem | un
   const id = firstText(category.categoryId, category.title);
   return {
     id: `banner-${id}`,
-    title: category.title || '乐园好物',
-    subtitle: (category.linkedProductCount ?? 0) > 0 ? `${category.linkedProductCount} 件好物可选` : '精选周边上新',
+    title: firstText(category.title, category.categoryId, '商品分类'),
+    subtitle: (category.linkedProductCount ?? 0) > 0 ? `${category.linkedProductCount} 件好物可选` : '',
     imageSrc: category.bannerUrl,
     path: `${MINI_PACKAGE_ROUTES.mallProducts}?categoryId=${encodeURIComponent(id)}`,
   };
@@ -106,23 +106,31 @@ export function toMallPromoCard(recommendation: BffMallRecommendation, index: nu
     : '';
   return {
     id,
-    title: recommendation.title || '精选好物',
-    subtitle: recommendation.keyword || '游客喜欢的乐园周边',
+    title: firstText(recommendation.title, recommendation.keyword, '精选推荐'),
+    subtitle: recommendation.keyword || '',
     imageSrc: '',
     accent: index % 3 === 0 ? 'purple' : index % 3 === 1 ? 'orange' : 'pink',
     path: `${MINI_PACKAGE_ROUTES.mallProducts}${couponQuery}`,
   };
 }
 
-function toMallCouponSummary(couponId: string): HkpCouponSummary {
-  return {
-    id: couponId,
-    title: '商品可用优惠',
-    amountText: '优惠券',
-    thresholdText: '下单时自动匹配',
-    validityText: '以券规则为准',
-    status: 'available',
-  };
+function buildAttributeLines(product: BffMallProduct) {
+  const lines: string[] = [];
+  const brandName = firstText(product.brandName);
+  if (brandName) lines.push(`品牌：${brandName}`);
+  Object.entries(product.paramGroups ?? {}).forEach(([name, value]) => {
+    if (name?.trim() && value?.trim()) lines.push(`${name.trim()}：${value.trim()}`);
+  });
+  return lines;
+}
+
+function buildShippingSummary(rule?: BffMallShippingRule) {
+  if (!rule) return '';
+  const shippingMode = String(rule.shippingMode || 'express');
+  if (shippingMode === 'none') return rule.reasonText || '无需物流';
+  if (shippingMode === 'pickup') return rule.reasonText || '当前商城不支持自提，请以实际可售配置为准';
+  const freightAmount = centToYuan(rule.freightAmount);
+  return freightAmount > 0 ? `第三方配送 ¥${freightAmount.toFixed(2)}` : '第三方配送 包邮';
 }
 
 function toMallSkuGroups(product: BffMallProduct): HkpSkuGroup[] {
@@ -131,11 +139,11 @@ function toMallSkuGroups(product: BffMallProduct): HkpSkuGroup[] {
     .sort((prev, next) => (prev.sortOrder ?? 0) - (next.sortOrder ?? 0))
     .map((group) => ({
       id: firstText(group.groupId, group.title),
-      title: group.title || '规格',
+      title: firstText(group.title, group.groupId, '规格'),
       selectedId: group.options?.find((option) => !option.disabled)?.optionId,
       options: (group.options ?? []).map((option) => ({
         id: firstText(option.optionId, option.label),
-        label: option.label || '默认',
+        label: firstText(option.label, option.optionId, '选项'),
         disabled: option.disabled,
         disabledReason: option.disabledReason,
       })),
@@ -151,7 +159,7 @@ function toMallSkuVariant(product: BffMallProduct, sku: BffMallSku): MallSkuVari
     price: centToYuan(sku.price ?? product.minPrice),
     stock: Math.max(0, Number(sku.stock ?? 0)),
     imageSrc: firstText(sku.imageUrl, productImageOf(product)),
-    skuText: sku.skuText || product.subtitle || '默认规格',
+    skuText: firstText(sku.skuText, product.subtitle),
     giftText: sku.giftText,
     shippingRule: normalizeShippingRule(product.shippingRule),
   };
@@ -162,16 +170,7 @@ export function toMallSkuVariants(product: BffMallProduct): MallSkuVariant[] {
   if (skus.length > 0) {
     return skus.map((sku) => toMallSkuVariant(product, sku));
   }
-
-  return [{
-    id: productIdOf(product),
-    optionIds: {},
-    price: centToYuan(product.minPrice),
-    stock: 1,
-    imageSrc: productImageOf(product),
-    skuText: product.subtitle || '默认规格',
-    shippingRule: normalizeShippingRule(product.shippingRule),
-  }];
+  return [];
 }
 
 export function toMallProductDetailData(
@@ -184,20 +183,27 @@ export function toMallProductDetailData(
     ...(product.galleryImages ?? []).map((image) => image.url || ''),
   ].filter(Boolean);
   const detailImages = (product.detailImages ?? []).map((image) => image.url || '').filter(Boolean);
-  const coupons = (product.couponIds ?? []).map(toMallCouponSummary);
+  const coupons: HkpCouponSummary[] = [];
+  const attributeLines = buildAttributeLines(product);
   const reviews: MallReviewItem[] = [];
+  const couponHintText = product.couponIds?.length ? '下单时以结算页可用优惠为准' : '';
   return {
     product: summary,
+    merchantName: firstText(product.merchantName),
     gallery,
     coupons,
     skuGroups: toMallSkuGroups(product),
     skuVariants: toMallSkuVariants(product),
-    promoText: product.promotionText || '',
-    reviewCountText: '0',
+    promoText: firstText(product.promotionText, couponHintText),
+    reviewCountText: '',
     reviews,
     recommendProducts: recommendations,
     detailImages,
     detailHtml: product.detailHtml || '',
+    servicePhone: firstText(product.servicePhone),
+    attributeLines,
+    shippingSummary: buildShippingSummary(product.shippingRule),
+    afterSaleRule: firstText(product.afterSaleRule),
   };
 }
 

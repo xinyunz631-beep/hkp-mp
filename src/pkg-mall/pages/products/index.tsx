@@ -28,7 +28,7 @@ import { addMallCartItem } from '@/pkg-mall/services/cart';
 import { fetchProductDetailData } from '@/pkg-mall/services/product-detail';
 import { fetchProductsData } from '@/pkg-mall/services/products';
 import { saveMallSearchKeyword } from '@/pkg-mall/services/search';
-import type { MallProductDetailData, MallProductListData, MallSkuVariant } from '@/pkg-mall/services/mock-data';
+import type { MallProductDetailData, MallProductListData, MallSkuVariant } from '@/pkg-mall/services/types';
 import './index.scss';
 
 type MallProductsTabKey = 'comprehensive' | 'sales' | 'price' | 'filter';
@@ -271,7 +271,7 @@ const ProductsPage = observer(function ProductsPage() {
     } : detailData.product, {
       quantity,
       skuId: variant?.id,
-      skuText: variant?.skuText || detailData.product.subtitle || '默认规格',
+      skuText: variant?.skuText || detailData.product.subtitle || '',
       giftText: variant?.giftText,
       shippingRule: variant?.shippingRule,
     });
@@ -338,13 +338,6 @@ const ProductsPage = observer(function ProductsPage() {
         scrollViewProps={{}}
         footer={(
           <View className="_pg-footer">
-            <View className="_pg-footer_summary">
-              <View className="_pg-footer_price">
-                <Text className="_pg-footer_label">金额:</Text>
-                <Text className="_pg-footer_amount">¥{(listData?.previewAmount ?? 0).toFixed(2)}</Text>
-              </View>
-              <Text className="_pg-footer_discount">已优惠: ¥{(listData?.discountAmount ?? 0).toFixed(2)}</Text>
-            </View>
             <View
               className="_pg-footer_button"
               onClick={() => {
@@ -411,9 +404,11 @@ const ProductsPage = observer(function ProductsPage() {
         </PageHeader>
 
         <View className="_pg-page">
-          <View className="_pg-discount">
-            <Text>{listData?.discountText}</Text>
-          </View>
+          {listData?.discountText ? (
+            <View className="_pg-discount">
+              <Text>{listData.discountText}</Text>
+            </View>
+          ) : null}
 
           {sortedProducts.length > 0 ? (
             <View className="_pg-list">

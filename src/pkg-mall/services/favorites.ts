@@ -1,6 +1,7 @@
-import { MINI_STORAGE_KEYS } from '@/core/constants/storage';
+import { fetchBffCrmProfile } from '@/core/services/bff-crm-api';
 import type { HkpProductSummary } from '@/core/types/hkp';
-import { getCache, setCache } from '@/core/utils/cache';
+
+export const MALL_FAVORITES_UNAVAILABLE_MESSAGE = '当前暂不支持查看和管理收藏商品';
 
 export type MallFavoriteItem = HkpProductSummary & {
   invalid?: boolean;
@@ -10,43 +11,29 @@ export interface MallFavoritesData {
   filters: string[];
   activeFilter: string;
   items: MallFavoriteItem[];
+  totalCount?: number;
+  unavailableReason?: string;
 }
 
-function normalizeFavoriteItems(data: unknown): MallFavoriteItem[] {
-  if (!Array.isArray(data)) return [];
-  return data.filter((item): item is MallFavoriteItem => Boolean(item?.id && item?.title));
+function normalizeOptionalCount(value?: number) {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0
+    ? value
+    : undefined;
 }
 
-function readLocalFavorites() {
-  return normalizeFavoriteItems(getCache<unknown>(MINI_STORAGE_KEYS.mallFavorites));
-}
-
-function writeLocalFavorites(items: MallFavoriteItem[]) {
-  setCache(MINI_STORAGE_KEYS.mallFavorites, items.slice(0, 50));
-}
-
-// 获取我的收藏页面数据。后端未提供收藏 BFF 前只展示本地收藏，不注入默认商品。
-export function fetchFavoritesData() {
-  const localFavorites = readLocalFavorites();
+// 收藏列表当前只读取真实会员收藏数；收藏列表与增删接口待后端补齐后再开放。
+export async function fetchFavoritesData(): Promise<MallFavoritesData> {
+  const profile = await fetchBffCrmProfile();
 
   return {
-    filters: ['所有分类', '仅看有货'],
-    activeFilter: '所有分类',
-    items: localFavorites,
+    filters: [],
+    activeFilter: '',
+    items: [],
+    totalCount: normalizeOptionalCount(profile.favoriteCount),
+    unavailableReason: MALL_FAVORITES_UNAVAILABLE_MESSAGE,
   };
 }
 
-export function addMallFavoriteItem(product: HkpProductSummary) {
-  const currentFavorites = readLocalFavorites();
-  const nextItem: MallFavoriteItem = {
-    ...product,
-    invalid: false,
-  };
-  const nextFavorites = [
-    nextItem,
-    ...currentFavorites.filter((item) => item.id !== product.id),
-  ];
-
-  writeLocalFavorites(nextFavorites);
-  return nextItem;
+export function addMallFavoriteItem(_product: HkpProductSummary) {
+  throw new Error(MALL_FAVORITES_UNAVAILABLE_MESSAGE);
 }

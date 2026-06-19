@@ -1,6 +1,8 @@
 import { useState } from 'react';
+import Taro from '@tarojs/taro';
 import { Text, Textarea, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
+import { BaseEmpty } from '@/core/components/BaseEmpty';
 import { AppIcon } from '@/core/components/AppIcon';
 import { AppImage } from '@/core/components/AppImage';
 import { PageShell } from '@/core/components/PageShell';
@@ -22,7 +24,8 @@ const ReviewCreatePage = observer(function ReviewCreatePage() {
   const [anonymous, setAnonymous] = useState(false);
   const pageRuntime = usePageRuntime({
     initPage: async () => {
-      const nextData = await fetchReviewCreateData();
+      const orderId = Taro.getCurrentInstance().router?.params?.orderId;
+      const nextData = await fetchReviewCreateData(orderId);
       setPageData(nextData);
       setActiveTagKey(nextData.defaultTagKey);
       setReviewImages(nextData.images.map((image) => image.src).filter(Boolean));
@@ -39,6 +42,11 @@ const ReviewCreatePage = observer(function ReviewCreatePage() {
   }
 
   async function handleSubmit() {
+    if (pageData?.unavailableReason) {
+      await showWechatToast(pageData.unavailableReason);
+      return;
+    }
+
     if (!activeTagKey) {
       await showWechatToast('请选择评价标签');
       return;
@@ -58,7 +66,7 @@ const ReviewCreatePage = observer(function ReviewCreatePage() {
 
     if (!confirmed) return;
 
-    await showWechatToast('评价已提交', 'success');
+    await showWechatToast('当前暂不支持提交评价');
   }
 
   return pageRuntime.renderPage(() => {
@@ -70,7 +78,7 @@ const ReviewCreatePage = observer(function ReviewCreatePage() {
           title="评价晒单"
           className="_pg-shell"
           reserveTabBarSpace={false}
-          footer={(
+          footer={pageData.unavailableReason ? undefined : (
             <View className="_pg-footer">
               <View
                 className="_pg-footer_button"
@@ -82,74 +90,86 @@ const ReviewCreatePage = observer(function ReviewCreatePage() {
           )}
         >
           <View className="_pg-content">
-            <View className="_pg-product">
-              <AppImage
-                className="_pg-product_image"
-                src={pageData.productImageSrc}
-                mode="aspectFill"
-                emptyState="error"
-                onClick={() => previewWechatImages({ urls: [pageData.productImageSrc], emptyText: '暂无商品大图' })}
-              />
-              <View className="_pg-product_main">
-                <Text className="_pg-product_title">{pageData.productTitle}</Text>
-                <Text className="_pg-product_hint">{pageData.hintText}</Text>
+            {pageData.productTitle || pageData.productImageSrc ? (
+              <View className="_pg-product">
+                <AppImage
+                  className="_pg-product_image"
+                  src={pageData.productImageSrc}
+                  mode="aspectFill"
+                  emptyState="error"
+                  onClick={() => previewWechatImages({ urls: [pageData.productImageSrc], emptyText: '暂无商品大图' })}
+                />
+                <View className="_pg-product_main">
+                  <Text className="_pg-product_title">{pageData.productTitle || '订单商品'}</Text>
+                  <Text className="_pg-product_hint">{pageData.hintText || '评价功能暂未开放'}</Text>
+                </View>
               </View>
-            </View>
+            ) : null}
 
-            <View className="_pg-tags">
-              {pageData.tags.map((tag) => (
-                <View
-                  className={`_pg-tags_item ${tag.key === activeTagKey ? '_pg-tags_item--active' : ''}`}
-                  key={tag.key}
-                  onClick={() => setActiveTagKey(tag.key)}
-                >
-                  {tag.text}
-                </View>
-              ))}
-            </View>
-
-            <View className="_pg-editor">
-              <Textarea
-                className="_pg-editor_textarea"
-                value={reviewText}
-                placeholder={pageData.placeholderText}
-                maxlength={pageData.maxLength}
-                onInput={(event) => setReviewText((event.detail.value || '').slice(0, pageData.maxLength))}
+            {pageData.unavailableReason ? (
+              <BaseEmpty
+                className="_pg-empty"
+                title="暂不支持评价"
+                description={pageData.unavailableReason}
               />
-              <Text className="_pg-editor_count">
-                {reviewText.length}/{pageData.maxLength}
-              </Text>
-            </View>
+            ) : (
+              <>
+                <View className="_pg-tags">
+                  {pageData.tags.map((tag) => (
+                    <View
+                      className={`_pg-tags_item ${tag.key === activeTagKey ? '_pg-tags_item--active' : ''}`}
+                      key={tag.key}
+                      onClick={() => setActiveTagKey(tag.key)}
+                    >
+                      {tag.text}
+                    </View>
+                  ))}
+                </View>
 
-            <View className="_pg-images">
-              {reviewImages.map((imageSrc) => (
-                <View className="_pg-images_item" key={imageSrc}>
-                  <AppImage
-                    className="_pg-images_preview"
-                    src={imageSrc}
-                    mode="aspectFill"
-                    emptyState="error"
-                    onClick={() => previewWechatImages({ urls: reviewImages, current: imageSrc })}
+                <View className="_pg-editor">
+                  <Textarea
+                    className="_pg-editor_textarea"
+                    value={reviewText}
+                    placeholder={pageData.placeholderText}
+                    maxlength={pageData.maxLength}
+                    onInput={(event) => setReviewText((event.detail.value || '').slice(0, pageData.maxLength))}
                   />
-                  <View
-                    className="_pg-images_remove"
-                    onClick={() => setReviewImages((current) => current.filter((item) => item !== imageSrc))}
-                  >
-                    <AppIcon name="close" size={12} color="#ffffff" />
-                  </View>
+                  <Text className="_pg-editor_count">
+                    {reviewText.length}/{pageData.maxLength}
+                  </Text>
                 </View>
-              ))}
-              {reviewImages.length < 6 ? (
-                <View className="_pg-images_add" onClick={() => void handleUploadImage()}>
-                  <AppIcon name="photograph" size={16} color="#4b5563" />
-                </View>
-              ) : null}
-            </View>
 
-            <View className="_pg-anonymous" onClick={() => setAnonymous((current) => !current)}>
-              <View className={`_pg-anonymous_check ${anonymous ? '_pg-anonymous_check--active' : ''}`} />
-              <Text className="_pg-anonymous_text">{pageData.anonymousText}</Text>
-            </View>
+                <View className="_pg-images">
+                  {reviewImages.map((imageSrc) => (
+                    <View className="_pg-images_item" key={imageSrc}>
+                      <AppImage
+                        className="_pg-images_preview"
+                        src={imageSrc}
+                        mode="aspectFill"
+                        emptyState="error"
+                        onClick={() => previewWechatImages({ urls: reviewImages, current: imageSrc })}
+                      />
+                      <View
+                        className="_pg-images_remove"
+                        onClick={() => setReviewImages((current) => current.filter((item) => item !== imageSrc))}
+                      >
+                        <AppIcon name="close" size={12} color="#ffffff" />
+                      </View>
+                    </View>
+                  ))}
+                  {reviewImages.length < 6 ? (
+                    <View className="_pg-images_add" onClick={() => void handleUploadImage()}>
+                      <AppIcon name="photograph" size={16} color="#4b5563" />
+                    </View>
+                  ) : null}
+                </View>
+
+                <View className="_pg-anonymous" onClick={() => setAnonymous((current) => !current)}>
+                  <View className={`_pg-anonymous_check ${anonymous ? '_pg-anonymous_check--active' : ''}`} />
+                  <Text className="_pg-anonymous_text">{pageData.anonymousText}</Text>
+                </View>
+              </>
+            )}
           </View>
         </PageShell>
       </View>

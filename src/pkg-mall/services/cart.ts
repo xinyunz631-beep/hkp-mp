@@ -10,11 +10,11 @@ import {
 } from '@/core/services/bff-mall-api';
 import type { MallShippingRule } from '@/core/services/mall-checkout-draft';
 import type { HkpProductSummary } from '@/core/types/hkp';
-import type { MallCartData, MallCartItem, MallCartMerchantGroup } from './mock-data';
+import type { MallCartData, MallCartItem, MallCartMerchantGroup } from './types';
 import { toMallProductSummary } from './bff-adapter';
 
 export const MALL_CART_COUNT_CHANGE_EVENT = 'hkp:mall-cart-count-change';
-const HIDDEN_CART_TAG_KEYWORDS = ['本地', '可直接', '直接结算', '直接计算', 'mock', '测试', '开发'];
+const HIDDEN_CART_TAG_KEYWORDS = ['本地', '可直接', '直接结算', '直接计算', '测试', '开发'];
 
 interface AddMallCartItemOptions {
   quantity?: number;
@@ -46,17 +46,23 @@ function sanitizePromotionTags(tags: unknown): string[] {
 }
 
 function normalizeShippingRule(rule?: BffMallCartItem['shippingRule']): MallShippingRule {
-  const shippingMode = String(rule?.shippingMode || 'express');
+  const shippingMode = String(rule?.shippingMode || '');
+  if (!rule || !shippingMode) {
+    return {
+      mode: 'unsupported',
+      reasonText: '当前商品暂不可配送',
+    };
+  }
   if (shippingMode === 'pickup') {
     return {
-      mode: 'pickupOnly',
-      reasonText: rule?.reasonText || '该商品仅支持乐园门店自提',
+      mode: 'unsupported',
+      reasonText: rule?.reasonText || '当前商城只支持第三方配送',
     };
   }
   if (shippingMode === 'none') {
     return {
-      mode: 'unsupported',
-      reasonText: rule?.reasonText || '该商品暂不支持配送',
+      mode: 'none',
+      reasonText: rule?.reasonText || '无需物流',
     };
   }
   return {
@@ -89,7 +95,7 @@ function toMallCartItem(item: BffMallCartItem): MallCartItem {
     id: item.id,
     productId,
     skuId,
-    title: normalizeString(item.title) || '乐园商品',
+    title: normalizeString(item.title) || normalizeString(item.productId) || '商品',
     subtitle: normalizeString(item.subtitle),
     image: {
       src: imageSrcOf(item),
@@ -101,8 +107,8 @@ function toMallCartItem(item: BffMallCartItem): MallCartItem {
     salesText: normalizeString(item.salesText),
     quantity: Math.max(1, Number(item.quantity) || 1),
     checked: item.checked !== false,
-    skuText: normalizeString(item.skuText) || '默认规格',
-    merchantName: normalizeString(item.merchantName) || 'Hello Kitty 官方商城',
+    skuText: normalizeString(item.skuText) || normalizeString(item.subtitle),
+    merchantName: normalizeString(item.merchantName),
     promotionTags: sanitizePromotionTags(item.promotionTags),
     giftText: normalizeString(item.giftText),
     canRefund: item.canRefund !== false,
@@ -117,7 +123,7 @@ function toMallCartData(data: BffMallCartData): MallCartData {
     : data.items && data.items.length > 0
       ? [{
         id: 'default',
-        merchantName: 'Hello Kitty 官方商城',
+        merchantName: '',
         promotionTags: [],
         items: data.items,
       }]
@@ -125,7 +131,7 @@ function toMallCartData(data: BffMallCartData): MallCartData {
   const groups: MallCartMerchantGroup[] = sourceGroups
     .map((group) => ({
       id: group.id,
-      merchantName: normalizeString(group.merchantName) || 'Hello Kitty 官方商城',
+      merchantName: normalizeString(group.merchantName),
       promotionTags: sanitizePromotionTags(group.promotionTags),
       items: (group.items ?? []).map(toMallCartItem),
     }))
@@ -172,7 +178,7 @@ export async function fetchMallCartCount() {
 
 // 加入后端真实购物车，前端只提交商品、SKU、数量等业务字段。
 export async function addMallCartItem(product: HkpProductSummary, options: AddMallCartItemOptions = {}) {
-  const skuText = options.skuText || product.subtitle || '默认规格';
+  const skuText = options.skuText || product.subtitle || '';
   const data = toMallCartData(await addBffMallCartItem({
     productId: product.id,
     spuId: product.id,
