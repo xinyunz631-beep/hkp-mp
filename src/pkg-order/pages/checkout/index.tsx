@@ -5,8 +5,8 @@ import { observer } from 'mobx-react';
 import { useState } from 'react';
 import { AppIcon } from '@/core/components/AppIcon';
 import { AppImage } from '@/core/components/AppImage';
-import { FixedSubmitBar } from '@/core/components/commerce';
-import { PageShell } from '@/core/components/PageShell';
+import { CouponSelectionPopup, FixedSubmitBar } from '@/core/components/commerce';
+import { PageShare, PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import { resolveErrorMessage } from '@/core/utils/error-message';
@@ -26,23 +26,36 @@ function resolveCheckoutRouteParams() {
 
 const CheckoutPage = observer(function CheckoutPage() {
   const [checkoutData, setCheckoutData] = useState<OrderCheckoutData>();
+  const [selectedCouponId, setSelectedCouponId] = useState<string>();
+  const [couponPopupVisible, setCouponPopupVisible] = useState(false);
   const pageRuntime = usePageRuntime({
     initPage: async () => {
-      const nextData = await fetchCheckoutData(resolveCheckoutRouteParams());
+      const nextData = await fetchCheckoutData({
+        ...resolveCheckoutRouteParams(),
+        selectedCouponId,
+      });
       setCheckoutData(nextData);
+      setSelectedCouponId(nextData.selectedCouponId);
+      setCouponPopupVisible(false);
     },
     refreshOnShow: true,
   });
 
-  async function handleCouponPress() {
+  async function refreshCheckoutByCoupon(nextCouponId?: string) {
     if (!checkoutData) return;
 
-    await showWechatConfirm({
-      title: '优惠券',
-      content: `${checkoutData.couponText} 已自动匹配当前订单，支付时将同步抵扣。`,
-      confirmText: '知道了',
-      cancelText: '关闭',
-    });
+    try {
+      const nextData = await pageRuntime.withLoading(() => fetchCheckoutData({
+        draftId: checkoutData.draftId,
+        addressId: checkoutData.address.id,
+        selectedCouponId: nextCouponId,
+      }));
+      setCheckoutData(nextData);
+      setSelectedCouponId(nextData.selectedCouponId);
+      setCouponPopupVisible(false);
+    } catch (error) {
+      await showWechatToast(resolveErrorMessage(error, '优惠券暂不可用，请稍后再试'));
+    }
   }
 
   async function handleDiscountPress() {
@@ -116,7 +129,13 @@ const CheckoutPage = observer(function CheckoutPage() {
 
   return pageRuntime.renderPage(() => {
     if (!checkoutData) return null;
-    const hasCouponDiscount = checkoutData.discountAmount > 0 && checkoutData.couponText.trim().length > 0;
+    const couponOptions = checkoutData.coupons ?? [];
+    const selectedCoupon = couponOptions.find((coupon) => coupon.id === selectedCouponId);
+    const hasCoupons = couponOptions.length > 0;
+    const couponText = selectedCoupon
+      ? `${selectedCoupon.amountText} ${selectedCoupon.thresholdText}`
+      : '请选择优惠券';
+    const hasCouponDiscount = checkoutData.discountAmount > 0;
     const deliveryErrors = checkoutData.deliveryErrors ?? [];
     const deliveryUnavailable = checkoutData.canSubmit === false;
 
@@ -226,30 +245,30 @@ const CheckoutPage = observer(function CheckoutPage() {
               </View>
             </View>
 
-            {hasCouponDiscount ? (
-              <>
-                <View className="_pg-card _pg-card--compact">
-                  <View className="_pg-line-row _pg-line-row--link" onClick={() => void handleCouponPress()}>
-                    <Text className="_pg-line-row_label">优惠券</Text>
-                    <View className="_pg-line-row_value-wrap">
-                      <Text className="_pg-line-row_coupon">{checkoutData.couponText}</Text>
-                      <AppIcon name="arrowRight" className="_pg-line-row_chevron" size={16} color="#c0c5cf" />
-                    </View>
+            {hasCoupons ? (
+              <View className="_pg-card _pg-card--compact">
+                <View className="_pg-line-row _pg-line-row--link" onClick={() => setCouponPopupVisible(true)}>
+                  <Text className="_pg-line-row_label">优惠券</Text>
+                  <View className="_pg-line-row_value-wrap">
+                    <Text className="_pg-line-row_coupon">{couponText}</Text>
+                    <AppIcon name="arrowRight" className="_pg-line-row_chevron" size={16} color="#c0c5cf" />
                   </View>
                 </View>
+              </View>
+            ) : null}
 
-                <View className="_pg-card _pg-card--compact">
-                  <View className="_pg-line-row _pg-line-row--link" onClick={() => void handleDiscountPress()}>
-                    <Text className="_pg-line-row_label">折扣信息</Text>
-                    <View className="_pg-line-row_value-wrap">
-                      <Text className="_pg-line-row_value">
-                        {checkoutData.discountText === '无可用' ? `已优惠 ¥${checkoutData.discountAmount.toFixed(2)}` : checkoutData.discountText}
-                      </Text>
-                      <AppIcon name="arrowRight" className="_pg-line-row_chevron" size={16} color="#c0c5cf" />
-                    </View>
+            {hasCouponDiscount ? (
+              <View className="_pg-card _pg-card--compact">
+                <View className="_pg-line-row _pg-line-row--link" onClick={() => void handleDiscountPress()}>
+                  <Text className="_pg-line-row_label">折扣信息</Text>
+                  <View className="_pg-line-row_value-wrap">
+                    <Text className="_pg-line-row_value">
+                      {checkoutData.discountText === '无可用' ? `已优惠 ¥${checkoutData.discountAmount.toFixed(2)}` : checkoutData.discountText}
+                    </Text>
+                    <AppIcon name="arrowRight" className="_pg-line-row_chevron" size={16} color="#c0c5cf" />
                   </View>
                 </View>
-              </>
+              </View>
             ) : null}
 
             <View className="_pg-card">
@@ -261,6 +280,23 @@ const CheckoutPage = observer(function CheckoutPage() {
               ))}
             </View>
           </View>
+          <PageShare>
+            {hasCoupons ? (
+              <CouponSelectionPopup
+                visible={couponPopupVisible}
+                coupons={couponOptions}
+                selectedCouponId={selectedCouponId}
+                clearText="不使用优惠券"
+                onClose={() => setCouponPopupVisible(false)}
+                onClear={() => {
+                  void refreshCheckoutByCoupon(undefined);
+                }}
+                onSelect={(coupon) => {
+                  void refreshCheckoutByCoupon(coupon.id);
+                }}
+              />
+            ) : null}
+          </PageShare>
         </PageShell>
       </View>
     );

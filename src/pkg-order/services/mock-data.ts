@@ -1,4 +1,4 @@
-import type { HkpAddressSummary, HkpFilterTab, HkpOrderSummary } from '@/core/types/hkp';
+import type { HkpAddressSummary, HkpCouponSummary, HkpFilterTab, HkpOrderSummary } from '@/core/types/hkp';
 
 const orderImageAssets = {
   plush: 'https://images.unsplash.com/photo-1596461404969-9ae70f2830c1?auto=format&fit=crop&w=900&q=80',
@@ -116,6 +116,8 @@ export interface OrderCheckoutData {
   canSubmit?: boolean;
   deliveryErrors?: string[];
   couponText: string;
+  selectedCouponId?: string;
+  coupons: HkpCouponSummary[];
   discountText: string;
   amountFields: OrderDetailFieldData[];
   totalAmount: number;
@@ -507,6 +509,7 @@ export const orderCheckoutData: OrderCheckoutData = {
   ],
   shippingText: '中通快递',
   couponText: '',
+  coupons: [],
   discountText: '',
   amountFields: [
     { label: '商品金额', value: '¥699.80' },
