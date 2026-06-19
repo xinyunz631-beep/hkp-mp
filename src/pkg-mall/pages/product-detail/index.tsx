@@ -29,7 +29,6 @@ import { MallCartBadge } from '@/pkg-mall/components/MallCartBadge';
 import { useMallCartCount } from '@/pkg-mall/hooks/use-mall-cart-count';
 import { addMallCartItem } from '@/pkg-mall/services/cart';
 import {
-  MALL_FAVORITES_UNAVAILABLE_MESSAGE,
   addMallFavoriteItem,
 } from '@/pkg-mall/services/favorites';
 import { fetchProductDetailData } from '@/pkg-mall/services/product-detail';
@@ -237,10 +236,10 @@ const ProductDetailPage = observer(function ProductDetailPage() {
     if (!authed) return;
 
     try {
-      addMallFavoriteItem(product);
+      await addMallFavoriteItem(product);
       await showWechatToast('已收藏', 'success');
     } catch (error) {
-      await showWechatToast(error instanceof Error ? error.message : MALL_FAVORITES_UNAVAILABLE_MESSAGE);
+      await showWechatToast(error instanceof Error ? error.message : '收藏失败，请稍后再试');
     }
   }
 

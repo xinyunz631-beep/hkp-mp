@@ -9,7 +9,7 @@ import { PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import { showWechatConfirm, showWechatToast } from '@/core/utils/wechat-actions';
-import { fetchFavoritesData } from '@/pkg-mall/services/favorites';
+import { fetchFavoritesData, removeMallFavoriteItem } from '@/pkg-mall/services/favorites';
 import './index.scss';
 
 type FavoriteItem = Awaited<ReturnType<typeof fetchFavoritesData>>['items'][number];
@@ -34,7 +34,6 @@ const FavoritesPage = observer(function FavoritesPage() {
   const filters = favoritesData?.filters ?? [];
   const items = favoritesData?.items ?? [];
   const totalCount = favoritesData?.totalCount;
-  const unavailableReason = favoritesData?.unavailableReason;
   const selectedItem = items.find((item) => item.id === selectedItemId);
 
   const visibleItems = useMemo(() => {
@@ -85,6 +84,7 @@ const FavoritesPage = observer(function FavoritesPage() {
     });
     if (!confirmed) return;
 
+    await removeMallFavoriteItem(item.id);
     setFavoritesData((currentData) => {
       if (!currentData) return currentData;
       const nextItems = currentData.items.filter((currentItem) => currentItem.id !== item.id);
@@ -92,6 +92,10 @@ const FavoritesPage = observer(function FavoritesPage() {
       return {
         ...currentData,
         items: nextItems,
+        filters: nextItems.some((currentItem) => currentItem.invalid) ? ['全部', '仅看有货'] : [],
+        totalCount: typeof currentData.totalCount === 'number'
+          ? Math.max(0, currentData.totalCount - 1)
+          : nextItems.length,
       };
     });
     await showWechatToast('已删除收藏', 'success');
@@ -104,7 +108,7 @@ const FavoritesPage = observer(function FavoritesPage() {
         className="_pg-shell"
         reserveTabBarSpace={false}
         scrollViewProps={{}}
-        navbarRight={visibleItems.length > 0 && !unavailableReason ? (
+        navbarRight={visibleItems.length > 0 ? (
           <Text className="_pg-navbar_action" onClick={() => setEditMode((currentValue) => !currentValue)}>
             {editMode ? '完成' : '编辑'}
           </Text>
@@ -181,11 +185,9 @@ const FavoritesPage = observer(function FavoritesPage() {
           ) : (
             <BaseEmpty
               className="_pg-empty"
-              title={unavailableReason ? '收藏能力升级中' : '暂无收藏商品'}
-              description={unavailableReason
-                ? (typeof totalCount === 'number' && totalCount > 0
-                    ? `当前账号已有 ${totalCount} 条收藏记录，收藏列表暂未开放，请稍后再试。`
-                    : unavailableReason)
+              title="暂无收藏商品"
+              description={typeof totalCount === 'number' && totalCount > 0
+                ? '收藏商品已全部失效或移除，请返回商城挑选最新商品。'
                 : '收藏的商品会展示在这里。'}
             />
           )}

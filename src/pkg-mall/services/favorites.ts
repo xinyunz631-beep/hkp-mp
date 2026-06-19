@@ -1,7 +1,10 @@
-import { fetchBffCrmProfile } from '@/core/services/bff-crm-api';
+import {
+  addBffMallFavorite,
+  deleteBffMallFavorite,
+  fetchBffMallFavorites,
+  type BffMallFavoriteItem,
+} from '@/core/services/bff-mall-api';
 import type { HkpProductSummary } from '@/core/types/hkp';
-
-export const MALL_FAVORITES_UNAVAILABLE_MESSAGE = '当前暂不支持查看和管理收藏商品';
 
 export type MallFavoriteItem = HkpProductSummary & {
   invalid?: boolean;
@@ -12,7 +15,6 @@ export interface MallFavoritesData {
   activeFilter: string;
   items: MallFavoriteItem[];
   totalCount?: number;
-  unavailableReason?: string;
 }
 
 function normalizeOptionalCount(value?: number) {
@@ -21,19 +23,41 @@ function normalizeOptionalCount(value?: number) {
     : undefined;
 }
 
-// 收藏列表当前只读取真实会员收藏数；收藏列表与增删接口待后端补齐后再开放。
-export async function fetchFavoritesData(): Promise<MallFavoritesData> {
-  const profile = await fetchBffCrmProfile();
-
+function toMallFavoriteItem(item: BffMallFavoriteItem): MallFavoriteItem {
   return {
-    filters: [],
-    activeFilter: '',
-    items: [],
-    totalCount: normalizeOptionalCount(profile.favoriteCount),
-    unavailableReason: MALL_FAVORITES_UNAVAILABLE_MESSAGE,
+    id: item.id || '',
+    title: item.title || item.id || '商品',
+    subtitle: item.subtitle || '',
+    image: {
+      src: item.image?.src || '',
+      alt: item.image?.alt || item.title || item.id || '商品',
+    },
+    price: typeof item.price === 'number' && Number.isFinite(item.price) ? item.price : 0,
+    marketPrice: typeof item.marketPrice === 'number' && Number.isFinite(item.marketPrice) ? item.marketPrice : undefined,
+    tag: item.tag || '',
+    salesText: item.salesText || '',
+    invalid: item.invalid,
   };
 }
 
-export function addMallFavoriteItem(_product: HkpProductSummary) {
-  throw new Error(MALL_FAVORITES_UNAVAILABLE_MESSAGE);
+export async function fetchFavoritesData(): Promise<MallFavoritesData> {
+  const data = await fetchBffMallFavorites();
+  const items = (data.items ?? [])
+    .map(toMallFavoriteItem)
+    .filter((item) => item.id);
+
+  return {
+    filters: items.some((item) => item.invalid) ? ['全部', '仅看有货'] : [],
+    activeFilter: '',
+    items,
+    totalCount: normalizeOptionalCount(data.totalCount) ?? items.length,
+  };
+}
+
+export async function addMallFavoriteItem(product: HkpProductSummary) {
+  await addBffMallFavorite({ productId: product.id });
+}
+
+export async function removeMallFavoriteItem(productId: string) {
+  await deleteBffMallFavorite(productId);
 }

@@ -192,6 +192,33 @@ export interface BffMallCartCountData {
   totalQuantity?: number;
 }
 
+export interface BffMallFavoriteImage {
+  src?: string;
+  alt?: string;
+}
+
+export interface BffMallFavoriteItem {
+  id?: string;
+  title?: string;
+  subtitle?: string;
+  image?: BffMallFavoriteImage;
+  price?: number;
+  marketPrice?: number;
+  tag?: string;
+  salesText?: string;
+  invalid?: boolean;
+  favoritedAt?: string;
+}
+
+export interface BffMallFavoritesData {
+  items?: BffMallFavoriteItem[];
+  totalCount?: number;
+}
+
+export interface BffMallFavoriteMutationResult {
+  favorited?: boolean;
+}
+
 export interface BffAddMallCartItemRequest {
   productId: string;
   spuId?: string;
@@ -204,6 +231,11 @@ export interface BffAddMallCartItemRequest {
 export interface BffUpdateMallCartItemRequest {
   quantity?: number;
   checked?: boolean;
+}
+
+export interface BffAddMallFavoriteRequest {
+  productId: string;
+  spuId?: string;
 }
 
 export interface FetchBffMallProductsParams {
@@ -315,6 +347,33 @@ export function fetchBffMallAvailableGifts(params: FetchBffMallGiftsParams = {})
       size: params.size,
     }),
     method: 'GET',
+  });
+}
+
+// 查询当前登录用户真实收藏列表，商品是否失效由 BFF 结合商城可售状态返回。
+export function fetchBffMallFavorites() {
+  return request<BffMallFavoritesData>({
+    url: '/api/bff/mall/favorites',
+    method: 'GET',
+  });
+}
+
+// 收藏当前商品，写接口必须携带 BFF 签名。
+export function addBffMallFavorite(data: BffAddMallFavoriteRequest) {
+  return request<BffMallFavoriteMutationResult, BffAddMallFavoriteRequest>({
+    url: '/api/bff/mall/favorites',
+    method: 'POST',
+    data,
+    sign: true,
+  });
+}
+
+// 取消收藏当前商品，路径参数使用商品编号。
+export function deleteBffMallFavorite(productId: string) {
+  return request<BffMallFavoriteMutationResult>({
+    url: `/api/bff/mall/favorites/${encodeURIComponent(productId)}`,
+    method: 'DELETE',
+    sign: true,
   });
 }
 
