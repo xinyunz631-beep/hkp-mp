@@ -69,6 +69,14 @@ function formatYuan(amountCent = 0) {
   return amount.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
 }
 
+// 格式化后端百分比折扣字段，85 表示 8.5 折。
+function formatDiscountPercent(discountPercent?: number) {
+  if (typeof discountPercent !== 'number' || !Number.isFinite(discountPercent) || discountPercent <= 0) return '';
+  const discount = discountPercent > 10 ? discountPercent / 10 : discountPercent;
+  const text = Number.isInteger(discount) ? String(discount) : discount.toFixed(1).replace(/0+$/, '').replace(/\.$/, '');
+  return `${text}折`;
+}
+
 function toHotelCoupon(coupon: BffAvailableCouponView): HotelCheckoutCouponData {
   const thresholdAmount = centToYuan(coupon.thresholdAmountCent);
   const discountAmountCent = typeof coupon.discountAmount === 'number' ? coupon.discountAmount : coupon.discountAmountCent;
@@ -79,7 +87,7 @@ function toHotelCoupon(coupon: BffAvailableCouponView): HotelCheckoutCouponData 
   return {
     id: coupon.couponNo,
     title: coupon.couponName || '酒店优惠券',
-    amountText: discountAmount > 0 ? `¥${formatYuan(discountAmountCent)}` : '优惠券',
+    amountText: discountAmount > 0 ? `¥${formatYuan(discountAmountCent)}` : (formatDiscountPercent(coupon.discountPercent) || '优惠券'),
     thresholdText: thresholdAmount > 0 ? `满¥${thresholdAmount.toFixed(2)}可用` : '无门槛',
     validityText: validDate ? `有效期至 ${validDate}` : '按券规则生效',
     status: available ? 'available' : 'disabled',

@@ -20,6 +20,8 @@ export interface BffCouponAssetView {
   couponType?: string;
   thresholdAmountCent?: number;
   discountAmountCent?: number;
+  discountPercent?: number;
+  maxDiscountCent?: number;
   status: BffCouponStatus;
   reason?: string;
   issuedAt?: string;
@@ -61,6 +63,8 @@ export interface BffCouponTemplateView {
   couponType?: string;
   thresholdAmountCent?: number;
   discountAmountCent?: number;
+  discountPercent?: number;
+  maxDiscountCent?: number;
   issueStartAt?: string;
   issueEndAt?: string;
   validStartAt?: string;
@@ -103,6 +107,8 @@ export interface BffAvailableCouponView {
   sceneType: BffCouponSceneType;
   thresholdAmountCent?: number;
   discountAmountCent?: number;
+  discountPercent?: number;
+  maxDiscountCent?: number;
   status: BffCouponStatus;
   selected?: boolean;
   available?: boolean;

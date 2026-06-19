@@ -101,12 +101,20 @@ function resolveCouponTypeText(couponType?: string) {
   return '优惠券';
 }
 
+// 格式化后端百分比折扣字段，85 表示 8.5 折。
+function formatDiscountPercent(discountPercent?: number) {
+  if (typeof discountPercent !== 'number' || !Number.isFinite(discountPercent) || discountPercent <= 0) return '';
+  const discount = discountPercent > 10 ? discountPercent / 10 : discountPercent;
+  const text = Number.isInteger(discount) ? String(discount) : discount.toFixed(1).replace(/0+$/, '').replace(/\.$/, '');
+  return `${text}折`;
+}
+
 function resolveAmountText(coupon: BffCouponAssetView) {
   if (coupon.discountAmountCent && coupon.discountAmountCent > 0) {
     return formatYuan(coupon.discountAmountCent);
   }
 
-  return '券';
+  return formatDiscountPercent(coupon.discountPercent) || '券';
 }
 
 function resolveValidityText(coupon: BffCouponAssetView, status: MemberCouponStatus) {
@@ -149,7 +157,7 @@ function toMemberCouponItem(coupon: BffCouponAssetView): MemberCouponItem {
     sideText: resolveSceneText(coupon.sceneType),
     amountText: resolveAmountText(coupon),
     couponTypeText: resolveCouponTypeText(coupon.couponType),
-    currencyText: coupon.discountAmountCent ? 'RMB' : '权益',
+    currencyText: coupon.discountAmountCent ? 'RMB' : (coupon.discountPercent ? '折扣' : '权益'),
     validityText: resolveValidityText(coupon, status),
     title: coupon.couponName || '会员优惠券',
     actionText: resolveActionText(coupon.status),

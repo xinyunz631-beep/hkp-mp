@@ -77,9 +77,17 @@ function readExtraText(extraPayload: Record<string, unknown>, keys: string[]) {
   return undefined;
 }
 
+// 格式化后端百分比折扣字段，85 表示 8.5 折。
+function formatDiscountPercent(discountPercent?: number) {
+  if (typeof discountPercent !== 'number' || !Number.isFinite(discountPercent) || discountPercent <= 0) return '';
+  const discount = discountPercent > 10 ? discountPercent / 10 : discountPercent;
+  const text = Number.isInteger(discount) ? String(discount) : discount.toFixed(1).replace(/0+$/, '').replace(/\.$/, '');
+  return `${text}折`;
+}
+
 function resolveTemplateAmountText(template?: BffCouponTemplateView) {
   if (template?.discountAmountCent && template.discountAmountCent > 0) return formatYuan(template.discountAmountCent);
-  return '券';
+  return formatDiscountPercent(template?.discountPercent) || '券';
 }
 
 function resolveTemplateThresholdText(template?: BffCouponTemplateView) {
