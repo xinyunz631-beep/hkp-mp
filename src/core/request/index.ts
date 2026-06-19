@@ -4,7 +4,7 @@ import { rootStore } from '@/core/store';
 import { createSignatureNonce, hmacSha256Base64Url, sha256Hex } from '@/core/utils/crypto';
 import { devApiLog } from '@/core/utils/dev-api-log';
 import { resolveErrorMessage } from '@/core/utils/error-message';
-import { getCurrentMiniProgramAppId, getWechatLoginCode } from '@/core/wechat/auth';
+import { getWechatLoginCode, resolveCurrentMiniProgramAppId } from '@/core/wechat/auth';
 
 export interface RequestOptions<TData = unknown> {
   url: string;
@@ -364,14 +364,13 @@ export class ApiRequestClient {
   // 请求微信小程序授权接口，成功后写入后续请求使用的访问令牌。
   private async requestCsessionToken() {
     const config = getRuntimeConfig();
-    const appid = getCurrentMiniProgramAppId(config.appIdFallback);
     const result = await this.send<TokenRequestResponse, { platform: 'WECHAT'; code: string; appId: string }>({
       url: config.tokenUrl,
       method: 'POST',
       createData: async () => ({
         platform: 'WECHAT',
         code: await getWechatLoginCode(),
-        appId: appid,
+        appId: resolveCurrentMiniProgramAppId(),
       }),
       header: {
         'content-type': 'application/json',

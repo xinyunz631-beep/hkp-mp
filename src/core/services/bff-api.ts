@@ -3,6 +3,7 @@ import { ApiRequestError, ensureCsession, request } from '@/core/request';
 import { getRuntimeConfig } from '@/core/config/runtime';
 import { rootStore } from '@/core/store';
 import { resolveErrorMessage } from '@/core/utils/error-message';
+import { resolveCurrentMiniProgramAppId } from '@/core/wechat/auth';
 import type { BffCrmProfile } from '@/core/services/bff-crm-api';
 
 export type BffSceneType = 'TICKET' | 'MALL' | 'HOTEL' | 'DINING' | string;
@@ -22,6 +23,7 @@ export interface BffPrepayRequest {
   channel: BffPayChannel;
   amountCent: number;
   subject: string;
+  appId?: string;
   description?: string;
 }
 
@@ -243,7 +245,10 @@ export function createBffPrepayOrder(data: BffPrepayRequest) {
   return request<BffPaymentStatus, BffPrepayRequest>({
     url: '/api/bff/pay/prepay',
     method: 'POST',
-    data,
+    data: {
+      ...data,
+      appId: resolveCurrentMiniProgramAppId(),
+    },
     sign: true,
   });
 }

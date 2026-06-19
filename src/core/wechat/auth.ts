@@ -1,5 +1,6 @@
 import Taro from '@tarojs/taro';
 import type { ButtonProps } from '@tarojs/components';
+import { getRuntimeConfig } from '@/core/config/runtime';
 import { resolveErrorMessage } from '@/core/utils/error-message';
 
 export interface WechatPhoneCredential {
@@ -24,6 +25,11 @@ export function getCurrentMiniProgramAppId(fallbackAppId: string) {
   } catch {
     return fallbackAppId;
   }
+}
+
+// 解析当前运行小程序 AppID，所有后端传参必须优先使用微信运行态值。
+export function resolveCurrentMiniProgramAppId() {
+  return getCurrentMiniProgramAppId(getRuntimeConfig().appIdFallback);
 }
 
 // 检查微信登录态是否仍有效，用于决定是否复用本地会话。

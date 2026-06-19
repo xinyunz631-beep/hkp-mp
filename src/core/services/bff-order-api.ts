@@ -1,4 +1,5 @@
 import { request } from '@/core/request';
+import { resolveCurrentMiniProgramAppId } from '@/core/wechat/auth';
 
 export type BffOrderSceneType = 'TICKET' | 'MALL' | 'HOTEL';
 export type BffOrderPaymentChannel = 'WECHAT' | 'ALIPAY' | string;
@@ -186,6 +187,11 @@ export interface BffOrderPaymentResponse {
   prepay?: BffOrderPrepay;
 }
 
+export interface BffOrderPaymentRequest {
+  paymentChannel: BffOrderPaymentChannel;
+  appId: string;
+}
+
 export interface BffOrderOperationResponse {
   order?: BffOrder;
   orderNo?: string;
@@ -246,12 +252,15 @@ export function createBffOrder(data: BffOrderUnifiedRequest) {
   });
 }
 
-// 为已创建订单发起支付，支付参数由后端按当前登录人注入。
+// 为已创建订单发起支付，显式携带当前运行小程序 AppID，避免支付预下单串到错误主体。
 export function payBffOrder(orderNo: string, paymentChannel: BffOrderPaymentChannel = 'WECHAT') {
-  return request<BffOrderPaymentResponse, { paymentChannel: BffOrderPaymentChannel }>({
+  return request<BffOrderPaymentResponse, BffOrderPaymentRequest>({
     url: `/api/bff/orders/${encodeURIComponent(orderNo)}/pay`,
     method: 'POST',
-    data: { paymentChannel },
+    data: {
+      paymentChannel,
+      appId: resolveCurrentMiniProgramAppId(),
+    },
   });
 }
 

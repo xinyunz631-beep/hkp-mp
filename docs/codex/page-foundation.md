@@ -109,6 +109,7 @@
 ## 微信能力规则
 
 - 当前只按微信小程序 `weapp` 实现和验收，不为 H5 或其它端写兼容分支。
+- 向后端、微信能力、支付、上传或授权链路传当前小程序 `appId/appid` 时，必须统一使用微信官方 `getAccountInfoSync().miniProgram.appId` 获取当前运行 AppID；获取不到才兜底 `wx72b9e08ce45d3e79`。页面、service、request、支付或上传代码禁止直接把配置 AppID 当首选值传参。
 - 项目分享只允许微信好友分享：页面使用 `useShareAppMessage` 配置分享内容，可见分享按钮统一优先使用 `AppShareButton` / `openType="share"`；分享属于公开传播能力，不校验登录态，不要把分享按钮包进 `AuthAction`、`requireLogin` 或受保护路由判断；禁止 `useShareTimeline`、`onShareTimeline`、`shareTimeline`、朋友圈分享入口，以及用 `showShareMenu` 做二级分享引导。
 - 图片预览、扫码、地图、电话、复制、确认弹窗和 toast 默认优先使用 `src/core/utils/wechat-actions.ts` 封装；确认类弹窗统一走 `showAppModal()` / `showWechatConfirm()`，不要在页面直接散写 `Taro.showModal`，确认按钮颜色默认使用项目主色。
 - 微信支付默认优先使用 `src/core/utils/wechat-actions.ts` 的 `requestWechatPayment()`，无真实支付参数时由封装函数完成本地支付 / 暂不支付闭环；页面不要直接散写 `Taro.requestPayment` 或临时支付 modal。
