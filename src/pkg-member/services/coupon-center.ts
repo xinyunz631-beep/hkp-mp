@@ -1,4 +1,4 @@
-import { fetchBffCrmP1Coupons, type BffCrmP1ConfigItem } from '@/core/services/bff-crm-api';
+import { fetchBffCrmP1Exchanges, type BffCrmP1ConfigItem } from '@/core/services/bff-crm-api';
 import {
   claimBffCoupon,
   fetchBffMemberCouponPackages,
@@ -143,12 +143,12 @@ function toKcoinCoupon(item: BffCrmP1ConfigItem): MemberCouponCenterCoupon | und
 
 // 获取领券中心页面数据：好券推荐读可领取券包，K 币入口读 CRM 兑换配置。
 export async function fetchMemberCouponCenterData() {
-  const [packagesResponse, crmCoupons] = await Promise.all([
+  const [packagesResponse, crmExchanges] = await Promise.all([
     fetchBffMemberCouponPackages(),
-    fetchBffCrmP1Coupons(),
+    fetchBffCrmP1Exchanges(),
   ]);
   const packageCoupons = (packagesResponse.packages ?? []).map(toPackageCoupon);
-  const kcoinCoupons = crmCoupons.map(toKcoinCoupon).filter((coupon): coupon is MemberCouponCenterCoupon => Boolean(coupon));
+  const kcoinCoupons = crmExchanges.map(toKcoinCoupon).filter((coupon): coupon is MemberCouponCenterCoupon => Boolean(coupon));
 
   return {
     ...couponCenterBaseData,
