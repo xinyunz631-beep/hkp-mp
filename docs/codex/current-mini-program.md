@@ -10,14 +10,9 @@
 - 当前券/商城状态：优惠券链路已新增 `src/core/services/bff-coupon-api.ts`，我的券、领券中心领取、K 币余额/兑换、门票、酒店和商城确认单可用券已切真实 BFF；2026-06-18 00:36 按后端 `origin/uat@4047a42` 复核，K 币兑换、后台发券和券包赠送已从源码层同步同一 `couponNo` 到 `promotion_member_coupon`，我的券已适配分页、来源和返还状态字段，门票、酒店和商城可用券已适配 `available/unavailableReason/discountAmount` 以及 `itemIds/skuIds/visitDate/checkInDate/checkOutDate`；商城确认单已用 `selectedCouponNos` 重新确认订单并在创建订单时带同一券号；小程序优惠券 BFF 后端必补文档维护在 `admin-frontend/docs/codex/admin-api-requirements/mp-bff-requirements/`，旧 `docs/codex/apimust/` 只保留迁移指针；券/商城仍不能宣称完整闭环，因为缺目标 `couponNo` 严格探针、管理端券模板 `target_ids` 同步、真实已核销券退款返还样本，以及后台真实商城商品后的写链路验收。
 - 最新券/商城复核：2026-06-19 后端已复拉到 `origin/uat@839f4a5 docs(frontend-api): 回填K币兑换域收紧 UAT验证结果`；`212a323/839f4a5` 把 K 币兑换商品限定为 `item_type='EXCHANGE'` 并回填 UAT 文档，防止误把领券中心 COUPON 域入口当作 K 币兑换商品消费，和小程序已把 K 币 tab 改读 `GET /api/bff/crm/entries/exchanges` 的口径一致；不新增路径、不改前端字段。`a0341e2` 已补 promotion 读取/可用券/退款返还前自动回填历史 CRM 会员券到 `promotion_member_coupon`，`3cdc8b4/7eb18be` 已关闭发券任务 READY 假闭环，但 20:01 严格探针 `coupon-after-212a323-20260619-01..04` 仍是四个接口 200 且当前会员无券、无券包、K 币 0，目标券 `CP1781194544162039A54BA` 不在我的券和下单可用券。CRM 入口字段在 `1d9b386/b34aa63` 登录态复验仍为 `null`，商城读接口空态 200 已由旧探针覆盖，小程序已补商城确认单券选择、重新确认和创建订单传券。当前仍不能宣称完整闭环，因为后端还需补 UAT CRM 动作字段配置或数据迁移、成功领取/兑换样本、目标 `couponNo` 严格探针、管理端券模板 `target_ids`、真实已核销券退款返还样本，以及后台真实商城商品后的详情、加购、购物车写入、统一订单与用券验收。
 - 恢复优先级：下一步优先完成优惠券链路微信开发工具验收，并用目标会员、目标 `couponNo` 或可发券 K 币兑换 `itemNo` 跑严格探针；没有目标样本前，只能证明 BFF 可达，不能证明“后台发券或 K 币兑换后小程序可见可用”。微信开发工具仍需验证真实 BFF 授权响应、`member/status` 登录态判断、手机号授权 `code`、资料保存签名、退出登录、首页广告聚合、门票预定页加减号和提交出票、酒店首页/房型/确认单/下单支付、订单中心列表/详情、我的券、领券中心领取、K 币兑换、门票/酒店用券、页面内自定义 tabbar 跳转/选中态、弹层覆盖关系和自定义 navbar 安全区表现。
-## 恢复时先看
-1. 根目录 `codex/current/current-task-list.md`、`codex/current/current-mini-program.md` 和本文件。
-2. `mini-program/AGENTS.md`、`mini-program/CONSTRAINTS.md`。
+- 恢复时先看：根目录 `codex/current/current-task-list.md`、`codex/current/current-mini-program.md`、本文件，以及 `mini-program/AGENTS.md`、`mini-program/CONSTRAINTS.md`。
 ## 技术与端约束
-- Taro：`4.2.0`
-- React：`18.3.1`
-- MobX：`6.15.0`
-- mobx-react：`9.2.1`
+- 基础依赖：Taro `4.2.0`、React `18.3.1`、MobX `6.15.0`、mobx-react `9.2.1`。
 - 全局 UI 主题：Taro `mini.sassLoaderOption.additionalData` + `src/styles/tokens.scss`，主题色粉色 `#db2777` 只用于品牌按钮、选中态和重点氛围；页面、layout、骨架屏和基础状态组件默认使用中性浅灰/白色底；NutUI 样式通过 `babel-plugin-import` 按需引入，并依赖 `@tarojs/plugin-html@4.2.0`；图标优先使用 `@nutui/icons-react-taro@1.0.5`。
 - Codex 主包体积检测命令：`yarn check:main-package:build`，输出目录 `.dist-check/main-package`，不覆盖微信开发工具使用的 `dist/`。
 - 当前只按微信小程序 `weapp` 目标实现和验收，暂不考虑 H5 和其他端。
