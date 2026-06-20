@@ -3,6 +3,7 @@ import Taro from '@tarojs/taro';
 import { Text, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
 import { BaseEmpty } from '@/core/components/BaseEmpty';
+import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { PageFooter, PageShell } from '@/core/components/PageShell';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import { navigateToMiniRoute } from '@/core/utils/navigation';
@@ -12,11 +13,19 @@ import './index.scss';
 interface CouponDetailRow {
   label: string;
   value: string;
+  actionText?: string;
+  targetRoute?: string;
 }
 
 // 从路由参数里读取当前券号，详情页只接受列表里透传的 id。
 function resolveCouponId() {
   return Taro.getCurrentInstance().router?.params?.id || '';
+}
+
+// 订单详情继续作为交易事实源，券详情只按已有 orderNo 回跳，不在这里复制订单状态。
+function resolveCouponOrderDetailRoute(orderNo?: string) {
+  if (!orderNo) return '';
+  return `${MINI_PACKAGE_ROUTES.orderDetail}?orderId=${encodeURIComponent(orderNo)}`;
 }
 
 // 组装优惠券详情里的基础信息，页面层只负责按业务字段渲染。
@@ -35,7 +44,12 @@ function buildCouponRecordRows(coupon: MemberCouponItem): CouponDetailRow[] {
     { label: '券号', value: coupon.couponNo },
     { label: '领取时间', value: coupon.issuedAtText },
     { label: '有效期', value: coupon.validityPeriodText },
-    { label: '关联订单', value: coupon.orderNoText },
+    {
+      label: '关联订单',
+      value: coupon.orderNoText,
+      actionText: coupon.orderNoText ? '查看订单' : undefined,
+      targetRoute: resolveCouponOrderDetailRoute(coupon.orderNoText) || undefined,
+    },
     { label: '锁定时间', value: coupon.lockedAtText },
     { label: '使用时间', value: coupon.usedAtText },
     { label: '返还状态', value: coupon.refundReturnStatusText },
@@ -47,7 +61,14 @@ function renderCouponDetailRow(row: CouponDetailRow) {
   return (
     <View className="_pg-row" key={row.label}>
       <Text className="_pg-row_label">{row.label}</Text>
-      <Text className="_pg-row_value">{row.value}</Text>
+      <View className="_pg-row_main">
+        <Text className="_pg-row_value">{row.value}</Text>
+        {row.targetRoute && row.actionText ? (
+          <View className="_pg-row_action" onClick={() => navigateToMiniRoute(row.targetRoute!)}>
+            <Text className="_pg-row_action-text">{row.actionText}</Text>
+          </View>
+        ) : null}
+      </View>
     </View>
   );
 }
@@ -68,6 +89,13 @@ function resolveCouponFooterButtonClassName(coupon: MemberCouponItem) {
   ].filter(Boolean).join(' ');
 }
 
+function resolveCouponOrderButtonClassName() {
+  return [
+    '_pg-footer_button',
+    '_pg-footer_button--ghost',
+  ].join(' ');
+}
+
 // 会员优惠券详情页：承接真实 BFF 券资产，并给可使用券提供去下单入口。
 const CouponDetailPage = observer(function CouponDetailPage() {
   const [coupon, setCoupon] = useState<MemberCouponItem | null | undefined>();
@@ -84,6 +112,11 @@ const CouponDetailPage = observer(function CouponDetailPage() {
   function handleUseCoupon() {
     if (!coupon?.useEnabled) return;
     navigateToMiniRoute(coupon.targetRoute);
+  }
+
+  function handleViewOrder() {
+    if (!coupon?.orderNoText) return;
+    navigateToMiniRoute(resolveCouponOrderDetailRoute(coupon.orderNoText));
   }
 
   return pageRuntime.renderPage(() => (
@@ -134,6 +167,14 @@ const CouponDetailPage = observer(function CouponDetailPage() {
 
             <PageFooter>
               <View className="_pg-footer">
+                {coupon.orderNoText ? (
+                  <View
+                    className={resolveCouponOrderButtonClassName()}
+                    onClick={handleViewOrder}
+                  >
+                    <Text>查看订单</Text>
+                  </View>
+                ) : null}
                 <View
                   className={resolveCouponFooterButtonClassName(coupon)}
                   onClick={handleUseCoupon}

@@ -139,9 +139,37 @@
   }
 
   &_value {
-    flex: 1;
     color: #222222;
     word-break: break-all;
+  }
+
+  &_main {
+    display: flex;
+    flex: 1;
+    min-width: 0;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  &_action {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    min-width: 124px;
+    height: 52px;
+    margin-left: 16px;
+    padding: 0 18px;
+    border: 2px solid #f7b7d2;
+    border-radius: 999px;
+    background: #fff5fa;
+  }
+
+  &_action-text {
+    display: block;
+    color: #db2777;
+    font-size: 24px;
+    line-height: 1;
   }
 }
 
@@ -164,12 +192,15 @@
 }
 
 ._pg-footer {
+  display: flex;
+  align-items: center;
   padding: 20px 24px 24px;
   background: #ffffff;
   box-shadow: 0 -8px 20px rgba(15, 23, 42, 0.08);
 
   &_button {
     display: flex;
+    flex: 1;
     align-items: center;
     justify-content: center;
     height: 92px;
@@ -178,6 +209,16 @@
     color: #ffffff;
     font-size: 32px;
     line-height: 92px;
+
+    & + & {
+      margin-left: 16px;
+    }
+
+    &--ghost {
+      color: #db2777;
+      border: 2px solid #f7b7d2;
+      background: #fff5fa;
+    }
 
     &--disabled {
       opacity: 0.55;
