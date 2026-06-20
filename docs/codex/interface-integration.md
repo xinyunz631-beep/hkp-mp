@@ -115,7 +115,7 @@
 | 我的地址 | `GET/POST /api/bff/crm/addresses`、`POST /delete`、`POST /default` | 查询登录态；写接口登录态 + HMAC 签名 | `addressNo -> id`，`contactName -> name`，省市区名称拼 `region`，`detailAddress -> detail` | 已接入 `src/pkg-order/services/address.ts`；列表、保存、删除和默认地址均以真实接口结果为准，接口失败直接暴露错误，不再先写本地再异步同步 | `yarn typecheck` 通过；待真实签名写接口验证 |
 | 会员码 | `GET /api/bff/crm/member-code` | 登录态 | 只使用 `qrContent`，BFF 不再暴露 `memberNo` | 已接入 `src/pkg-member/services/member-code.ts`；缺 `qrContent` 或接口失败进入异常态，不再生成本地动态码 | `yarn typecheck` 通过；待真实登录态验证 |
 | 老会员绑定 | `POST /api/bff/crm/legacy-bind` | 登录态 + HMAC 签名 | `phone` 入参，结果 `bound` 映射老会员绑定状态；不读取 `memberNo/legacyMemberNo` | 已接入 `src/pkg-member/services/profile.ts`，绑定成功后重新拉取资料并刷新 `member/status` | `yarn typecheck` 通过；待真实签名写接口验证 |
-| 领券中心入口 | `GET /api/bff/crm/entries/coupons` | 登录态 | `itemNo/itemName/badgeText/tagText/pointsCost/extraPayload.buttonText` 映射券卡 | BFF service 路径已从 `/crm/p1/coupons` 改为 `/crm/entries/coupons`；页面数据只来自真实接口，接口失败异常态、无券空态，不回退本地券卡 | `yarn typecheck` 通过；待微信开发工具验证 |
+| CRM 优惠券展示入口 | `GET /api/bff/crm/entries/coupons` | 登录态 | 若后续恢复消费该入口，只能把 `itemNo/itemName/badgeText/tagText` 作为展示字段，领取动作仍要以后端显式返回 `templateNo/couponTemplateId/actionType/actionTarget` 为准 | 当前生产页已不消费这条路由，领券中心免费券包改读 `GET /api/bff/member/coupon-packages`；该路由暂只保留为历史 CRM 展示入口事实源 | `yarn typecheck` 通过；待后端决定是否继续保留并补动作字段 |
 | 兑换专区入口 | `GET /api/bff/crm/entries/exchanges`、`GET /api/bff/crm/entries/items/{itemNo}` | 登录态 | `itemNo/itemName/imageUrl/pointsCost/stockAvailable/description` 映射兑换商品 | BFF service 路径已从 `/crm/p1/**` 改为 `/crm/entries/**`；列表和详情只来自真实接口，兑换提交在后端缺少真实提交接口前阻断，不展示本地成功 | `yarn typecheck` 通过；待微信开发工具验证 |
 
 ## 优惠券 BFF 专项落地表
