@@ -137,6 +137,9 @@
   }
 
   &_button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
     padding: 14px 28px;
     border: 2px solid #f9a8d4;
     border-radius: 999px;
@@ -144,5 +147,15 @@
     font-size: 24px;
     line-height: 1;
     background: #fff1f7;
+
+    & + & {
+      margin-left: 16px;
+    }
+
+    &--ghost {
+      color: #6b7280;
+      border-color: #e5e7eb;
+      background: #ffffff;
+    }
   }
 }

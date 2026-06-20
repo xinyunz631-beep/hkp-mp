@@ -167,10 +167,13 @@
 }
 
 ._pg-footer {
+  display: flex;
+  align-items: center;
   padding: 20px 24px;
 
   &_button {
     display: flex;
+    flex: 1;
     align-items: center;
     justify-content: center;
     height: 88px;
@@ -179,5 +182,15 @@
     font-size: 28px;
     font-weight: 500;
     background: linear-gradient(135deg, #f9a8d4 0%, #db2777 100%);
+
+    & + & {
+      margin-left: 16px;
+    }
+
+    &--ghost {
+      color: #db2777;
+      border: 2px solid #f9a8d4;
+      background: #fff1f7;
+    }
   }
 }

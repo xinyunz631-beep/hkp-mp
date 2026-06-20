@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react';
-import Taro from '@tarojs/taro';
 import { Text, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
 import { BaseEmpty } from '@/core/components/BaseEmpty';
@@ -8,8 +7,14 @@ import { FilterTabs } from '@/core/components/commerce';
 import { PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
+import { navigateToMiniRoute } from '@/core/utils/navigation';
 import { fetchAftersaleListData, type OrderAftersaleListData } from '@/pkg-order/services/aftersale-list';
 import './index.scss';
+
+// 售后记录可直接回到订单详情，继续查看订单里的优惠券使用和返还状态。
+function resolveOrderDetailRoute(orderId: string) {
+  return `${MINI_PACKAGE_ROUTES.orderDetail}?orderId=${encodeURIComponent(orderId)}`;
+}
 
 const AftersaleListPage = observer(function AftersaleListPage() {
   const [pageData, setPageData] = useState<OrderAftersaleListData>();
@@ -52,9 +57,7 @@ const AftersaleListPage = observer(function AftersaleListPage() {
                   <View
                     className="_pg-record"
                     key={record.id}
-                    onClick={() => Taro.navigateTo({
-                      url: `${MINI_PACKAGE_ROUTES.orderAftersaleProgress}?orderId=${encodeURIComponent(record.order.id)}`,
-                    })}
+                    onClick={() => navigateToMiniRoute(`${MINI_PACKAGE_ROUTES.orderAftersaleProgress}?orderId=${encodeURIComponent(record.order.id)}`)}
                   >
                     <View className="_pg-record_header">
                       <Text className="_pg-record_service-no">{record.serviceNo}</Text>
@@ -82,7 +85,22 @@ const AftersaleListPage = observer(function AftersaleListPage() {
                     </View>
 
                     <View className="_pg-record_footer">
-                      <View className="_pg-record_button">
+                      <View
+                        className="_pg-record_button _pg-record_button--ghost"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          navigateToMiniRoute(resolveOrderDetailRoute(record.order.id));
+                        }}
+                      >
+                        <Text>查看订单</Text>
+                      </View>
+                      <View
+                        className="_pg-record_button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          navigateToMiniRoute(`${MINI_PACKAGE_ROUTES.orderAftersaleProgress}?orderId=${encodeURIComponent(record.order.id)}`);
+                        }}
+                      >
                         <Text>{record.buttonText}</Text>
                       </View>
                     </View>

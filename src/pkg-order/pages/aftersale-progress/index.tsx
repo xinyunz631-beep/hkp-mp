@@ -10,6 +10,11 @@ import { navigateToMiniRoute } from '@/core/utils/navigation';
 import { fetchAftersaleProgressData, type OrderAftersaleProgressData } from '@/pkg-order/services/aftersale-progress';
 import './index.scss';
 
+// 售后页继续回到原订单详情，便于用户核对订单里的优惠券使用和返还结果。
+function resolveOrderDetailRoute(orderId: string) {
+  return `${MINI_PACKAGE_ROUTES.orderDetail}?orderId=${encodeURIComponent(orderId)}`;
+}
+
 const AftersaleProgressPage = observer(function AftersaleProgressPage() {
   const [pageData, setPageData] = useState<OrderAftersaleProgressData>();
   const pageRuntime = usePageRuntime({
@@ -38,6 +43,12 @@ const AftersaleProgressPage = observer(function AftersaleProgressPage() {
           footer={(
             <View className="_pg-footer">
               <View
+                className="_pg-footer_button _pg-footer_button--ghost"
+                onClick={() => navigateToMiniRoute(resolveOrderDetailRoute(pageData.order.id))}
+              >
+                查看订单
+              </View>
+              <View
                 className="_pg-footer_button"
                 onClick={() => navigateToMiniRoute(MINI_PACKAGE_ROUTES.orderAftersaleList)}
               >
@@ -52,7 +63,11 @@ const AftersaleProgressPage = observer(function AftersaleProgressPage() {
               <Text className="_pg-status_desc">{pageData.statusDesc}</Text>
             </View>
 
-            <OrderCard order={pageData.order} className="_pg-order-card" />
+            <OrderCard
+              order={pageData.order}
+              className="_pg-order-card"
+              onClick={() => navigateToMiniRoute(resolveOrderDetailRoute(pageData.order.id))}
+            />
 
             <View className="_pg-card">
               <Text className="_pg-card_title">售后信息</Text>
