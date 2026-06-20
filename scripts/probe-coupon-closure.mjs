@@ -16,11 +16,22 @@ const checkInDate = process.env.COUPON_PROBE_CHECK_IN_DATE || undefined;
 const checkOutDate = process.env.COUPON_PROBE_CHECK_OUT_DATE || undefined;
 const expectedCouponNo = process.env.COUPON_PROBE_EXPECT_COUPON_NO || undefined;
 const orderNo = process.env.COUPON_PROBE_ORDER_NO || undefined;
+const confirmPayloadFile = process.env.COUPON_PROBE_CONFIRM_PAYLOAD_FILE || undefined;
 const claimTemplateNo = process.env.COUPON_PROBE_CLAIM_TEMPLATE_NO || undefined;
 const exchangeItemNo = process.env.COUPON_PROBE_KCOIN_ITEM_NO || undefined;
 const exchangeQuantity = Number(process.env.COUPON_PROBE_KCOIN_QUANTITY || 1);
+const refundOrderNo = process.env.COUPON_PROBE_REFUND_ORDER_NO || undefined;
+const refundNo = process.env.COUPON_PROBE_REFUND_NO || undefined;
+const refundCouponNos = process.env.COUPON_PROBE_REFUND_COUPON_NOS || undefined;
+const refundAmountCent = process.env.COUPON_PROBE_REFUND_AMOUNT_CENT
+  ? Number(process.env.COUPON_PROBE_REFUND_AMOUNT_CENT)
+  : undefined;
+const refundType = process.env.COUPON_PROBE_REFUND_TYPE || undefined;
+const refundReason = process.env.COUPON_PROBE_REFUND_REASON || 'probe-refund-return';
 const shouldClaim = process.env.COUPON_PROBE_CLAIM === '1';
 const shouldExchange = process.env.COUPON_PROBE_KCOIN_EXCHANGE === '1';
+const shouldConfirmOrder = process.env.COUPON_PROBE_CONFIRM === '1';
+const shouldRefundReturn = process.env.COUPON_PROBE_REFUND_RETURN === '1';
 const strictMode = process.env.COUPON_PROBE_STRICT === '1';
 const tracePrefix = process.env.COUPON_PROBE_TRACE_PREFIX || `coupon-closure-${Date.now().toString(36)}`;
 let traceIndex = 0;
@@ -230,17 +241,20 @@ function explicitCouponNosFrom(payload) {
   ].filter(Boolean).map(String);
 }
 
+function normalizeCouponNos(values) {
+  return Array.from(new Set((Array.isArray(values) ? values : []).filter(Boolean).map(String)));
+}
+
 function orderCouponFactsFrom(payload) {
   const data = dataOf(payload) || {};
   const rejectedCoupons = Array.isArray(data.rejectedCoupons) ? data.rejectedCoupons : [];
-  const normalize = (values) => Array.from(new Set((Array.isArray(values) ? values : []).filter(Boolean).map(String)));
   return {
-    selectedCouponNos: normalize(data.selectedCouponNos),
-    appliedCouponNos: normalize(data.appliedCouponNos),
-    lockedCouponNos: normalize(data.lockedCouponNos),
-    releasedCouponNos: normalize(data.releasedCouponNos),
-    refundReturnedCouponNos: normalize(data.refundReturnedCouponNos),
-    rejectedCouponNos: normalize(rejectedCoupons.map((item) => item?.couponNo)),
+    selectedCouponNos: normalizeCouponNos(data.selectedCouponNos),
+    appliedCouponNos: normalizeCouponNos(data.appliedCouponNos),
+    lockedCouponNos: normalizeCouponNos(data.lockedCouponNos),
+    releasedCouponNos: normalizeCouponNos(data.releasedCouponNos),
+    refundReturnedCouponNos: normalizeCouponNos(data.refundReturnedCouponNos),
+    rejectedCouponNos: normalizeCouponNos(rejectedCoupons.map((item) => item?.couponNo)),
   };
 }
 
@@ -318,6 +332,34 @@ function buildExchangePayload() {
   };
 }
 
+function readJsonFile(filePath, label) {
+  if (!filePath) {
+    throw new Error(`${label} 缺少文件路径`);
+  }
+  if (!existsSync(filePath)) {
+    throw new Error(`${label} 文件不存在：${filePath}`);
+  }
+
+  return JSON.parse(readFileSync(filePath, 'utf8'));
+}
+
+function buildRefundReturnPayload(targetCouponNos) {
+  const couponNos = normalizeCouponNos(
+    refundCouponNos ? refundCouponNos.split(',').map((item) => item.trim()) : targetCouponNos,
+  );
+
+  return {
+    orderNo: refundOrderNo,
+    refundNo,
+    sceneType,
+    couponNos,
+    refundAmountCent,
+    refundType,
+    idempotencyKey: `CRR-PROBE-${refundNo || Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    reason: refundReason,
+  };
+}
+
 async function fetchCouponState(session, suffix = '') {
   const memberResponse = await authedRequest(session, 'GET', '/api/bff/member/coupons');
   const memberCoupons = listOf(memberResponse.payload);
@@ -364,26 +406,39 @@ async function fetchOrderCouponState(session, currentOrderNo) {
   };
 }
 
-function buildClosureSummary(steps, latestState, targetCouponNos, orderState, currentOrderNo) {
+function buildClosureSummary(steps, latestState, targetCouponNos, orderState, currentOrderNo, confirmState, refundReturnState) {
+  const findStep = (...names) => steps.find((step) => names.includes(step.name));
   const memberStep = steps.find((step) => step.name === 'memberCouponsAfterWrite')
-    || steps.find((step) => step.name === 'memberCoupons');
+    || findStep('memberCouponsAfterRefundReturn', 'memberCoupons');
   const availableStep = steps.find((step) => step.name === 'availableCouponsAfterWrite')
-    || steps.find((step) => step.name === 'availableCoupons');
-  const orderStep = steps.find((step) => step.name === 'orderDetailCoupons');
+    || findStep('availableCouponsAfterRefundReturn', 'availableCoupons');
+  const orderStep = findStep('orderDetailCouponsAfterRefundReturn', 'orderDetailCoupons');
+  const confirmStep = findStep('orderConfirm');
+  const refundReturnStep = findStep('refundReturnCoupons');
   const sessionValid = !steps.some(isAuthExpiredStep);
   const sharedCouponNos = intersection(latestState.memberCouponNos, latestState.availableCouponNos);
   const normalizedTargets = Array.from(new Set(targetCouponNos.filter(Boolean).map(String)));
   const orderCouponNos = orderState?.orderCouponNos || [];
+  const confirmCouponNos = confirmState?.confirmCouponNos || [];
+  const refundReturnedCouponNos = refundReturnState?.returnedCouponNos || [];
   const targetPresence = normalizedTargets.map((couponNo) => ({
     couponNo,
     inMemberCoupons: latestState.memberCouponNos.includes(couponNo),
     inAvailableCoupons: latestState.availableCouponNos.includes(couponNo),
+    inConfirm: confirmState ? confirmCouponNos.includes(couponNo) : undefined,
     inOrderDetail: currentOrderNo ? orderCouponNos.includes(couponNo) : undefined,
+    inRefundReturn: refundReturnState ? refundReturnedCouponNos.includes(couponNo) : undefined,
   }));
   const targetCouponsAligned = normalizedTargets.length > 0
     && targetPresence.every((item) => item.inMemberCoupons && item.inAvailableCoupons);
+  const targetCouponsConfirmAligned = confirmState
+    ? normalizedTargets.length > 0 && targetPresence.every((item) => item.inConfirm)
+    : undefined;
   const targetCouponsOrderAligned = currentOrderNo
     ? normalizedTargets.length > 0 && targetPresence.every((item) => item.inOrderDetail)
+    : undefined;
+  const targetCouponsRefundAligned = refundReturnState
+    ? normalizedTargets.length > 0 && targetPresence.every((item) => item.inRefundReturn)
     : undefined;
 
   const blockers = [];
@@ -411,6 +466,21 @@ function buildClosureSummary(steps, latestState, targetCouponNos, orderState, cu
   if (currentOrderNo && normalizedTargets.length > 0 && targetCouponsOrderAligned === false) {
     blockers.push('目标 couponNo 未出现在订单详情券事实里，统一订单读模型仍未闭环');
   }
+  if (confirmState && sessionValid && !stepSucceeded(confirmStep)) {
+    blockers.push('订单确认接口未成功：需检查 POST /api/bff/orders/confirm');
+  }
+  if (confirmState && normalizedTargets.length === 0) {
+    blockers.push('已执行订单确认探针，但未提供目标 couponNo；无法证明 confirm 是否采用了同一张券');
+  }
+  if (confirmState && normalizedTargets.length > 0 && targetCouponsConfirmAligned === false) {
+    blockers.push('目标 couponNo 未在订单确认响应事实里出现，统一订单确认链仍未闭环');
+  }
+  if (refundReturnState && sessionValid && !stepSucceeded(refundReturnStep)) {
+    blockers.push('退券返还接口未成功：需检查 POST /api/bff/promotion/coupons/refund-return');
+  }
+  if (refundReturnState && normalizedTargets.length > 0 && targetCouponsRefundAligned === false) {
+    blockers.push('目标 couponNo 未在退券返还响应事实里出现，退款返还链仍未闭环');
+  }
 
   return {
     closed: Boolean(
@@ -418,12 +488,16 @@ function buildClosureSummary(steps, latestState, targetCouponNos, orderState, cu
       && stepSucceeded(memberStep)
       && stepSucceeded(availableStep)
       && targetCouponsAligned
+      && (confirmState ? stepSucceeded(confirmStep) && targetCouponsConfirmAligned : true)
       && (currentOrderNo ? stepSucceeded(orderStep) && targetCouponsOrderAligned : true)
+      && (refundReturnState ? stepSucceeded(refundReturnStep) && targetCouponsRefundAligned : true)
     ),
     readOnlySharedCouponNos: sharedCouponNos,
     targetCouponNos: normalizedTargets,
     orderNo: currentOrderNo,
     orderCouponNos,
+    confirmCouponNos,
+    refundReturnedCouponNos,
     targetPresence,
     checks: {
       sessionValid,
@@ -431,14 +505,22 @@ function buildClosureSummary(steps, latestState, targetCouponNos, orderState, cu
       availableCouponsReady: stepSucceeded(availableStep),
       hasReadOnlySharedCoupon: sharedCouponNos.length > 0,
       targetCouponsAligned,
+      confirmCouponsReady: confirmState ? stepSucceeded(confirmStep) : undefined,
+      targetCouponsConfirmAligned,
       orderCouponsReady: currentOrderNo ? stepSucceeded(orderStep) : undefined,
       targetCouponsOrderAligned,
+      refundReturnReady: refundReturnState ? stepSucceeded(refundReturnStep) : undefined,
+      targetCouponsRefundAligned,
     },
     blockers,
     nextAction: blockers[0] || (
-      currentOrderNo
-        ? '目标券已同时出现在我的券、下单可用券和订单详情，可继续验退款返还同券号链路'
-        : '目标券已同时出现在我的券和下单可用券，可继续用 selectedCouponNos 做订单确认验收'
+      refundReturnState
+        ? '目标券已贯穿我的券、可用券、订单确认、订单详情和退款返还，可继续做真机交易验收'
+        : currentOrderNo
+          ? '目标券已同时出现在我的券、下单可用券和订单详情，可继续验退款返还同券号链路'
+          : confirmState
+            ? '目标券已同时出现在我的券、下单可用券和订单确认，可继续校验订单详情同券号'
+            : '目标券已同时出现在我的券和下单可用券，可继续用 selectedCouponNos 做订单确认验收'
     ),
   };
 }
@@ -516,10 +598,68 @@ async function main() {
     steps.push(latestState.memberStep, latestState.availableStep);
   }
 
+  let confirmState;
+  if (shouldConfirmOrder) {
+    if (!confirmPayloadFile) {
+      throw new Error('设置 COUPON_PROBE_CONFIRM=1 时必须同时设置 COUPON_PROBE_CONFIRM_PAYLOAD_FILE');
+    }
+    const confirmPayload = readJsonFile(confirmPayloadFile, '订单确认探针 payload');
+    const confirmResponse = await authedRequest(session, 'POST', '/api/bff/orders/confirm', confirmPayload);
+    const confirmCouponFacts = orderCouponFactsFrom(confirmResponse.payload);
+    const confirmCouponNos = flattenOrderCouponFacts(confirmCouponFacts);
+    confirmState = {
+      confirmCouponFacts,
+      confirmCouponNos,
+    };
+    steps.push(summarizeStep('orderConfirm', confirmResponse, {
+      payloadFile: confirmPayloadFile,
+      selectedCouponNos: confirmCouponFacts.selectedCouponNos,
+      appliedCouponNos: confirmCouponFacts.appliedCouponNos,
+      rejectedCouponNos: confirmCouponFacts.rejectedCouponNos,
+      couponNos: confirmCouponNos,
+    }));
+  }
+
   let orderState;
   if (orderNo) {
     orderState = await fetchOrderCouponState(session, orderNo);
     steps.push(orderState.orderStep);
+  }
+
+  let refundReturnState;
+  if (shouldRefundReturn) {
+    if (!refundOrderNo || !refundNo) {
+      throw new Error('设置 COUPON_PROBE_REFUND_RETURN=1 时必须同时设置 COUPON_PROBE_REFUND_ORDER_NO 和 COUPON_PROBE_REFUND_NO');
+    }
+    const refundPayload = buildRefundReturnPayload(targetCouponNos);
+    if (!refundPayload.couponNos.length) {
+      throw new Error('退券返还探针缺少 couponNos：请设置 COUPON_PROBE_EXPECT_COUPON_NO 或 COUPON_PROBE_REFUND_COUPON_NOS');
+    }
+    targetCouponNos.push(...refundPayload.couponNos);
+    const refundReturnResponse = await authedRequest(
+      session,
+      'POST',
+      '/api/bff/promotion/coupons/refund-return',
+      refundPayload,
+      true,
+    );
+    const returnedCouponNos = explicitCouponNosFrom(refundReturnResponse.payload);
+    refundReturnState = { returnedCouponNos };
+    steps.push(summarizeStep('refundReturnCoupons', refundReturnResponse, {
+      orderNo: refundOrderNo,
+      refundNo,
+      couponNos: refundPayload.couponNos,
+      returnedCouponNos,
+    }));
+
+    latestState = await fetchCouponState(session, 'AfterRefundReturn');
+    steps.push(latestState.memberStep, latestState.availableStep);
+
+    const effectiveOrderNo = orderNo || refundOrderNo;
+    if (effectiveOrderNo) {
+      orderState = await fetchOrderCouponState(session, effectiveOrderNo);
+      steps.push({ ...orderState.orderStep, name: 'orderDetailCouponsAfterRefundReturn' });
+    }
   }
 
   const output = {
@@ -534,11 +674,24 @@ async function main() {
     checkOutDate,
     expectedCouponNo,
     orderNo,
+    confirmEnabled: shouldConfirmOrder,
+    confirmPayloadFile,
     claimEnabled: shouldClaim,
     exchangeEnabled: shouldExchange,
+    refundReturnEnabled: shouldRefundReturn,
+    refundOrderNo,
+    refundNo,
     steps,
   };
-  output.closure = buildClosureSummary(steps, latestState, targetCouponNos, orderState, orderNo);
+  output.closure = buildClosureSummary(
+    steps,
+    latestState,
+    targetCouponNos,
+    orderState,
+    orderNo || refundOrderNo,
+    confirmState,
+    refundReturnState,
+  );
   console.log(JSON.stringify(output, null, 2));
 
   if (strictMode && !output.closure.closed) {
