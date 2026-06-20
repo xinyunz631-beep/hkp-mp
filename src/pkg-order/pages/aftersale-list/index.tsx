@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Text, View } from '@tarojs/components';
+import Taro from '@tarojs/taro';
 import { observer } from 'mobx-react';
 import { BaseEmpty } from '@/core/components/BaseEmpty';
 import { AppImage } from '@/core/components/AppImage';
@@ -19,6 +20,7 @@ function resolveOrderDetailRoute(orderId: string) {
 const AftersaleListPage = observer(function AftersaleListPage() {
   const [pageData, setPageData] = useState<OrderAftersaleListData>();
   const [activeTabKey, setActiveTabKey] = useState('all');
+  const routeOrderId = Taro.getCurrentInstance().router?.params?.orderId;
   const pageRuntime = usePageRuntime({
     initPage: async () => {
       const nextData = await fetchAftersaleListData();
@@ -31,9 +33,14 @@ const AftersaleListPage = observer(function AftersaleListPage() {
 
   const visibleRecords = useMemo(() => {
     if (!pageData) return [];
-    if (activeTabKey === 'all') return pageData.records;
-    return pageData.records.filter((record) => record.tabKey === activeTabKey);
-  }, [activeTabKey, pageData]);
+    const tabMatchedRecords = activeTabKey === 'all'
+      ? pageData.records
+      : pageData.records.filter((record) => record.tabKey === activeTabKey);
+
+    if (!routeOrderId) return tabMatchedRecords;
+
+    return tabMatchedRecords.filter((record) => record.order.id === routeOrderId);
+  }, [activeTabKey, pageData, routeOrderId]);
 
   return pageRuntime.renderPage(() => {
     if (!pageData) return null;
@@ -109,8 +116,10 @@ const AftersaleListPage = observer(function AftersaleListPage() {
               }) : (
                 <BaseEmpty
                   className="_pg-empty"
-                  title="暂无商城售后记录"
-                  description="当前只展示真实退款/售后订单，未进入退款流程的商城订单不会出现在这里。"
+                  title={routeOrderId ? '当前订单暂无售后记录' : '暂无商城售后记录'}
+                  description={routeOrderId
+                    ? '订单进入真实售后流程后，会在这里展示处理进度和退款结果。'
+                    : '当前只展示真实退款/售后订单，未进入退款流程的商城订单不会出现在这里。'}
                 />
               )}
             </View>

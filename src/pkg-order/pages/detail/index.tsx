@@ -53,6 +53,17 @@ function resolveCouponDetailRoute(couponNo: string) {
   return `${MINI_PACKAGE_ROUTES.memberCouponDetail}?id=${encodeURIComponent(couponNo)}`;
 }
 
+function resolveOrderFooterActionsClassName() {
+  return ['_pg-footer-actions'].join(' ');
+}
+
+function resolveOrderFooterActionClassName(type: 'primary' | 'ghost' = 'primary') {
+  return [
+    '_pg-footer-action',
+    type === 'ghost' ? '_pg-footer-action--ghost' : '',
+  ].filter(Boolean).join(' ');
+}
+
 // 判断票务凭证页是否需要继续静默刷新，覆盖异步出票和停留券码页被外部核销的场景。
 function shouldPollTicketOrderDetail(detailData?: OrderDetailData) {
   if (!detailData) return false;
@@ -93,6 +104,11 @@ const DetailPage = observer(function DetailPage() {
 
   function handleCouponPress(couponNo: string) {
     navigateToMiniRoute(resolveCouponDetailRoute(couponNo));
+  }
+
+  function handleViewAftersale() {
+    if (!detailData?.aftersaleEntryRoute) return;
+    navigateToMiniRoute(detailData.aftersaleEntryRoute);
   }
 
   async function loadDetailData(options: { showErrorToast?: boolean; orderId?: string; skipApplyWhenHidden?: boolean } = {}) {
@@ -357,12 +373,24 @@ const DetailPage = observer(function DetailPage() {
                   <Text className="_pg-order-meta_value">{item.value}</Text>
                 </View>
               ))}
-              {detailData.refundButtonText ? (
-                <View
-                  className="_pg-footer-action"
-                  onClick={() => void handlePrimaryAction()}
-                >
-                  {detailData.refundButtonText}
+              {detailData.refundButtonText || detailData.aftersaleEntryRoute ? (
+                <View className={resolveOrderFooterActionsClassName()}>
+                  {detailData.aftersaleEntryRoute ? (
+                    <View
+                      className={resolveOrderFooterActionClassName('ghost')}
+                      onClick={handleViewAftersale}
+                    >
+                      {detailData.aftersaleEntryText}
+                    </View>
+                  ) : null}
+                  {detailData.refundButtonText ? (
+                    <View
+                      className={resolveOrderFooterActionClassName()}
+                      onClick={() => void handlePrimaryAction()}
+                    >
+                      {detailData.refundButtonText}
+                    </View>
+                  ) : null}
                 </View>
               ) : null}
             </View>

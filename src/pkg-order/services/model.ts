@@ -118,6 +118,8 @@ export interface OrderDetailData {
   amountFields: OrderDetailFieldData[];
   orderFields: OrderDetailFieldData[];
   refundButtonText: string;
+  aftersaleEntryRoute?: string;
+  aftersaleEntryText?: string;
 }
 
 export interface OrderLogisticsTraceItem {

@@ -6,6 +6,7 @@ import {
   type BffOrderRejectedCoupon,
   type BffTicketVoucher,
 } from '@/core/services/bff-order-api';
+import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { sanitizeMallRuntimeText } from '@/core/utils/mall-runtime';
 import type {
   OrderDetailCouponFieldData,
@@ -79,6 +80,17 @@ function resolveRefundButtonText(primaryActionType: OrderDetailData['primaryActi
   if (primaryActionType === 'aftersale') return '申请售后';
   if (primaryActionType === 'refund') return '申请退款';
   return '';
+}
+
+// 已进入退款/返还阶段的订单，允许用户直接回到售后记录继续核对进度。
+function resolveAftersaleEntryRoute(order: BffOrder) {
+  const normalizedStatus = String(order.orderStatus || '').toUpperCase();
+  const hasRefundProgress = ['REFUNDING', 'REFUNDED'].includes(normalizedStatus)
+    || Boolean(order.refundReturnedCouponNos?.length);
+
+  if (!hasRefundProgress) return undefined;
+
+  return `${MINI_PACKAGE_ROUTES.orderAftersaleList}?orderId=${encodeURIComponent(order.orderNo)}`;
 }
 
 // 归一票码状态，展示核销进度而不是第三方原始状态值。
@@ -322,6 +334,7 @@ function mapOrderToDetail(order: BffOrder): OrderDetailData {
   const deliveryCompany = resolveLogisticsField(context, ['deliveryCompany', 'logisticsCompany', 'expressCompany']);
   const trackingNumber = resolveLogisticsField(context, ['trackingNumber', 'waybillNo', 'logisticsNo', 'deliveryNo']);
   const logisticsStatusText = resolveLogisticsField(context, ['logisticsStatusText', 'deliveryStatusText', 'shipmentStatusText']);
+  const aftersaleEntryRoute = resolveAftersaleEntryRoute(order);
 
   return {
     id: order.orderNo,
@@ -372,6 +385,8 @@ function mapOrderToDetail(order: BffOrder): OrderDetailData {
       { label: '渠道', value: order.channel || '' },
     ]),
     refundButtonText: resolveRefundButtonText(primaryActionType),
+    aftersaleEntryRoute,
+    aftersaleEntryText: aftersaleEntryRoute ? '查看售后' : undefined,
   };
 }
 

@@ -233,10 +233,18 @@
   }
 }
 
+._pg-footer-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 26px;
+}
+
 ._pg-footer-action {
-  width: 196px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 196px;
   height: 68px;
-  margin: 26px 0 0 auto;
   border: 1Px solid #d94a88;
   border-radius: 999px;
   box-sizing: border-box;
@@ -244,4 +252,14 @@
   font-size: 30px;
   line-height: 66px;
   text-align: center;
+
+  & + & {
+    margin-left: 16px;
+  }
+
+  &--ghost {
+    color: #6b7280;
+    border-color: #d5d9e3;
+    background: #ffffff;
+  }
 }
