@@ -15,6 +15,14 @@ function resolveOrderDetailRoute(orderId: string) {
   return `${MINI_PACKAGE_ROUTES.orderDetail}?orderId=${encodeURIComponent(orderId)}`;
 }
 
+function resolveCouponDetailRoute(couponNo: string) {
+  return `${MINI_PACKAGE_ROUTES.memberCouponDetail}?id=${encodeURIComponent(couponNo)}`;
+}
+
+function resolveAftersaleListRoute(orderId: string) {
+  return `${MINI_PACKAGE_ROUTES.orderAftersaleList}?orderId=${encodeURIComponent(orderId)}`;
+}
+
 const AftersaleProgressPage = observer(function AftersaleProgressPage() {
   const [pageData, setPageData] = useState<OrderAftersaleProgressData>();
   const pageRuntime = usePageRuntime({
@@ -30,6 +38,32 @@ const AftersaleProgressPage = observer(function AftersaleProgressPage() {
     loginRequired: true,
     loginReason: '登录后可查看售后进度',
   });
+
+  function handleCouponPress(couponNo: string) {
+    navigateToMiniRoute(resolveCouponDetailRoute(couponNo));
+  }
+
+  function renderCouponField(item: OrderAftersaleProgressData['couponFields'][number]) {
+    return (
+      <View className="_pg-meta_row _pg-meta_row--coupon" key={item.label}>
+        <Text className="_pg-meta_label">{item.label}</Text>
+        {item.couponLinks?.length ? (
+          <View className="_pg-coupon-links">
+            {item.couponLinks.map((link) => (
+              <View className="_pg-coupon-links_item" key={`${item.label}-${link.couponNo}-${link.detailText || ''}`}>
+                <View className="_pg-coupon-links_chip" onClick={() => handleCouponPress(link.couponNo)}>
+                  <Text className="_pg-coupon-links_chip-text">{link.couponNo}</Text>
+                </View>
+                {link.detailText ? <Text className="_pg-coupon-links_desc">{link.detailText}</Text> : null}
+              </View>
+            ))}
+          </View>
+        ) : (
+          <Text className="_pg-meta_value">{item.value}</Text>
+        )}
+      </View>
+    );
+  }
 
   return pageRuntime.renderPage(() => {
     if (!pageData) return null;
@@ -50,7 +84,7 @@ const AftersaleProgressPage = observer(function AftersaleProgressPage() {
               </View>
               <View
                 className="_pg-footer_button"
-                onClick={() => navigateToMiniRoute(MINI_PACKAGE_ROUTES.orderAftersaleList)}
+                onClick={() => navigateToMiniRoute(resolveAftersaleListRoute(pageData.order.id))}
               >
                 {pageData.primaryButtonText}
               </View>
@@ -68,6 +102,15 @@ const AftersaleProgressPage = observer(function AftersaleProgressPage() {
               className="_pg-order-card"
               onClick={() => navigateToMiniRoute(resolveOrderDetailRoute(pageData.order.id))}
             />
+
+            {pageData.couponFields.length ? (
+              <View className="_pg-card">
+                <Text className="_pg-card_title">优惠券处理</Text>
+                <View className="_pg-meta">
+                  {pageData.couponFields.map(renderCouponField)}
+                </View>
+              </View>
+            ) : null}
 
             <View className="_pg-card">
               <Text className="_pg-card_title">售后信息</Text>

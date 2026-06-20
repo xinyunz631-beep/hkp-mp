@@ -262,6 +262,7 @@ export interface OrderAftersaleProgressData {
   statusDesc: string;
   refundAmountText: string;
   reasonText: string;
+  couponFields: OrderDetailCouponFieldData[];
   fields: OrderAftersaleFieldData[];
   progress: OrderAftersaleProgressStepData[];
   primaryButtonText: string;
