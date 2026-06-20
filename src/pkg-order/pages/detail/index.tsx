@@ -48,6 +48,10 @@ function resolveAmountLabel(detailData: OrderDetailData) {
   return detailData.primaryActionType === 'pay' ? '待支付金额' : '实付金额';
 }
 
+function resolveCouponDetailRoute(couponNo: string) {
+  return `${MINI_PACKAGE_ROUTES.memberCouponDetail}?id=${encodeURIComponent(couponNo)}`;
+}
+
 // 判断票务凭证页是否需要继续静默刷新，覆盖异步出票和停留券码页被外部核销的场景。
 function shouldPollTicketOrderDetail(detailData?: OrderDetailData) {
   if (!detailData) return false;
@@ -84,6 +88,10 @@ const DetailPage = observer(function DetailPage() {
   function applyDetailData(nextData: OrderDetailData) {
     pollingSnapshotRef.current = resolveTicketOrderPollingSnapshot(nextData);
     setDetailData(nextData);
+  }
+
+  function handleCouponPress(couponNo: string) {
+    navigateToMiniRoute(resolveCouponDetailRoute(couponNo));
   }
 
   async function loadDetailData(options: { showErrorToast?: boolean; orderId?: string; skipApplyWhenHidden?: boolean } = {}) {
@@ -196,6 +204,30 @@ const DetailPage = observer(function DetailPage() {
     navigateToMiniRoute(`${MINI_PACKAGE_ROUTES.orderAftersaleType}?orderId=${encodeURIComponent(detailData.id)}`);
   }
 
+  function renderCouponField(item: OrderDetailData['couponFields'][number]) {
+    return (
+      <View className="_pg-line-row" key={item.label}>
+        <Text className="_pg-line-row_label">{item.label}</Text>
+        <View className="_pg-line-row_content">
+          {item.couponLinks?.length ? (
+            <View className="_pg-coupon-links">
+              {item.couponLinks.map((link) => (
+                <View className="_pg-coupon-links_item" key={`${item.label}-${link.couponNo}-${link.detailText || ''}`}>
+                  <View className="_pg-coupon-links_chip" onClick={() => handleCouponPress(link.couponNo)}>
+                    <Text className="_pg-coupon-links_chip-text">{link.couponNo}</Text>
+                  </View>
+                  {link.detailText ? <Text className="_pg-coupon-links_desc">{link.detailText}</Text> : null}
+                </View>
+              ))}
+            </View>
+          ) : (
+            <Text className="_pg-line-row_value">{item.value}</Text>
+          )}
+        </View>
+      </View>
+    );
+  }
+
   return pageRuntime.renderPage(() => {
     if (!detailData) return null;
 
@@ -303,12 +335,7 @@ const DetailPage = observer(function DetailPage() {
             {detailData.couponFields.length ? (
               <View className="_pg-card">
                 <Text className="_pg-card_section-title">优惠信息</Text>
-                {detailData.couponFields.map((item) => (
-                  <View className="_pg-line-row" key={item.label}>
-                    <Text className="_pg-line-row_label">{item.label}</Text>
-                    <Text className="_pg-line-row_value">{item.value}</Text>
-                  </View>
-                ))}
+                {detailData.couponFields.map(renderCouponField)}
               </View>
             ) : null}
 

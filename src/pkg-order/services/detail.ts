@@ -7,7 +7,13 @@ import {
   type BffTicketVoucher,
 } from '@/core/services/bff-order-api';
 import { sanitizeMallRuntimeText } from '@/core/utils/mall-runtime';
-import type { OrderDetailData, OrderDetailFieldData, OrderTicketInstanceData } from './model';
+import type {
+  OrderDetailCouponFieldData,
+  OrderDetailCouponLinkData,
+  OrderDetailData,
+  OrderDetailFieldData,
+  OrderTicketInstanceData,
+} from './model';
 
 export type { OrderDetailData } from './model';
 
@@ -138,7 +144,7 @@ function resolveLogisticsField(context: Record<string, string>, keyCandidates: s
   return '';
 }
 
-function compactFields(fields: OrderDetailFieldData[]) {
+function compactFields<T extends { value: string }>(fields: T[]) {
   return fields.filter((field) => Boolean(field.value && field.value !== '-'));
 }
 
@@ -156,6 +162,24 @@ function formatCouponNos(values?: string[]) {
   return normalizeCouponNos(values).join('、');
 }
 
+function compactCouponLinks(links: Array<OrderDetailCouponLinkData | undefined>) {
+  const linkMap = new Map<string, OrderDetailCouponLinkData>();
+
+  links.forEach((link) => {
+    if (!link?.couponNo) return;
+    const key = `${link.couponNo}__${link.detailText || ''}`;
+    if (!linkMap.has(key)) linkMap.set(key, link);
+  });
+
+  return Array.from(linkMap.values());
+}
+
+function buildCouponLinks(values?: string[]) {
+  return compactCouponLinks(
+    normalizeCouponNos(values).map((couponNo) => ({ couponNo })),
+  );
+}
+
 function resolveRejectedCouponText(coupon: BffOrderRejectedCoupon) {
   const couponNo = normalizeString(coupon.couponNo);
   const reason = normalizeString(coupon.unavailableReason || coupon.reason);
@@ -167,20 +191,49 @@ function resolveRejectedCouponText(coupon: BffOrderRejectedCoupon) {
   return detail;
 }
 
+function buildRejectedCouponLink(coupon: BffOrderRejectedCoupon) {
+  const couponNo = normalizeString(coupon.couponNo);
+  if (!couponNo) return undefined;
+
+  return {
+    couponNo,
+    detailText: normalizeString(coupon.unavailableReason || coupon.reason || coupon.status) || undefined,
+  } satisfies OrderDetailCouponLinkData;
+}
+
+function mapCouponField(
+  label: string,
+  value: string,
+  couponLinks?: OrderDetailCouponLinkData[],
+): OrderDetailCouponFieldData {
+  return {
+    label,
+    value,
+    couponLinks: couponLinks?.length ? couponLinks : undefined,
+  };
+}
+
 function mapCouponFields(order: BffOrder) {
   const rejectedCoupons = Array.from(new Set(
     (order.rejectedCoupons || [])
       .map(resolveRejectedCouponText)
       .filter(Boolean),
   )).join('；');
+  const rejectedCouponLinks = compactCouponLinks(
+    (order.rejectedCoupons || []).map(buildRejectedCouponLink),
+  );
 
   return compactFields([
-    { label: '下单选择', value: formatCouponNos(order.selectedCouponNos) },
-    { label: '实际使用', value: formatCouponNos(order.appliedCouponNos) },
-    { label: '锁定中', value: formatCouponNos(order.lockedCouponNos) },
-    { label: '未生效', value: rejectedCoupons },
-    { label: '已释放', value: formatCouponNos(order.releasedCouponNos) },
-    { label: '退款返还', value: formatCouponNos(order.refundReturnedCouponNos) },
+    mapCouponField('下单选择', formatCouponNos(order.selectedCouponNos), buildCouponLinks(order.selectedCouponNos)),
+    mapCouponField('实际使用', formatCouponNos(order.appliedCouponNos), buildCouponLinks(order.appliedCouponNos)),
+    mapCouponField('锁定中', formatCouponNos(order.lockedCouponNos), buildCouponLinks(order.lockedCouponNos)),
+    mapCouponField('未生效', rejectedCoupons, rejectedCouponLinks),
+    mapCouponField('已释放', formatCouponNos(order.releasedCouponNos), buildCouponLinks(order.releasedCouponNos)),
+    mapCouponField(
+      '退款返还',
+      formatCouponNos(order.refundReturnedCouponNos),
+      buildCouponLinks(order.refundReturnedCouponNos),
+    ),
   ]);
 }
 

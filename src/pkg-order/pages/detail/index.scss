@@ -116,6 +116,44 @@
     font-size: 28px;
     line-height: 1.5;
   }
+
+  &_content {
+    flex: 1;
+  }
+}
+
+._pg-coupon-links {
+  display: flex;
+  flex-direction: column;
+
+  &_item + &_item {
+    margin-top: 16px;
+  }
+
+  &_chip {
+    display: inline-flex;
+    max-width: 100%;
+    padding: 12px 18px;
+    border: 1Px solid #f3b1cb;
+    border-radius: 999px;
+    background: #fff1f7;
+    box-sizing: border-box;
+  }
+
+  &_chip-text {
+    color: #d94a88;
+    font-size: 26px;
+    line-height: 1.4;
+    word-break: break-all;
+  }
+
+  &_desc {
+    display: block;
+    margin-top: 10px;
+    color: #8b909a;
+    font-size: 24px;
+    line-height: 1.5;
+  }
 }
 
 ._pg-ticket-code {
