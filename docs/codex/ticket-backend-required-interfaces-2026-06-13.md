@@ -5,6 +5,7 @@
 - 前端已复核后端 `backend-server@3290517` 票务接口更新。
 - 本文只记录小程序票务闭环依赖的后端必补项，供后端优先修复。
 - 小程序不会用本地库存、模拟支付成功或本地造票码补接口缺口。
+- 最新状态：2026-06-20 23:18 后端 `origin/uat@73d341c` 已包含 `b6c5258/94930b3` 订单支付 AppID 大小写修复；按“不要只看 uat”扫描全部远端分支，额外未合入分支仍仅商城闭环/收藏，不含票务支付新分支。探针订单 `TKT202606202318064632C7AF` 在 `products/calendar/quote/confirm/create` 均 200 后，`/pay` 返回 `PAYING/prepayPayNo=PAY2026062023180733439f9af275/hasPaymentParams=true`，支付参数 `appId=wx72b9e08ce45d3e79`，探针单已取消。TICKET-MP-P0-06 从“后端需修预下单”改为“保持稳定并进入真实支付成功后出票验收”。
 
 ## P0 必须补齐/稳定
 
@@ -15,7 +16,7 @@
 | TICKET-MP-P0-03 | `POST /api/bff/tickets/quote` 与 `POST /api/bff/orders/confirm` | 确认单必须显示真实价格和阻断原因；通用失败文案会让用户无法判断。 | 不可售、非发布、无库存、SKU 不匹配等返回稳定业务码和用户可读 message，例如 `BFF_TICKET_PRODUCT_NOT_ON_SALE`。 |
 | TICKET-MP-P0-04 | `POST /api/bff/orders`，`sceneType=TICKET` | `d92be1e` 已撤回创建即免支付出票；创建后必须先得到待支付订单。 | 创建成功返回稳定订单号、待支付态和应付金额；前端随后调用 `/pay` 拉起微信支付，支付成功后由后端确认优惠/库存并调用智游宝出票。 |
 | TICKET-MP-P0-05 | `GET /api/bff/orders/{orderNo}` | 订单详情只展示后端真实凭证；无凭证就无法闭环。 | 票务订单详情返回 `ticketVouchers[]`，字段至少含 `source/ticketCode/voucherCode/codeImage/qrImage/qrCodeUrl/ticketStatus/usedNum/totalNum`；二维码字段至少一个可展示。 |
-| TICKET-MP-P0-06 | `POST /api/bff/orders/{orderNo}/pay` | 门票恢复真实微信支付后，空支付参数会阻断小程序拉起支付；2026-06-19 13:25 和 16:44 UAT 曾返回微信预支付参数，但后续 `/pay` 回归 `INTERNAL_ERROR /api/pay/prepay failed`；`94d87f6/b4fb3f7` 已补 AppID 字段透传。2026-06-20 14:19 同步到 `origin/uat@1c2ef2d` 并扫描全部远端分支后，票务 `products/calendar/quote/confirm/create` 仍为 200，订单 `TKT20260620141938C28B6E97` 的 `/pay` traceId=`ticket-after-1c2ef2d-diag-20260620141938-08` 仍失败；DB 支付日志显示后端请求微信时 `appId=WX72B9E08CE45D3E79`，微信返回 `INVALID_REQUEST` / `商户号mch_id与appid不匹配`，源码定位到 `BffOrderController.pay` 对 `appId` 使用会 `.toUpperCase()` 的 `normalizeDefault`。 | `PENDING_PAYMENT/PAYING` 门票订单必须稳定返回 `prepay.payNo` 和 `prepay.paymentParams/payParams`；后端必须保持小程序 AppID 原始大小写并校验票务场景商户号与该 AppID 的微信支付绑定；非待支付状态重复调用返回 `ORDER_PAYMENT_NOT_ALLOWED`；支付成功后必须推动 order-service 出票并在订单详情返回 `ticketVouchers[]`。 |
+| TICKET-MP-P0-06 | `POST /api/bff/orders/{orderNo}/pay` | 门票恢复真实微信支付后，空支付参数会阻断小程序拉起支付；`94d87f6/b4fb3f7` 已补 AppID 字段透传，`b6c5258/94930b3` 已修复 AppID 大写导致的微信商户号不匹配；2026-06-20 23:18 在 `origin/uat@73d341c` 复跑探针，`/pay` traceId=`ticket-after-73d341c-20260620231805-08` 返回 `PAYING/prepayPayNo=PAY2026062023180733439f9af275/hasPaymentParams=true`，支付参数 `appId=wx72b9e08ce45d3e79`。 | `PENDING_PAYMENT/PAYING` 门票订单必须持续稳定返回 `prepay.payNo` 和 `prepay.paymentParams/payParams`，并保持小程序 AppID 原始大小写；非待支付状态重复调用返回 `ORDER_PAYMENT_NOT_ALLOWED`；支付成功后必须推动 order-service 出票并在订单详情返回 `ticketVouchers[]`。 |
 | TICKET-MP-P0-07 | `GET /api/bff/orders/{orderNo}` 与后台/闸机/三方核销事件 | 用户展示券码被扫码核销时，小程序页面不会触发 `onShow`，只靠回到页面刷新不够；异步出票前也可能尚无 `ticketVouchers[]`。 | 核销成功后后端必须把票码状态更新为 `used/partiallyUsed`，并把订单汇总推进到 `USED/COMPLETED/FULFILLED` 或返回明确履约状态；小程序订单详情会在 `TICKET` 未终态订单上每 3 秒后台静默轮询订单详情，失败不弹窗、不展示 loading，状态未变化不触发页面重渲染；探针响应只用于比较状态变化，发现变化后再走正常订单详情刷新入口更新页面，不以已有入园凭证为启动条件，必须能读到出票后券码和核销后的最新状态。 |
 | TICKET-MP-P0-08 | `POST /api/bff/orders` 与 `park_order_fulfillment` 履约表 | 2026-06-18 11:52 UAT 已证明智游宝发码成功后，本地履约表旧状态约束不允许 `WAIT_USE`，导致订单事务回滚且外部票已生成。 | UAT/生产 schema 必须允许 order-service 实际写入的票务履约状态，至少覆盖 `WAIT_USE/PART_USED/USED/FULFILLED/FAILED/CANCELED` 或统一服务状态映射；三方发码成功后本地落库失败必须有补偿记录/取消策略，不能只返回 `INTERNAL_ERROR`。 |
 
