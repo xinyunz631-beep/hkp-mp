@@ -1,11 +1,32 @@
-import { fetchBffOrderAftersales } from '@/core/services/bff-order-api';
+import {
+  fetchBffOrderAftersales,
+  fetchBffOrderDetail,
+} from '@/core/services/bff-order-api';
 import { normalizeText, toOrderSummary } from './bff-adapter';
+import { mapOrderCouponFields } from './coupon-facts';
 import type { OrderAftersaleListData } from './model';
 
 export type { OrderAftersaleListData } from './model';
 
-export async function fetchAftersaleListData(): Promise<OrderAftersaleListData> {
-  const data = await fetchBffOrderAftersales();
+interface FetchAftersaleListOptions {
+  orderId?: string;
+}
+
+export async function fetchAftersaleListData(
+  options: FetchAftersaleListOptions = {},
+): Promise<OrderAftersaleListData> {
+  const [listResult, orderDetailResult] = await Promise.allSettled([
+    fetchBffOrderAftersales(),
+    options.orderId
+      ? fetchBffOrderDetail(options.orderId, {
+        showErrorToast: false,
+      })
+      : Promise.resolve(undefined),
+  ]);
+
+  if (listResult.status !== 'fulfilled') throw listResult.reason;
+
+  const data = listResult.value;
 
   return {
     tabs: (data.tabs || []).map((tab, index) => ({
@@ -25,6 +46,9 @@ export async function fetchAftersaleListData(): Promise<OrderAftersaleListData> 
       buttonText: normalizeText(record.buttonText),
       order: toOrderSummary(record.order),
     })),
+    couponFields: orderDetailResult.status === 'fulfilled' && orderDetailResult.value
+      ? mapOrderCouponFields(orderDetailResult.value)
+      : [],
     unavailableReason: normalizeText(data.unavailableReason) || undefined,
   };
 }

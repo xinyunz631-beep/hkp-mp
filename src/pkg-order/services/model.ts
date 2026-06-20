@@ -239,6 +239,7 @@ export interface OrderAftersaleRecordData {
 export interface OrderAftersaleListData {
   tabs: HkpFilterTab[];
   records: OrderAftersaleRecordData[];
+  couponFields: OrderDetailCouponFieldData[];
   unavailableReason?: string;
 }
 

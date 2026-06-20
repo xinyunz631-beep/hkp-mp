@@ -17,13 +17,19 @@ function resolveOrderDetailRoute(orderId: string) {
   return `${MINI_PACKAGE_ROUTES.orderDetail}?orderId=${encodeURIComponent(orderId)}`;
 }
 
+function resolveCouponDetailRoute(couponNo: string) {
+  return `${MINI_PACKAGE_ROUTES.memberCouponDetail}?id=${encodeURIComponent(couponNo)}`;
+}
+
 const AftersaleListPage = observer(function AftersaleListPage() {
   const [pageData, setPageData] = useState<OrderAftersaleListData>();
   const [activeTabKey, setActiveTabKey] = useState('all');
   const routeOrderId = Taro.getCurrentInstance().router?.params?.orderId;
   const pageRuntime = usePageRuntime({
     initPage: async () => {
-      const nextData = await fetchAftersaleListData();
+      const nextData = await fetchAftersaleListData({
+        orderId: routeOrderId,
+      });
       setPageData(nextData);
       setActiveTabKey(nextData.tabs[0]?.key ?? 'all');
     },
@@ -42,6 +48,32 @@ const AftersaleListPage = observer(function AftersaleListPage() {
     return tabMatchedRecords.filter((record) => record.order.id === routeOrderId);
   }, [activeTabKey, pageData, routeOrderId]);
 
+  function handleCouponPress(couponNo: string) {
+    navigateToMiniRoute(resolveCouponDetailRoute(couponNo));
+  }
+
+  function renderCouponField(item: OrderAftersaleListData['couponFields'][number]) {
+    return (
+      <View className="_pg-meta_row _pg-meta_row--coupon" key={item.label}>
+        <Text className="_pg-meta_label">{item.label}</Text>
+        {item.couponLinks?.length ? (
+          <View className="_pg-coupon-links">
+            {item.couponLinks.map((link) => (
+              <View className="_pg-coupon-links_item" key={`${item.label}-${link.couponNo}-${link.detailText || ''}`}>
+                <View className="_pg-coupon-links_chip" onClick={() => handleCouponPress(link.couponNo)}>
+                  <Text className="_pg-coupon-links_chip-text">{link.couponNo}</Text>
+                </View>
+                {link.detailText ? <Text className="_pg-coupon-links_desc">{link.detailText}</Text> : null}
+              </View>
+            ))}
+          </View>
+        ) : (
+          <Text className="_pg-meta_value">{item.value}</Text>
+        )}
+      </View>
+    );
+  }
+
   return pageRuntime.renderPage(() => {
     if (!pageData) return null;
 
@@ -55,6 +87,15 @@ const AftersaleListPage = observer(function AftersaleListPage() {
               activeKey={activeTabKey}
               onChange={setActiveTabKey}
             />
+
+            {routeOrderId && pageData.couponFields.length ? (
+              <View className="_pg-facts">
+                <Text className="_pg-facts_title">优惠券处理</Text>
+                <View className="_pg-meta">
+                  {pageData.couponFields.map(renderCouponField)}
+                </View>
+              </View>
+            ) : null}
 
             <View className="_pg-records">
               {visibleRecords.length > 0 ? visibleRecords.map((record) => {
