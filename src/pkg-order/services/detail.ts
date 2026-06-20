@@ -207,6 +207,27 @@ function mapTicketInstances(order: BffOrder): OrderTicketInstanceData[] {
   })).filter((ticket) => ticket.ticketNo || ticket.qrCodePayload);
 }
 
+function getTicketVoucherNumber(voucher: BffTicketVoucher, key: string) {
+  const directValue = voucher[key];
+  const rawValue = voucher.rawFields?.[key];
+  const value = typeof directValue === 'number' ? directValue : rawValue;
+
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string' && value.trim()) {
+    const numericValue = Number(value);
+    return Number.isFinite(numericValue) ? numericValue : undefined;
+  }
+  return undefined;
+}
+
+function resolveTicketVoucherStatusText(voucher: BffTicketVoucher) {
+  return resolveTicketStatusText(
+    getBffTicketVoucherText(voucher, 'ticketStatus')
+      || getBffTicketVoucherText(voucher, 'status')
+      || getBffTicketVoucherText(voucher, 'useStatus'),
+  );
+}
+
 function mapTicketVoucher(order: BffOrder, voucher: BffTicketVoucher): OrderTicketInstanceData | undefined {
   const ticketNo = getBffTicketVoucherText(voucher, 'ticketCode') || getBffTicketVoucherText(voucher, 'voucherCode');
   const qrImageSrc = getBffTicketVoucherText(voucher, 'qrImage')
@@ -216,6 +237,8 @@ function mapTicketVoucher(order: BffOrder, voucher: BffTicketVoucher): OrderTick
     || getBffTicketVoucherText(voucher, 'voucherCode')
     || getBffTicketVoucherText(voucher, 'ticketCode')
     || getBffTicketVoucherText(voucher, 'qrCodeUrl');
+  const totalNum = getTicketVoucherNumber(voucher, 'totalNum');
+  const usedNum = getTicketVoucherNumber(voucher, 'usedNum');
 
   if (!ticketNo && !qrCodePayload && !qrImageSrc) return undefined;
 
@@ -225,11 +248,11 @@ function mapTicketVoucher(order: BffOrder, voucher: BffTicketVoucher): OrderTick
     qrImageSrc,
     productName: resolveTitle(order),
     skuName: order.items?.[0]?.skuId || '',
-    statusText: resolveTicketStatusText(getBffTicketVoucherText(voucher, 'ticketStatus')),
+    statusText: resolveTicketVoucherStatusText(voucher),
     visitDate: order.context?.visitDate || '',
     validTimeText: '',
-    useTimesText: typeof voucher.totalNum === 'number'
-      ? `共 ${voucher.totalNum} 次${typeof voucher.usedNum === 'number' ? `，已用 ${voucher.usedNum} 次` : ''}`
+    useTimesText: typeof totalNum === 'number'
+      ? `共 ${totalNum} 次${typeof usedNum === 'number' ? `，已用 ${usedNum} 次` : ''}`
       : '',
   };
 }

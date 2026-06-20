@@ -67,6 +67,7 @@ function resolveTicketOrderPollingSnapshot(detailData?: OrderDetailData) {
     refundButtonText: detailData.refundButtonText || '',
     ticketInstances: detailData.ticketInstances.map((ticket) => ({
       ticketNo: ticket.ticketNo,
+      qrCodePayload: ticket.qrCodePayload,
       hasVoucherCode: Boolean(ticket.qrCodePayload || ticket.qrImageSrc),
       statusText: ticket.statusText,
       useTimesText: ticket.useTimesText,
@@ -85,21 +86,24 @@ const DetailPage = observer(function DetailPage() {
     setDetailData(nextData);
   }
 
-  async function loadDetailData(options: { showErrorToast?: boolean } = {}) {
-    const orderId = Taro.getCurrentInstance().router?.params?.orderId;
+  async function loadDetailData(options: { showErrorToast?: boolean; orderId?: string; skipApplyWhenHidden?: boolean } = {}) {
+    const orderId = options.orderId || Taro.getCurrentInstance().router?.params?.orderId;
     const nextData = await fetchDetailData(orderId, {
       showErrorToast: options.showErrorToast,
     });
+    if (options.skipApplyWhenHidden && !pageVisibleRef.current) return nextData;
     applyDetailData(nextData);
     return nextData;
   }
 
   async function pollTicketOrderDetailSilently(orderId: string) {
     const probeData = await fetchDetailData(orderId, { showErrorToast: false });
+    if (!pageVisibleRef.current) return;
+
     const nextSnapshot = resolveTicketOrderPollingSnapshot(probeData);
 
     if (nextSnapshot !== pollingSnapshotRef.current) {
-      await loadDetailData({ showErrorToast: false });
+      await loadDetailData({ showErrorToast: false, orderId, skipApplyWhenHidden: true });
     }
   }
 
