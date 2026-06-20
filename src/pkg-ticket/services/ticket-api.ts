@@ -59,6 +59,34 @@ export interface BffTicketInventoryDay {
   restrictionReason?: string;
 }
 
+export interface BffTicketCalendarBatchDay {
+  date: string;
+  minPriceCent?: number;
+  availableStock?: number;
+  saleStatus?: string;
+  restrictionReason?: string;
+}
+
+export interface BffTicketProductCalendar {
+  productCode: string;
+  status?: string;
+  message?: string;
+  days?: BffTicketCalendarBatchDay[];
+}
+
+export interface BffTicketCalendarBatchRequest {
+  channel?: string;
+  productCodes: string[];
+  startDate: string;
+  endDate: string;
+  visitDate?: string;
+}
+
+export interface BffTicketCalendarBatchResponse {
+  traceId?: string;
+  calendars?: BffTicketProductCalendar[];
+}
+
 export interface BffTicketQuoteItem {
   productCode: string;
   skuId?: string;
@@ -127,6 +155,16 @@ export async function fetchBffTicketCalendar(productCode: string, startDate: str
     method: 'GET',
   });
   return normalizePageResult(result);
+}
+
+// 批量查询多个票务商品的日期库存摘要，门票预定页首屏用它替代逐商品 calendar。
+export async function fetchBffTicketCalendarBatch(data: BffTicketCalendarBatchRequest) {
+  const result = await request<BffTicketCalendarBatchResponse, BffTicketCalendarBatchRequest>({
+    url: '/api/bff/tickets/products/calendar-batch',
+    method: 'POST',
+    data,
+  });
+  return result.calendars || [];
 }
 
 // 调用票务报价接口，校验票种、日期和库存对应的小计。

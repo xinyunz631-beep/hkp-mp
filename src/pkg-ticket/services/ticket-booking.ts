@@ -4,10 +4,11 @@ import {
   type CmsResourceSlotApiItem,
 } from './purchase-api';
 import {
-  fetchBffTicketCalendar,
+  fetchBffTicketCalendarBatch,
   fetchBffTicketProducts,
   type BffTicketInventoryDay,
   type BffTicketProduct,
+  type BffTicketProductCalendar,
   type BffTicketSkuRule,
 } from './ticket-api';
 import type { HkpCouponSummary, HkpDateOption } from '@/core/types/hkp';
@@ -114,6 +115,8 @@ const TICKET_WEEKDAY_TITLES = ['周日', '周一', '周二', '周三', '周四',
 const DEFAULT_SERVICE_PHONE = '4009778899';
 const DEFAULT_ENTRY_ADDRESS = '浙江安吉县昌硕街道天使大道1号';
 const TICKET_REQUEST_CACHE_TTL = 10 * 1000;
+const TICKET_CALENDAR_BATCH_SIZE = 20;
+const PRODUCT_CALENDAR_SUMMARY_SKU_ID = '__product_calendar_summary__';
 const MINI_PROGRAM_CHANNELS = ['miniProgram', 'wechatMiniProgram', 'WECHAT_MINI_PROGRAM', 'weapp'];
 
 interface TicketRequestCacheEntry<TData> {
@@ -122,7 +125,7 @@ interface TicketRequestCacheEntry<TData> {
 }
 
 const ticketBookingRequestCache = new Map<string, TicketRequestCacheEntry<TicketBookingData>>();
-const ticketCalendarRequestCache = new Map<string, TicketRequestCacheEntry<BffTicketInventoryDay[]>>();
+const ticketCalendarBatchRequestCache = new Map<string, TicketRequestCacheEntry<Record<string, BffTicketInventoryDay[]>>>();
 
 // 补齐日期控件基础可选日期，真实库存可售性由统一订单确认接口校验。
 function createTicketDates(): HkpDateOption[] {
@@ -219,7 +222,9 @@ function resolvePrice(priceCent?: number) {
 }
 
 function sameSkuInventoryDay(day: BffTicketInventoryDay, sku: BffTicketSkuRule) {
-  return day.skuId === sku.id || Boolean(sku.variantCode && day.skuId === sku.variantCode);
+  return day.skuId === PRODUCT_CALENDAR_SUMMARY_SKU_ID
+    || day.skuId === sku.id
+    || Boolean(sku.variantCode && day.skuId === sku.variantCode);
 }
 
 // 根据所选日期的库存日历取当前票种价量。
@@ -244,8 +249,8 @@ function getTicketBookingRequestKey(travelDate: string) {
   return `ticket-booking:${travelDate}`;
 }
 
-function getTicketCalendarRequestKey(productCode: string, startDate: string, endDate: string) {
-  return `${productCode}:${startDate}:${endDate}`;
+function getTicketCalendarBatchRequestKey(productCodes: string[], startDate: string, endDate: string) {
+  return `${productCodes.join(',')}:${startDate}:${endDate}`;
 }
 
 function getCachedTicketRequest<TData>(cache: Map<string, TicketRequestCacheEntry<TData>>, requestKey: string) {
@@ -284,17 +289,61 @@ function setCachedTicketRequest<TData>(
   return request;
 }
 
-// 同一次页面加载内合并相同商品和日期范围的日历请求，避免 initPage 或后端重复商品导致接口风暴。
-function fetchBffTicketCalendarOnce(productCode: string, startDate: string, endDate: string) {
-  const requestKey = getTicketCalendarRequestKey(productCode, startDate, endDate);
-  const cachedRequest = getCachedTicketRequest(ticketCalendarRequestCache, requestKey);
+function chunkProductCodes(productCodes: string[]) {
+  const chunks: string[][] = [];
+
+  for (let index = 0; index < productCodes.length; index += TICKET_CALENDAR_BATCH_SIZE) {
+    chunks.push(productCodes.slice(index, index + TICKET_CALENDAR_BATCH_SIZE));
+  }
+
+  return chunks;
+}
+
+function normalizeCalendarSaleStatus(status?: string) {
+  const normalizedStatus = status?.replace(/[_-]/g, '').toLowerCase();
+  if (normalizedStatus === 'onsale') return 'onSale';
+  if (normalizedStatus === 'soldout') return 'soldOut';
+  if (normalizedStatus === 'notsaleable') return 'notSaleable';
+  return status;
+}
+
+// 批量日历是商品日期摘要，不是 SKU 级库存；最终 SKU 价量仍由 quote/confirm 二次校验。
+function normalizeBatchCalendar(calendar: BffTicketProductCalendar): BffTicketInventoryDay[] {
+  return (calendar.days || []).map((day) => ({
+    productId: calendar.productCode,
+    skuId: PRODUCT_CALENDAR_SUMMARY_SKU_ID,
+    date: day.date,
+    price: day.minPriceCent,
+    availableStock: day.availableStock,
+    saleStatus: normalizeCalendarSaleStatus(day.saleStatus),
+    restrictionReason: day.restrictionReason || calendar.message,
+  }));
+}
+
+// 同一次页面加载内按后端批量上限合并日历请求，避免门票预定页跨商品 N+1。
+function fetchBffTicketCalendarBatchOnce(productCodes: string[], startDate: string, endDate: string) {
+  const requestKey = getTicketCalendarBatchRequestKey(productCodes, startDate, endDate);
+  const cachedRequest = getCachedTicketRequest(ticketCalendarBatchRequestCache, requestKey);
 
   if (cachedRequest) return cachedRequest;
 
   return setCachedTicketRequest(
-    ticketCalendarRequestCache,
+    ticketCalendarBatchRequestCache,
     requestKey,
-    () => fetchBffTicketCalendar(productCode, startDate, endDate),
+    async () => {
+      const calendars = await fetchBffTicketCalendarBatch({
+        channel: 'MINI_PROGRAM',
+        productCodes,
+        startDate,
+        endDate,
+        visitDate: startDate,
+      });
+
+      return calendars.reduce<Record<string, BffTicketInventoryDay[]>>((result, calendar) => {
+        result[calendar.productCode] = normalizeBatchCalendar(calendar);
+        return result;
+      }, {});
+    },
   );
 }
 
@@ -322,6 +371,7 @@ function resolveUnavailableStockText(
 ) {
   if (!isPublishedTicketProduct(item)) return resolvePublishStatusText(item.publishStatus);
   if (!inventoryDay) return item.availableDateSummary || '暂无可售日期';
+  if (inventoryDay.saleStatus === 'soldOut') return '已售罄';
   if (inventoryDay.saleStatus !== 'onSale') return inventoryDay.restrictionReason || '暂不可订';
   if (availableStock <= 0) return '已售罄';
   return '暂不可订';
@@ -363,7 +413,9 @@ function normalizeTicketProduct(
 ): TicketProduct | undefined {
   if (!item.productCode || !item.title || !sku.id) return undefined;
   const availableStock = inventoryDay?.availableStock ?? 0;
-  const unitPriceCent = inventoryDay?.price ?? sku.basePrice ?? item.minPrice ?? 0;
+  const unitPriceCent = inventoryDay?.skuId === PRODUCT_CALENDAR_SUMMARY_SKU_ID
+    ? sku.basePrice ?? inventoryDay?.price ?? item.minPrice ?? 0
+    : inventoryDay?.price ?? sku.basePrice ?? item.minPrice ?? 0;
   const skuName = sku.name || '标准票';
   const saleable = isPublishedTicketProduct(item) && inventoryDay?.saleStatus === 'onSale' && availableStock > 0;
   const skuMaxQuantity = sku.maxQuantity && sku.maxQuantity > 0 ? sku.maxQuantity : availableStock;
@@ -521,14 +573,11 @@ async function fetchTicketBookingDataUncached(fallback: TicketBookingData) {
     fetchBffTicketProducts(),
     fetchPurchaseResources().catch(() => []),
   ]);
-  const calendarEntries = await Promise.all(uniquePublishedTicketProductCodes(ticketProducts).map(async (productCode) => ({
-    productCode,
-    days: await fetchBffTicketCalendarOnce(productCode, startDate, endDate),
-  })));
-  const inventoryMap = calendarEntries.reduce<Record<string, BffTicketInventoryDay[]>>((result, entry) => {
-    result[entry.productCode] = entry.days;
-    return result;
-  }, {});
+  const calendarBatchMaps = await Promise.all(
+    chunkProductCodes(uniquePublishedTicketProductCodes(ticketProducts))
+      .map((productCodes) => fetchBffTicketCalendarBatchOnce(productCodes, startDate, endDate)),
+  );
+  const inventoryMap = Object.assign({}, ...calendarBatchMaps) as Record<string, BffTicketInventoryDay[]>;
 
   return buildTicketBookingDataFromApi(fallback, ticketProducts, inventoryMap, resources);
 }
