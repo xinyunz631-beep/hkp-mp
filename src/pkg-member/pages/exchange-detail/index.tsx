@@ -11,8 +11,10 @@ import { PageFooter, PageShare, PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import { resolveErrorMessage } from '@/core/utils/error-message';
+import { navigateToMiniRoute } from '@/core/utils/navigation';
 import { showWechatToast } from '@/core/utils/wechat-actions';
 import { MemberRichText } from '@/pkg-member/components/MemberRichText';
+import { fetchCouponDetailData, invalidateMemberCouponSnapshot } from '@/pkg-member/services/coupons';
 import {
   fetchMemberExchangeDetailData,
   submitMemberKcoinExchange,
@@ -26,6 +28,16 @@ function resolveExchangeProductId() {
 
 function clampQuantity(value: number, max: number) {
   return Math.min(Math.max(value, 1), Math.max(max, 1));
+}
+
+// 统一生成优惠券详情页路由，兑换成功后直接承接到真实券详情。
+function resolveCouponDetailRoute(couponNo: string) {
+  return `${MINI_PACKAGE_ROUTES.memberCouponDetail}?id=${encodeURIComponent(couponNo)}`;
+}
+
+// 从兑换结果里挑出首张真实券号，只有读到券号才允许去校验我的券闭环。
+function resolveExchangeCouponNo(couponNos?: string[]) {
+  return (couponNos ?? []).find((couponNo) => Boolean(couponNo));
 }
 
 // 渲染兑换商品详情页，商品和详情正文由接口字段承载。
@@ -100,7 +112,27 @@ const MemberExchangeDetailPage = observer(function MemberExchangeDetailPage() {
           ? { ...currentData, memberKCoins: response.afterBalance ?? currentData.memberKCoins }
           : currentData);
       }
-      await showWechatToast('兑换已受理，请稍后查看', 'success');
+
+      const exchangeCouponNo = resolveExchangeCouponNo(response.couponNos);
+      const exchangeSucceeded = String(response.status || '').toLowerCase() === 'success';
+      if (exchangeSucceeded && exchangeCouponNo) {
+        invalidateMemberCouponSnapshot();
+        const exchangedCoupon = await fetchCouponDetailData(exchangeCouponNo, {
+          forceRefresh: true,
+          retryTimes: 2,
+          retryDelayMs: 300,
+        });
+        if (exchangedCoupon) {
+          await showWechatToast('兑换成功', 'success');
+          navigateToMiniRoute(resolveCouponDetailRoute(exchangedCoupon.couponNo));
+          return;
+        }
+      }
+
+      const successText = exchangeSucceeded
+        ? '兑换成功，可稍后在我的优惠券查看'
+        : '兑换已受理，请稍后查看';
+      await showWechatToast(successText, 'success');
     } catch (error) {
       await showWechatToast(resolveErrorMessage(error, '兑换失败，请稍后再试'));
     }

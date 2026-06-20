@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Text, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
 import { PageHeader, PageShell } from '@/core/components/PageShell';
+import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import { resolveErrorMessage } from '@/core/utils/error-message';
 import { navigateToMiniRoute } from '@/core/utils/navigation';
@@ -13,6 +14,7 @@ import {
   type MemberCouponCenterData,
   type MemberCouponCenterTabKey,
 } from '@/pkg-member/services/coupon-center';
+import { cacheClaimedMemberCoupon, invalidateMemberCouponSnapshot } from '@/pkg-member/services/coupons';
 import './index.scss';
 
 const DEFAULT_TAB_KEY: MemberCouponCenterTabKey = 'recommend';
@@ -20,6 +22,11 @@ const DEFAULT_TAB_KEY: MemberCouponCenterTabKey = 'recommend';
 // 根据当前 tab 从接口券列表中筛出可展示数据。
 function resolveVisibleCoupons(coupons: MemberCouponCenterCoupon[], activeTabKey: MemberCouponCenterTabKey) {
   return coupons.filter((coupon) => coupon.tabKey === activeTabKey);
+}
+
+// 统一生成优惠券详情页路由，领券成功后直接承接到我的券详情。
+function resolveCouponDetailRoute(couponNo: string) {
+  return `${MINI_PACKAGE_ROUTES.memberCouponDetail}?id=${encodeURIComponent(couponNo)}`;
 }
 
 // 渲染领券中心，承接首页第二个导航入口和后端券列表配置。
@@ -58,12 +65,21 @@ const MemberCouponCenterPage = observer(function MemberCouponCenterPage() {
     }
 
     try {
-      await pageRuntime.withLoading(async () => {
-        await claimMemberCoupon(coupon);
+      const response = await pageRuntime.withLoading(async () => {
+        const claimResponse = await claimMemberCoupon(coupon);
+        if (claimResponse.coupon) {
+          cacheClaimedMemberCoupon(claimResponse.coupon);
+        } else {
+          invalidateMemberCouponSnapshot();
+        }
         const nextData = await fetchMemberCouponCenterData();
         setPageData(nextData);
+        return claimResponse;
       });
       await showWechatToast('领取成功', 'success');
+      if (response.coupon?.couponNo) {
+        navigateToMiniRoute(resolveCouponDetailRoute(response.coupon.couponNo));
+      }
     } catch (error) {
       await showWechatToast(resolveErrorMessage(error, '领取失败，请稍后再试'));
     }
