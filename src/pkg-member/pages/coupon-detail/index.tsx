@@ -28,6 +28,12 @@ function resolveCouponOrderDetailRoute(orderNo?: string) {
   return `${MINI_PACKAGE_ROUTES.orderDetail}?orderId=${encodeURIComponent(orderNo)}`;
 }
 
+// 退款返还链路优先回到同订单的售后进度，继续核对返还结果和处理状态。
+function resolveCouponAftersaleProgressRoute(orderNo?: string) {
+  if (!orderNo) return '';
+  return `${MINI_PACKAGE_ROUTES.orderAftersaleProgress}?orderId=${encodeURIComponent(orderNo)}`;
+}
+
 // 组装优惠券详情里的基础信息，页面层只负责按业务字段渲染。
 function buildCouponInfoRows(coupon: MemberCouponItem): CouponDetailRow[] {
   return [
@@ -96,6 +102,13 @@ function resolveCouponOrderButtonClassName() {
   ].join(' ');
 }
 
+function resolveCouponAftersaleButtonClassName() {
+  return [
+    '_pg-footer_button',
+    '_pg-footer_button--ghost',
+  ].join(' ');
+}
+
 // 会员优惠券详情页：承接真实 BFF 券资产，并给可使用券提供去下单入口。
 const CouponDetailPage = observer(function CouponDetailPage() {
   const [coupon, setCoupon] = useState<MemberCouponItem | null | undefined>();
@@ -117,6 +130,11 @@ const CouponDetailPage = observer(function CouponDetailPage() {
   function handleViewOrder() {
     if (!coupon?.orderNoText) return;
     navigateToMiniRoute(resolveCouponOrderDetailRoute(coupon.orderNoText));
+  }
+
+  function handleViewAftersale() {
+    if (!coupon?.orderNoText || !coupon.refundReturnStatusText) return;
+    navigateToMiniRoute(resolveCouponAftersaleProgressRoute(coupon.orderNoText));
   }
 
   return pageRuntime.renderPage(() => (
@@ -173,6 +191,14 @@ const CouponDetailPage = observer(function CouponDetailPage() {
                     onClick={handleViewOrder}
                   >
                     <Text>查看订单</Text>
+                  </View>
+                ) : null}
+                {coupon.orderNoText && coupon.refundReturnStatusText ? (
+                  <View
+                    className={resolveCouponAftersaleButtonClassName()}
+                    onClick={handleViewAftersale}
+                  >
+                    <Text>查看售后</Text>
                   </View>
                 ) : null}
                 <View
