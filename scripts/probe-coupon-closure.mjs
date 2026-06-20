@@ -15,6 +15,7 @@ const visitDate = process.env.COUPON_PROBE_VISIT_DATE || undefined;
 const checkInDate = process.env.COUPON_PROBE_CHECK_IN_DATE || undefined;
 const checkOutDate = process.env.COUPON_PROBE_CHECK_OUT_DATE || undefined;
 const expectedCouponNo = process.env.COUPON_PROBE_EXPECT_COUPON_NO || undefined;
+const orderNo = process.env.COUPON_PROBE_ORDER_NO || undefined;
 const claimTemplateNo = process.env.COUPON_PROBE_CLAIM_TEMPLATE_NO || undefined;
 const exchangeItemNo = process.env.COUPON_PROBE_KCOIN_ITEM_NO || undefined;
 const exchangeQuantity = Number(process.env.COUPON_PROBE_KCOIN_QUANTITY || 1);
@@ -229,6 +230,32 @@ function explicitCouponNosFrom(payload) {
   ].filter(Boolean).map(String);
 }
 
+function orderCouponFactsFrom(payload) {
+  const data = dataOf(payload) || {};
+  const rejectedCoupons = Array.isArray(data.rejectedCoupons) ? data.rejectedCoupons : [];
+  const normalize = (values) => Array.from(new Set((Array.isArray(values) ? values : []).filter(Boolean).map(String)));
+  return {
+    selectedCouponNos: normalize(data.selectedCouponNos),
+    appliedCouponNos: normalize(data.appliedCouponNos),
+    lockedCouponNos: normalize(data.lockedCouponNos),
+    releasedCouponNos: normalize(data.releasedCouponNos),
+    refundReturnedCouponNos: normalize(data.refundReturnedCouponNos),
+    rejectedCouponNos: normalize(rejectedCoupons.map((item) => item?.couponNo)),
+  };
+}
+
+function flattenOrderCouponFacts(orderCouponFacts) {
+  if (!orderCouponFacts) return [];
+  return Array.from(new Set([
+    ...orderCouponFacts.selectedCouponNos,
+    ...orderCouponFacts.appliedCouponNos,
+    ...orderCouponFacts.lockedCouponNos,
+    ...orderCouponFacts.releasedCouponNos,
+    ...orderCouponFacts.refundReturnedCouponNos,
+    ...orderCouponFacts.rejectedCouponNos,
+  ]));
+}
+
 function summarizeStep(name, response, extra = {}) {
   const payload = response.payload || {};
   return {
@@ -321,21 +348,43 @@ async function fetchCouponState(session, suffix = '') {
   };
 }
 
-function buildClosureSummary(steps, latestState, targetCouponNos) {
+async function fetchOrderCouponState(session, currentOrderNo) {
+  const orderResponse = await authedRequest(session, 'GET', `/api/bff/orders/${encodeURIComponent(currentOrderNo)}`);
+  const orderCouponFacts = orderCouponFactsFrom(orderResponse.payload);
+  const orderCouponNos = flattenOrderCouponFacts(orderCouponFacts);
+
+  return {
+    orderStep: summarizeStep('orderDetailCoupons', orderResponse, {
+      orderNo: currentOrderNo,
+      ...orderCouponFacts,
+      couponNos: orderCouponNos,
+    }),
+    orderCouponFacts,
+    orderCouponNos,
+  };
+}
+
+function buildClosureSummary(steps, latestState, targetCouponNos, orderState, currentOrderNo) {
   const memberStep = steps.find((step) => step.name === 'memberCouponsAfterWrite')
     || steps.find((step) => step.name === 'memberCoupons');
   const availableStep = steps.find((step) => step.name === 'availableCouponsAfterWrite')
     || steps.find((step) => step.name === 'availableCoupons');
+  const orderStep = steps.find((step) => step.name === 'orderDetailCoupons');
   const sessionValid = !steps.some(isAuthExpiredStep);
   const sharedCouponNos = intersection(latestState.memberCouponNos, latestState.availableCouponNos);
   const normalizedTargets = Array.from(new Set(targetCouponNos.filter(Boolean).map(String)));
+  const orderCouponNos = orderState?.orderCouponNos || [];
   const targetPresence = normalizedTargets.map((couponNo) => ({
     couponNo,
     inMemberCoupons: latestState.memberCouponNos.includes(couponNo),
     inAvailableCoupons: latestState.availableCouponNos.includes(couponNo),
+    inOrderDetail: currentOrderNo ? orderCouponNos.includes(couponNo) : undefined,
   }));
   const targetCouponsAligned = normalizedTargets.length > 0
     && targetPresence.every((item) => item.inMemberCoupons && item.inAvailableCoupons);
+  const targetCouponsOrderAligned = currentOrderNo
+    ? normalizedTargets.length > 0 && targetPresence.every((item) => item.inOrderDetail)
+    : undefined;
 
   const blockers = [];
   if (!sessionValid) {
@@ -353,11 +402,28 @@ function buildClosureSummary(steps, latestState, targetCouponNos) {
   if (normalizedTargets.length > 0 && !targetCouponsAligned) {
     blockers.push('目标 couponNo 未同时出现在我的券和下单可用券，CRM/promotion 同源资产仍未闭环');
   }
+  if (currentOrderNo && sessionValid && !stepSucceeded(orderStep)) {
+    blockers.push(`订单详情接口未成功：需检查 GET /api/bff/orders/${currentOrderNo}`);
+  }
+  if (currentOrderNo && normalizedTargets.length === 0) {
+    blockers.push('已提供订单号，但未提供目标 couponNo；无法证明订单详情里的券事实是否为同一张券');
+  }
+  if (currentOrderNo && normalizedTargets.length > 0 && targetCouponsOrderAligned === false) {
+    blockers.push('目标 couponNo 未出现在订单详情券事实里，统一订单读模型仍未闭环');
+  }
 
   return {
-    closed: Boolean(sessionValid && stepSucceeded(memberStep) && stepSucceeded(availableStep) && targetCouponsAligned),
+    closed: Boolean(
+      sessionValid
+      && stepSucceeded(memberStep)
+      && stepSucceeded(availableStep)
+      && targetCouponsAligned
+      && (currentOrderNo ? stepSucceeded(orderStep) && targetCouponsOrderAligned : true)
+    ),
     readOnlySharedCouponNos: sharedCouponNos,
     targetCouponNos: normalizedTargets,
+    orderNo: currentOrderNo,
+    orderCouponNos,
     targetPresence,
     checks: {
       sessionValid,
@@ -365,9 +431,15 @@ function buildClosureSummary(steps, latestState, targetCouponNos) {
       availableCouponsReady: stepSucceeded(availableStep),
       hasReadOnlySharedCoupon: sharedCouponNos.length > 0,
       targetCouponsAligned,
+      orderCouponsReady: currentOrderNo ? stepSucceeded(orderStep) : undefined,
+      targetCouponsOrderAligned,
     },
     blockers,
-    nextAction: blockers[0] || '目标券已同时出现在我的券和下单可用券，可继续用 selectedCouponNos 做订单确认验收',
+    nextAction: blockers[0] || (
+      currentOrderNo
+        ? '目标券已同时出现在我的券、下单可用券和订单详情，可继续验退款返还同券号链路'
+        : '目标券已同时出现在我的券和下单可用券，可继续用 selectedCouponNos 做订单确认验收'
+    ),
   };
 }
 
@@ -444,6 +516,12 @@ async function main() {
     steps.push(latestState.memberStep, latestState.availableStep);
   }
 
+  let orderState;
+  if (orderNo) {
+    orderState = await fetchOrderCouponState(session, orderNo);
+    steps.push(orderState.orderStep);
+  }
+
   const output = {
     apiHost,
     sessionFile,
@@ -455,11 +533,12 @@ async function main() {
     checkInDate,
     checkOutDate,
     expectedCouponNo,
+    orderNo,
     claimEnabled: shouldClaim,
     exchangeEnabled: shouldExchange,
     steps,
   };
-  output.closure = buildClosureSummary(steps, latestState, targetCouponNos);
+  output.closure = buildClosureSummary(steps, latestState, targetCouponNos, orderState, orderNo);
   console.log(JSON.stringify(output, null, 2));
 
   if (strictMode && !output.closure.closed) {
