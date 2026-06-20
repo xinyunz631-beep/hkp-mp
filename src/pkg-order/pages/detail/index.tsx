@@ -8,6 +8,7 @@ import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import { useEffect, useRef, useState } from 'react';
 import { navigateToMiniRoute } from '@/core/utils/navigation';
 import { requestWechatPayment, showWechatConfirm, showWechatToast } from '@/core/utils/wechat-actions';
+import { syncBffPaymentStatusSilently } from '@/core/services/bff-api';
 import { payBffOrder, refundBffOrder } from '@/core/services/bff-order-api';
 import { fetchDetailData, type OrderDetailData } from '@/pkg-order/services/detail';
 import './index.scss';
@@ -173,6 +174,7 @@ const DetailPage = observer(function DetailPage() {
         return;
       }
 
+      await syncBffPaymentStatusSilently(payment.prepay?.payNo);
       const nextData = await fetchDetailData(detailData.id);
       applyDetailData(nextData);
       await showWechatToast('支付成功', 'success');
@@ -269,7 +271,7 @@ const DetailPage = observer(function DetailPage() {
                       <Text className="_pg-ticket-code_status">{ticket.statusText}</Text>
                     </View>
                     {ticket.qrImageSrc ? (
-                      <AppImage className="_pg-ticket-code_qr" src={ticket.qrImageSrc} mode="aspectFit" />
+                      <AppImage className="_pg-ticket-code_qr" src={ticket.qrImageSrc} mode="aspectFit" emptyState="error" />
                     ) : null}
                     {ticket.qrCodePayload ? (
                       <Text className="_pg-ticket-code_payload">{ticket.qrCodePayload}</Text>

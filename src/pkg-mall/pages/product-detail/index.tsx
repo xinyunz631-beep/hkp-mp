@@ -64,7 +64,9 @@ const ProductDetailPage = observer(function ProductDetailPage() {
   const reviews = detailData?.reviews ?? [];
   const recommendProducts = detailData?.recommendProducts ?? [];
   const detailImages = detailData?.detailImages ?? [];
+  const detailHtml = detailData?.detailHtml?.trim() || '';
   const gallery = detailData?.gallery ?? [];
+  const galleryItems = gallery.length > 0 ? gallery : [''];
   const skuVariants = detailData?.skuVariants ?? [];
   const skuState = useMemo(
     () => resolveSkuState<MallSkuVariant>(skuGroups, skuVariants),
@@ -90,6 +92,7 @@ const ProductDetailPage = observer(function ProductDetailPage() {
     : '评论';
   const hasReviewData = reviews.length > 0;
   const promoText = detailData?.promoText?.trim() || '优惠信息以下单结算页为准';
+  const hasDetailContent = Boolean(detailHtml || detailImages.length);
 
   useShareAppMessage(() => ({
     title: product?.title || '商品详情',
@@ -299,32 +302,34 @@ const ProductDetailPage = observer(function ProductDetailPage() {
           </View>
         )}
       >
-        <View className="_pg-page">
-          <View className="_pg-gallery">
-            <Swiper
-              className="_pg-gallery_swiper"
-              circular
-              onChange={(event) => {
-                setGalleryIndex(event.detail.current);
-              }}
-            >
-              {gallery.map((imageSrc, index) => (
-                <SwiperItem key={`${imageSrc}-${index}`}>
-                  <View className="_pg-gallery_preview" onClick={() => handlePreviewGallery(imageSrc)}>
-                    <AppImage className="_pg-gallery_image" src={imageSrc} mode="aspectFit" emptyState="error" />
-                  </View>
-                </SwiperItem>
-              ))}
-            </Swiper>
-            <View className="_pg-gallery_dots">
-              {gallery.map((imageSrc, index) => (
-                <View
-                  className={`_pg-gallery_dot ${index === galleryIndex ? '_pg-gallery_dot--active' : ''}`}
-                  key={`${imageSrc}-${index}`}
-                />
-              ))}
+          <View className="_pg-page">
+            <View className="_pg-gallery">
+              <Swiper
+                className="_pg-gallery_swiper"
+                circular={galleryItems.length > 1}
+                onChange={(event) => {
+                  setGalleryIndex(event.detail.current);
+                }}
+              >
+                {galleryItems.map((imageSrc, index) => (
+                  <SwiperItem key={`${imageSrc}-${index}`}>
+                    <View className="_pg-gallery_preview" onClick={() => handlePreviewGallery(imageSrc)}>
+                      <AppImage className="_pg-gallery_image" src={imageSrc} mode="aspectFit" emptyState="error" />
+                    </View>
+                  </SwiperItem>
+                ))}
+              </Swiper>
+              {gallery.length > 1 ? (
+                <View className="_pg-gallery_dots">
+                  {gallery.map((imageSrc, index) => (
+                    <View
+                      className={`_pg-gallery_dot ${index === galleryIndex ? '_pg-gallery_dot--active' : ''}`}
+                      key={`${imageSrc}-${index}`}
+                    />
+                  ))}
+                </View>
+              ) : null}
             </View>
-          </View>
 
           <View className="_pg-info">
             <View className="_pg-info_price-row">
@@ -459,10 +464,12 @@ const ProductDetailPage = observer(function ProductDetailPage() {
             <View className="_pg-section_header">
               <Text className="_pg-section_title">商品详情</Text>
             </View>
-            <View className="_pg-detail_card">
-              <RichText className="_pg-detail_rich-text" nodes={detailData?.detailHtml || ''} />
-            </View>
-            {detailImages.slice(1).map((imageSrc, index) => (
+            {detailHtml ? (
+              <View className="_pg-detail_card">
+                <RichText className="_pg-detail_rich-text" nodes={detailHtml} />
+              </View>
+            ) : null}
+            {detailImages.map((imageSrc, index) => (
               <AppImage
                 className="_pg-detail_image _pg-detail_image--extra"
                 src={imageSrc}
@@ -472,6 +479,11 @@ const ProductDetailPage = observer(function ProductDetailPage() {
                 onClick={() => handlePreviewDetailImages(imageSrc)}
               />
             ))}
+            {!hasDetailContent ? (
+              <View className="_pg-detail_card _pg-detail_card--fallback">
+                <AppImage className="_pg-detail_image _pg-detail_image--fallback" src="" mode="aspectFit" emptyState="error" />
+              </View>
+            ) : null}
           </View>
         </View>
 

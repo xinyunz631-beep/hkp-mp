@@ -264,6 +264,18 @@ export function fetchBffPaymentStatus(payNo: string) {
   });
 }
 
+// 静默触发支付查单同步，超时或失败不阻断后续订单详情刷新。
+export function syncBffPaymentStatusSilently(payNo?: string, timeoutMs = 1800) {
+  if (!payNo) return Promise.resolve(undefined);
+
+  const safeRequest = fetchBffPaymentStatus(payNo).catch(() => undefined);
+  const safeTimeout = new Promise<undefined>((resolve) => {
+    setTimeout(() => resolve(undefined), timeoutMs);
+  });
+
+  return Promise.race([safeRequest, safeTimeout]);
+}
+
 // 促销试算，覆盖门票、商城、餐饮统一优惠计算。
 export function quoteBffPromotion(data: BffPromotionQuoteRequest) {
   return request<BffLooseResponse, BffPromotionQuoteRequest>({

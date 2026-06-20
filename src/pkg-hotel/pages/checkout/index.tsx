@@ -8,6 +8,7 @@ import { CouponSelectionPopup, FixedSubmitBar, QuantityStepper } from '@/core/co
 import { PageShare, PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
+import { syncBffPaymentStatusSilently } from '@/core/services/bff-api';
 import { resolveErrorMessage } from '@/core/utils/error-message';
 import { navigateToMiniRoute } from '@/core/utils/navigation';
 import { requestWechatPayment, showWechatToast } from '@/core/utils/wechat-actions';
@@ -163,6 +164,7 @@ const CheckoutPage = observer(function CheckoutPage() {
     });
     if (paymentStatus !== 'success') return;
 
+    await syncBffPaymentStatusSilently(order.payment?.prepay?.payNo);
     await showWechatToast('支付成功', 'success');
     navigateToMiniRoute(`${MINI_PACKAGE_ROUTES.orderDetail}?orderId=${encodeURIComponent(order.orderNo)}`, {
       loginMode: 'none',

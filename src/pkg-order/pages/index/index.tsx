@@ -151,7 +151,7 @@ const OrderIndexPage = observer(function OrderIndexPage() {
                         navigateToOrderAction(MINI_PACKAGE_ROUTES.orderDetail, item.orderId ?? item.id, true);
                       }}
                     >
-                      <AppImage className="_pg-order-item_image" src={item.imageSrc} mode="aspectFill" />
+                      <AppImage className="_pg-order-item_image" src={item.imageSrc} mode="aspectFill" emptyState="error" />
                       <View className="_pg-order-item_main">
                         <Text className="_pg-order-item_title">{item.title}</Text>
                         {item.subtitle ? <Text className="_pg-order-item_subtitle">{item.subtitle}</Text> : null}

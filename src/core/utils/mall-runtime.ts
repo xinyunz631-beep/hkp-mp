@@ -15,6 +15,18 @@ function removeAllFragments(value: string, fragments: string[]) {
   return fragments.reduce((result, fragment) => result.split(fragment).join(''), value);
 }
 
+// 从商城富文本里提取可用图片地址，给图片预览和失败态兜底统一复用。
+export function extractMallRuntimeHtmlImageUrls(value?: string) {
+  const normalized = trimText(value);
+  if (!normalized) return [];
+
+  const imageUrls = normalized.match(/<img\b[^>]*\bsrc\s*=\s*['"]([^'"]+)['"][^>]*>/gi) ?? [];
+  return Array.from(new Set(imageUrls
+    .map((imageTag) => imageTag.match(/\bsrc\s*=\s*['"]([^'"]+)['"]/)?.[1] || '')
+    .map((imageUrl) => sanitizeMallRuntimeUrl(imageUrl))
+    .filter(Boolean)));
+}
+
 export function sanitizeMallRuntimeText(value?: string) {
   const normalized = trimText(value);
   if (!normalized) return '';

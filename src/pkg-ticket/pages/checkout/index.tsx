@@ -9,6 +9,7 @@ import { StatusException } from '@/core/components/status';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { PageShare, PageShell } from '@/core/components/PageShell';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
+import { syncBffPaymentStatusSilently } from '@/core/services/bff-api';
 import { isBffTicketOrderIssued } from '@/core/services/bff-order-api';
 import { resolveErrorMessage } from '@/core/utils/error-message';
 import { navigateBackInPageStack, navigateToMiniRoute } from '@/core/utils/navigation';
@@ -401,6 +402,7 @@ const CheckoutPage = observer(function CheckoutPage() {
     });
     if (paymentStatus !== 'success') return;
 
+    await syncBffPaymentStatusSilently(nextOrder.payment?.prepay?.payNo);
     await showWechatToast('支付成功', 'success');
     navigateToMiniRoute(`${MINI_PACKAGE_ROUTES.orderDetail}?orderId=${encodeURIComponent(nextOrder.orderNo)}`, {
       loginMode: 'none',

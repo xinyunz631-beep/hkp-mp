@@ -208,7 +208,7 @@ const SearchPage = observer(function SearchPage() {
                 <View className="_pg-related-list">
                   {relatedProducts.map((product) => (
                     <View className="_pg-related" key={product.id} onClick={() => handleRelatedProductPress(product.id)}>
-                      <AppImage className="_pg-related_image" src={product.image.src} mode="aspectFit" />
+                      <AppImage className="_pg-related_image" src={product.image.src} mode="aspectFit" emptyState="error" />
                       <View className="_pg-related_body">
                         <Text className="_pg-related_title">{renderHighlightedName(product.title, activeKeyword)}</Text>
                         <Text className="_pg-related_meta">{product.subtitle || product.salesText}</Text>

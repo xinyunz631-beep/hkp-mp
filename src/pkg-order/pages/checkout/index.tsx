@@ -9,6 +9,7 @@ import { CouponSelectionPopup, FixedSubmitBar } from '@/core/components/commerce
 import { PageShare, PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
+import { syncBffPaymentStatusSilently } from '@/core/services/bff-api';
 import { resolveErrorMessage } from '@/core/utils/error-message';
 import { navigateToMiniRoute } from '@/core/utils/navigation';
 import { previewWechatImages, requestWechatPayment, showWechatConfirm, showWechatToast } from '@/core/utils/wechat-actions';
@@ -110,6 +111,7 @@ const CheckoutPage = observer(function CheckoutPage() {
     });
     if (paymentStatus !== 'success') return;
 
+    await syncBffPaymentStatusSilently(order.payment?.prepay?.payNo);
     await showWechatToast('支付成功', 'success');
     navigateToMiniRoute(`${MINI_PACKAGE_ROUTES.orderDetail}?orderId=${encodeURIComponent(order.orderNo)}`, {
       loginMode: 'none',
@@ -252,6 +254,7 @@ const CheckoutPage = observer(function CheckoutPage() {
                     className="_pg-product_image"
                     src={item.imageSrc}
                     mode="aspectFill"
+                    emptyState="error"
                     onClick={() => previewWechatImages({ urls: [item.imageSrc], emptyText: '暂无商品大图' })}
                   />
                   <View className="_pg-product_main">

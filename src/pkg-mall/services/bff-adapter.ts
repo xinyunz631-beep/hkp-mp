@@ -3,6 +3,7 @@ import type { BffAvailableCouponView } from '@/core/services/bff-coupon-api';
 import type { MallShippingRule } from '@/core/services/mall-checkout-draft';
 import type { HkpCouponSummary, HkpProductSummary, HkpSkuGroup } from '@/core/types/hkp';
 import {
+  extractMallRuntimeHtmlImageUrls,
   sanitizeMallRuntimeHtml,
   sanitizeMallRuntimeText,
   sanitizeMallRuntimeTextList,
@@ -303,7 +304,12 @@ export function toMallProductDetailData(
     productImageOf(product),
     ...(product.galleryImages ?? []).map((image) => sanitizeMallRuntimeUrl(image.url)),
   ].filter(Boolean)));
-  const detailImages = (product.detailImages ?? []).map((image) => sanitizeMallRuntimeUrl(image.url)).filter(Boolean);
+  const detailHtml = sanitizeMallRuntimeHtml(product.detailHtml);
+  const detailHtmlImageUrls = extractMallRuntimeHtmlImageUrls(detailHtml);
+  const detailImages = Array.from(new Set([
+    ...(product.detailImages ?? []).map((image) => sanitizeMallRuntimeUrl(image.url)),
+    ...detailHtmlImageUrls,
+  ].filter(Boolean)));
   const attributeLines = buildAttributeLines(product);
   const reviews = (reviewData?.items ?? []).map(toMallReviewItem);
   const couponHintText = product.couponIds?.length ? '下单时以结算页可用优惠为准' : '';
@@ -319,7 +325,7 @@ export function toMallProductDetailData(
     reviews,
     recommendProducts: recommendations,
     detailImages,
-    detailHtml: sanitizeMallRuntimeHtml(product.detailHtml),
+    detailHtml,
     servicePhone: firstMallText(product.servicePhone),
     attributeLines,
     shippingSummary: buildShippingSummary(product.shippingRule),
