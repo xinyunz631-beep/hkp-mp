@@ -28,10 +28,10 @@ function resolveCouponOrderDetailRoute(orderNo?: string) {
   return `${MINI_PACKAGE_ROUTES.orderDetail}?orderId=${encodeURIComponent(orderNo)}`;
 }
 
-// 退款返还链路优先回到同订单的售后进度，继续核对返还结果和处理状态。
-function resolveCouponAftersaleProgressRoute(orderNo?: string) {
+// 退款返还链路优先回到同订单的售后记录，再从具体售后单查看处理进度。
+function resolveCouponAftersaleListRoute(orderNo?: string) {
   if (!orderNo) return '';
-  return `${MINI_PACKAGE_ROUTES.orderAftersaleProgress}?orderId=${encodeURIComponent(orderNo)}`;
+  return `${MINI_PACKAGE_ROUTES.orderAftersaleList}?orderId=${encodeURIComponent(orderNo)}`;
 }
 
 // 组装优惠券详情里的基础信息，页面层只负责按业务字段渲染。
@@ -134,7 +134,7 @@ const CouponDetailPage = observer(function CouponDetailPage() {
 
   function handleViewAftersale() {
     if (!coupon?.orderNoText || !coupon.refundReturnStatusText) return;
-    navigateToMiniRoute(resolveCouponAftersaleProgressRoute(coupon.orderNoText));
+    navigateToMiniRoute(resolveCouponAftersaleListRoute(coupon.orderNoText));
   }
 
   return pageRuntime.renderPage(() => (
