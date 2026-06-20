@@ -6,7 +6,6 @@ import { PageFooter, PageHeader, PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import { navigateToMiniRoute } from '@/core/utils/navigation';
-import { showWechatConfirm } from '@/core/utils/wechat-actions';
 import {
   fetchCouponsData,
   type MemberCouponItem,
@@ -29,6 +28,11 @@ function resolveCouponClassName(coupon: MemberCouponItem) {
   ].join(' ');
 }
 
+// 统一生成优惠券详情页路由，列表和后续其它入口都复用同一参数口径。
+function resolveCouponDetailRoute(couponId: string) {
+  return `${MINI_PACKAGE_ROUTES.memberCouponDetail}?id=${encodeURIComponent(couponId)}`;
+}
+
 function resolveCouponSideTextColumns(sideText: string) {
   const chars = Array.from(sideText.trim());
   if (chars.length <= 1) return [sideText];
@@ -47,26 +51,17 @@ const CouponsPage = observer(function CouponsPage() {
   const [activeTabKey, setActiveTabKey] = useState<MemberCouponStatus>('claimed');
   const pageRuntime = usePageRuntime({
     initPage: async () => {
-      const nextData = await fetchCouponsData();
+      const nextData = await fetchCouponsData({ forceRefresh: true });
       setPageData(nextData);
       setActiveTabKey(nextData.tabs[0]?.key ?? 'claimed');
     },
+    refreshOnShow: true,
     loginRequired: true,
     loginReason: '登录后可查看优惠券',
   });
 
-  async function handleCouponPress(coupon: MemberCouponItem) {
-    if (!coupon.useEnabled) {
-      await showWechatConfirm({
-        title: coupon.title,
-        content: `${coupon.validityText}，该优惠券仅作为记录展示。`,
-        confirmText: '知道了',
-        cancelText: '关闭',
-      });
-      return;
-    }
-
-    navigateToMiniRoute(coupon.targetRoute);
+  function handleCouponPress(coupon: MemberCouponItem) {
+    navigateToMiniRoute(resolveCouponDetailRoute(coupon.id));
   }
 
   function handleMoreCouponPress() {
@@ -75,7 +70,7 @@ const CouponsPage = observer(function CouponsPage() {
 
   function renderCoupon(coupon: MemberCouponItem) {
     return (
-      <View className={resolveCouponClassName(coupon)} key={coupon.id}>
+      <View className={resolveCouponClassName(coupon)} key={coupon.id} onClick={() => handleCouponPress(coupon)}>
         <View className="_pg-coupon_side">
           <View className="_pg-coupon_side-columns">
             {resolveCouponSideTextColumns(coupon.sideText).map((columnText, index) => (
@@ -98,7 +93,7 @@ const CouponsPage = observer(function CouponsPage() {
         <View className="_pg-coupon_cut _pg-coupon_cut--top" />
         <View className="_pg-coupon_cut _pg-coupon_cut--bottom" />
         <View className="_pg-coupon_dashed" />
-        <View className="_pg-coupon_action" onClick={() => void handleCouponPress(coupon)}>
+        <View className="_pg-coupon_action">
           <Text>{coupon.actionText}</Text>
         </View>
       </View>

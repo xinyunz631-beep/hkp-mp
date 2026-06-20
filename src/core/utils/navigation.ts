@@ -9,6 +9,7 @@ const LOGIN_REQUIRED_ROUTE_REASONS: Partial<Record<MiniRoute, string>> = {
   [MINI_PACKAGE_ROUTES.memberProfile]: '登录后可查看个人信息',
   [MINI_PACKAGE_ROUTES.memberLegacyBind]: '登录后可绑定老会员权益',
   [MINI_PACKAGE_ROUTES.memberCoupons]: '登录后可查看优惠券',
+  [MINI_PACKAGE_ROUTES.memberCouponDetail]: '登录后可查看优惠券详情',
   [MINI_PACKAGE_ROUTES.memberCouponCenter]: '登录后可进入领券中心',
   [MINI_PACKAGE_ROUTES.memberGrowth]: '登录后可查看会员权益',
   [MINI_PACKAGE_ROUTES.memberGrowthDetail]: '登录后可查看成长值',

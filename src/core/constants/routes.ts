@@ -44,6 +44,7 @@ export const MINI_PACKAGE_ROUTES = {
   orderReviewCreate: '/pkg-order/pages/review-create/index',
   orderReviewList: '/pkg-order/pages/review-list/index',
   memberCoupons: '/pkg-member/pages/coupons/index',
+  memberCouponDetail: '/pkg-member/pages/coupon-detail/index',
   memberCouponCenter: '/pkg-member/pages/coupon-center/index',
   memberGrowth: '/pkg-member/pages/member-growth/index',
   memberGrowthDetail: '/pkg-member/pages/member-growth-detail/index',

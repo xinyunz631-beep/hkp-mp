@@ -65,6 +65,7 @@ export default defineAppConfig({
         'pages/profile/index',
         'pages/legacy-bind/index',
         'pages/coupons/index',
+        'pages/coupon-detail/index',
         'pages/coupon-center/index',
         'pages/member-growth/index',
         'pages/member-growth-detail/index',
