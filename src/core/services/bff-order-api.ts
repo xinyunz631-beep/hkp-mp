@@ -54,6 +54,13 @@ export interface BffOrderItem {
   attributes?: Record<string, string>;
 }
 
+export interface BffOrderRejectedCoupon {
+  couponNo?: string;
+  reason?: string;
+  unavailableReason?: string;
+  status?: string;
+}
+
 export interface BffTicketInstance {
   ticketNo?: string;
   qrCodePayload?: string;
@@ -130,6 +137,12 @@ export interface BffOrder {
   payableAmountCent?: number;
   quoteSnapshotNo?: string;
   promotionSnapshotNo?: string;
+  selectedCouponNos?: string[];
+  appliedCouponNos?: string[];
+  lockedCouponNos?: string[];
+  releasedCouponNos?: string[];
+  refundReturnedCouponNos?: string[];
+  rejectedCoupons?: BffOrderRejectedCoupon[];
   contactName?: string;
   contactPhone?: string;
   remark?: string;
@@ -165,6 +178,9 @@ export interface BffOrderConfirmResponse {
   sceneType?: BffOrderSceneType;
   channel?: string;
   paymentChannel?: BffOrderPaymentChannel;
+  selectedCouponNos?: string[];
+  appliedCouponNos?: string[];
+  rejectedCoupons?: BffOrderRejectedCoupon[];
   items?: BffOrderItem[];
   originalAmountCent?: number;
   freightAmountCent?: number;

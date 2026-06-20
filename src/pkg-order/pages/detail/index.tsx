@@ -296,6 +296,18 @@ const DetailPage = observer(function DetailPage() {
               </View>
             ) : null}
 
+            {detailData.couponFields.length ? (
+              <View className="_pg-card">
+                <Text className="_pg-card_section-title">优惠信息</Text>
+                {detailData.couponFields.map((item) => (
+                  <View className="_pg-line-row" key={item.label}>
+                    <Text className="_pg-line-row_label">{item.label}</Text>
+                    <Text className="_pg-line-row_value">{item.value}</Text>
+                  </View>
+                ))}
+              </View>
+            ) : null}
+
             <View className="_pg-card">
               {detailData.amountFields.map((item) => (
                 <View className="_pg-line-row" key={item.label}>

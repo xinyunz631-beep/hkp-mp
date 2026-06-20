@@ -3,6 +3,7 @@ import {
   getBffTicketVoucherText,
   isBffTicketVoucherReady,
   type BffOrder,
+  type BffOrderRejectedCoupon,
   type BffTicketVoucher,
 } from '@/core/services/bff-order-api';
 import { sanitizeMallRuntimeText } from '@/core/utils/mall-runtime';
@@ -141,6 +142,48 @@ function compactFields(fields: OrderDetailFieldData[]) {
   return fields.filter((field) => Boolean(field.value && field.value !== '-'));
 }
 
+function normalizeCouponNos(values?: string[]) {
+  if (!values?.length) return [];
+
+  return Array.from(new Set(
+    values
+      .map((value) => normalizeString(value))
+      .filter(Boolean),
+  ));
+}
+
+function formatCouponNos(values?: string[]) {
+  return normalizeCouponNos(values).join('、');
+}
+
+function resolveRejectedCouponText(coupon: BffOrderRejectedCoupon) {
+  const couponNo = normalizeString(coupon.couponNo);
+  const reason = normalizeString(coupon.unavailableReason || coupon.reason);
+  const status = normalizeString(coupon.status);
+  const detail = reason || status;
+
+  if (couponNo && detail) return `${couponNo}（${detail}）`;
+  if (couponNo) return couponNo;
+  return detail;
+}
+
+function mapCouponFields(order: BffOrder) {
+  const rejectedCoupons = Array.from(new Set(
+    (order.rejectedCoupons || [])
+      .map(resolveRejectedCouponText)
+      .filter(Boolean),
+  )).join('；');
+
+  return compactFields([
+    { label: '下单选择', value: formatCouponNos(order.selectedCouponNos) },
+    { label: '实际使用', value: formatCouponNos(order.appliedCouponNos) },
+    { label: '锁定中', value: formatCouponNos(order.lockedCouponNos) },
+    { label: '未生效', value: rejectedCoupons },
+    { label: '已释放', value: formatCouponNos(order.releasedCouponNos) },
+    { label: '退款返还', value: formatCouponNos(order.refundReturnedCouponNos) },
+  ]);
+}
+
 function mapTicketInstances(order: BffOrder): OrderTicketInstanceData[] {
   const voucherInstances = (order.ticketVouchers || [])
     .filter(isBffTicketVoucherReady)
@@ -233,6 +276,7 @@ function mapOrderToDetail(order: BffOrder): OrderDetailData {
       { label: '物流状态', value: logisticsStatusText || '' },
       { label: '备注', value: order.remark || '' },
     ]),
+    couponFields: mapCouponFields(order),
     contactFields: compactFields([
       { label: '联系人', value: order.contactName || '' },
       { label: '手机号', value: order.contactPhone || '' },

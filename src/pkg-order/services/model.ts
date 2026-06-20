@@ -104,6 +104,7 @@ export interface OrderDetailData {
   productFields: OrderDetailFieldData[];
   ticketInstances: OrderTicketInstanceData[];
   ticketFields: OrderDetailFieldData[];
+  couponFields: OrderDetailFieldData[];
   contactFields: OrderDetailFieldData[];
   amountFields: OrderDetailFieldData[];
   orderFields: OrderDetailFieldData[];
