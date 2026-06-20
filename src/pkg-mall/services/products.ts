@@ -1,16 +1,20 @@
-import { fetchBffMallProducts } from '@/core/services/bff-mall-api';
-import { toMallProductSummary } from './bff-adapter';
+import { fetchAllBffMallProducts } from '@/core/services/bff-mall-api';
+import { isRenderableMallProduct, toMallProductSummary } from './bff-adapter';
 import type { MallProductListData } from './types';
 
 interface FetchProductsDataOptions {
   keyword?: string;
   categoryId?: string;
+  recommendationId?: string;
   couponId?: string;
+  sort?: 'priceAsc' | 'priceDesc';
 }
+
+const MALL_PRODUCTS_PAGE_SIZE = 100;
+const MALL_PRODUCTS_MAX_PAGES = 5;
 
 const mallProductListTabs: MallProductListData['tabs'] = [
   { key: 'comprehensive', text: '综合' },
-  { key: 'sales', text: '销量' },
   { key: 'price', text: '价格' },
   { key: 'filter', text: '筛选' },
 ];
@@ -18,17 +22,20 @@ const mallProductListTabs: MallProductListData['tabs'] = [
 // 获取商品列表真实数据，筛选条件直接透传 BFF。
 export async function fetchProductsData(options: FetchProductsDataOptions = {}) {
   const keyword = (options.keyword || '').trim();
-  const response = await fetchBffMallProducts({
+  const response = await fetchAllBffMallProducts({
     keyword,
     categoryId: options.categoryId,
+    recommendationId: options.recommendationId,
     couponId: options.couponId,
-    page: 1,
-    size: 100,
+    sort: options.sort,
+  }, {
+    pageSize: MALL_PRODUCTS_PAGE_SIZE,
+    maxPages: MALL_PRODUCTS_MAX_PAGES,
   });
 
   return {
     tabs: mallProductListTabs,
     keyword,
-    products: (response.list ?? []).map(toMallProductSummary),
+    products: (response.list ?? []).filter(isRenderableMallProduct).map(toMallProductSummary),
   };
 }

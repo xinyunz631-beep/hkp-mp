@@ -10,8 +10,12 @@ import {
 } from '@/core/services/bff-mall-api';
 import type { MallShippingRule } from '@/core/services/mall-checkout-draft';
 import type { HkpProductSummary } from '@/core/types/hkp';
+import {
+  sanitizeMallRuntimeText,
+  sanitizeMallRuntimeUrl,
+} from '@/core/utils/mall-runtime';
 import type { MallCartData, MallCartItem, MallCartMerchantGroup } from './types';
-import { toMallProductSummary } from './bff-adapter';
+import { isRenderableMallProduct, toMallProductSummary } from './bff-adapter';
 
 export const MALL_CART_COUNT_CHANGE_EVENT = 'hkp:mall-cart-count-change';
 const HIDDEN_CART_TAG_KEYWORDS = ['本地', '可直接', '直接结算', '直接计算', '测试', '开发'];
@@ -41,7 +45,8 @@ function normalizeString(value?: string) {
 function sanitizePromotionTags(tags: unknown): string[] {
   if (!Array.isArray(tags)) return [];
   return tags
-    .filter((tag): tag is string => typeof tag === 'string' && tag.trim().length > 0)
+    .map((tag) => sanitizeMallRuntimeText(typeof tag === 'string' ? tag : ''))
+    .filter((tag): tag is string => Boolean(tag))
     .filter((tag) => !HIDDEN_CART_TAG_KEYWORDS.some((keyword) => tag.toLowerCase().includes(keyword.toLowerCase())));
 }
 
@@ -56,13 +61,13 @@ function normalizeShippingRule(rule?: BffMallCartItem['shippingRule']): MallShip
   if (shippingMode === 'pickup') {
     return {
       mode: 'unsupported',
-      reasonText: rule?.reasonText || '当前商城只支持第三方配送',
+      reasonText: sanitizeMallRuntimeText(rule?.reasonText) || '当前商城只支持第三方配送',
     };
   }
   if (shippingMode === 'none') {
     return {
       mode: 'none',
-      reasonText: rule?.reasonText || '无需物流',
+      reasonText: sanitizeMallRuntimeText(rule?.reasonText) || '无需物流',
     };
   }
   return {
@@ -70,12 +75,12 @@ function normalizeShippingRule(rule?: BffMallCartItem['shippingRule']): MallShip
     freightAmount: centToYuan(rule?.freightAmount),
     supportedRegionKeywords: rule?.supportedRegionKeywords,
     unsupportedRegionKeywords: rule?.unsupportedRegionKeywords,
-    reasonText: rule?.reasonText,
+    reasonText: sanitizeMallRuntimeText(rule?.reasonText) || undefined,
   };
 }
 
 function imageSrcOf(item: BffMallCartItem) {
-  return normalizeString(item.image?.src) || normalizeString(item.image?.url);
+  return sanitizeMallRuntimeUrl(item.image?.src) || sanitizeMallRuntimeUrl(item.image?.url);
 }
 
 function priceOf(item: BffMallCartItem) {
@@ -95,22 +100,22 @@ function toMallCartItem(item: BffMallCartItem): MallCartItem {
     id: item.id,
     productId,
     skuId,
-    title: normalizeString(item.title) || normalizeString(item.productId) || '商品',
-    subtitle: normalizeString(item.subtitle),
+    title: sanitizeMallRuntimeText(item.title),
+    subtitle: sanitizeMallRuntimeText(item.subtitle),
     image: {
       src: imageSrcOf(item),
-      alt: normalizeString(item.image?.alt),
+      alt: sanitizeMallRuntimeText(item.image?.alt),
     },
     price: priceOf(item),
     marketPrice: marketPriceOf(item),
-    tag: normalizeString(item.tag),
-    salesText: normalizeString(item.salesText),
+    tag: sanitizeMallRuntimeText(item.tag),
+    salesText: sanitizeMallRuntimeText(item.salesText),
     quantity: Math.max(1, Number(item.quantity) || 1),
     checked: item.checked !== false,
-    skuText: normalizeString(item.skuText) || normalizeString(item.subtitle),
-    merchantName: normalizeString(item.merchantName),
+    skuText: sanitizeMallRuntimeText(item.skuText) || sanitizeMallRuntimeText(item.subtitle),
+    merchantName: sanitizeMallRuntimeText(item.merchantName),
     promotionTags: sanitizePromotionTags(item.promotionTags),
-    giftText: normalizeString(item.giftText),
+    giftText: sanitizeMallRuntimeText(item.giftText),
     canRefund: item.canRefund !== false,
     canAfterSale: item.canAfterSale !== false,
     shippingRule: normalizeShippingRule(item.shippingRule),
@@ -131,12 +136,12 @@ function toMallCartData(data: BffMallCartData): MallCartData {
   const groups: MallCartMerchantGroup[] = sourceGroups
     .map((group) => ({
       id: group.id,
-      merchantName: normalizeString(group.merchantName),
+      merchantName: sanitizeMallRuntimeText(group.merchantName),
       promotionTags: sanitizePromotionTags(group.promotionTags),
       items: (group.items ?? []).map(toMallCartItem),
     }))
     .filter((group) => group.items.length > 0);
-  const recommendProducts = (data.recommendProducts ?? []).map(toMallProductSummary);
+  const recommendProducts = (data.recommendProducts ?? []).filter(isRenderableMallProduct).map(toMallProductSummary);
   const totalAmountCent = typeof data.summary?.totalAmountCent === 'number' ? data.summary.totalAmountCent : data.totalAmountCent;
   const totalAmount = typeof totalAmountCent === 'number'
     ? centToYuan(totalAmountCent)
@@ -178,7 +183,7 @@ export async function fetchMallCartCount() {
 
 // 加入后端真实购物车，前端只提交商品、SKU、数量等业务字段。
 export async function addMallCartItem(product: HkpProductSummary, options: AddMallCartItemOptions = {}) {
-  const skuText = options.skuText || product.subtitle || '';
+  const skuText = sanitizeMallRuntimeText(options.skuText) || sanitizeMallRuntimeText(product.subtitle) || '';
   const data = toMallCartData(await addBffMallCartItem({
     productId: product.id,
     spuId: product.id,

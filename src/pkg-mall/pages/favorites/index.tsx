@@ -14,6 +14,10 @@ import './index.scss';
 
 type FavoriteItem = Awaited<ReturnType<typeof fetchFavoritesData>>['items'][number];
 
+function buildFavoriteFilters(items: FavoriteItem[]) {
+  return items.some((item) => item.invalid) ? ['全部', '仅看有货'] : [];
+}
+
 // 我的收藏页按截图补齐筛选、编辑态遮罩和快捷操作。
 const FavoritesPage = observer(function FavoritesPage() {
   const [favoritesData, setFavoritesData] = useState<Awaited<ReturnType<typeof fetchFavoritesData>>>();
@@ -64,6 +68,7 @@ const FavoritesPage = observer(function FavoritesPage() {
   }
 
   async function handleEditAction(item: FavoriteItem, action: 'cart' | 'delete') {
+    const itemTitle = item.title || '该商品';
     if (action === 'cart') {
       if (item.invalid) {
         await showWechatToast('该收藏已失效，暂不能选择规格');
@@ -78,7 +83,7 @@ const FavoritesPage = observer(function FavoritesPage() {
 
     const confirmed = await showWechatConfirm({
       title: '删除收藏',
-      content: `确定删除「${item.title}」吗？`,
+      content: `确定删除「${itemTitle}」吗？`,
       confirmText: '删除',
       cancelText: '取消',
     });
@@ -88,11 +93,17 @@ const FavoritesPage = observer(function FavoritesPage() {
     setFavoritesData((currentData) => {
       if (!currentData) return currentData;
       const nextItems = currentData.items.filter((currentItem) => currentItem.id !== item.id);
-      setSelectedItemId(nextItems[0]?.id || '');
+      const nextFilters = buildFavoriteFilters(nextItems);
+      setSelectedItemId((currentItemId) => (
+        currentItemId && nextItems.some((currentItem) => currentItem.id === currentItemId)
+          ? currentItemId
+          : (nextItems[0]?.id || '')
+      ));
+      setActiveFilter((currentFilter) => (nextFilters.includes(currentFilter) ? currentFilter : (nextFilters[0] || '')));
       return {
         ...currentData,
         items: nextItems,
-        filters: nextItems.some((currentItem) => currentItem.invalid) ? ['全部', '仅看有货'] : [],
+        filters: nextFilters,
         totalCount: typeof currentData.totalCount === 'number'
           ? Math.max(0, currentData.totalCount - 1)
           : nextItems.length,
@@ -138,11 +149,13 @@ const FavoritesPage = observer(function FavoritesPage() {
                   <View className="_pg-item" key={item.id} onClick={() => handleCardPress(item.id)}>
                     <AppImage className="_pg-item_image" src={item.image.src} mode="aspectFit" emptyState="error" />
                     <View className="_pg-item_body">
-                      <Text className="_pg-item_title">{item.title}</Text>
+                      <Text className="_pg-item_title">{item.title || '未命名商品'}</Text>
                       {item.invalid ? (
                         <Text className="_pg-item_status">失效</Text>
-                      ) : (
+                      ) : item.price > 0 ? (
                         <Text className="_pg-item_price">¥ {item.price}</Text>
+                      ) : (
+                        <Text className="_pg-item_status">暂无报价</Text>
                       )}
                     </View>
 
@@ -164,7 +177,7 @@ const FavoritesPage = observer(function FavoritesPage() {
                               event.stopPropagation();
                             }}
                           >
-                            <Text>请分享</Text>
+                            <Text>分享</Text>
                           </AppShareButton>
                           <View
                             className="_pg-item_action"

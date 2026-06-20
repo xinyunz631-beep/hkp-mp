@@ -1,4 +1,6 @@
 import { fetchBffOrders, type BffOrder, type BffOrderSceneType } from '@/core/services/bff-order-api';
+import { fetchBffMallMyReviews, type BffMallMemberReviewsData } from '@/core/services/bff-mall-api';
+import { sanitizeMallRuntimeText, sanitizeMallRuntimeUrl } from '@/core/utils/mall-runtime';
 import type { OrderHomeActionData, OrderHomeData, OrderHomeItemData, OrderHomeSectionData } from './model';
 
 export type { OrderHomeData } from './model';
@@ -26,69 +28,8 @@ function formatDate(value?: string) {
   return value.slice(0, 10);
 }
 
-function resolveStatusText(status?: string, sceneType?: string) {
-  const normalizedStatus = String(status || '').toUpperCase();
-  if (['PENDING_PAYMENT', 'PAYING'].includes(normalizedStatus)) return '待付款';
-  if (['PAID', 'WAIT_USE', 'FULFILLING'].includes(normalizedStatus)) return sceneType === 'HOTEL' ? '待入住' : '待使用';
-  if (['PART_USED', 'PARTIALLY_USED', 'PARTIALLYUSED'].includes(normalizedStatus)) return '部分使用';
-  if (['FULFILLED', 'USED', 'COMPLETED'].includes(normalizedStatus)) return '已完成';
-  if (['CANCELED', 'CANCELLED'].includes(normalizedStatus)) return '已取消';
-  if (['REFUNDING', 'REFUNDED'].includes(normalizedStatus)) return '退款中';
-  return status || '处理中';
-}
-
-function resolveTabKey(status?: string) {
-  const normalizedStatus = String(status || '').toUpperCase();
-  if (['PENDING_PAYMENT', 'PAYING'].includes(normalizedStatus)) return 'pendingPay';
-  if (['REFUNDING', 'REFUNDED'].includes(normalizedStatus)) return 'aftersale';
-  if (['FULFILLED', 'USED', 'COMPLETED'].includes(normalizedStatus)) return 'pendingReview';
-  return 'pendingReceive';
-}
-
-function resolveItemTitle(order: BffOrder) {
-  const firstItem = order.items?.[0];
-  return firstItem?.itemName
-    || firstItem?.attributes?.roomTitle
-    || firstItem?.attributes?.ratePlanTitle
-    || order.context?.roomTitle
-    || `${order.sceneType || ''}订单`;
-}
-
-function resolveMerchantName(order: BffOrder) {
-  return normalizeString(
-    order.context?.merchantName
-      || order.items?.[0]?.attributes?.merchantName
-      || order.items?.[0]?.attributes?.shopName,
-  );
-}
-
-function resolveItemImage(order: BffOrder) {
-  const firstItem = order.items?.[0];
-  return normalizeString(
-    firstItem?.attributes?.imageUrl
-      || firstItem?.attributes?.imageSrc
-      || firstItem?.attributes?.mainImageUrl,
-  );
-}
-
-function resolveItemSubtitle(order: BffOrder) {
-  const firstItem = order.items?.[0];
-  if (order.sceneType === 'HOTEL') {
-    return `${order.context?.checkInDate || ''} - ${order.context?.checkOutDate || ''}`;
-  }
-  if (order.sceneType === 'MALL') {
-    return normalizeString(
-      firstItem?.attributes?.specName
-        || firstItem?.attributes?.skuName
-        || firstItem?.skuId,
-    );
-  }
-  return normalizeString(firstItem?.attributes?.visitDate || order.context?.visitDate);
-}
-
-function resolveItemQuantity(order: BffOrder) {
-  const quantity = Number(order.items?.[0]?.quantity);
-  return Number.isFinite(quantity) && quantity > 0 ? quantity : 0;
+function normalizeStatus(value?: string) {
+  return String(value || '').trim().toUpperCase();
 }
 
 function hasMallLogisticsContext(order: BffOrder) {
@@ -103,11 +44,119 @@ function hasMallLogisticsContext(order: BffOrder) {
   ));
 }
 
-function resolveOrderActions(order: BffOrder): OrderHomeActionData[] {
-  if (['PENDING_PAYMENT', 'PAYING'].includes(order.orderStatus || '')) {
+function resolveStatusText(order: BffOrder) {
+  const normalizedStatus = normalizeStatus(order.orderStatus);
+  if (['PENDING_PAYMENT', 'PAYING'].includes(normalizedStatus)) return '待付款';
+  if (['PAID', 'WAIT_USE', 'FULFILLING'].includes(normalizedStatus)) {
+    if (order.sceneType === 'HOTEL') return '待入住';
+    if (order.sceneType === 'MALL') {
+      return normalizedStatus === 'FULFILLING' || hasMallLogisticsContext(order) ? '待收货' : '待发货';
+    }
+    return '待使用';
+  }
+  if (['PART_USED', 'PARTIALLY_USED', 'PARTIALLYUSED'].includes(normalizedStatus)) return '部分使用';
+  if (['FULFILLED', 'USED', 'COMPLETED'].includes(normalizedStatus)) return '已完成';
+  if (['CANCELED', 'CANCELLED'].includes(normalizedStatus)) return '已取消';
+  if (['REFUNDING', 'REFUNDED'].includes(normalizedStatus)) return '退款中';
+  return order.orderStatus || '处理中';
+}
+
+function reviewLookupKey(orderNo?: string, itemId?: string) {
+  return `${orderNo || ''}::${itemId || ''}`;
+}
+
+function buildReviewedMallItemSet(data?: BffMallMemberReviewsData) {
+  return new Set((data?.items || [])
+    .map((item) => reviewLookupKey(item.orderNo, item.itemId))
+    .filter((value) => value !== '::'));
+}
+
+function hasReviewedMallOrder(order: BffOrder, reviewedMallItems: Set<string>) {
+  if (order.sceneType !== 'MALL') return true;
+  return (order.items || []).some((item) => reviewedMallItems.has(reviewLookupKey(order.orderNo, item.itemId || item.lineNo)));
+}
+
+function resolveTabKey(order: BffOrder, reviewedMallItems: Set<string>, reviewLookupReady: boolean) {
+  const normalizedStatus = normalizeStatus(order.orderStatus);
+  if (['PENDING_PAYMENT', 'PAYING'].includes(normalizedStatus)) return 'pendingPay';
+  if (['REFUNDING', 'REFUNDED'].includes(normalizedStatus)) return 'aftersale';
+  if (['FULFILLED', 'USED', 'COMPLETED'].includes(normalizedStatus)) {
+    if (order.sceneType === 'MALL' && reviewLookupReady) {
+      return hasReviewedMallOrder(order, reviewedMallItems) ? 'all' : 'pendingReview';
+    }
+    return 'all';
+  }
+  return 'pendingReceive';
+}
+
+function resolveItemTitle(order: BffOrder) {
+  const firstItem = order.items?.[0];
+  if (order.sceneType === 'MALL') {
+    return sanitizeMallRuntimeText(firstItem?.itemName)
+      || normalizeString(firstItem?.itemId || firstItem?.lineNo || order.orderNo);
+  }
+  return firstItem?.itemName
+    || firstItem?.attributes?.roomTitle
+    || firstItem?.attributes?.ratePlanTitle
+    || order.context?.roomTitle
+    || normalizeString(firstItem?.itemId || firstItem?.lineNo || order.orderNo);
+}
+
+function resolveMerchantName(order: BffOrder) {
+  return sanitizeMallRuntimeText(
+    order.context?.merchantName
+      || order.items?.[0]?.attributes?.merchantName
+      || order.items?.[0]?.attributes?.shopName,
+  );
+}
+
+function resolveItemImage(order: BffOrder) {
+  const firstItem = order.items?.[0];
+  return sanitizeMallRuntimeUrl(
+    firstItem?.attributes?.imageUrl
+      || firstItem?.attributes?.imageSrc
+      || firstItem?.attributes?.mainImageUrl,
+  );
+}
+
+function resolveItemSubtitle(order: BffOrder) {
+  const firstItem = order.items?.[0];
+  if (order.sceneType === 'HOTEL') {
+    return `${order.context?.checkInDate || ''} - ${order.context?.checkOutDate || ''}`;
+  }
+  if (order.sceneType === 'MALL') {
+    return sanitizeMallRuntimeText(
+      firstItem?.attributes?.specName
+        || firstItem?.attributes?.skuName
+        || firstItem?.skuId,
+    );
+  }
+  return normalizeString(firstItem?.attributes?.visitDate || order.context?.visitDate);
+}
+
+function resolveItemQuantity(order: BffOrder) {
+  const quantity = Number(order.items?.[0]?.quantity);
+  return Number.isFinite(quantity) && quantity > 0 ? quantity : 0;
+}
+
+function resolveOrderActions(order: BffOrder, reviewedMallItems: Set<string>, reviewLookupReady: boolean): OrderHomeActionData[] {
+  const normalizedStatus = normalizeStatus(order.orderStatus);
+  if (['PENDING_PAYMENT', 'PAYING'].includes(normalizedStatus)) {
     return [
       { text: '取消订单', tone: 'default' },
       { text: '继续支付', tone: 'primary' },
+    ];
+  }
+  if (order.sceneType === 'MALL' && ['FULFILLED', 'USED', 'COMPLETED'].includes(normalizedStatus) && reviewLookupReady && !hasReviewedMallOrder(order, reviewedMallItems)) {
+    if (hasMallLogisticsContext(order)) {
+      return [
+        { text: '查看物流', tone: 'default' },
+        { text: '去评价', tone: 'primary' },
+      ];
+    }
+    return [
+      { text: '查看详情', tone: 'default' },
+      { text: '去评价', tone: 'primary' },
     ];
   }
   if (hasMallLogisticsContext(order)) {
@@ -119,11 +168,13 @@ function resolveOrderActions(order: BffOrder): OrderHomeActionData[] {
   return [{ text: '查看详情', tone: 'default' }];
 }
 
-function mapOrderItem(order: BffOrder): OrderHomeItemData {
+function mapOrderItem(order: BffOrder, reviewedMallItems: Set<string>, reviewLookupReady: boolean): OrderHomeItemData {
   const merchantName = resolveMerchantName(order);
+  const firstItem = order.items?.[0];
   return {
     id: order.orderNo,
     orderId: order.orderNo,
+    itemId: firstItem?.itemId || firstItem?.lineNo,
     title: resolveItemTitle(order),
     subtitle: resolveItemSubtitle(order),
     extraText: order.sceneType === 'MALL' && merchantName ? merchantName : undefined,
@@ -131,28 +182,33 @@ function mapOrderItem(order: BffOrder): OrderHomeItemData {
     quantity: resolveItemQuantity(order),
     priceText: formatCent(order.payableAmountCent),
     actionText: '查看详情',
-    actions: resolveOrderActions(order),
+    actions: resolveOrderActions(order, reviewedMallItems, reviewLookupReady),
   };
 }
 
-function mapOrderSection(order: BffOrder): OrderHomeSectionData {
+function mapOrderSection(order: BffOrder, reviewedMallItems: Set<string>, reviewLookupReady: boolean): OrderHomeSectionData {
   return {
     id: order.orderNo,
-    tabKey: resolveTabKey(order.orderStatus),
+    tabKey: resolveTabKey(order, reviewedMallItems, reviewLookupReady),
     dateText: formatDate(order.createdAt) || '-',
-    statusText: resolveStatusText(order.orderStatus, order.sceneType),
+    statusText: resolveStatusText(order),
     totalText: `合计:${formatCent(order.payableAmountCent)}`,
-    items: [mapOrderItem(order)],
+    items: [mapOrderItem(order, reviewedMallItems, reviewLookupReady)],
   };
 }
 
 // 获取真实订单列表，当前 BFF 按业态查询，因此前端合并票务、商城和酒店订单。
 export async function fetchOrderHomeData(): Promise<OrderHomeData> {
-  const orders = (await Promise.all(ORDER_SCENES.map((scene) => fetchBffOrders(scene)))).flat();
+  const [orders, mallReviews] = await Promise.all([
+    Promise.all(ORDER_SCENES.map((scene) => fetchBffOrders(scene))).then((result) => result.flat()),
+    fetchBffMallMyReviews().catch(() => undefined),
+  ]);
+  const reviewLookupReady = Boolean(mallReviews);
+  const reviewedMallItems = buildReviewedMallItemSet(mallReviews);
   const sections = orders
     .slice()
     .sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')))
-    .map(mapOrderSection);
+    .map((order) => mapOrderSection(order, reviewedMallItems, reviewLookupReady));
 
   return {
     tabs: ORDER_TABS,

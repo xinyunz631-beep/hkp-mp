@@ -81,7 +81,7 @@ const ProductDetailPage = observer(function ProductDetailPage() {
     : product;
   const displayPrice = selectedVariant?.price ?? product?.price;
   const servicePhone = detailData?.servicePhone?.trim();
-  const merchantName = detailData?.merchantName?.trim() || '商城商品';
+  const merchantName = detailData?.merchantName?.trim() || '';
   const attributeLines = detailData?.attributeLines ?? [];
   const hasSkuConfig = skuVariants.length > 0;
   const hasCouponCards = coupons.length > 0;
@@ -387,7 +387,10 @@ const ProductDetailPage = observer(function ProductDetailPage() {
             <View className="_pg-section_header">
               <Text className="_pg-section_title">{reviewTitle}</Text>
               {hasReviewData ? (
-                <View className="_pg-section_more" onClick={() => Taro.navigateTo({ url: MINI_PACKAGE_ROUTES.orderReviewList })}>
+                <View
+                  className="_pg-section_more"
+                  onClick={() => Taro.navigateTo({ url: `${MINI_PACKAGE_ROUTES.orderReviewList}?productId=${encodeURIComponent(product?.id || '')}` })}
+                >
                   <Text>查看更多</Text>
                   <AppIcon name="arrowRight" className="_pg-section_more-icon" size={14} color="#a1a1aa" />
                 </View>
@@ -403,6 +406,11 @@ const ProductDetailPage = observer(function ProductDetailPage() {
                   ))}
                 </View>
                 <Text className="_pg-review_author">{review.author}</Text>
+                <Text className="_pg-review_meta">
+                  {[typeof review.rating === 'number' ? `${review.rating}分` : '', review.createdAt ? review.createdAt.slice(0, 10) : '']
+                    .filter(Boolean)
+                    .join(' · ')}
+                </Text>
                 <Text className="_pg-review_content">{review.content}</Text>
                 <View className="_pg-review_images">
                   {review.imageSrcs.map((imageSrc, index) => (

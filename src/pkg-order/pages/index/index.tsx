@@ -23,8 +23,15 @@ function resolveOrderActionRoute(actionText: string) {
   return '';
 }
 
-function navigateToOrderAction(route: string, orderId: string, withOrderId: boolean) {
-  const nextUrl = withOrderId ? `${route}?orderId=${encodeURIComponent(orderId)}` : route;
+function navigateToOrderAction(route: string, orderId: string, withOrderId: boolean, itemId?: string) {
+  const query: string[] = [];
+  if (withOrderId) {
+    query.push(`orderId=${encodeURIComponent(orderId)}`);
+  }
+  if (route === MINI_PACKAGE_ROUTES.orderReviewCreate && itemId) {
+    query.push(`itemId=${encodeURIComponent(itemId)}`);
+  }
+  const nextUrl = query.length > 0 ? `${route}?${query.join('&')}` : route;
   navigateToMiniRoute(nextUrl);
 }
 
@@ -168,6 +175,7 @@ const OrderIndexPage = observer(function OrderIndexPage() {
                                     nextRoute,
                                     orderId,
                                     shouldPassOrderId(action.text),
+                                    item.itemId,
                                   );
                                   return;
                                 }

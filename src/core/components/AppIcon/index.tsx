@@ -28,6 +28,8 @@ import {
   Service,
   Share,
   Shop,
+  Star,
+  StarFill,
   Ticket,
   User,
 } from '@nutui/icons-react-taro';
@@ -66,6 +68,8 @@ export type AppIconName =
   | 'service'
   | 'share'
   | 'shop'
+  | 'star'
+  | 'starFill'
   | 'ticket';
 
 interface AppIconProps {
@@ -113,6 +117,8 @@ const nutIconMap: Record<AppIconName, NutIconComponent | undefined> = {
   service: Service,
   share: Share,
   shop: Shop,
+  star: Star,
+  starFill: StarFill,
   ticket: Ticket,
 };
 

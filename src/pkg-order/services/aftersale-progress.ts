@@ -1,16 +1,11 @@
-import type { OrderAftersaleProgressData } from './model';
+import { fetchBffOrderAftersaleProgress } from '@/core/services/bff-order-api';
 import {
-  buildMallAftersaleProgress,
-  fetchMallAftersaleOrder,
-  mapAftersaleOrderSummary,
-  resolveMallAftersaleAmountText,
-  resolveMallAftersaleDateText,
-  resolveMallAftersaleReason,
-  resolveMallAftersaleServiceNo,
-  resolveMallAftersaleStatusDesc,
-  resolveMallAftersaleStatusText,
-  resolveMallAftersaleTypeText,
-} from './aftersale-context';
+  normalizeText,
+  toAftersaleField,
+  toAftersaleProgressStep,
+  toOrderSummary,
+} from './bff-adapter';
+import type { OrderAftersaleProgressData } from './model';
 
 export type { OrderAftersaleProgressData } from './model';
 
@@ -20,34 +15,27 @@ interface FetchAftersaleProgressOptions {
   reasonText?: string;
 }
 
-function normalizeString(value?: string) {
-  return typeof value === 'string' ? value.trim() : '';
-}
-
 export async function fetchAftersaleProgressData(
   options: FetchAftersaleProgressOptions = {},
 ): Promise<OrderAftersaleProgressData> {
-  const order = await fetchMallAftersaleOrder(options.orderId);
-  const context = order.context || {};
-  const reasonText = options.reasonText || resolveMallAftersaleReason(order) || '用户在小程序提交退款申请';
-  const trackingNumber = normalizeString(context.trackingNumber || context.waybillNo || context.logisticsNo || context.deliveryNo);
-  const shippingAddress = normalizeString(context.addressText || context.deliveryAddress || context.shippingAddress);
+  if (!options.orderId) throw new Error('缺少订单编号');
+
+  const data = await fetchBffOrderAftersaleProgress(options.orderId, {
+    typeText: options.typeText,
+    reasonText: options.reasonText,
+  });
 
   return {
-    order: mapAftersaleOrderSummary(order),
-    serviceNo: resolveMallAftersaleServiceNo(order),
-    typeText: options.typeText || resolveMallAftersaleTypeText(order),
-    statusText: resolveMallAftersaleStatusText(order),
-    statusDesc: resolveMallAftersaleStatusDesc(order),
-    refundAmountText: resolveMallAftersaleAmountText(order),
-    reasonText,
-    fields: [
-      { label: '订单编号', value: order.orderNo },
-      { label: '申请时间', value: resolveMallAftersaleDateText(order) },
-      { label: '物流单号', value: trackingNumber },
-      { label: '收货地址', value: shippingAddress },
-    ].filter((field) => Boolean(field.value && field.value !== '-')),
-    progress: buildMallAftersaleProgress(order, reasonText),
-    primaryButtonText: '查看售后列表',
+    order: toOrderSummary(data.order),
+    serviceNo: normalizeText(data.serviceNo),
+    typeText: normalizeText(data.typeText),
+    statusText: normalizeText(data.statusText),
+    statusDesc: normalizeText(data.statusDesc),
+    refundAmountText: normalizeText(data.refundAmountText),
+    reasonText: normalizeText(data.reasonText),
+    fields: (data.fields || []).map(toAftersaleField),
+    progress: (data.progress || []).map(toAftersaleProgressStep),
+    primaryButtonText: normalizeText(data.primaryButtonText),
+    unavailableReason: normalizeText(data.unavailableReason) || undefined,
   };
 }

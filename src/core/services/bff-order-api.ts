@@ -202,6 +202,162 @@ export interface BffOrderOperationResponse {
   [key: string]: unknown;
 }
 
+export interface BffOrderReviewDraftData {
+  orderNo?: string;
+  itemId?: string;
+  productId?: string;
+  productTitle?: string;
+  productImageUrl?: string;
+  alreadySubmitted?: boolean;
+  submitTip?: string;
+}
+
+export interface BffCreateOrderReviewRequest {
+  orderNo: string;
+  itemId?: string;
+  rating?: number;
+  tags?: string[];
+  content: string;
+  imageUrls?: string[];
+  anonymous?: boolean;
+}
+
+export interface BffCreateOrderReviewResponse {
+  reviewId?: string;
+  reviewStatus?: string;
+  auditTip?: string;
+}
+
+export interface BffOrderSummaryImageAsset {
+  src?: string;
+  alt?: string;
+}
+
+export interface BffOrderSummaryProduct {
+  id?: string;
+  title?: string;
+  subtitle?: string;
+  image?: BffOrderSummaryImageAsset;
+  skuText?: string;
+  price?: number;
+  quantity?: number;
+}
+
+export interface BffOrderSummary {
+  id?: string;
+  statusText?: string;
+  merchantName?: string;
+  products?: BffOrderSummaryProduct[];
+  totalAmount?: number;
+  countText?: string;
+  primaryActionText?: string;
+  secondaryActionText?: string;
+}
+
+export interface BffOrderLogisticsTraceItem {
+  id?: string;
+  timeText?: string;
+  detailText?: string;
+}
+
+export interface BffOrderLogisticsData {
+  productImageSrc?: string;
+  statusText?: string;
+  companyText?: string;
+  trackingNumberText?: string;
+  hotlineText?: string;
+  quantityText?: string;
+  totalAmountText?: string;
+  confirmButtonText?: string;
+  traces?: BffOrderLogisticsTraceItem[];
+}
+
+export interface BffOrderAftersaleTypeOptionData {
+  key?: string;
+  title?: string;
+  desc?: string;
+  amountText?: string;
+  tagText?: string;
+}
+
+export interface BffOrderAftersaleTypeData {
+  order?: BffOrderSummary;
+  tipText?: string;
+  types?: BffOrderAftersaleTypeOptionData[];
+}
+
+export interface BffOrderAftersaleDraftData {
+  order?: BffOrderSummary;
+  selectedTypeText?: string;
+  reasons?: string[];
+  defaultReason?: string;
+  refundAmountText?: string;
+  contactName?: string;
+  contactMobile?: string;
+  placeholderText?: string;
+  uploadHintText?: string;
+  serviceTipText?: string;
+  submitButtonText?: string;
+}
+
+export interface BffOrderAftersaleSubmitRequest {
+  typeText?: string;
+  reasonText?: string;
+  remarkText?: string;
+  imageUrls?: string[];
+}
+
+export interface BffOrderAftersaleRecordData {
+  id?: string;
+  tabKey?: string;
+  serviceNo?: string;
+  typeText?: string;
+  statusText?: string;
+  statusDesc?: string;
+  amountText?: string;
+  createdAt?: string;
+  buttonText?: string;
+  order?: BffOrderSummary;
+}
+
+export interface BffOrderAftersaleListTabData {
+  key?: string;
+  text?: string;
+  count?: number;
+}
+
+export interface BffOrderAftersaleListData {
+  tabs?: BffOrderAftersaleListTabData[];
+  records?: BffOrderAftersaleRecordData[];
+  unavailableReason?: string;
+}
+
+export interface BffOrderAftersaleProgressStepData {
+  id?: string;
+  title?: string;
+  timeText?: string;
+  detailText?: string;
+}
+
+export interface BffOrderAftersaleFieldData {
+  label?: string;
+  value?: string;
+}
+
+export interface BffOrderAftersaleProgressData {
+  order?: BffOrderSummary;
+  serviceNo?: string;
+  typeText?: string;
+  statusText?: string;
+  statusDesc?: string;
+  refundAmountText?: string;
+  reasonText?: string;
+  fields?: BffOrderAftersaleFieldData[];
+  progress?: BffOrderAftersaleProgressStepData[];
+  primaryButtonText?: string;
+  unavailableReason?: string;
+}
+
 export interface BffOrderCancelRequest {
   reason?: string;
 }
@@ -286,6 +442,16 @@ export function refundBffOrder(orderNo: string, data: BffOrderRefundRequest = {}
   });
 }
 
+// 提交商城售后申请，由 BFF 统一收口申请类型、原因、备注和退款调用。
+export function submitBffOrderAftersale(orderNo: string, data: BffOrderAftersaleSubmitRequest = {}) {
+  return request<BffOrderOperationResponse, BffOrderAftersaleSubmitRequest>({
+    url: `/api/bff/orders/${encodeURIComponent(orderNo)}/aftersales`,
+    method: 'POST',
+    data,
+    sign: true,
+  });
+}
+
 export function fetchBffOrderDetail(orderNo: string, options: { showErrorToast?: boolean } = {}) {
   return request<BffOrder>({
     url: `/api/bff/orders/${encodeURIComponent(orderNo)}`,
@@ -298,5 +464,80 @@ export function fetchBffOrders(sceneType: BffOrderSceneType = 'TICKET') {
   return request<BffOrder[]>({
     url: appendQuery('/api/bff/orders', { sceneType }),
     method: 'GET',
+  });
+}
+
+// 查询订单评价草稿，确保前端只展示当前登录用户可评价的真实商品。
+export function fetchBffOrderReviewDraft(orderNo: string, itemId?: string, showErrorToast = true) {
+  return request<BffOrderReviewDraftData>({
+    url: appendQuery('/api/bff/orders/reviews/draft', {
+      orderNo,
+      itemId,
+    }),
+    method: 'GET',
+    showErrorToast,
+  });
+}
+
+// 提交订单评价，内容、图片和匿名态均走真实 BFF 接口。
+export function submitBffOrderReview(data: BffCreateOrderReviewRequest) {
+  return request<BffCreateOrderReviewResponse, BffCreateOrderReviewRequest>({
+    url: '/api/bff/orders/reviews',
+    method: 'POST',
+    data,
+    sign: true,
+  });
+}
+
+export function fetchBffOrderLogistics(orderNo: string, showErrorToast = true) {
+  return request<BffOrderLogisticsData>({
+    url: `/api/bff/orders/${encodeURIComponent(orderNo)}/logistics`,
+    method: 'GET',
+    showErrorToast,
+  });
+}
+
+export function fetchBffOrderAftersaleTypes(orderNo: string, showErrorToast = true) {
+  return request<BffOrderAftersaleTypeData>({
+    url: `/api/bff/orders/${encodeURIComponent(orderNo)}/aftersales/types`,
+    method: 'GET',
+    showErrorToast,
+  });
+}
+
+export function fetchBffOrderAftersaleDraft(
+  orderNo: string,
+  params: { typeText?: string } = {},
+  showErrorToast = true,
+) {
+  return request<BffOrderAftersaleDraftData>({
+    url: appendQuery(`/api/bff/orders/${encodeURIComponent(orderNo)}/aftersales/draft`, {
+      typeText: params.typeText,
+    }),
+    method: 'GET',
+    showErrorToast,
+  });
+}
+
+export function fetchBffOrderAftersales(showErrorToast = true) {
+  return request<BffOrderAftersaleListData>({
+    url: '/api/bff/orders/aftersales',
+    method: 'GET',
+    showErrorToast,
+  });
+}
+
+export function fetchBffOrderAftersaleProgress(
+  orderNo: string,
+  params: { typeText?: string; reasonText?: string } = {},
+  showErrorToast = true,
+) {
+  return request<BffOrderAftersaleProgressData>({
+    url: appendQuery(`/api/bff/orders/${encodeURIComponent(orderNo)}/aftersales/progress`, {
+      typeText: params.typeText,
+      reasonText: params.reasonText,
+    }),
+    method: 'GET',
+    showErrorToast,
   });
 }

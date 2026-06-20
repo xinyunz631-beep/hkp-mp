@@ -1,7 +1,13 @@
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
-import { fetchBffMallCategories, fetchBffMallProducts } from '@/core/services/bff-mall-api';
+import { fetchAllBffMallCategories, fetchAllBffMallProducts } from '@/core/services/bff-mall-api';
 import type { HkpProductSummary } from '@/core/types/hkp';
-import { toMallCategoryItem, toMallProductSummary } from './bff-adapter';
+import { sanitizeMallRuntimeText, sanitizeMallRuntimeUrl } from '@/core/utils/mall-runtime';
+import {
+  isRenderableMallCategory,
+  isRenderableMallProduct,
+  toMallCategoryItem,
+  toMallProductSummary,
+} from './bff-adapter';
 
 export interface MallCategoryNavItem {
   id: string;
@@ -33,40 +39,63 @@ export interface MallCategoryPanelData {
   products: HkpProductSummary[];
 }
 
+const MALL_CATEGORY_PAGE_SIZE = 100;
+const MALL_CATEGORY_MAX_PAGES = 5;
+const MALL_CATEGORY_PRODUCT_MAX_PAGES = 5;
+
 // 获取商城分类真实数据。
 export async function fetchCategoryData() {
   const [categoryResponse, productResponse] = await Promise.all([
-    fetchBffMallCategories({ page: 1, size: 100 }),
-    fetchBffMallProducts({ page: 1, size: 100 }),
+    fetchAllBffMallCategories({}, {
+      pageSize: MALL_CATEGORY_PAGE_SIZE,
+      maxPages: MALL_CATEGORY_MAX_PAGES,
+    }),
+    fetchAllBffMallProducts({}, {
+      pageSize: MALL_CATEGORY_PAGE_SIZE,
+      maxPages: MALL_CATEGORY_PRODUCT_MAX_PAGES,
+    }),
   ]);
-  const categories = (categoryResponse.list ?? []).map((category) => ({
-    id: category.categoryId || category.title || '',
-    title: category.title || category.categoryId || '商品分类',
-  })).filter((category) => category.id);
+  const mallCategories = (categoryResponse.list ?? []).filter(isRenderableMallCategory);
+  const categories = mallCategories.map((category) => ({
+    id: category.categoryId?.trim() || '',
+    title: sanitizeMallRuntimeText(category.title),
+  }));
   const activeCategory = categories[0];
-  const products = (productResponse.list ?? []).map(toMallProductSummary);
-  const shortcuts = (categoryResponse.list ?? []).slice(0, 3).map(toMallCategoryItem);
+  const rawProducts = (productResponse.list ?? []).filter(isRenderableMallProduct);
+  const shortcuts = mallCategories.slice(0, 3).map(toMallCategoryItem);
+  const productsByCategoryId = new Map<string, HkpProductSummary[]>();
+
+  rawProducts.forEach((rawProduct) => {
+    const summary = toMallProductSummary(rawProduct);
+
+    (rawProduct.categoryIds ?? []).forEach((categoryId) => {
+      const normalizedCategoryId = String(categoryId || '').trim();
+      if (!normalizedCategoryId) return;
+
+      const currentProducts = productsByCategoryId.get(normalizedCategoryId);
+
+      if (currentProducts) {
+        currentProducts.push(summary);
+        return;
+      }
+
+      productsByCategoryId.set(normalizedCategoryId, [summary]);
+    });
+  });
 
   return {
     query: '',
     categories,
     activeCategoryId: activeCategory?.id || '',
-    heroTitle: activeCategory?.title || '商品分类',
+    heroTitle: activeCategory?.title || '',
     heroSubtitle: activeCategory?.title ? '精选乐园周边' : '',
-    heroImageSrc: categoryResponse.list?.find((category) => category.bannerUrl)?.bannerUrl || '',
-    shortcuts: shortcuts.length > 0 ? shortcuts : [
-      { id: 'all', title: '全部商品', iconSrc: '', path: MINI_PACKAGE_ROUTES.mallProducts },
-    ],
+    heroImageSrc: sanitizeMallRuntimeUrl(mallCategories.find((category) => category.bannerUrl)?.bannerUrl) || '',
+    shortcuts,
     panels: categories.map((category) => ({
       id: category.id,
       title: category.title,
       subtitle: '可选商品',
-      products: products.filter((product) => (
-        product.id && productResponse.list?.find((rawProduct) => {
-          const rawProductId = rawProduct.spuId || rawProduct.productCode;
-          return rawProductId === product.id && rawProduct.categoryIds?.includes(category.id);
-        })
-      )),
+      products: productsByCategoryId.get(category.id) ?? [],
     })),
   };
 }

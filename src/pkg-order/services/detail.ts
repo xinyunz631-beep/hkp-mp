@@ -5,6 +5,7 @@ import {
   type BffOrder,
   type BffTicketVoucher,
 } from '@/core/services/bff-order-api';
+import { sanitizeMallRuntimeText } from '@/core/utils/mall-runtime';
 import type { OrderDetailData, OrderDetailFieldData, OrderTicketInstanceData } from './model';
 
 export type { OrderDetailData } from './model';
@@ -26,28 +27,49 @@ function formatDateTime(value?: string) {
   return value.replace('T', ' ').slice(0, 16);
 }
 
+function hasMallLogisticsContext(order: BffOrder) {
+  if (order.sceneType !== 'MALL') return false;
+  return Boolean(normalizeString(
+    order.context?.trackingNumber
+      || order.context?.waybillNo
+      || order.context?.logisticsNo
+      || order.context?.deliveryNo
+      || order.items?.[0]?.attributes?.trackingNumber
+      || order.items?.[0]?.attributes?.waybillNo,
+  ));
+}
+
 // 归一订单主状态，避免后端履约中间态直接暴露为内部状态码。
-function resolveStatusText(status?: string, sceneType?: string) {
-  const normalizedStatus = String(status || '').toUpperCase();
+function resolveStatusText(order: BffOrder) {
+  const normalizedStatus = String(order.orderStatus || '').toUpperCase();
 
   if (['PENDING_PAYMENT', 'PAYING'].includes(normalizedStatus)) return '待付款';
-  if (['PAID', 'WAIT_USE', 'FULFILLING'].includes(normalizedStatus)) return sceneType === 'HOTEL' ? '待入住' : '待使用';
+  if (['PAID', 'WAIT_USE', 'FULFILLING'].includes(normalizedStatus)) {
+    if (order.sceneType === 'HOTEL') return '待入住';
+    if (order.sceneType === 'MALL') {
+      return normalizedStatus === 'FULFILLING' || hasMallLogisticsContext(order) ? '待收货' : '待发货';
+    }
+    return '待使用';
+  }
   if (['PART_USED', 'PARTIALLY_USED', 'PARTIALLYUSED'].includes(normalizedStatus)) return '部分使用';
   if (['FULFILLED', 'USED', 'COMPLETED'].includes(normalizedStatus)) return '已完成';
   if (['CANCELED', 'CANCELLED'].includes(normalizedStatus)) return '已取消';
   if (['REFUNDING', 'REFUNDED'].includes(normalizedStatus)) return '退款中';
-  return status || '处理中';
+  return order.orderStatus || '处理中';
 }
 
-function resolvePrimaryAction(status?: string): OrderDetailData['primaryActionType'] {
-  const normalizedStatus = String(status || '').toUpperCase();
+function resolvePrimaryAction(order: BffOrder): OrderDetailData['primaryActionType'] {
+  const normalizedStatus = String(order.orderStatus || '').toUpperCase();
   if (['PENDING_PAYMENT', 'PAYING'].includes(normalizedStatus)) return 'pay';
-  if (['PAID', 'WAIT_USE', 'FULFILLING'].includes(normalizedStatus)) return 'refund';
+  if (['PAID', 'WAIT_USE', 'FULFILLING'].includes(normalizedStatus)) {
+    return order.sceneType === 'MALL' ? 'aftersale' : 'refund';
+  }
   return 'none';
 }
 
 function resolveRefundButtonText(primaryActionType: OrderDetailData['primaryActionType']) {
   if (primaryActionType === 'pay') return '继续支付';
+  if (primaryActionType === 'aftersale') return '申请售后';
   if (primaryActionType === 'refund') return '申请退款';
   return '';
 }
@@ -66,11 +88,15 @@ function resolveTicketStatusText(status?: string) {
 
 function resolveTitle(order: BffOrder) {
   const firstItem = order.items?.[0];
+  if (order.sceneType === 'MALL') {
+    return sanitizeMallRuntimeText(firstItem?.itemName)
+      || normalizeString(firstItem?.itemId || firstItem?.lineNo || order.orderNo);
+  }
   return firstItem?.itemName
     || firstItem?.attributes?.roomTitle
     || firstItem?.attributes?.ratePlanTitle
     || order.context?.roomTitle
-    || `${order.sceneType || ''}订单`;
+    || normalizeString(firstItem?.itemId || firstItem?.lineNo || order.orderNo);
 }
 
 function resolveQuantityText(order: BffOrder) {
@@ -79,7 +105,7 @@ function resolveQuantityText(order: BffOrder) {
 }
 
 function resolveMerchantName(order: BffOrder) {
-  return normalizeString(
+  return sanitizeMallRuntimeText(
     order.context?.merchantName
       || order.items?.[0]?.attributes?.merchantName
       || order.items?.[0]?.attributes?.shopName,
@@ -88,7 +114,7 @@ function resolveMerchantName(order: BffOrder) {
 
 function resolveMallSpecText(order: BffOrder) {
   const firstItem = order.items?.[0];
-  return normalizeString(
+  return sanitizeMallRuntimeText(
     firstItem?.attributes?.specName
       || firstItem?.attributes?.skuName
       || firstItem?.skuId,
@@ -168,7 +194,7 @@ function mapTicketVoucher(order: BffOrder, voucher: BffTicketVoucher): OrderTick
 function mapOrderToDetail(order: BffOrder): OrderDetailData {
   const firstItem = order.items?.[0];
   const context = order.context || {};
-  const primaryActionType = resolvePrimaryAction(order.orderStatus);
+  const primaryActionType = resolvePrimaryAction(order);
   const sceneType = order.sceneType || '-';
   const title = resolveTitle(order);
   const merchantName = resolveMerchantName(order);
@@ -182,7 +208,7 @@ function mapOrderToDetail(order: BffOrder): OrderDetailData {
     id: order.orderNo,
     sceneType: order.sceneType,
     orderStatus: order.orderStatus,
-    statusText: resolveStatusText(order.orderStatus, order.sceneType),
+    statusText: resolveStatusText(order),
     paidAmountText: formatCent(order.payableAmountCent),
     primaryActionType,
     payExpireAt: order.payExpireAt,

@@ -1,7 +1,7 @@
 import { getCache, removeCache, setCache } from '@/core/utils/cache';
 import { fetchBffMallHome, fetchBffMallProducts } from '@/core/services/bff-mall-api';
 import type { HkpProductSummary } from '@/core/types/hkp';
-import { toMallProductSummary } from './bff-adapter';
+import { isRenderableMallProduct, toMallProductSummary } from './bff-adapter';
 
 const MALL_SEARCH_HISTORY_KEY = 'hkp_mall_search_history';
 const MALL_SEARCH_HISTORY_LIMIT = 10;
@@ -77,7 +77,7 @@ export async function fetchMallSearchData(): Promise<MallSearchData> {
   return {
     placeholder: hotKeywords[0] ? `搜索${hotKeywords[0]}` : DEFAULT_MALL_SEARCH_PLACEHOLDER,
     hotKeywords,
-    products: (response.products ?? []).slice(0, 6).map(toMallProductSummary),
+    products: (response.products ?? []).filter(isRenderableMallProduct).slice(0, 6).map(toMallProductSummary),
   };
 }
 
@@ -92,7 +92,7 @@ export async function fetchMallSearchRelatedProducts(keyword?: string) {
 
   return {
     keyword: nextKeyword,
-    products: (response.list ?? []).map(toMallProductSummary),
+    products: (response.list ?? []).filter(isRenderableMallProduct).map(toMallProductSummary),
   };
 }
 

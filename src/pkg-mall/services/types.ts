@@ -48,9 +48,11 @@ export interface MallProductListData {
 export interface MallReviewItem {
   id: string;
   author: string;
+  rating?: number;
   content: string;
   tags: string[];
   imageSrcs: string[];
+  createdAt?: string;
 }
 
 export interface MallProductDetailData {

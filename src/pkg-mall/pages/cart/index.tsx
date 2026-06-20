@@ -229,7 +229,7 @@ const CartPage = observer(function CartPage() {
           {hasCartItems ? (
             groups.map((group) => (
               <View className="_pg-group" key={group.id}>
-                <Text className="_pg-group_title">{group.merchantName || '商城商品'}</Text>
+                <Text className="_pg-group_title">{group.merchantName || '未提供'}</Text>
                 {group.promotionTags.length > 0 ? (
                   <View className="_pg-group_tags">
                     {group.promotionTags.map((tag) => (

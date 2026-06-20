@@ -184,6 +184,11 @@ const DetailPage = observer(function DetailPage() {
       return;
     }
 
+    if (detailData.primaryActionType === 'aftersale') {
+      navigateToMiniRoute(`${MINI_PACKAGE_ROUTES.orderAftersaleType}?orderId=${encodeURIComponent(detailData.id)}`);
+      return;
+    }
+
     navigateToMiniRoute(`${MINI_PACKAGE_ROUTES.orderAftersaleType}?orderId=${encodeURIComponent(detailData.id)}`);
   }
 

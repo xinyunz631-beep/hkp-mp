@@ -15,6 +15,7 @@ import {
   type MallCheckoutDraft,
 } from '@/core/services/mall-checkout-draft';
 import { formatCurrency } from '@/core/utils/money';
+import { sanitizeMallRuntimeText, sanitizeMallRuntimeUrl } from '@/core/utils/mall-runtime';
 import type { OrderCheckoutData } from './model';
 import { fetchAddressData, formatOrderAddress } from './address';
 
@@ -101,11 +102,11 @@ function buildMallUnifiedOrderRequest(
         productId: item.productId,
         spuId: item.productId,
         skuId: item.id,
-        merchantName: item.merchantName,
-        skuName: item.specText,
-        specName: item.specText,
-        imageUrl: item.imageSrc,
-        giftText: item.giftText || '',
+        merchantName: sanitizeMallRuntimeText(item.merchantName),
+        skuName: sanitizeMallRuntimeText(item.specText),
+        specName: sanitizeMallRuntimeText(item.specText),
+        imageUrl: sanitizeMallRuntimeUrl(item.imageSrc),
+        giftText: sanitizeMallRuntimeText(item.giftText) || '',
       },
     })),
   };
@@ -124,7 +125,7 @@ function toMallCoupon(coupon: BffAvailableCouponView) {
 
   return {
     id: coupon.couponNo,
-    title: coupon.couponName || coupon.couponNo || '优惠资格待确认',
+    title: coupon.couponName || coupon.couponNo || '优惠券',
     amountText: discountAmount > 0 ? `¥${formatYuan(discountAmountCent)}` : (formatDiscountPercent(coupon.discountPercent) || '优惠券'),
     thresholdText: thresholdAmount > 0 ? `满¥${thresholdAmount.toFixed(2)}可用` : '无门槛',
     validityText: validDate ? `有效期至 ${validDate}` : '按券规则生效',
@@ -153,7 +154,7 @@ function buildReadonlyCheckoutData(
 ): OrderCheckoutData {
   const merchantNames = Array.from(new Set(
     draft.products
-      .map((item) => item.merchantName?.trim())
+      .map((item) => sanitizeMallRuntimeText(item.merchantName))
       .filter((item): item is string => Boolean(item)),
   ));
   const merchantName = merchantNames.length > 1
@@ -169,11 +170,11 @@ function buildReadonlyCheckoutData(
     products: draft.products.map((item) => ({
       id: item.id,
       title: item.title,
-      specText: item.specText,
+      specText: sanitizeMallRuntimeText(item.specText),
       quantity: item.quantity,
       priceText: formatCurrency(item.unitPrice),
-      imageSrc: item.imageSrc,
-      giftText: item.giftText,
+      imageSrc: sanitizeMallRuntimeUrl(item.imageSrc),
+      giftText: sanitizeMallRuntimeText(item.giftText) || undefined,
       canRefund: item.canRefund,
       canAfterSale: item.canAfterSale,
     })),

@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
+import Taro from '@tarojs/taro';
 import { Text, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
 import { BaseEmpty } from '@/core/components/BaseEmpty';
@@ -10,11 +11,13 @@ import { fetchReviewListData, type OrderReviewListData } from '@/pkg-order/servi
 import './index.scss';
 
 const ReviewListPage = observer(function ReviewListPage() {
+  const productId = Taro.getCurrentInstance().router?.params?.productId;
   const [pageData, setPageData] = useState<OrderReviewListData>();
   const [activeFilterKey, setActiveFilterKey] = useState('');
+  const [loadingMore, setLoadingMore] = useState(false);
   const pageRuntime = usePageRuntime({
     initPage: async () => {
-      const nextData = await fetchReviewListData();
+      const nextData = await fetchReviewListData(productId);
       setPageData(nextData);
       setActiveFilterKey(nextData.filters[0]?.key ?? '');
     },
@@ -24,20 +27,50 @@ const ReviewListPage = observer(function ReviewListPage() {
     if (!pageData) return [];
     if (pageData.filters.length === 0) return pageData.reviews;
     if (activeFilterKey === pageData.filters[0]?.key) return pageData.reviews;
-    return pageData.reviews.slice(0, 2);
+    return pageData.reviews.filter((review) => review.tags.includes(activeFilterKey));
   }, [activeFilterKey, pageData]);
+
+  // 列表触底时继续按真实分页回读评价，不再把第一页结果误当成完整评价池。
+  const handleLoadMore = useCallback(async () => {
+    if (!pageData?.hasMore || loadingMore || !productId || pageData.unavailableReason) return;
+
+    setLoadingMore(true);
+    try {
+      const nextData = await fetchReviewListData(productId, {
+        page: pageData.page + 1,
+        pageSize: pageData.pageSize,
+        existingReviews: pageData.reviews,
+      });
+      setPageData(nextData);
+      setActiveFilterKey((currentFilterKey) => (
+        nextData.filters.some((filter) => filter.key === currentFilterKey)
+          ? currentFilterKey
+          : (nextData.filters[0]?.key ?? '')
+      ));
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [loadingMore, pageData, productId]);
 
   return pageRuntime.renderPage(() => {
     if (!pageData) return null;
 
     return (
       <View className="_pg">
-        <PageShell title="评价" className="_pg-shell" reserveTabBarSpace={false}>
+        <PageShell
+          title="评价"
+          className="_pg-shell"
+          reserveTabBarSpace={false}
+          scrollViewProps={{
+            lowerThreshold: 160,
+            onScrollToLower: handleLoadMore,
+          }}
+        >
           <View className="_pg-content">
             {pageData.unavailableReason ? (
               <BaseEmpty
                 className="_pg-empty"
-                title="暂不支持评价"
+                title="当前无法查看评价"
                 description={pageData.unavailableReason}
               />
             ) : (
@@ -66,7 +99,19 @@ const ReviewListPage = observer(function ReviewListPage() {
                         />
                         <Text className="_pg-review_name">{review.userName}</Text>
                       </View>
-                      <Text className="_pg-review_time">{review.timeText}</Text>
+                      <View className="_pg-review_meta">
+                        {typeof review.rating === 'number' ? <Text className="_pg-review_rating">{`${review.rating}分`}</Text> : null}
+                        {review.timeText ? <Text className="_pg-review_time">{review.timeText}</Text> : null}
+                      </View>
+                      {review.tags.length > 0 ? (
+                        <View className="_pg-review_tags">
+                          {review.tags.map((tag) => (
+                            <View className="_pg-review_tag" key={`${review.id}-${tag}`}>
+                              <Text>{tag}</Text>
+                            </View>
+                          ))}
+                        </View>
+                      ) : null}
                       <Text className="_pg-review_content">{review.content}</Text>
                       {review.imageSrcs.length > 0 ? (
                         <View className="_pg-review_images">
@@ -90,6 +135,17 @@ const ReviewListPage = observer(function ReviewListPage() {
                       description="当前没有可展示的真实订单评价。"
                     />
                   )}
+                  {pageData.reviews.length > 0 ? (
+                    <View className="_pg-list_footer">
+                      <Text className="_pg-list_footer-text">
+                        {loadingMore
+                          ? '正在加载更多评价...'
+                          : pageData.hasMore
+                            ? `继续上滑查看更多评价（已加载 ${pageData.reviews.length}${pageData.totalCount > 0 ? ` / ${pageData.totalCount}` : ''}）`
+                            : `评价已全部加载${pageData.totalCount > 0 ? `（共 ${pageData.totalCount} 条）` : ''}`}
+                      </Text>
+                    </View>
+                  ) : null}
                 </View>
               </>
             )}

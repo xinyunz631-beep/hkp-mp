@@ -2,7 +2,7 @@ import { useState } from 'react';
 import Taro from '@tarojs/taro';
 import { Text, Textarea, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
-import { refundBffOrder } from '@/core/services/bff-order-api';
+import { submitBffOrderAftersale } from '@/core/services/bff-order-api';
 import { OrderCard } from '@/core/components/commerce';
 import { PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
@@ -46,8 +46,12 @@ const AftersaleApplyPage = observer(function AftersaleApplyPage() {
       return;
     }
 
-    const reasonPayload = [selectedReason, remarkText.trim()].filter(Boolean).join('；');
-    await refundBffOrder(routeOrderId, { reason: reasonPayload || selectedReason });
+    await submitBffOrderAftersale(routeOrderId, {
+      typeText: currentPageData.selectedTypeText,
+      reasonText: selectedReason,
+      remarkText: remarkText.trim(),
+      imageUrls: [],
+    });
     await showWechatToast('退款申请已提交', 'success');
     const query = [
       routeOrderId ? `orderId=${encodeURIComponent(routeOrderId)}` : '',
@@ -122,11 +126,11 @@ const AftersaleApplyPage = observer(function AftersaleApplyPage() {
               <View className="_pg-contact">
                 <View className="_pg-contact_row">
                   <Text className="_pg-contact_label">联系人</Text>
-                  <Text className="_pg-contact_value">{pageData.contactName}</Text>
+                  <Text className="_pg-contact_value">{pageData.contactName || '未提供'}</Text>
                 </View>
                 <View className="_pg-contact_row">
                   <Text className="_pg-contact_label">联系电话</Text>
-                  <Text className="_pg-contact_value">{pageData.contactMobile}</Text>
+                  <Text className="_pg-contact_value">{pageData.contactMobile || '未提供'}</Text>
                 </View>
               </View>
               <Text className="_pg-card_hint">{pageData.serviceTipText}</Text>

@@ -1,49 +1,30 @@
-import type { OrderAftersaleListData, OrderAftersaleRecordData } from './model';
-import {
-  fetchMallAftersaleOrders,
-  mapAftersaleOrderSummary,
-  resolveMallAftersaleAmountText,
-  resolveMallAftersaleDateText,
-  resolveMallAftersaleServiceNo,
-  resolveMallAftersaleStatusDesc,
-  resolveMallAftersaleStatusText,
-  resolveMallAftersaleTypeText,
-} from './aftersale-context';
+import { fetchBffOrderAftersales } from '@/core/services/bff-order-api';
+import { normalizeText, toOrderSummary } from './bff-adapter';
+import type { OrderAftersaleListData } from './model';
 
 export type { OrderAftersaleListData } from './model';
 
-function mapRecordTabKey(statusText: string) {
-  return statusText === '退款成功' ? 'refund' : 'processing';
-}
-
-function mapAftersaleRecord(order: Awaited<ReturnType<typeof fetchMallAftersaleOrders>>[number]): OrderAftersaleRecordData {
-  const statusText = resolveMallAftersaleStatusText(order);
-
-  return {
-    id: order.orderNo,
-    tabKey: mapRecordTabKey(statusText),
-    serviceNo: resolveMallAftersaleServiceNo(order),
-    typeText: resolveMallAftersaleTypeText(order),
-    statusText,
-    statusDesc: resolveMallAftersaleStatusDesc(order),
-    amountText: resolveMallAftersaleAmountText(order),
-    createdAt: resolveMallAftersaleDateText(order),
-    buttonText: '查看进度',
-    order: mapAftersaleOrderSummary(order),
-  };
-}
-
 export async function fetchAftersaleListData(): Promise<OrderAftersaleListData> {
-  const records = (await fetchMallAftersaleOrders()).map(mapAftersaleRecord);
-  const processingCount = records.filter((record) => record.tabKey === 'processing').length;
-  const refundCount = records.filter((record) => record.tabKey === 'refund').length;
+  const data = await fetchBffOrderAftersales();
 
   return {
-    tabs: [
-      { key: 'all', text: '全部', count: records.length },
-      { key: 'processing', text: '处理中', count: processingCount },
-      { key: 'refund', text: '退款成功', count: refundCount },
-    ],
-    records,
+    tabs: (data.tabs || []).map((tab, index) => ({
+      key: normalizeText(tab.key) || `aftersale-tab-${index}`,
+      text: normalizeText(tab.text),
+      count: typeof tab.count === 'number' ? tab.count : undefined,
+    })),
+    records: (data.records || []).map((record, index) => ({
+      id: normalizeText(record.id) || `aftersale-record-${index}`,
+      tabKey: normalizeText(record.tabKey),
+      serviceNo: normalizeText(record.serviceNo),
+      typeText: normalizeText(record.typeText),
+      statusText: normalizeText(record.statusText),
+      statusDesc: normalizeText(record.statusDesc),
+      amountText: normalizeText(record.amountText),
+      createdAt: normalizeText(record.createdAt),
+      buttonText: normalizeText(record.buttonText),
+      order: toOrderSummary(record.order),
+    })),
+    unavailableReason: normalizeText(data.unavailableReason) || undefined,
   };
 }

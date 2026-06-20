@@ -143,7 +143,8 @@ const CheckoutPage = observer(function CheckoutPage() {
     const couponText = selectedCoupon
       ? `${selectedCoupon.amountText} ${selectedCoupon.thresholdText}`
       : '请选择优惠券';
-    const merchantName = checkoutData.merchantName?.trim() || '商城商品';
+    const merchantName = checkoutData.merchantName?.trim() || '';
+    const merchantDisplayName = merchantName || '未提供';
     const hasCouponDiscount = checkoutData.discountAmount > 0;
     const deliveryErrors = checkoutData.deliveryErrors ?? [];
     const deliveryUnavailable = checkoutData.canSubmit === false;
@@ -238,7 +239,7 @@ const CheckoutPage = observer(function CheckoutPage() {
               <View className="_pg-products-header">
                 <View className="_pg-products-header_title">
                   <AppIcon name="shop" size={16} color="#23262f" />
-                  <Text>{merchantName}</Text>
+                  <Text>{merchantDisplayName}</Text>
                 </View>
                 <Text className="_pg-products-header_count">共{checkoutData.products.reduce((total, item) => total + item.quantity, 0)}件</Text>
               </View>

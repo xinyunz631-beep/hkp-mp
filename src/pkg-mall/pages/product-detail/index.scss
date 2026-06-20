@@ -252,6 +252,7 @@
   }
 
   &_author,
+  &_meta,
   &_content {
     display: block;
   }
@@ -261,6 +262,13 @@
     color: #23262d;
     font-size: 24px;
     font-weight: 500;
+  }
+
+  &_meta {
+    margin-top: 10px;
+    color: #ff5c90;
+    font-size: 20px;
+    line-height: 1.4;
   }
 
   &_content {

@@ -219,6 +219,35 @@ export interface BffMallFavoriteMutationResult {
   favorited?: boolean;
 }
 
+export interface BffMallReviewItem {
+  reviewId?: string;
+  itemId?: string;
+  userName?: string;
+  avatarUrl?: string;
+  rating?: number;
+  tags?: string[];
+  content?: string;
+  imageUrls?: string[];
+  anonymous?: boolean;
+  createdAt?: string;
+}
+
+export interface BffMallReviewsData {
+  items?: BffMallReviewItem[];
+  totalCount?: number;
+}
+
+export interface BffMallMemberReviewLookupItem {
+  orderNo?: string;
+  itemId?: string;
+  reviewId?: string;
+  reviewStatus?: string;
+}
+
+export interface BffMallMemberReviewsData {
+  items?: BffMallMemberReviewLookupItem[];
+}
+
 export interface BffAddMallCartItemRequest {
   productId: string;
   spuId?: string;
@@ -270,6 +299,21 @@ export interface FetchBffMallGiftsParams {
   size?: number;
 }
 
+export interface FetchBffMallReviewsParams {
+  productId: string;
+  page?: number;
+  size?: number;
+}
+
+export interface FetchAllBffMallPagesOptions {
+  pageSize?: number;
+  maxPages?: number;
+  maxItems?: number;
+}
+
+const DEFAULT_BFF_MALL_PAGE_SIZE = 100;
+const DEFAULT_BFF_MALL_MAX_PAGES = 5;
+
 function appendQuery(url: string, params: Record<string, string | number | string[] | undefined>) {
   const query = Object.entries(params)
     .filter(([, value]) => typeof value !== 'undefined' && value !== '')
@@ -317,6 +361,92 @@ export function fetchBffMallProducts(params: FetchBffMallProductsParams = {}) {
   });
 }
 
+function resolveMallPageHasMore<TItem>(
+  response: BffPageResult<TItem>,
+  currentPage: number,
+  pageSize: number,
+) {
+  if (typeof response.hasMore === 'boolean') return response.hasMore;
+  if (typeof response.total === 'number' && response.total >= 0) return currentPage * pageSize < response.total;
+  return (response.list?.length ?? 0) >= pageSize;
+}
+
+async function fetchAllBffMallPages<TItem, TParams extends { page?: number; size?: number }>(
+  fetcher: (params: TParams) => Promise<BffPageResult<TItem>>,
+  params: TParams,
+  options: FetchAllBffMallPagesOptions = {},
+) {
+  const pageSize = Math.max(1, options.pageSize ?? params.size ?? DEFAULT_BFF_MALL_PAGE_SIZE);
+  const maxPages = Math.max(1, options.maxPages ?? DEFAULT_BFF_MALL_MAX_PAGES);
+  const maxItems = Math.max(pageSize, options.maxItems ?? pageSize * maxPages);
+  const startPage = Math.max(1, params.page ?? 1);
+  const list: TItem[] = [];
+  let total: number | undefined;
+  let fetchedPages = 0;
+  let currentPage = startPage;
+  let lastPageHasMore = false;
+
+  while (fetchedPages < maxPages && list.length < maxItems) {
+    const response = await fetcher({
+      ...params,
+      page: currentPage,
+      size: pageSize,
+    } as TParams);
+    const pageItems = response.list ?? [];
+
+    if (typeof response.total === 'number' && response.total >= 0) {
+      total = response.total;
+    }
+
+    if (pageItems.length > 0) {
+      list.push(...pageItems.slice(0, Math.max(0, maxItems - list.length)));
+    }
+
+    fetchedPages += 1;
+    lastPageHasMore = resolveMallPageHasMore(response, currentPage, pageSize);
+
+    if (pageItems.length === 0 || !lastPageHasMore || list.length >= maxItems) break;
+
+    currentPage += 1;
+  }
+
+  return {
+    list,
+    total,
+    page: startPage,
+    size: pageSize,
+    hasMore: lastPageHasMore && (list.length >= maxItems || fetchedPages >= maxPages),
+  } satisfies BffPageResult<TItem>;
+}
+
+export function fetchAllBffMallCategories(
+  params: FetchBffMallCategoriesParams = {},
+  options?: FetchAllBffMallPagesOptions,
+) {
+  return fetchAllBffMallPages(fetchBffMallCategories, params, options);
+}
+
+export function fetchAllBffMallProducts(
+  params: FetchBffMallProductsParams = {},
+  options?: FetchAllBffMallPagesOptions,
+) {
+  return fetchAllBffMallPages(fetchBffMallProducts, params, options);
+}
+
+export function fetchAllBffMallRecommendations(
+  params: FetchBffMallRecommendationsParams = {},
+  options?: FetchAllBffMallPagesOptions,
+) {
+  return fetchAllBffMallPages(fetchBffMallRecommendations, params, options);
+}
+
+export function fetchAllBffMallAvailableGifts(
+  params: FetchBffMallGiftsParams = {},
+  options?: FetchAllBffMallPagesOptions,
+) {
+  return fetchAllBffMallPages(fetchBffMallAvailableGifts, params, options);
+}
+
 export function fetchBffMallProduct(spuId: string) {
   return request<BffMallProduct>({
     url: `/api/bff/mall/products/${encodeURIComponent(spuId)}`,
@@ -346,6 +476,26 @@ export function fetchBffMallAvailableGifts(params: FetchBffMallGiftsParams = {})
       page: params.page,
       size: params.size,
     }),
+    method: 'GET',
+  });
+}
+
+// 查询商品详情页和评价列表页使用的真实商城评价。
+export function fetchBffMallReviews(params: FetchBffMallReviewsParams) {
+  return request<BffMallReviewsData>({
+    url: appendQuery('/api/bff/mall/reviews', {
+      productId: params.productId,
+      page: params.page,
+      size: params.size,
+    }),
+    method: 'GET',
+  });
+}
+
+// 查询当前会员已提交的商城评价，用于订单待评价分流。
+export function fetchBffMallMyReviews() {
+  return request<BffMallMemberReviewsData>({
+    url: '/api/bff/mall/reviews/mine',
     method: 'GET',
   });
 }

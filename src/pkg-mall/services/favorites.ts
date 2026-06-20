@@ -5,6 +5,7 @@ import {
   type BffMallFavoriteItem,
 } from '@/core/services/bff-mall-api';
 import type { HkpProductSummary } from '@/core/types/hkp';
+import { sanitizeMallRuntimeText, sanitizeMallRuntimeUrl } from '@/core/utils/mall-runtime';
 
 export type MallFavoriteItem = HkpProductSummary & {
   invalid?: boolean;
@@ -17,6 +18,14 @@ export interface MallFavoritesData {
   totalCount?: number;
 }
 
+function resolveFavoriteFilters(items: MallFavoriteItem[]) {
+  return items.some((item) => item.invalid) ? ['全部', '仅看有货'] : [];
+}
+
+function normalizeText(value?: string) {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
 function normalizeOptionalCount(value?: number) {
   return typeof value === 'number' && Number.isFinite(value) && value >= 0
     ? value
@@ -24,18 +33,19 @@ function normalizeOptionalCount(value?: number) {
 }
 
 function toMallFavoriteItem(item: BffMallFavoriteItem): MallFavoriteItem {
+  const title = sanitizeMallRuntimeText(item.title);
   return {
-    id: item.id || '',
-    title: item.title || item.id || '商品',
-    subtitle: item.subtitle || '',
+    id: normalizeText(item.id),
+    title,
+    subtitle: sanitizeMallRuntimeText(item.subtitle),
     image: {
-      src: item.image?.src || '',
-      alt: item.image?.alt || item.title || item.id || '商品',
+      src: sanitizeMallRuntimeUrl(item.image?.src),
+      alt: sanitizeMallRuntimeText(item.image?.alt) || title || '收藏商品',
     },
     price: typeof item.price === 'number' && Number.isFinite(item.price) ? item.price : 0,
     marketPrice: typeof item.marketPrice === 'number' && Number.isFinite(item.marketPrice) ? item.marketPrice : undefined,
-    tag: item.tag || '',
-    salesText: item.salesText || '',
+    tag: sanitizeMallRuntimeText(item.tag),
+    salesText: sanitizeMallRuntimeText(item.salesText),
     invalid: item.invalid,
   };
 }
@@ -45,10 +55,11 @@ export async function fetchFavoritesData(): Promise<MallFavoritesData> {
   const items = (data.items ?? [])
     .map(toMallFavoriteItem)
     .filter((item) => item.id);
+  const filters = resolveFavoriteFilters(items);
 
   return {
-    filters: items.some((item) => item.invalid) ? ['全部', '仅看有货'] : [],
-    activeFilter: '',
+    filters,
+    activeFilter: filters[0] || '',
     items,
     totalCount: normalizeOptionalCount(data.totalCount) ?? items.length,
   };

@@ -22,6 +22,7 @@
 ._pg-filters {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 18px;
   padding: 24px 32px 28px;
   border-bottom: 1px solid #edf0f4;
@@ -49,6 +50,20 @@
 
 ._pg-list {
   padding-bottom: 24px;
+
+  &_footer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 32px 12px;
+  }
+
+  &_footer-text {
+    color: #9ca3af;
+    font-size: 22px;
+    line-height: 1.5;
+    text-align: center;
+  }
 }
 
 ._pg-review {
@@ -77,11 +92,44 @@
   }
 
   &_time {
-    display: block;
-    margin-top: 24px;
     color: #9ca3af;
     font-size: 22px;
     line-height: 1.4;
+  }
+
+  &_meta {
+    display: flex;
+    align-items: center;
+    margin-top: 24px;
+  }
+
+  &_rating {
+    color: #ff5c90;
+    font-size: 22px;
+    line-height: 1.4;
+  }
+
+  &_time {
+    margin-left: 16px;
+  }
+
+  &_tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 18px;
+  }
+
+  &_tag {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 42px;
+    padding: 0 18px;
+    border-radius: 999px;
+    background: #ffe2ec;
+    color: #ff5c90;
+    font-size: 20px;
   }
 
   &_content {

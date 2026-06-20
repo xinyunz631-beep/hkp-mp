@@ -58,6 +58,44 @@
   }
 }
 
+._pg-rating {
+  display: flex;
+  align-items: center;
+  margin-top: 30px;
+
+  &_label {
+    color: #23262f;
+    font-size: 26px;
+    font-weight: 500;
+    line-height: 1.4;
+  }
+
+  &_stars {
+    display: flex;
+    align-items: center;
+    margin-left: 22px;
+  }
+
+  &_star {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 14px;
+    color: #d1d5db;
+
+    &--active {
+      color: #f7adbf;
+    }
+  }
+
+  &_text {
+    margin-left: 12px;
+    color: #ff5c90;
+    font-size: 24px;
+    line-height: 1.4;
+  }
+}
+
 ._pg-tags {
   display: flex;
   flex-wrap: wrap;

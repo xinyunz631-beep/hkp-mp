@@ -13,6 +13,7 @@ export interface OrderHomeActionData {
 export interface OrderHomeItemData {
   id: string;
   orderId?: string;
+  itemId?: string;
   title: string;
   subtitle?: string;
   extraText?: string;
@@ -145,9 +146,12 @@ export interface OrderReviewCreateImageData {
 }
 
 export interface OrderReviewCreateData {
+  orderId: string;
+  itemId: string;
   productImageSrc: string;
   productTitle: string;
   hintText: string;
+  rating?: number;
   tags: OrderReviewCreateTagData[];
   defaultTagKey: string;
   placeholderText: string;
@@ -162,6 +166,8 @@ export interface OrderReviewItemData {
   id: string;
   userName: string;
   avatarSrc: string;
+  rating?: number;
+  tags: string[];
   timeText: string;
   content: string;
   imageSrcs: string[];
@@ -170,6 +176,10 @@ export interface OrderReviewItemData {
 export interface OrderReviewListData {
   filters: OrderReviewCreateTagData[];
   reviews: OrderReviewItemData[];
+  page: number;
+  pageSize: number;
+  totalCount: number;
+  hasMore: boolean;
   unavailableReason?: string;
 }
 

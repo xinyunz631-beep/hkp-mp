@@ -31,9 +31,9 @@ import { saveMallSearchKeyword } from '@/pkg-mall/services/search';
 import type { MallProductDetailData, MallProductListData, MallSkuVariant } from '@/pkg-mall/services/types';
 import './index.scss';
 
-type MallProductsTabKey = 'comprehensive' | 'sales' | 'price' | 'filter';
+type MallProductsTabKey = 'comprehensive' | 'price' | 'filter';
 type MallProductsPriceRangeKey = 'all' | 'under100' | '100to200' | 'over200';
-type MallProductsTagKey = 'all' | 'new' | 'hot' | 'limited';
+type MallProductsTagKey = string;
 
 interface MallProductsFilterState {
   priceRange: MallProductsPriceRangeKey;
@@ -52,13 +52,6 @@ const priceRangeOptions: Array<{ key: MallProductsPriceRangeKey; label: string }
   { key: 'over200', label: '200元以上' },
 ];
 
-const tagOptions: Array<{ key: MallProductsTagKey; label: string }> = [
-  { key: 'all', label: '全部商品' },
-  { key: 'new', label: '新品' },
-  { key: 'hot', label: '热卖' },
-  { key: 'limited', label: '乐园限定' },
-];
-
 // 读取商品列表路由关键词，承接搜索页键盘提交后的结果页。
 function resolveProductsRouteKeyword() {
   const keyword = Taro.getCurrentInstance().router?.params?.keyword || '';
@@ -72,6 +65,10 @@ function resolveProductsRouteKeyword() {
 
 function resolveProductsRouteCategoryId() {
   return Taro.getCurrentInstance().router?.params?.categoryId || '';
+}
+
+function resolveProductsRouteRecommendationId() {
+  return Taro.getCurrentInstance().router?.params?.recommendationId || '';
 }
 
 function resolveProductsRouteCouponId() {
@@ -94,10 +91,31 @@ function matchPriceRange(price: number, priceRange: MallProductsPriceRangeKey) {
 }
 
 function matchProductTag(product: MallProductListData['products'][number], tag: MallProductsTagKey) {
-  if (tag === 'new') return product.tag === '新品';
-  if (tag === 'hot') return product.tag === '热卖' || /已售|付款/.test(product.salesText || '');
-  if (tag === 'limited') return product.tag === '乐园限定' || product.title.includes('乐园');
-  return true;
+  return tag === 'all' || product.tag === tag;
+}
+
+function resolveProductSort(
+  activeTab: MallProductsTabKey,
+  priceAscending: boolean,
+): 'priceAsc' | 'priceDesc' | undefined {
+  if (activeTab !== 'price') return undefined;
+  return priceAscending ? 'priceAsc' : 'priceDesc';
+}
+
+function buildTagOptions(products: MallProductListData['products'], currentTag: MallProductsTagKey) {
+  const realTags = Array.from(new Set(
+    products
+      .map((product) => (product.tag || '').trim())
+      .filter(Boolean),
+  ));
+  const tags = currentTag !== 'all' && !realTags.includes(currentTag)
+    ? [currentTag, ...realTags]
+    : realTags;
+
+  return [
+    { key: 'all', label: '全部商品' },
+    ...tags.map((tag) => ({ key: tag, label: tag })),
+  ];
 }
 
 // 将列表商品名中命中的关键词分段渲染，搜索结果页命中片段用主题色标红。
@@ -139,6 +157,7 @@ const ProductsPage = observer(function ProductsPage() {
   const [filterDraft, setFilterDraft] = useState<MallProductsFilterState>(defaultFilterState);
   const [keyword, setKeyword] = useState('');
   const [categoryId, setCategoryId] = useState('');
+  const [recommendationId, setRecommendationId] = useState('');
   const [couponId, setCouponId] = useState('');
   const [skuVisible, setSkuVisible] = useState(false);
   const [skuDetailData, setSkuDetailData] = useState<MallProductDetailData>();
@@ -149,15 +168,18 @@ const ProductsPage = observer(function ProductsPage() {
     initPage: async () => {
       const nextKeyword = resolveProductsRouteKeyword();
       const nextCategoryId = resolveProductsRouteCategoryId();
+      const nextRecommendationId = resolveProductsRouteRecommendationId();
       const nextCouponId = resolveProductsRouteCouponId();
       const nextData = await fetchProductsData({
         keyword: nextKeyword,
         categoryId: nextCategoryId,
+        recommendationId: nextRecommendationId,
         couponId: nextCouponId,
       });
       setListData(nextData);
       setKeyword(nextKeyword);
       setCategoryId(nextCategoryId);
+      setRecommendationId(nextRecommendationId);
       setCouponId(nextCouponId);
     },
   });
@@ -166,6 +188,7 @@ const ProductsPage = observer(function ProductsPage() {
   const products = listData?.products ?? [];
   const activeKeyword = listData?.keyword || '';
   const filterCount = getFilterCount(filterState);
+  const tagOptions = useMemo(() => buildTagOptions(products, filterDraft.tag), [filterDraft.tag, products]);
   const skuVariants = skuDetailData?.skuVariants ?? [];
   const skuState = useMemo(
     () => resolveSkuState<MallSkuVariant>(skuGroups, skuVariants),
@@ -181,28 +204,21 @@ const ProductsPage = observer(function ProductsPage() {
       }
     : skuDetailData?.product;
 
-  const sortedProducts = useMemo(() => {
-    const filteredProducts = products.filter((product) => (
+  const filteredProducts = useMemo(() => (
+    products.filter((product) => (
       matchPriceRange(product.price, filterState.priceRange)
       && matchProductTag(product, filterState.tag)
-    ));
-    const nextProducts = [...filteredProducts];
+    ))
+  ), [filterState, products]);
 
-    if (activeTab === 'sales') {
-      return nextProducts.reverse();
-    }
-
-    if (activeTab === 'price') {
-      return nextProducts.sort((prev, next) => (
-        priceAscending ? prev.price - next.price : next.price - prev.price
-      ));
-    }
-
-    return nextProducts;
-  }, [activeTab, filterState, priceAscending, products]);
-
-  async function loadProducts(nextKeyword: string) {
-    const nextData = await fetchProductsData({ keyword: nextKeyword, categoryId, couponId });
+  async function loadProducts(nextKeyword: string, nextSort = resolveProductSort(activeTab, priceAscending)) {
+    const nextData = await fetchProductsData({
+      keyword: nextKeyword,
+      categoryId,
+      recommendationId,
+      couponId,
+      sort: nextSort,
+    });
     setListData(nextData);
     setKeyword(nextKeyword);
   }
@@ -224,21 +240,22 @@ const ProductsPage = observer(function ProductsPage() {
     setFilterDraft(defaultFilterState);
     setActiveTab('comprehensive');
     setPriceAscending(true);
-    await pageRuntime.withLoading(() => loadProducts(''));
+    await pageRuntime.withLoading(() => loadProducts('', undefined));
   }
 
-  function handleTabChange(nextKey: MallProductsTabKey) {
+  async function handleTabChange(nextKey: MallProductsTabKey) {
     if (nextKey === 'filter') {
       setFilterDraft(filterState);
       setFilterVisible(true);
       return;
     }
 
-    if (nextKey === 'price') {
-      setPriceAscending((currentValue) => !currentValue);
-    }
-
+    const nextPriceAscending = nextKey === 'price'
+      ? (activeTab === 'price' ? !priceAscending : true)
+      : priceAscending;
+    await pageRuntime.withLoading(() => loadProducts(keyword, resolveProductSort(nextKey, nextPriceAscending)));
     setActiveTab(nextKey);
+    setPriceAscending(nextPriceAscending);
   }
 
   async function handleFilterConfirm() {
@@ -379,7 +396,9 @@ const ProductsPage = observer(function ProductsPage() {
                   <View
                     className={`_pg-header_tab ${active ? '_pg-header_tab--active' : ''}`}
                     key={tab.key}
-                    onClick={() => handleTabChange(tabKey)}
+                    onClick={() => {
+                      void handleTabChange(tabKey);
+                    }}
                   >
                     <Text>{tab.text}</Text>
                     {tabKey === 'price' ? (
@@ -410,9 +429,9 @@ const ProductsPage = observer(function ProductsPage() {
             </View>
           ) : null}
 
-          {sortedProducts.length > 0 ? (
+          {filteredProducts.length > 0 ? (
             <View className="_pg-list">
-              {sortedProducts.map((product) => (
+              {filteredProducts.map((product) => (
                 <View className="_pg-product" key={product.id} onClick={() => handleOpenDetail(product.id)}>
                   <AppImage className="_pg-product_image" src={product.image.src} mode="aspectFit" emptyState="error" />
                   <View className="_pg-product_body">
@@ -436,7 +455,7 @@ const ProductsPage = observer(function ProductsPage() {
             <BaseEmpty
               className="_pg-empty"
               title={activeKeyword ? `没有找到“${activeKeyword}”` : '暂无商品'}
-              description="换个关键词或清除筛选试试"
+              description="换个关键词或重置筛选试试"
               actionText={activeKeyword ? '清除搜索' : undefined}
               onAction={handleClearSearch}
             />
@@ -453,7 +472,7 @@ const ProductsPage = observer(function ProductsPage() {
           >
             <View className="_pg-filter-panel">
               <View className="_pg-filter-panel_header">
-                <Text className="_pg-filter-panel_hint">按当前分类和关键词继续筛选</Text>
+                <Text className="_pg-filter-panel_hint">按当前结果继续筛选</Text>
                 <View className="_pg-filter-panel_reset" onClick={handleResetFilterDraft}>
                   <Text>重置</Text>
                 </View>

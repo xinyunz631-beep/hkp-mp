@@ -258,7 +258,7 @@ const CategoryPage = observer(function CategoryPage() {
             </View>
             <View className="_pg-header_search" onClick={() => Taro.navigateTo({ url: MINI_PACKAGE_ROUTES.mallSearch })}>
               <AppIcon name="search" className="_pg-header_search-icon" size={16} color="#c0c4cc" />
-              <Text className="_pg-header_search-placeholder">{categoryData?.query}</Text>
+              <Text className="_pg-header_search-placeholder">{categoryData?.query || '搜索商品'}</Text>
             </View>
           </View>
         </PageHeader>
