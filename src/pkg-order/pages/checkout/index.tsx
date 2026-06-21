@@ -33,7 +33,7 @@ const CheckoutPage = observer(function CheckoutPage() {
     initPage: async () => {
       const nextData = await fetchCheckoutData({
         ...resolveCheckoutRouteParams(),
-        selectedCouponId,
+        ...(selectedCouponId ? { selectedCouponId } : {}),
       });
       setCheckoutData(nextData);
       setSelectedCouponId(nextData.selectedCouponId);
@@ -42,7 +42,7 @@ const CheckoutPage = observer(function CheckoutPage() {
     refreshOnShow: true,
   });
 
-  async function refreshCheckoutByCoupon(nextCouponId?: string) {
+  async function refreshCheckoutByCoupon(nextCouponId?: string | null) {
     if (!checkoutData) return;
 
     try {
@@ -321,7 +321,7 @@ const CheckoutPage = observer(function CheckoutPage() {
                 clearText="不使用优惠券"
                 onClose={() => setCouponPopupVisible(false)}
                 onClear={() => {
-                  void refreshCheckoutByCoupon(undefined);
+                  void refreshCheckoutByCoupon(null);
                 }}
                 onSelect={(coupon) => {
                   void refreshCheckoutByCoupon(coupon.id);

@@ -11,6 +11,7 @@ import {
   getMallCheckoutSelectedAddressId,
   isMallCheckoutAddressRequired,
   setMallCheckoutSelectedAddressId,
+  updateMallCheckoutDraft,
   validateMallCheckoutDelivery,
   type MallCheckoutDraft,
 } from '@/core/services/mall-checkout-draft';
@@ -24,7 +25,7 @@ export type { OrderCheckoutData } from './model';
 interface FetchCheckoutDataOptions {
   draftId?: string;
   addressId?: string;
-  selectedCouponId?: string;
+  selectedCouponId?: string | null;
 }
 
 export interface MallCheckoutOrderResult {
@@ -110,6 +111,14 @@ function buildMallUnifiedOrderRequest(
       },
     })),
   };
+}
+
+function resolveSelectedCouponId(options: FetchCheckoutDataOptions, draft: MallCheckoutDraft) {
+  if (Object.prototype.hasOwnProperty.call(options, 'selectedCouponId')) {
+    return options.selectedCouponId || undefined;
+  }
+
+  return draft.selectedCouponId;
 }
 
 function couponDiscountCent(coupon: BffAvailableCouponView) {
@@ -210,7 +219,8 @@ export async function fetchCheckoutData(options: FetchCheckoutDataOptions = {}) 
   const readonlyData = buildReadonlyCheckoutData(draft, address, deliveryCheck, productsAmount, requiresAddress);
   if (!deliveryCheck.canSubmit) return readonlyData;
 
-  const confirmation = await confirmBffOrder(buildMallUnifiedOrderRequest(draft, address, options.selectedCouponId));
+  const selectedCouponId = resolveSelectedCouponId(options, draft);
+  const confirmation = await confirmBffOrder(buildMallUnifiedOrderRequest(draft, address, selectedCouponId));
   const availableCouponsResponse = await fetchBffCouponAvailable({
     sceneType: 'MALL',
     orderAmountCent: confirmation.originalAmountCent ?? yuanToCent(productsAmount + deliveryCheck.freightAmount),
@@ -220,7 +230,10 @@ export async function fetchCheckoutData(options: FetchCheckoutDataOptions = {}) 
   const totalAmount = centToYuan(resolvePayableAmountCent(confirmation.payableAmountCent));
   const discountAmount = centToYuan(confirmation.discountAmountCent);
   const coupons = (availableCouponsResponse.coupons ?? []).map(toMallCoupon);
-  const selectedCoupon = coupons.find((coupon) => coupon.id === options.selectedCouponId);
+  const selectedCoupon = coupons.find((coupon) => coupon.id === selectedCouponId);
+  if (Object.prototype.hasOwnProperty.call(options, 'selectedCouponId')) {
+    updateMallCheckoutDraft(draft.id, { selectedCouponId: selectedCoupon?.id });
+  }
   const couponText = selectedCoupon
     ? `${selectedCoupon.amountText} ${selectedCoupon.thresholdText}`
     : coupons.length > 0

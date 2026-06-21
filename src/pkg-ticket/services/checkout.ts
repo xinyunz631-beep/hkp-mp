@@ -119,7 +119,7 @@ function toTicketCoupon(coupon: BffAvailableCouponView): TicketCoupon {
 }
 
 // 根据草稿和统一订单确认结果生成门票确认单页面数据。
-export async function fetchCheckoutData(draftId?: string, selectedCouponId?: string) {
+export async function fetchCheckoutData(draftId?: string, selectedCouponId?: string | null) {
   const draft = getTicketOrderDraft(draftId);
   const travelers = draft?.travelers?.length
     ? draft.travelers
@@ -163,9 +163,14 @@ export async function fetchCheckoutData(draftId?: string, selectedCouponId?: str
     } satisfies TicketCheckoutPageData;
   }
 
+  const resolvedSelectedCouponId = selectedCouponId === null
+    ? undefined
+    : typeof selectedCouponId === 'undefined'
+      ? draft.selectedCouponId
+      : selectedCouponId;
   const orderRequest = buildTicketUnifiedOrderRequest(draft, {
     selectedDate: draft.selectedDate,
-    selectedCouponId: selectedCouponId ?? draft.selectedCouponId,
+    selectedCouponId: resolvedSelectedCouponId,
     addonQuantity: draft.addonQuantity,
     contact: draft.contact,
     travelers,
@@ -203,7 +208,7 @@ export async function fetchCheckoutData(draftId?: string, selectedCouponId?: str
   const coupons = (availableCouponsResponse.coupons ?? []).map(toTicketCoupon);
   const nextDraft = {
     ...draft,
-    selectedCouponId: selectedCouponId ?? draft.selectedCouponId,
+    selectedCouponId: resolvedSelectedCouponId,
     coupons,
   };
 

@@ -271,8 +271,13 @@ const ProductsPage = observer(function ProductsPage() {
   }
 
   function handleOpenDetail(productId: string) {
+    const query = [
+      `productId=${encodeURIComponent(productId)}`,
+      couponId ? `couponId=${encodeURIComponent(couponId)}` : '',
+    ].filter(Boolean).join('&');
+
     Taro.navigateTo({
-      url: `${MINI_PACKAGE_ROUTES.mallProductDetail}?productId=${productId}`,
+      url: `${MINI_PACKAGE_ROUTES.mallProductDetail}?${query}`,
     });
   }
 

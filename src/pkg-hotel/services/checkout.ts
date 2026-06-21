@@ -25,7 +25,7 @@ export interface FetchHotelCheckoutParams {
   stayRange?: HotelStayRange;
   occupancy?: HotelOccupancy;
   roomCount?: number;
-  selectedCouponId?: string;
+  selectedCouponId?: string | null;
 }
 
 export interface HotelCheckoutOrderResult {
@@ -105,7 +105,7 @@ function resolveSelectedCouponId(params: FetchHotelCheckoutParams, draft: NonNul
 // 生成酒店统一订单请求，酒店商品价格和库存由后端确认接口最终计算。
 function buildHotelUnifiedOrderRequest(
   draft: NonNullable<ReturnType<typeof ensureHotelOrderDraft>>,
-  payload?: Partial<SubmitHotelOrderDraftPayload>,
+  payload?: Partial<SubmitHotelOrderDraftPayload> & { selectedCouponId?: string | null },
 ): BffOrderUnifiedRequest {
   const roomCount = Number(payload?.roomCount || draft.occupancy.roomCount || 1);
   const guestNames = payload?.guestNames?.filter(Boolean) || draft.guests.map((item) => item.name).filter(Boolean);
@@ -161,7 +161,7 @@ export async function fetchCheckoutData(params: FetchHotelCheckoutParams = {}) {
   const selectedCouponId = resolveSelectedCouponId(params, draft);
   const confirmation = await confirmBffOrder(buildHotelUnifiedOrderRequest(draft, {
     roomCount,
-    selectedCouponId,
+    selectedCouponId: selectedCouponId ?? undefined,
   }));
   const availableCouponsResponse = await fetchBffCouponAvailable({
     sceneType: 'HOTEL',
@@ -203,7 +203,7 @@ export async function fetchCheckoutData(params: FetchHotelCheckoutParams = {}) {
     contactNameValue: draft.contact.name,
     mobilePlaceholder: '用于接收确认消息',
     mobileValue: draft.contact.mobile,
-    selectedCouponId,
+    selectedCouponId: selectedCoupon?.id,
     couponText: selectedCoupon ? `${selectedCoupon.amountText} ${selectedCoupon.thresholdText}` : '',
     coupons,
     discountText: '',
@@ -232,7 +232,7 @@ export async function submitHotelCheckoutOrder(draftId: string, payload: SubmitH
       name,
     })),
     contact: payload.contact,
-    selectedCouponId: payload.selectedCouponId,
+    selectedCouponId: payload.selectedCouponId ?? undefined,
   });
 
   const createResult = await createBffOrder(buildHotelUnifiedOrderRequest(draft, payload));

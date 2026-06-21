@@ -14,6 +14,7 @@ import { navigateToMiniRoute } from '@/core/utils/navigation';
 import { requestWechatPayment, showWechatToast } from '@/core/utils/wechat-actions';
 import { fetchCheckoutData, submitHotelCheckoutOrder, type HotelCheckoutData } from '@/pkg-hotel/services/checkout';
 import { serializeHotelOccupancy } from '@/pkg-hotel/services/model';
+import { updateHotelOrderDraft } from '@/pkg-hotel/services/order-draft';
 import './index.scss';
 
 function isValidMainlandMobile(value: string) {
@@ -76,7 +77,7 @@ const CheckoutPage = observer(function CheckoutPage() {
     : '请选择优惠券';
   const hasCouponDiscount = Boolean(checkoutData && checkoutData.discountAmount > 0);
 
-  async function refreshHotelCheckout(nextRoomCount = roomCount, nextCouponId = selectedCouponId) {
+  async function refreshHotelCheckout(nextRoomCount = roomCount, nextCouponId: string | null | undefined = selectedCouponId) {
     if (!checkoutData) return;
 
     try {
@@ -86,8 +87,15 @@ const CheckoutPage = observer(function CheckoutPage() {
         selectedCouponId: nextCouponId,
       }));
       setCheckoutData(nextData);
+      updateHotelOrderDraft(nextData.draftId, {
+        occupancy: {
+          ...nextData.occupancy,
+          roomCount: nextData.roomCount,
+        },
+        selectedCouponId: nextData.selectedCouponId,
+      });
       setRoomCount(nextData.roomCount);
-      setSelectedCouponId(nextCouponId);
+      setSelectedCouponId(nextData.selectedCouponId);
       setCouponPopupVisible(false);
     } catch (error) {
       await showWechatToast(resolveErrorMessage(error, '优惠券暂不可用，请稍后再试'));
@@ -320,7 +328,7 @@ const CheckoutPage = observer(function CheckoutPage() {
                 clearText="不使用优惠券"
                 onClose={() => setCouponPopupVisible(false)}
                 onClear={() => {
-                  void refreshHotelCheckout(roomCount, undefined);
+                  void refreshHotelCheckout(roomCount, null);
                 }}
                 onSelect={(coupon) => {
                   void refreshHotelCheckout(roomCount, coupon.id);

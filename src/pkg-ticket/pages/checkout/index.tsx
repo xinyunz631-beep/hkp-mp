@@ -171,11 +171,11 @@ const CheckoutPage = observer(function CheckoutPage() {
       : '请选择优惠券';
   const hasCoupons = couponOptions.length > 0;
 
-  async function refreshCheckoutByCoupon(nextCouponId?: string) {
+  async function refreshCheckoutByCoupon(nextCouponId?: string | null) {
     if (!draftId) return;
 
     updateTicketOrderDraft(draftId, {
-      selectedCouponId: nextCouponId,
+      selectedCouponId: nextCouponId ?? undefined,
       addonQuantity,
       contact: contactForm,
       travelers: travelerForms,
@@ -184,7 +184,7 @@ const CheckoutPage = observer(function CheckoutPage() {
     try {
       const nextData = await pageRuntime.withLoading(() => fetchCheckoutData(draftId, nextCouponId));
       setCheckoutData(nextData);
-      setSelectedCouponId(nextCouponId);
+      setSelectedCouponId(nextData.draft?.selectedCouponId);
       setCouponPopupVisible(false);
     } catch (error) {
       await showWechatToast(resolveErrorMessage(error, '优惠券暂不可用，请稍后再试'));
@@ -737,7 +737,7 @@ const CheckoutPage = observer(function CheckoutPage() {
                     clearText="不使用优惠券"
                     onClose={() => setCouponPopupVisible(false)}
                     onClear={() => {
-                      void refreshCheckoutByCoupon(undefined);
+                      void refreshCheckoutByCoupon(null);
                     }}
                     onSelect={(coupon) => {
                       void refreshCheckoutByCoupon(coupon.id);

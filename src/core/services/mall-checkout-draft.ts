@@ -30,6 +30,7 @@ export interface MallCheckoutDraftProduct {
 export interface MallCheckoutDraft {
   id: string;
   products: MallCheckoutDraftProduct[];
+  selectedCouponId?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -43,6 +44,7 @@ export interface MallDeliveryCheckResult {
 
 interface CreateMallCheckoutDraftPayload {
   products: MallCheckoutDraftProduct[];
+  selectedCouponId?: string;
 }
 
 function createDraftId() {
@@ -100,6 +102,7 @@ export function createMallCheckoutDraft(payload: CreateMallCheckoutDraftPayload)
   const draft: MallCheckoutDraft = {
     id: createDraftId(),
     products,
+    selectedCouponId: payload.selectedCouponId,
     createdAt: now,
     updatedAt: now,
   };
@@ -111,6 +114,22 @@ export function createMallCheckoutDraft(payload: CreateMallCheckoutDraftPayload)
 export function getMallCheckoutDraft(draftId?: string) {
   if (!draftId) return undefined;
   return listMallCheckoutDrafts().find((draft) => draft.id === draftId);
+}
+
+// 更新商城结算草稿，确认单选券、清券和地址返回后都以这里保持本地状态一致。
+export function updateMallCheckoutDraft(draftId: string, patch: Partial<MallCheckoutDraft>) {
+  const drafts = listMallCheckoutDrafts();
+  const current = drafts.find((draft) => draft.id === draftId);
+  if (!current) return undefined;
+
+  const nextDraft: MallCheckoutDraft = {
+    ...current,
+    ...patch,
+    updatedAt: createDraftTime(),
+  };
+
+  saveMallCheckoutDrafts(drafts.map((draft) => (draft.id === draftId ? nextDraft : draft)));
+  return nextDraft;
 }
 
 export function setMallCheckoutSelectedAddressId(draftId: string, addressId: string) {

@@ -41,6 +41,10 @@ function resolveProductRouteId() {
   return Taro.getCurrentInstance().router?.params?.productId;
 }
 
+function resolveProductRouteCouponId() {
+  return Taro.getCurrentInstance().router?.params?.couponId || '';
+}
+
 // 商品详情首版按截图补齐图集、价格、优惠、评价、推荐和购买底栏，并复用 SKU 弹层闭环。
 const ProductDetailPage = observer(function ProductDetailPage() {
   const [detailData, setDetailData] = useState<MallProductDetailData>();
@@ -140,7 +144,9 @@ const ProductDetailPage = observer(function ProductDetailPage() {
     setSkuVisible(false);
 
     if (skuAction === 'buy') {
+      const routeCouponId = resolveProductRouteCouponId();
       const draft = createMallCheckoutDraft({
+        selectedCouponId: routeCouponId || undefined,
         products: [{
           id: selectedVariant.id,
           productId: product.id,
