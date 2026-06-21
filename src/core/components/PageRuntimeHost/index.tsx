@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { View } from '@tarojs/components';
 import classNames from 'classnames';
 import { LoginPopup } from '@/core/components/LoginPopup';
+import { NewUserGiftPopup } from '@/core/components/NewUserGiftPopup';
 import { PageLoading } from '@/core/components/loading';
 import './index.scss';
 
@@ -21,6 +22,9 @@ export function PageRuntimeHost({ loadingVisible, loadingNode }: PageRuntimeHost
     <View className="page-runtime-host">
       <View className="page-runtime-host__login">
         <LoginPopup />
+      </View>
+      <View className="page-runtime-host__new-user-gift">
+        <NewUserGiftPopup />
       </View>
       <View className={loadingHostClassName} aria-hidden={!loadingVisible}>
         {loadingNode ?? <PageLoading visible={loadingVisible} />}

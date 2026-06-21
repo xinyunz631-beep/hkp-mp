@@ -108,9 +108,37 @@ export interface BffMemberInfo {
   status?: string;
 }
 
+export interface BffNewUserGiftItem {
+  couponNo?: string;
+  couponTemplateId: string;
+  couponName: string;
+  amountText: string;
+  thresholdText: string;
+  validityText: string;
+  imageUrl?: string;
+}
+
+export interface BffNewUserGiftSummary {
+  activityId: string;
+  activityName: string;
+  recordId: string;
+  popupTitle: string;
+  popupSubtitle?: string;
+  popupButtonText?: string;
+  popupImageUrl?: string;
+  couponNos?: string[];
+  packageNo?: string;
+  giftItems: BffNewUserGiftItem[];
+  issuedAt?: string;
+  popupStatus?: 'pending' | 'shown' | 'confirmed' | 'expired' | string;
+}
+
 export interface BffMemberStatusResponse {
   memberLoggedIn: boolean;
   memberInfo?: BffMemberInfo | null;
+  isRegister?: boolean;
+  registeredNow?: boolean;
+  newUserGift?: BffNewUserGiftSummary | null;
 }
 
 export interface BffPhoneAuthorizeRequest {
@@ -126,6 +154,9 @@ export interface BffPhoneAuthorizeResponse {
   phoneNumber?: string;
   purePhoneNumber?: string;
   countryCode?: string;
+  isRegister?: boolean;
+  registeredNow?: boolean;
+  newUserGift?: BffNewUserGiftSummary | null;
   profile: BffCrmProfile;
 }
 

@@ -1,0 +1,142 @@
+.new-user-gift-popup.app-popup {
+  background: transparent;
+}
+
+.new-user-gift-popup__content {
+  width: 100vw;
+  padding: 0 28px;
+}
+
+.new-user-gift-popup__panel {
+  position: relative;
+  overflow: hidden;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 690px;
+  margin: 0 auto;
+  padding: 36px 30px 24px;
+  border-radius: 28px;
+  background: linear-gradient(180deg, #fff3dc 0%, #ffffff 38%, #ffffff 100%);
+  box-shadow: 0 22px 70px rgba(97, 48, 0, 0.18);
+}
+
+.new-user-gift-popup__badge {
+  display: inline-flex;
+  align-items: center;
+  height: 40px;
+  padding: 0 18px;
+  border-radius: 999px;
+  background: #8a4b00;
+  color: #fff5df;
+  font-size: 22px;
+  line-height: 40px;
+}
+
+.new-user-gift-popup__hero {
+  width: 100%;
+  height: 180px;
+  margin-top: 18px;
+  border-radius: 20px;
+  background: #f7dfb6;
+}
+
+.new-user-gift-popup__title {
+  display: block;
+  margin-top: 18px;
+  color: #43270a;
+  font-size: 40px;
+  font-weight: 500;
+  line-height: 1.25;
+}
+
+.new-user-gift-popup__desc {
+  display: block;
+  margin-top: 10px;
+  color: #70512f;
+  font-size: 26px;
+  line-height: 1.45;
+}
+
+.new-user-gift-popup__coupons {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 26px 0 24px;
+}
+
+.new-user-gift-popup__coupon {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 132px;
+  padding: 16px;
+  border: 1px solid #f0d3a4;
+  border-radius: 20px;
+  background: #fffaf1;
+}
+
+.new-user-gift-popup__coupon-image {
+  flex: 0 0 92px;
+  width: 92px;
+  height: 92px;
+  border-radius: 14px;
+  background: #f5dfbd;
+}
+
+.new-user-gift-popup__coupon-main {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.new-user-gift-popup__coupon-name {
+  overflow: hidden;
+  color: #3b2915;
+  font-size: 28px;
+  font-weight: 500;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.new-user-gift-popup__coupon-rule,
+.new-user-gift-popup__coupon-time {
+  overflow: hidden;
+  color: #8a6b49;
+  font-size: 22px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.new-user-gift-popup__coupon-amount {
+  flex: 0 0 auto;
+  max-width: 148px;
+  color: #b85f00;
+  font-size: 32px;
+  font-weight: 500;
+  line-height: 1.2;
+  text-align: right;
+}
+
+.new-user-gift-popup__primary {
+  height: 88px;
+  border-radius: 18px;
+  background: $color-primary;
+  color: #ffffff;
+  font-size: 30px;
+  font-weight: 500;
+  line-height: 88px;
+}
+
+.new-user-gift-popup__ghost {
+  height: 74px;
+  margin-top: 10px;
+  border: 0;
+  background: transparent;
+  color: #8d7761;
+  font-size: 26px;
+  line-height: 74px;
+}

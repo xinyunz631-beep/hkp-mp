@@ -9,7 +9,9 @@ import {
   fetchBffMemberStatus,
   logoutBffAuthSession,
   type BffMemberInfo,
+  type BffPhoneAuthorizeResponse,
 } from '@/core/services/bff-api';
+import { fetchBffNewUserGift } from '@/core/services/bff-new-user-gift-api';
 import { rootStore } from '@/core/store';
 import {
   resolveMemberAvatar,
@@ -80,6 +82,14 @@ function buildLoginProfileFromMemberInfo(memberInfo?: BffMemberInfo | null) {
   };
 }
 
+// 登录响应缺少新人礼详情但明确本次注册时，兜底查询待展示新人礼。
+async function resolveAuthorizedNewUserGift(result: BffPhoneAuthorizeResponse) {
+  if (result.newUserGift) return result.newUserGift;
+  if (!result.isRegister && !result.registeredNow) return undefined;
+  const giftResult = await fetchBffNewUserGift().catch(() => undefined);
+  return giftResult?.newUserGift || undefined;
+}
+
 // 按后端会员状态接口刷新全局会员资料；默认先 login/token，再以 member/status 为准。
 export async function getMemberStatus(options: RefreshMemberStatusOptions = {}) {
   const {
@@ -104,6 +114,9 @@ export async function getMemberStatus(options: RefreshMemberStatusOptions = {}) 
       ? buildLoginProfileFromMemberInfo(status.memberInfo)
       : undefined;
     rootStore.member.applyMemberStatus(profile);
+    if (status.memberLoggedIn && profile && !rootStore.app.loginVisible) {
+      rootStore.app.showNewUserGift(status.newUserGift);
+    }
     return Boolean(status.memberLoggedIn && profile);
   } catch (error) {
     if (!silent) throw error;
@@ -183,7 +196,12 @@ export async function loginWithPhoneNumber(credential: WechatPhoneCredential) {
     return false;
   }
 
-  if (isLoggedIn()) return finishCurrentLogin();
+  if (isLoggedIn()) {
+    const newUserGift = await resolveAuthorizedNewUserGift(result);
+    const finished = finishCurrentLogin();
+    rootStore.app.showNewUserGift(newUserGift);
+    return finished;
+  }
 
   await showWechatToast(resolveErrorMessage(result, '手机号授权未完成'));
   return false;

@@ -1,4 +1,5 @@
 import { makeAutoObservable } from 'mobx';
+import type { BffNewUserGiftSummary } from '@/core/services/bff-api';
 
 export type LoginRequestResult = 'success' | 'cancel' | 'superseded';
 
@@ -8,6 +9,8 @@ export class AppStore {
   loginSuccessCallback?: () => void | Promise<void>;
   loginResolve?: (result: LoginRequestResult) => void;
   loginStateResolver?: () => boolean;
+  newUserGift?: BffNewUserGiftSummary;
+  newUserGiftVisible = false;
 
   // 初始化应用运行时 store，并让 MobX 自动追踪登录弹窗状态。
   constructor() {
@@ -69,6 +72,19 @@ export class AppStore {
   // 关闭登录弹窗，用于页面隐藏、弹窗覆盖或退出登录，不代表用户主动选择暂不登录。
   closeLogin() {
     this.resetLoginState('superseded');
+  }
+
+  // 写入待展示新人礼，登录弹窗关闭后由全局新人礼弹窗消费。
+  showNewUserGift(gift?: BffNewUserGiftSummary | null) {
+    if (!gift?.activityId || !gift.recordId || !gift.giftItems?.length) return;
+    this.newUserGift = gift;
+    this.newUserGiftVisible = true;
+  }
+
+  // 清理新人礼弹窗状态，避免重复展示同一份登录响应。
+  clearNewUserGift() {
+    this.newUserGiftVisible = false;
+    this.newUserGift = undefined;
   }
 
   // 完成登录流程并取出待续执行动作，确保所有页面登录弹窗同步关闭。
