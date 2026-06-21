@@ -170,7 +170,7 @@ export async function fetchCheckoutData(draftId?: string, selectedCouponId?: str
     contact: draft.contact,
     travelers,
   });
-  const [ticketQuote, confirmation, availableCouponsResponse] = await Promise.all([
+  const [ticketQuote, confirmation] = await Promise.all([
     quoteBffTickets({
       visitDate: draft.selectedDate,
       channel: 'miniProgram',
@@ -188,14 +188,14 @@ export async function fetchCheckoutData(draftId?: string, selectedCouponId?: str
       })),
     }),
     confirmBffOrder(orderRequest),
-    fetchBffCouponAvailable({
-      sceneType: 'TICKET',
-      orderAmountCent: calculateDraftOrderAmountCent(draft),
-      itemIds: draft.products.map((product) => product.productCode || product.id),
-      skuIds: draft.products.map((product) => product.skuId || `${product.productCode || product.id}_standard`),
-      visitDate: draft.selectedDate,
-    }),
   ]);
+  const availableCouponsResponse = await fetchBffCouponAvailable({
+    sceneType: 'TICKET',
+    orderAmountCent: confirmation.originalAmountCent || ticketQuote.originalAmountCent || calculateDraftOrderAmountCent(draft),
+    itemIds: draft.products.map((product) => product.productCode || product.id),
+    skuIds: draft.products.map((product) => product.skuId || `${product.productCode || product.id}_standard`),
+    visitDate: draft.selectedDate,
+  });
   const originalAmount = centToYuan(confirmation.originalAmountCent || ticketQuote.originalAmountCent);
   const discountAmount = centToYuan(confirmation.discountAmountCent);
   const payableAmount = centToYuan(confirmation.payableAmountCent || ticketQuote.payableAmountCent);

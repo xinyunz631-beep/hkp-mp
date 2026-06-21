@@ -6,7 +6,7 @@ import { AppImage } from '@/core/components/AppImage';
 import { PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { navigateToMiniRoute } from '@/core/utils/navigation';
 import { requestWechatPayment, showWechatConfirm, showWechatToast } from '@/core/utils/wechat-actions';
@@ -75,7 +75,7 @@ function resolveTicketCodeCanvasSizeRpx() {
 }
 
 function resolveTicketQrKey(ticket: OrderDetailData['ticketInstances'][number], index: number) {
-  return `${ticket.ticketNo || ticket.qrCodePayload || 'ticket'}-${index}`;
+  return `${ticket.ticketNo || 'ticket'}-${ticket.qrCodePayload || ticket.qrImageSrc || 'code'}-${index}`;
 }
 
 function resolveTicketQrCanvasId(index: number) {
@@ -127,6 +127,7 @@ function resolveTicketOrderPollingSnapshot(detailData?: OrderDetailData) {
   if (!detailData) return '';
 
   return JSON.stringify({
+    sceneType: detailData.sceneType || '',
     orderStatus: detailData.orderStatus || '',
     statusText: detailData.statusText || '',
     primaryActionType: detailData.primaryActionType || '',
@@ -148,6 +149,8 @@ const DetailPage = observer(function DetailPage() {
   const pageVisibleRef = useRef(true);
   const pollingRequestRef = useRef(false);
   const pollingSnapshotRef = useRef('');
+  const generatedTicketQrImageKeysRef = useRef<Set<string>>(new Set());
+  const ticketPollingSnapshot = useMemo(() => resolveTicketOrderPollingSnapshot(detailData), [detailData]);
   const hiddenTicketQrCanvasStyle: CSSProperties = {
     width: `${ticketQrCanvasSizeRpx}rpx`,
     height: `${ticketQrCanvasSizeRpx}rpx`,
@@ -223,22 +226,29 @@ const DetailPage = observer(function DetailPage() {
     return () => {
       clearInterval(timer);
     };
-  }, [detailData?.id, detailData?.orderStatus, detailData?.sceneType, detailData?.ticketInstances.length]);
+  }, [detailData?.id, ticketPollingSnapshot]);
 
   useEffect(() => {
     if (!detailData?.ticketInstances.length) {
+      generatedTicketQrImageKeysRef.current.clear();
       setLocalTicketQrImages({});
       return undefined;
     }
 
-    const qrTargets = detailData.ticketInstances
+    const qrPayloadItems = detailData.ticketInstances
       .map((ticket, index) => ({
         key: resolveTicketQrKey(ticket, index),
         canvasId: resolveTicketQrCanvasId(index),
         payload: ticket.qrImageSrc ? '' : ticket.qrCodePayload,
       }))
       .filter((item): item is { key: string; canvasId: string; payload: string } => Boolean(item.payload));
-    const nextKeys = new Set(qrTargets.map((item) => item.key));
+    const nextKeys = new Set(qrPayloadItems.map((item) => item.key));
+    const qrTargets = qrPayloadItems.filter((item) => !generatedTicketQrImageKeysRef.current.has(item.key));
+    Array.from(generatedTicketQrImageKeysRef.current).forEach((key) => {
+      if (!nextKeys.has(key)) {
+        generatedTicketQrImageKeysRef.current.delete(key);
+      }
+    });
 
     setLocalTicketQrImages((images) => {
       const nextImages: Record<string, string> = {};
@@ -270,6 +280,7 @@ const DetailPage = observer(function DetailPage() {
             void convertTicketQrCanvasToImage(item.canvasId)
               .then((imageSrc) => {
                 if (cancelled) return;
+                generatedTicketQrImageKeysRef.current.add(item.key);
                 setLocalTicketQrImages((images) => ({ ...images, [item.key]: imageSrc }));
               })
               .catch(() => undefined);
