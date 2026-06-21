@@ -170,8 +170,146 @@ function resolveLogisticsField(context: Record<string, string>, keyCandidates: s
   return '';
 }
 
+// 从订单上下文、商品扩展和商品基础字段里按候选 key 提取业务展示值。
+function resolveOrderText(order: BffOrder, keyCandidates: string[]) {
+  const firstItem = order.items?.[0];
+  const itemRecord = firstItem as Record<string, unknown> | undefined;
+
+  for (const key of keyCandidates) {
+    const contextValue = normalizeString(order.context?.[key]);
+    if (contextValue) return contextValue;
+
+    const attributeValue = normalizeString(firstItem?.attributes?.[key]);
+    if (attributeValue) return attributeValue;
+
+    const itemValue = itemRecord?.[key];
+    if (typeof itemValue === 'string') {
+      const normalizedItemValue = normalizeString(itemValue);
+      if (normalizedItemValue) return normalizedItemValue;
+    }
+  }
+
+  return '';
+}
+
 function compactFields<T extends { value: string }>(fields: T[]) {
   return fields.filter((field) => Boolean(field.value && field.value !== '-'));
+}
+
+// 按订单业态输出商品摘要字段，避免所有业态共用商城式字段。
+function resolveSceneProductFields(order: BffOrder, title: string, merchantName: string, mallSpecText: string): OrderDetailFieldData[] {
+  const firstItem = order.items?.[0];
+  const normalizedSceneType = String(order.sceneType || '').toUpperCase();
+
+  if (normalizedSceneType === 'MALL') {
+    return compactFields([
+      { label: '商户名称', value: merchantName },
+      { label: '商品名称', value: title },
+      { label: '规格信息', value: mallSpecText },
+      { label: '商品编码', value: firstItem?.itemId || '-' },
+      { label: '规格编码', value: firstItem?.skuId || '-' },
+    ]);
+  }
+
+  if (normalizedSceneType === 'HOTEL') {
+    return compactFields([
+      { label: '酒店名称', value: resolveOrderText(order, ['hotelName', 'merchantName', 'shopName']) || merchantName },
+      { label: '房型', value: resolveOrderText(order, ['roomTitle', 'roomName', 'itemName']) || title },
+      { label: '价格计划', value: resolveOrderText(order, ['ratePlanTitle', 'ratePlanName', 'skuName']) },
+      { label: '房型编码', value: firstItem?.itemId || '-' },
+      { label: '价格计划编码', value: firstItem?.skuId || firstItem?.attributes?.ratePlanId || '-' },
+    ]);
+  }
+
+  if (normalizedSceneType === 'TICKET') {
+    return compactFields([
+      { label: '项目名称', value: title },
+      { label: '票种', value: resolveOrderText(order, ['ticketTypeName', 'skuName', 'specName']) },
+      { label: '商品编码', value: firstItem?.itemId || '-' },
+      { label: '票种编码', value: firstItem?.skuId || '-' },
+    ]);
+  }
+
+  return compactFields([
+    { label: '订单业态', value: order.sceneType || '-' },
+    { label: '商品信息', value: title },
+    { label: '商品编码', value: firstItem?.itemId || '-' },
+    { label: '规格编码', value: firstItem?.skuId || firstItem?.attributes?.ratePlanId || '-' },
+  ]);
+}
+
+// 按订单业态输出履约字段，避免门票、酒店和物流信息混在同一个字段组里。
+function resolveSceneFulfillmentFields(
+  order: BffOrder,
+  deliveryCompany: string,
+  trackingNumber: string,
+  logisticsStatusText: string,
+): OrderDetailFieldData[] {
+  const context = order.context || {};
+  const normalizedSceneType = String(order.sceneType || '').toUpperCase();
+
+  if (normalizedSceneType === 'HOTEL') {
+    return compactFields([
+      { label: '入住日期', value: context.checkInDate && context.checkOutDate ? `${context.checkInDate} - ${context.checkOutDate}` : '' },
+      { label: '房间数', value: context.roomCount ? `${context.roomCount}间` : '' },
+      { label: '入住人', value: context.guestNames || '' },
+      { label: '备注', value: order.remark || '' },
+    ]);
+  }
+
+  if (normalizedSceneType === 'MALL') {
+    return compactFields([
+      { label: '快递公司', value: deliveryCompany || '' },
+      { label: '物流单号', value: trackingNumber || '' },
+      { label: '物流状态', value: logisticsStatusText || '' },
+      { label: '备注', value: order.remark || '' },
+    ]);
+  }
+
+  if (normalizedSceneType === 'TICKET') {
+    return compactFields([
+      { label: '使用日期', value: context.visitDate || '' },
+      { label: '备注', value: order.remark || '' },
+    ]);
+  }
+
+  return compactFields([
+    { label: '使用日期', value: context.visitDate || '' },
+    { label: '入住日期', value: context.checkInDate && context.checkOutDate ? `${context.checkInDate} - ${context.checkOutDate}` : '' },
+    { label: '快递公司', value: deliveryCompany || '' },
+    { label: '物流单号', value: trackingNumber || '' },
+    { label: '备注', value: order.remark || '' },
+  ]);
+}
+
+// 按业态暴露已支持的详情内动作，避免和底部支付/退款主动作混在一起。
+function resolveSceneActions(order: BffOrder): OrderDetailData['sceneActions'] {
+  const normalizedSceneType = String(order.sceneType || '').toUpperCase();
+  const normalizedStatus = String(order.orderStatus || '').toUpperCase();
+  const actions: OrderDetailData['sceneActions'] = [];
+
+  if (normalizedSceneType === 'MALL' && hasMallLogisticsContext(order)) {
+    actions.push({
+      text: '查看物流',
+      route: `${MINI_PACKAGE_ROUTES.orderLogistics}?orderId=${encodeURIComponent(order.orderNo)}`,
+      tone: 'default',
+    });
+  }
+
+  if (
+    normalizedSceneType === 'MALL'
+    && ['FULFILLED', 'USED', 'COMPLETED', 'SUCCESS'].includes(normalizedStatus)
+  ) {
+    const firstItemId = normalizeString(order.items?.[0]?.itemId);
+    const itemQuery = firstItemId ? `&itemId=${encodeURIComponent(firstItemId)}` : '';
+    actions.push({
+      text: '评价晒单',
+      route: `${MINI_PACKAGE_ROUTES.orderReviewCreate}?orderId=${encodeURIComponent(order.orderNo)}${itemQuery}`,
+      tone: 'primary',
+    });
+  }
+
+  return actions;
 }
 
 function mapTicketInstances(order: BffOrder): OrderTicketInstanceData[] {
@@ -271,7 +409,6 @@ function mapOrderToDetail(order: BffOrder): OrderDetailData {
   const firstItem = order.items?.[0];
   const context = order.context || {};
   const primaryActionType = resolvePrimaryAction(order);
-  const sceneType = order.sceneType || '-';
   const title = resolveTitle(order);
   const merchantName = resolveMerchantName(order);
   const mallSpecText = resolveMallSpecText(order);
@@ -293,31 +430,16 @@ function mapOrderToDetail(order: BffOrder): OrderDetailData {
     payExpireAt: order.payExpireAt,
     title,
     quantityText: resolveQuantityText(order),
-    productFields: compactFields([
-      { label: '订单业态', value: sceneType },
-      { label: '商户名称', value: merchantName || '' },
-      { label: '商品信息', value: title },
-      { label: '规格信息', value: mallSpecText || '' },
-      { label: '商品编码', value: firstItem?.itemId || '-' },
-      { label: '规格编码', value: firstItem?.skuId || firstItem?.attributes?.ratePlanId || '-' },
-    ]),
+    productFields: resolveSceneProductFields(order, title, merchantName, mallSpecText),
     ticketInstances: mapTicketInstances(order),
-    ticketFields: compactFields([
-      { label: '入住日期', value: context.checkInDate && context.checkOutDate ? `${context.checkInDate} - ${context.checkOutDate}` : '' },
-      { label: '房间数', value: context.roomCount ? `${context.roomCount}间` : '' },
-      { label: '入住人', value: context.guestNames || '' },
-      { label: '使用日期', value: context.visitDate || '' },
-      { label: '快递公司', value: deliveryCompany || '' },
-      { label: '物流单号', value: trackingNumber || '' },
-      { label: '物流状态', value: logisticsStatusText || '' },
-      { label: '备注', value: order.remark || '' },
-    ]),
+    fulfillmentFields: resolveSceneFulfillmentFields(order, deliveryCompany, trackingNumber, logisticsStatusText),
     couponFields: mapOrderCouponFields(order),
     contactFields: compactFields([
       { label: '联系人', value: order.contactName || '' },
       { label: '手机号', value: order.contactPhone || '' },
       { label: '收货地址', value: addressText || '' },
     ]),
+    sceneActions: resolveSceneActions(order),
     amountFields: [
       { label: '商品金额', value: formatCent(order.originalAmountCent) },
       { label: '优惠金额', value: `- ${formatCent(order.discountAmountCent)}` },

@@ -88,6 +88,12 @@ export interface OrderDetailCouponFieldData extends OrderDetailFieldData {
   couponLinks?: OrderDetailCouponLinkData[];
 }
 
+export interface OrderDetailSceneActionData {
+  text: string;
+  route: string;
+  tone?: 'default' | 'primary';
+}
+
 export interface OrderTicketInstanceData {
   ticketNo: string;
   qrCodePayload: string;
@@ -114,9 +120,10 @@ export interface OrderDetailData {
   quantityText: string;
   productFields: OrderDetailFieldData[];
   ticketInstances: OrderTicketInstanceData[];
-  ticketFields: OrderDetailFieldData[];
+  fulfillmentFields: OrderDetailFieldData[];
   couponFields: OrderDetailCouponFieldData[];
   contactFields: OrderDetailFieldData[];
+  sceneActions: OrderDetailSceneActionData[];
   amountFields: OrderDetailFieldData[];
   orderFields: OrderDetailFieldData[];
   refundButtonText: string;

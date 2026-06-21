@@ -1,8 +1,7 @@
 import Taro, { useDidHide, useDidShow } from '@tarojs/taro';
-import { Canvas, Text, View } from '@tarojs/components';
+import { View } from '@tarojs/components';
 import { observer } from 'mobx-react';
 import drawQrcode from 'weapp-qrcode';
-import { AppImage } from '@/core/components/AppImage';
 import { PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
@@ -13,6 +12,7 @@ import { requestWechatPayment, showWechatConfirm, showWechatToast } from '@/core
 import { syncBffPaymentStatusSilently } from '@/core/services/bff-api';
 import { payBffOrder, refundBffOrder } from '@/core/services/bff-order-api';
 import { fetchDetailData, type OrderDetailData } from '@/pkg-order/services/detail';
+import { OrderDetailSceneView } from './components/OrderDetailSceneView';
 import './index.scss';
 
 const TICKET_ORDER_DETAIL_POLL_INTERVAL_MS = 3000;
@@ -33,31 +33,6 @@ const TICKET_ORDER_DETAIL_POLLING_STATUSES = [
   'REFUND_PROCESSING',
 ];
 const TICKET_ORDER_DETAIL_TERMINAL_TICKET_STATUS_TEXTS = ['已核销', '已作废', '已退款', '已过期'];
-
-function formatPayExpireAt(payExpireAt?: string) {
-  if (!payExpireAt) return '30分钟内';
-
-  const expireDate = new Date(payExpireAt);
-  if (Number.isNaN(expireDate.getTime())) return '30分钟内';
-
-  const pad = (value: number) => `${value}`.padStart(2, '0');
-  return `${pad(expireDate.getHours())}:${pad(expireDate.getMinutes())}前`;
-}
-
-function resolveContactSectionTitle(detailData: OrderDetailData) {
-  const fieldText = [
-    ...detailData.productFields,
-    ...detailData.contactFields,
-  ].map((field) => `${field.label}${field.value}`).join('');
-
-  if (/收货|配送/.test(fieldText)) return '收货信息';
-  if (/入住|离店|房间/.test(fieldText)) return '入住信息';
-  return '取票信息';
-}
-
-function resolveAmountLabel(detailData: OrderDetailData) {
-  return detailData.primaryActionType === 'pay' ? '待支付金额' : '实付金额';
-}
 
 function resolveCouponDetailRoute(couponNo: string) {
   return `${MINI_PACKAGE_ROUTES.memberCouponDetail}?id=${encodeURIComponent(couponNo)}`;
@@ -96,17 +71,6 @@ function convertTicketQrCanvasToImage(canvasId: string) {
       fail: reject,
     });
   });
-}
-
-function resolveOrderFooterActionsClassName() {
-  return ['_pg-footer-actions'].join(' ');
-}
-
-function resolveOrderFooterActionClassName(type: 'primary' | 'ghost' = 'primary') {
-  return [
-    '_pg-footer-action',
-    type === 'ghost' ? '_pg-footer-action--ghost' : '',
-  ].filter(Boolean).join(' ');
 }
 
 // 从详情金额文案里还原支付金额，只用于继续支付的零元单判断。
@@ -181,6 +145,10 @@ const DetailPage = observer(function DetailPage() {
   function handleViewAftersale() {
     if (!detailData?.aftersaleEntryRoute) return;
     navigateToMiniRoute(detailData.aftersaleEntryRoute);
+  }
+
+  function handleSceneAction(route: string) {
+    navigateToMiniRoute(route);
   }
 
   async function loadDetailData(options: { showErrorToast?: boolean; orderId?: string; skipApplyWhenHidden?: boolean } = {}) {
@@ -372,30 +340,6 @@ const DetailPage = observer(function DetailPage() {
     navigateToMiniRoute(`${MINI_PACKAGE_ROUTES.orderAftersaleType}?orderId=${encodeURIComponent(detailData.id)}`);
   }
 
-  function renderCouponField(item: OrderDetailData['couponFields'][number]) {
-    return (
-      <View className="_pg-line-row" key={item.label}>
-        <Text className="_pg-line-row_label">{item.label}</Text>
-        <View className="_pg-line-row_content">
-          {item.couponLinks?.length ? (
-            <View className="_pg-coupon-links">
-              {item.couponLinks.map((link) => (
-                <View className="_pg-coupon-links_item" key={`${item.label}-${link.couponNo}-${link.detailText || ''}`}>
-                  <View className="_pg-coupon-links_chip" onClick={() => handleCouponPress(link.couponNo)}>
-                    <Text className="_pg-coupon-links_chip-text">{link.couponNo}</Text>
-                  </View>
-                  {link.detailText ? <Text className="_pg-coupon-links_desc">{link.detailText}</Text> : null}
-                </View>
-              ))}
-            </View>
-          ) : (
-            <Text className="_pg-line-row_value">{item.value}</Text>
-          )}
-        </View>
-      </View>
-    );
-  }
-
   return pageRuntime.renderPage(() => {
     if (!detailData) return null;
 
@@ -403,161 +347,19 @@ const DetailPage = observer(function DetailPage() {
       <View className="_pg">
         <PageShell title="订单详情" className="_pg-shell" reserveTabBarSpace={false}>
           <View className="_pg-content">
-            <View className="_pg-status-card">
-              <Text className="_pg-status-card_title">{detailData.statusText}</Text>
-              {detailData.primaryActionType === 'pay' ? (
-                <Text className="_pg-status-card_deadline">请在{formatPayExpireAt(detailData.payExpireAt)}完成支付，超时订单将自动关闭</Text>
-              ) : null}
-              <View className="_pg-status-card_amount">
-                <Text className="_pg-status-card_label">{resolveAmountLabel(detailData)}</Text>
-                <Text className="_pg-status-card_value">{detailData.paidAmountText}</Text>
-              </View>
-            </View>
-
-            <View className="_pg-card">
-              <View className="_pg-card_header">
-                <Text className="_pg-card_title">{detailData.title}</Text>
-                {detailData.quantityText ? <Text className="_pg-card_quantity">{detailData.quantityText}</Text> : null}
-              </View>
-              {detailData.productFields.map((item) => (
-                <View className="_pg-line-row" key={item.label}>
-                  <Text className="_pg-line-row_label">{item.label}</Text>
-                  <Text className="_pg-line-row_value">{item.value}</Text>
-                </View>
-              ))}
-            </View>
-
-            {detailData.ticketInstances.length ? (
-              <View className="_pg-card">
-                <Text className="_pg-card_section-title">入园凭证</Text>
-                {detailData.ticketInstances.map((ticket, index) => {
-                  const localQrImageSrc = localTicketQrImages[resolveTicketQrKey(ticket, index)];
-                  const qrImageSrc = ticket.qrImageSrc || localQrImageSrc;
-
-                  return (
-                    <View className="_pg-ticket-code" key={resolveTicketQrKey(ticket, index)}>
-                      <View className="_pg-ticket-code_header">
-                        <Text className="_pg-ticket-code_title">{ticket.productName}</Text>
-                        <Text className="_pg-ticket-code_status">{ticket.statusText}</Text>
-                      </View>
-                      {qrImageSrc ? (
-                        <AppImage className="_pg-ticket-code_qr" src={qrImageSrc} mode="aspectFit" emptyState="error" />
-                      ) : null}
-                      {!ticket.qrImageSrc && ticket.qrCodePayload ? (
-                        <View className="_pg-ticket-code_canvas-host" style={hiddenTicketQrCanvasStyle}>
-                          <Canvas
-                            canvasId={resolveTicketQrCanvasId(index)}
-                            className="_pg-ticket-code_canvas"
-                            style={hiddenTicketQrCanvasStyle}
-                          />
-                        </View>
-                      ) : null}
-                      {ticket.qrCodePayload ? (
-                        <Text className="_pg-ticket-code_payload">{ticket.qrCodePayload}</Text>
-                      ) : null}
-                      {ticket.ticketNo ? (
-                        <View className="_pg-line-row">
-                          <Text className="_pg-line-row_label">票码</Text>
-                          <Text className="_pg-line-row_value">{ticket.ticketNo}</Text>
-                        </View>
-                      ) : null}
-                      {ticket.skuName ? (
-                        <View className="_pg-line-row">
-                          <Text className="_pg-line-row_label">票种</Text>
-                          <Text className="_pg-line-row_value">{ticket.skuName}</Text>
-                        </View>
-                      ) : null}
-                      {ticket.visitDate ? (
-                        <View className="_pg-line-row">
-                          <Text className="_pg-line-row_label">游玩日期</Text>
-                          <Text className="_pg-line-row_value">{ticket.visitDate}</Text>
-                        </View>
-                      ) : null}
-                      {ticket.validTimeText ? (
-                        <View className="_pg-line-row">
-                          <Text className="_pg-line-row_label">有效期</Text>
-                          <Text className="_pg-line-row_value">{ticket.validTimeText}</Text>
-                        </View>
-                      ) : null}
-                      {ticket.useTimesText ? (
-                        <View className="_pg-line-row">
-                          <Text className="_pg-line-row_label">次数</Text>
-                          <Text className="_pg-line-row_value">{ticket.useTimesText}</Text>
-                        </View>
-                      ) : null}
-                    </View>
-                  );
-                })}
-              </View>
-            ) : null}
-
-            {detailData.ticketFields.length ? (
-              <View className="_pg-card">
-                {detailData.ticketFields.map((item) => (
-                  <View className="_pg-line-row" key={item.label}>
-                    <Text className="_pg-line-row_label">{item.label}</Text>
-                    <Text className="_pg-line-row_value">{item.value}</Text>
-                  </View>
-                ))}
-              </View>
-            ) : null}
-
-            {detailData.contactFields.length ? (
-              <View className="_pg-card">
-                <Text className="_pg-card_section-title">{resolveContactSectionTitle(detailData)}</Text>
-                {detailData.contactFields.map((item) => (
-                  <View className="_pg-line-row" key={item.label}>
-                    <Text className="_pg-line-row_label">{item.label}</Text>
-                    <Text className="_pg-line-row_value">{item.value}</Text>
-                  </View>
-                ))}
-              </View>
-            ) : null}
-
-            {detailData.couponFields.length ? (
-              <View className="_pg-card">
-                <Text className="_pg-card_section-title">优惠信息</Text>
-                {detailData.couponFields.map(renderCouponField)}
-              </View>
-            ) : null}
-
-            <View className="_pg-card">
-              {detailData.amountFields.map((item) => (
-                <View className="_pg-line-row" key={item.label}>
-                  <Text className="_pg-line-row_label">{item.label}</Text>
-                  <Text className="_pg-line-row_value">{item.value}</Text>
-                </View>
-              ))}
-            </View>
-
-            <View className="_pg-card _pg-card--last">
-              {detailData.orderFields.map((item) => (
-                <View className="_pg-order-meta" key={item.label}>
-                  <Text className="_pg-order-meta_label">{item.label}：</Text>
-                  <Text className="_pg-order-meta_value">{item.value}</Text>
-                </View>
-              ))}
-              {detailData.refundButtonText || detailData.aftersaleEntryRoute ? (
-                <View className={resolveOrderFooterActionsClassName()}>
-                  {detailData.aftersaleEntryRoute ? (
-                    <View
-                      className={resolveOrderFooterActionClassName('ghost')}
-                      onClick={handleViewAftersale}
-                    >
-                      {detailData.aftersaleEntryText}
-                    </View>
-                  ) : null}
-                  {detailData.refundButtonText ? (
-                    <View
-                      className={resolveOrderFooterActionClassName()}
-                      onClick={() => void handlePrimaryAction()}
-                    >
-                      {detailData.refundButtonText}
-                    </View>
-                  ) : null}
-                </View>
-              ) : null}
-            </View>
+            <OrderDetailSceneView
+              detailData={detailData}
+              ticketQr={{
+                canvasStyle: hiddenTicketQrCanvasStyle,
+                getCanvasId: resolveTicketQrCanvasId,
+                getLocalImageSrc: (ticket, index) => localTicketQrImages[resolveTicketQrKey(ticket, index)],
+                getQrKey: resolveTicketQrKey,
+              }}
+              onCouponPress={handleCouponPress}
+              onPrimaryAction={() => void handlePrimaryAction()}
+              onSceneAction={handleSceneAction}
+              onViewAftersale={handleViewAftersale}
+            />
           </View>
         </PageShell>
       </View>

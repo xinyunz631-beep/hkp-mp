@@ -20,6 +20,10 @@
   background: #f6f7fb;
 }
 
+._pg-scene {
+  min-height: 100%;
+}
+
 ._pg-status-card,
 ._pg-card {
   margin-top: 20px;
@@ -65,6 +69,10 @@
 }
 
 ._pg-card {
+  &--last {
+    padding-bottom: 32px;
+  }
+
   &_header {
     display: flex;
     align-items: flex-start;
@@ -93,6 +101,46 @@
     color: #23262f;
     font-size: 30px;
     line-height: 1.45;
+  }
+}
+
+._pg-product-card,
+._pg-fulfillment-card,
+._pg-contact-card {
+  ._pg-card_section-title {
+    color: #23262f;
+    font-weight: 500;
+  }
+}
+
+._pg-scene-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin: 16px 32px 0;
+
+  &_button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 176px;
+    height: 64px;
+    padding: 0 24px;
+    border: 1Px solid #d5d9e3;
+    border-radius: 999px;
+    box-sizing: border-box;
+    background: #ffffff;
+    color: #4b5563;
+    font-size: 28px;
+    line-height: 1;
+
+    & + & {
+      margin-left: 16px;
+    }
+
+    &--primary {
+      border-color: #d94a88;
+      color: #d94a88;
+    }
   }
 }
 
