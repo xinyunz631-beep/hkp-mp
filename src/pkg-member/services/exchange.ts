@@ -51,9 +51,21 @@ function toExchangeProduct(item: BffCrmP1ConfigItem): MemberExchangeProduct {
   };
 }
 
+// 兑换专区只允许承接 EXCHANGE 域商品，避免详情直达误把领券中心 COUPON 卡片提交给 K 币兑换。
+function isExchangeItem(item: BffCrmP1ConfigItem) {
+  return String(item.itemType || '').toUpperCase() === 'EXCHANGE';
+}
+
+// 详情页直达时也必须校验商品域；真正的写入拦截仍以后端 item_type=EXCHANGE 为准。
+function assertExchangeItem(item: BffCrmP1ConfigItem) {
+  if (!isExchangeItem(item)) {
+    throw new Error('当前商品不可兑换');
+  }
+}
+
 export function fetchMemberExchangeListData() {
   return fetchBffCrmP1Exchanges().then((items) => ({
-    products: items.map(toExchangeProduct),
+    products: items.filter(isExchangeItem).map(toExchangeProduct),
   }));
 }
 
@@ -63,6 +75,7 @@ export async function fetchMemberExchangeDetailData(productId = ''): Promise<Mem
     fetchBffCrmP1Item(productId),
     fetchBffKcoinBalance(),
   ]);
+  assertExchangeItem(item);
   return {
     product: toExchangeProduct(item),
     memberKCoins: Number(balance.availablePoints ?? balance.pointsBalance ?? 0),
