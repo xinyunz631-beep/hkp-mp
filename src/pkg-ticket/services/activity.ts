@@ -71,7 +71,7 @@ function mapAdToActivityDetail(ad: MiniProgramAdView): TicketActivityDetail {
   };
 }
 
-// 按首页传入的资源位编码获取活动/推荐列表，不再回退旧本地 mock 数据。
+// 按首页传入的资源位编码获取活动/推荐列表，不再回退旧本地静态数据。
 export async function fetchActivityListData(slotCode = DEFAULT_ACTIVITY_SLOT_CODE): Promise<TicketActivityListData> {
   const ads = await fetchMiniProgramSlotAds(slotCode);
   return { items: ads.map(mapAdToActivityListItem) };

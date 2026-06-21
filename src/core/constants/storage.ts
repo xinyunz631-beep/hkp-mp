@@ -4,6 +4,5 @@ export const MINI_STORAGE_KEYS = {
   hotelOrderDrafts: 'hkitty-mini-hotel-order-drafts',
   mallCheckoutDrafts: 'hkitty-mini-mall-checkout-drafts',
   mallCheckoutAddressSelections: 'hkitty-mini-mall-checkout-address-selections',
-  localOrders: 'hkitty-mini-local-orders',
   orderAddresses: 'hkitty-mini-order-addresses',
 } as const;

@@ -1,7 +1,7 @@
 import { request } from '@/core/request';
 import { resolveCurrentMiniProgramAppId } from '@/core/wechat/auth';
 
-export type BffOrderSceneType = 'TICKET' | 'MALL' | 'HOTEL';
+export type BffOrderSceneType = 'TICKET' | 'MALL' | 'HOTEL' | 'DINING';
 export type BffOrderPaymentChannel = 'WECHAT' | 'ALIPAY' | string;
 
 export interface BffOrderSelectionItem {
@@ -118,7 +118,7 @@ export function isBffTicketVoucherReady(voucher?: BffTicketVoucher) {
 // 判断订单是否已经拿到真实可用票券，不能只看 ticketVouchers 数组长度。
 export function isBffTicketOrderIssued(orderStatus?: string, ticketVouchers?: BffTicketVoucher[]) {
   const normalizedStatus = String(orderStatus || '').toUpperCase();
-  const issuedStatus = ['WAIT_USE', 'FULFILLING', 'PART_USED', 'PARTIALLY_USED', 'PARTIALLYUSED', 'USED', 'FULFILLED', 'COMPLETED']
+  const issuedStatus = ['WAIT_USE', 'FULFILLING', 'PART_USED', 'PARTIALLY_USED', 'PARTIALLYUSED', 'USED', 'FULFILLED', 'COMPLETED', 'SUCCESS']
     .includes(normalizedStatus);
 
   return issuedStatus && Boolean(ticketVouchers?.some((voucher) => isBffTicketVoucherReady(voucher)));

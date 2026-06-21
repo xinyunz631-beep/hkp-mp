@@ -42,7 +42,7 @@ function mapAdToParkListItem(ad: MiniProgramAdView, index: number): TicketParkLi
   };
 }
 
-// 按首页传入的资源位编码获取热玩列表，不再回退旧本地 mock 数据。
+// 按首页传入的资源位编码获取热玩列表，不再回退旧本地静态数据。
 export async function fetchParkListData(slotCode = DEFAULT_PARK_SLOT_CODE): Promise<TicketParkListData> {
   const ads = await fetchMiniProgramSlotAds(slotCode);
   return {

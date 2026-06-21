@@ -44,9 +44,29 @@ function hasMallLogisticsContext(order: BffOrder) {
   ));
 }
 
+// 判断订单是否仍处于待支付阶段，和详情页保持同一套支付入口口径。
+function isPendingPaymentStatus(status?: string) {
+  return ['PENDING', 'PENDING_PAYMENT', 'UNPAID', 'PAYING'].includes(normalizeStatus(status));
+}
+
+// 判断订单是否已经关闭，避免超时关单继续归入待使用列表。
+function isClosedStatus(status?: string) {
+  return ['CLOSED', 'EXPIRED', 'TIMEOUT', 'TIMEOUT_CLOSED', 'AUTO_CLOSED'].includes(normalizeStatus(status));
+}
+
+// 判断订单是否属于已完成终态，商城评价入口只在该类状态下出现。
+function isCompletedStatus(status?: string) {
+  return ['FULFILLED', 'USED', 'COMPLETED', 'SUCCESS'].includes(normalizeStatus(status));
+}
+
+// 判断订单是否处于退款售后阶段，统一放入退款/售后标签。
+function isRefundStatus(status?: string) {
+  return ['REFUNDING', 'REFUND_PENDING', 'REFUND_PROCESSING', 'REFUNDED'].includes(normalizeStatus(status));
+}
+
 function resolveStatusText(order: BffOrder) {
   const normalizedStatus = normalizeStatus(order.orderStatus);
-  if (['PENDING_PAYMENT', 'PAYING'].includes(normalizedStatus)) return '待付款';
+  if (isPendingPaymentStatus(normalizedStatus)) return '待付款';
   if (['PAID', 'WAIT_USE', 'FULFILLING'].includes(normalizedStatus)) {
     if (order.sceneType === 'HOTEL') return '待入住';
     if (order.sceneType === 'MALL') {
@@ -55,9 +75,11 @@ function resolveStatusText(order: BffOrder) {
     return '待使用';
   }
   if (['PART_USED', 'PARTIALLY_USED', 'PARTIALLYUSED'].includes(normalizedStatus)) return '部分使用';
-  if (['FULFILLED', 'USED', 'COMPLETED'].includes(normalizedStatus)) return '已完成';
+  if (isCompletedStatus(normalizedStatus)) return '已完成';
   if (['CANCELED', 'CANCELLED'].includes(normalizedStatus)) return '已取消';
-  if (['REFUNDING', 'REFUNDED'].includes(normalizedStatus)) return '退款中';
+  if (isClosedStatus(normalizedStatus)) return '已关闭';
+  if (['REFUNDING', 'REFUND_PENDING', 'REFUND_PROCESSING'].includes(normalizedStatus)) return '退款中';
+  if (normalizedStatus === 'REFUNDED') return '已退款';
   return order.orderStatus || '处理中';
 }
 
@@ -78,14 +100,16 @@ function hasReviewedMallOrder(order: BffOrder, reviewedMallItems: Set<string>) {
 
 function resolveTabKey(order: BffOrder, reviewedMallItems: Set<string>, reviewLookupReady: boolean) {
   const normalizedStatus = normalizeStatus(order.orderStatus);
-  if (['PENDING_PAYMENT', 'PAYING'].includes(normalizedStatus)) return 'pendingPay';
-  if (['REFUNDING', 'REFUNDED'].includes(normalizedStatus)) return 'aftersale';
-  if (['FULFILLED', 'USED', 'COMPLETED'].includes(normalizedStatus)) {
+  if (isPendingPaymentStatus(normalizedStatus)) return 'pendingPay';
+  if (isRefundStatus(normalizedStatus)) return 'aftersale';
+  if (isCompletedStatus(normalizedStatus)) {
     if (order.sceneType === 'MALL' && reviewLookupReady) {
       return hasReviewedMallOrder(order, reviewedMallItems) ? 'all' : 'pendingReview';
     }
     return 'all';
   }
+  if (isClosedStatus(normalizedStatus) || ['CANCELED', 'CANCELLED'].includes(normalizedStatus)) return 'all';
+  if (['PAID', 'WAIT_USE', 'FULFILLING', 'PART_USED', 'PARTIALLY_USED', 'PARTIALLYUSED'].includes(normalizedStatus)) return 'pendingReceive';
   return 'pendingReceive';
 }
 
@@ -141,13 +165,13 @@ function resolveItemQuantity(order: BffOrder) {
 
 function resolveOrderActions(order: BffOrder, reviewedMallItems: Set<string>, reviewLookupReady: boolean): OrderHomeActionData[] {
   const normalizedStatus = normalizeStatus(order.orderStatus);
-  if (['PENDING_PAYMENT', 'PAYING'].includes(normalizedStatus)) {
+  if (isPendingPaymentStatus(normalizedStatus)) {
     return [
       { text: '取消订单', tone: 'default' },
       { text: '继续支付', tone: 'primary' },
     ];
   }
-  if (order.sceneType === 'MALL' && ['FULFILLED', 'USED', 'COMPLETED'].includes(normalizedStatus) && reviewLookupReady && !hasReviewedMallOrder(order, reviewedMallItems)) {
+  if (order.sceneType === 'MALL' && isCompletedStatus(normalizedStatus) && reviewLookupReady && !hasReviewedMallOrder(order, reviewedMallItems)) {
     if (hasMallLogisticsContext(order)) {
       return [
         { text: '查看物流', tone: 'default' },

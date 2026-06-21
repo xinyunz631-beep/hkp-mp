@@ -3,16 +3,11 @@ import { observer } from 'mobx-react';
 import { BaseEmpty } from '@/core/components/BaseEmpty';
 import { PageShell } from '@/core/components/PageShell';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
-import { fetchMerchantDetailData } from '@/pkg-dining/services/merchant-detail';
 import './index.scss';
 
 // 渲染商家详情的暂缓状态，完整业务页另行进入。
 const MerchantDetailPage = observer(function MerchantDetailPage() {
-  const pageRuntime = usePageRuntime({
-    initPage: async () => {
-      await fetchMerchantDetailData();
-    },
-  });
+  const pageRuntime = usePageRuntime();
 
   return pageRuntime.renderPage(() => (
     <View className="_pg">

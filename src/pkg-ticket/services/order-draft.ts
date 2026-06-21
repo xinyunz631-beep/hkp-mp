@@ -1,7 +1,7 @@
 import { MINI_STORAGE_KEYS } from '@/core/constants/storage';
-import { createLocalOrderId, createLocalOrderTime } from '@/core/services/local-order';
 import {
   createBffOrder,
+  isBffTicketOrderIssued,
   payBffOrder,
   type BffOrderPaymentResponse,
   type BffTicketVoucher,
@@ -367,6 +367,30 @@ function resolveTicketPayableAmountCent(value?: number) {
   return value;
 }
 
+// 生成门票订单草稿编号，仅用于本地确认单草稿，不参与真实订单编号。
+function createTicketDraftId() {
+  const random = Math.random().toString(36).slice(2, 8).toUpperCase();
+  return `TICKET-DRAFT-${Date.now()}${random}`;
+}
+
+// 生成门票订单草稿更新时间，用于草稿排序和本地恢复确认单。
+function createTicketDraftTime() {
+  const date = new Date();
+  const pad = (value: number) => `${value}`.padStart(2, '0');
+
+  return [
+    date.getFullYear(),
+    '-',
+    pad(date.getMonth() + 1),
+    '-',
+    pad(date.getDate()),
+    ' ',
+    pad(date.getHours()),
+    ':',
+    pad(date.getMinutes()),
+  ].join('');
+}
+
 // 生成门票实名出游人列表，旧草稿缺少该字段时也用这里补齐。
 export function createTicketOrderTravelers(
   products: TicketOrderDraftProduct[],
@@ -407,14 +431,14 @@ export function createTicketOrderTravelers(
 
 // 创建门票订单草稿，预定页通过草稿编号跳到确认订单页。
 export function createTicketOrderDraft(payload: CreateTicketOrderDraftPayload) {
-  const now = createLocalOrderTime();
+  const now = createTicketDraftTime();
   const contact = {
     name: '',
     mobile: '',
     idCard: '',
   };
   const draft: TicketOrderDraft = {
-    id: createLocalOrderId('TICKET-DRAFT-'),
+    id: createTicketDraftId(),
     parkName: payload.parkName,
     selectedDate: payload.selectedDate,
     products: payload.products,
@@ -447,7 +471,7 @@ export function updateTicketOrderDraft(draftId: string, patch: Partial<TicketOrd
   const nextDraft: TicketOrderDraft = {
     ...current,
     ...patch,
-    updatedAt: createLocalOrderTime(),
+    updatedAt: createTicketDraftTime(),
   };
 
   saveTicketOrderDrafts(drafts.map((draft) => (draft.id === draftId ? nextDraft : draft)));
@@ -477,8 +501,19 @@ export async function submitTicketOrderDraft(draftId: string, payload: SubmitTic
     throw new Error('门票出票失败，请稍后重试或联系工作人员');
   }
 
+  const createPayableAmountCent = resolveTicketPayableAmountCent(createResult.order?.payableAmountCent);
+  if (createPayableAmountCent === 0 || isBffTicketOrderIssued(createResult.order?.orderStatus, createResult.order?.ticketVouchers)) {
+    return {
+      id: orderNo,
+      orderNo,
+      orderStatus: createResult.order?.orderStatus,
+      payableAmount: Number((createPayableAmountCent / 100).toFixed(2)),
+      ticketVouchers: createResult.order?.ticketVouchers,
+    };
+  }
+
   const payment = await payBffOrder(orderNo, 'WECHAT');
-  const payableAmountCent = payment.order?.payableAmountCent ?? createResult.order?.payableAmountCent;
+  const payableAmountCent = payment.order?.payableAmountCent ?? createPayableAmountCent;
   return {
     id: orderNo,
     orderNo,

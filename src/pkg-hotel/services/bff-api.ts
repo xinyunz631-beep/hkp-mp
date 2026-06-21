@@ -323,7 +323,7 @@ export async function fetchBffHotelDetail(hotelId: string) {
   });
 }
 
-// 获取酒店首页真实数据，接口异常时由页面异常态承接，不回退本地 mock。
+// 获取酒店首页真实数据，接口异常时由页面异常态承接，不回退本地静态数据。
 export async function fetchHotelHomeFromBff({
   stayRange,
   filterKey,

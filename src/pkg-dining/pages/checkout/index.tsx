@@ -3,16 +3,11 @@ import { observer } from 'mobx-react';
 import { BaseEmpty } from '@/core/components/BaseEmpty';
 import { PageShell } from '@/core/components/PageShell';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
-import { fetchCheckoutData } from '@/pkg-dining/services/checkout';
 import './index.scss';
 
 // 渲染餐饮确认订单的暂缓状态，不提前进入完整下单 UI。
 const CheckoutPage = observer(function CheckoutPage() {
-  const pageRuntime = usePageRuntime({
-    initPage: async () => {
-      await fetchCheckoutData();
-    },
-  });
+  const pageRuntime = usePageRuntime();
 
   return pageRuntime.renderPage(() => (
     <View className="_pg">

@@ -3,7 +3,7 @@ import type { HotelOccupancy, HotelRoomDetailData, HotelStayRange } from './mode
 
 export type { HotelRoomDetailData } from './model';
 
-// 获取房间详情真实数据，接口失败时交给页面异常态，不回退本地 mock。
+// 获取房间详情真实数据，接口失败时交给页面异常态，不回退本地静态数据。
 export function fetchRoomDetailData(params: {
   hotelId?: string;
   productId?: string;

@@ -210,15 +210,13 @@ export async function fetchCheckoutData(options: FetchCheckoutDataOptions = {}) 
   const readonlyData = buildReadonlyCheckoutData(draft, address, deliveryCheck, productsAmount, requiresAddress);
   if (!deliveryCheck.canSubmit) return readonlyData;
 
-  const [confirmation, availableCouponsResponse] = await Promise.all([
-    confirmBffOrder(buildMallUnifiedOrderRequest(draft, address, options.selectedCouponId)),
-    fetchBffCouponAvailable({
-      sceneType: 'MALL',
-      orderAmountCent: yuanToCent(productsAmount + deliveryCheck.freightAmount),
-      itemIds: draft.products.map((item) => item.productId),
-      skuIds: draft.products.map((item) => item.id),
-    }),
-  ]);
+  const confirmation = await confirmBffOrder(buildMallUnifiedOrderRequest(draft, address, options.selectedCouponId));
+  const availableCouponsResponse = await fetchBffCouponAvailable({
+    sceneType: 'MALL',
+    orderAmountCent: confirmation.originalAmountCent ?? yuanToCent(productsAmount + deliveryCheck.freightAmount),
+    itemIds: draft.products.map((item) => item.productId),
+    skuIds: draft.products.map((item) => item.id),
+  });
   const totalAmount = centToYuan(resolvePayableAmountCent(confirmation.payableAmountCent));
   const discountAmount = centToYuan(confirmation.discountAmountCent);
   const coupons = (availableCouponsResponse.coupons ?? []).map(toMallCoupon);

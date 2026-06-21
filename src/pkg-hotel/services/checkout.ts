@@ -47,7 +47,7 @@ function resolveGuestFields(roomCount: number, guests: Array<{ id: string; label
 }
 
 function resolveHotelPayableAmountCent(value?: number) {
-  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
     throw new Error('酒店确认单金额暂不可用，请稍后再试');
   }
 
@@ -159,20 +159,18 @@ export async function fetchCheckoutData(params: FetchHotelCheckoutParams = {}) {
   const nights = calculateHotelNights(draft.stayRange);
   const roomCount = params.roomCount || draft.occupancy.roomCount;
   const selectedCouponId = resolveSelectedCouponId(params, draft);
-  const [confirmation, availableCouponsResponse] = await Promise.all([
-    confirmBffOrder(buildHotelUnifiedOrderRequest(draft, {
-      roomCount,
-      selectedCouponId,
-    })),
-    fetchBffCouponAvailable({
-      sceneType: 'HOTEL',
-      orderAmountCent: yuanToCent(resolveHotelDraftAmount(draft, roomCount)),
-      itemIds: [draft.hotelId, draft.product.id],
-      skuIds: draft.ratePlan.id,
-      checkInDate: draft.stayRange.checkIn,
-      checkOutDate: draft.stayRange.checkOut,
-    }),
-  ]);
+  const confirmation = await confirmBffOrder(buildHotelUnifiedOrderRequest(draft, {
+    roomCount,
+    selectedCouponId,
+  }));
+  const availableCouponsResponse = await fetchBffCouponAvailable({
+    sceneType: 'HOTEL',
+    orderAmountCent: confirmation.originalAmountCent ?? yuanToCent(resolveHotelDraftAmount(draft, roomCount)),
+    itemIds: [draft.hotelId, draft.product.id],
+    skuIds: draft.ratePlan.id,
+    checkInDate: draft.stayRange.checkIn,
+    checkOutDate: draft.stayRange.checkOut,
+  });
   const payableAmountCent = resolveHotelPayableAmountCent(confirmation.payableAmountCent);
   const totalAmount = Number((payableAmountCent / 100).toFixed(2));
   const discountAmount = Number(((confirmation.discountAmountCent ?? 0) / 100).toFixed(2));
@@ -243,8 +241,16 @@ export async function submitHotelCheckoutOrder(draftId: string, payload: SubmitH
     throw new Error('订单创建失败：缺少订单编号');
   }
 
+  const createPayableAmountCent = resolveHotelPayableAmountCent(createResult.order?.payableAmountCent);
+  if (createPayableAmountCent === 0) {
+    return {
+      orderNo,
+      payableAmount: 0,
+    };
+  }
+
   const payment = await payBffOrder(orderNo, 'WECHAT');
-  const payableAmountCent = payment.order?.payableAmountCent ?? createResult.order?.payableAmountCent;
+  const payableAmountCent = payment.order?.payableAmountCent ?? createPayableAmountCent;
   const payableAmount = Number((resolveHotelPayableAmountCent(payableAmountCent) / 100).toFixed(2));
   return {
     orderNo,

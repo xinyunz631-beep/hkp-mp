@@ -1,9 +1,0 @@
-import { resolveMockData } from '@/core/services/mock';
-import { parkGuideData, type TicketParkGuideData } from './mock-data';
-
-export type { TicketParkGuideData } from './mock-data';
-
-// 获取乐园导览页面数据，后续接真实接口时在这里处理字段归一和异常态/空态转译。
-export function fetchParkGuideData() {
-  return resolveMockData<TicketParkGuideData>(parkGuideData);
-}

@@ -152,6 +152,14 @@ const CheckoutPage = observer(function CheckoutPage() {
       return;
     }
 
+    if (order.payableAmount <= 0) {
+      await showWechatToast('下单成功', 'success');
+      navigateToMiniRoute(`${MINI_PACKAGE_ROUTES.orderDetail}?orderId=${encodeURIComponent(order.orderNo)}`, {
+        loginMode: 'none',
+      });
+      return;
+    }
+
     const paymentParams = order.payment?.prepay?.paymentParams || order.payment?.prepay?.payParams;
     if (!paymentParams) {
       await showWechatToast('支付参数缺失，请稍后再试');

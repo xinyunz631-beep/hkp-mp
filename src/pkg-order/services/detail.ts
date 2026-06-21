@@ -44,11 +44,21 @@ function hasMallLogisticsContext(order: BffOrder) {
   ));
 }
 
+// 判断订单是否仍处于待支付阶段，避免后端新增超时关单后继续展示支付动作。
+function isPendingPaymentStatus(status?: string) {
+  return ['PENDING', 'PENDING_PAYMENT', 'UNPAID', 'PAYING'].includes(String(status || '').toUpperCase());
+}
+
+// 判断订单是否已经关闭，统一承接超时关单、人工取消和过期终态。
+function isClosedStatus(status?: string) {
+  return ['CLOSED', 'EXPIRED', 'TIMEOUT', 'TIMEOUT_CLOSED', 'AUTO_CLOSED'].includes(String(status || '').toUpperCase());
+}
+
 // 归一订单主状态，避免后端履约中间态直接暴露为内部状态码。
 function resolveStatusText(order: BffOrder) {
   const normalizedStatus = String(order.orderStatus || '').toUpperCase();
 
-  if (['PENDING_PAYMENT', 'PAYING'].includes(normalizedStatus)) return '待付款';
+  if (isPendingPaymentStatus(normalizedStatus)) return '待付款';
   if (['PAID', 'WAIT_USE', 'FULFILLING'].includes(normalizedStatus)) {
     if (order.sceneType === 'HOTEL') return '待入住';
     if (order.sceneType === 'MALL') {
@@ -57,8 +67,9 @@ function resolveStatusText(order: BffOrder) {
     return '待使用';
   }
   if (['PART_USED', 'PARTIALLY_USED', 'PARTIALLYUSED'].includes(normalizedStatus)) return '部分使用';
-  if (['FULFILLED', 'USED', 'COMPLETED'].includes(normalizedStatus)) return '已完成';
+  if (['FULFILLED', 'USED', 'COMPLETED', 'SUCCESS'].includes(normalizedStatus)) return '已完成';
   if (['CANCELED', 'CANCELLED'].includes(normalizedStatus)) return '已取消';
+  if (isClosedStatus(normalizedStatus)) return '已关闭';
   if (['REFUNDING', 'REFUND_PENDING', 'REFUND_PROCESSING'].includes(normalizedStatus)) return '退款中';
   if (normalizedStatus === 'REFUNDED') return '已退款';
   return order.orderStatus || '处理中';
@@ -66,7 +77,7 @@ function resolveStatusText(order: BffOrder) {
 
 function resolvePrimaryAction(order: BffOrder): OrderDetailData['primaryActionType'] {
   const normalizedStatus = String(order.orderStatus || '').toUpperCase();
-  if (['PENDING_PAYMENT', 'PAYING'].includes(normalizedStatus)) return 'pay';
+  if (isPendingPaymentStatus(normalizedStatus)) return 'pay';
   if (['PAID', 'WAIT_USE', 'FULFILLING'].includes(normalizedStatus)) {
     return order.sceneType === 'MALL' ? 'aftersale' : 'refund';
   }
@@ -83,7 +94,7 @@ function resolveRefundButtonText(primaryActionType: OrderDetailData['primaryActi
 // 已进入退款/返还阶段的订单，允许用户直接回到售后记录继续核对进度。
 function resolveAftersaleEntryRoute(order: BffOrder) {
   const normalizedStatus = String(order.orderStatus || '').toUpperCase();
-  const hasRefundProgress = ['REFUNDING', 'REFUNDED'].includes(normalizedStatus)
+  const hasRefundProgress = ['REFUNDING', 'REFUND_PENDING', 'REFUND_PROCESSING', 'REFUNDED'].includes(normalizedStatus)
     || Boolean(order.refundReturnedCouponNos?.length);
 
   if (!hasRefundProgress) return undefined;

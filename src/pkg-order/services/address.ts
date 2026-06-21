@@ -154,7 +154,7 @@ export function formatOrderAddress(address: HkpAddressSummary) {
   return `${baseAddress}${address.detail}`;
 }
 
-// 获取地址管理真实数据，接口失败时由页面异常态承接，不回退本地或 mock 地址。
+// 获取地址管理真实数据，接口失败时由页面异常态承接，不回退本地静态地址。
 export async function fetchAddressData(): Promise<OrderAddressData> {
   const addresses = await refreshOrderAddresses();
   return {
