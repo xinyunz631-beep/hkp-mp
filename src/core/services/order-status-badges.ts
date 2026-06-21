@@ -116,9 +116,15 @@ function incrementBadgeCount(counts: OrderStatusBadgeCounts, tabKey: string) {
 
 function resolveServerCountsPayload(payload?: BffOrderStatusCounts) {
   if (!payload) return undefined;
-  if (isObjectRecord(payload.statusCounts)) return payload.statusCounts as BffOrderStatusCounts;
-  if (isObjectRecord(payload.counts)) return payload.counts as BffOrderStatusCounts;
-  return payload;
+  const candidates = [
+    payload.tabCounts,
+    payload.counts,
+    payload.statusCounts,
+    payload,
+  ];
+  return candidates.find((candidate): candidate is BffOrderStatusCounts => (
+    isObjectRecord(candidate) && hasServerCountSignal(candidate as BffOrderStatusCounts)
+  ));
 }
 
 function readServerCount(payload: BffOrderStatusCounts | undefined, keys: string[]) {

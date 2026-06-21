@@ -49,6 +49,22 @@
     border-radius: 999px;
     background: #d94a88;
   }
+
+  &_count {
+    position: absolute;
+    top: 12px;
+    right: 8px;
+    min-width: 28px;
+    height: 28px;
+    padding: 0 8px;
+    border-radius: 999px;
+    box-sizing: border-box;
+    background: #ef4444;
+    color: #ffffff;
+    font-size: 22px;
+    line-height: 28px;
+    text-align: center;
+  }
 }
 
 ._pg-section {

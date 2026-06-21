@@ -3,6 +3,7 @@ import {
   sortBffOrdersByCreatedAt,
   type BffOrder,
   type BffOrderSceneType,
+  type BffOrderTabCount,
 } from '@/core/services/bff-order-api';
 import { fetchBffMallMyReviews, type BffMallMemberReviewsData } from '@/core/services/bff-mall-api';
 import { sanitizeMallRuntimeText, sanitizeMallRuntimeUrl } from '@/core/utils/mall-runtime';
@@ -29,6 +30,7 @@ const ORDER_HOME_PAGE_SIZE = 10;
 interface FetchOrderHomeDataOptions {
   page?: number;
   pageSize?: number;
+  tabKey?: string;
   existingSections?: OrderHomeSectionData[];
 }
 
@@ -42,6 +44,11 @@ function normalizePositiveInteger(value: number | undefined, fallback: number) {
 
 function normalizeString(value?: string) {
   return typeof value === 'string' ? value.trim() : '';
+}
+
+function normalizeCount(value: unknown) {
+  const numberValue = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(numberValue) ? Math.max(0, Math.floor(numberValue)) : undefined;
 }
 
 function formatDate(value?: string) {
@@ -258,16 +265,34 @@ function mergeOrderSections(
   });
 }
 
+// 归一后端订单 Tab 计数，保证旧后端降级时仍保留稳定的本地 Tab 顺序。
+function normalizeOrderTabs(serverTabs?: BffOrderTabCount[]) {
+  const serverTabMap = new Map((serverTabs || [])
+    .filter((tab) => tab.key)
+    .map((tab) => [String(tab.key), tab]));
+
+  return ORDER_TABS.map((tab) => {
+    const serverTab = serverTabMap.get(tab.key);
+    return {
+      ...tab,
+      text: normalizeString(serverTab?.text) || tab.text,
+      count: normalizeCount(serverTab?.count),
+    };
+  });
+}
+
 // 获取真实订单列表分页，优先使用全类型聚合，未发布时再由前端合并当前已开放业态。
 export async function fetchOrderHomeData(options: FetchOrderHomeDataOptions = {}): Promise<OrderHomeData> {
   const page = normalizePositiveInteger(options.page, 1);
   const pageSize = normalizePositiveInteger(options.pageSize, ORDER_HOME_PAGE_SIZE);
+  const tabKey = normalizeString(options.tabKey || 'all');
   const existingSections = options.existingSections || [];
   const [orders, mallReviews] = await Promise.all([
     fetchMergedBffOrderPage({
       page,
       pageSize,
       scenes: ORDER_SCENES,
+      status: tabKey === 'all' ? undefined : tabKey,
     }),
     fetchBffMallMyReviews().catch(() => undefined),
   ]);
@@ -279,7 +304,7 @@ export async function fetchOrderHomeData(options: FetchOrderHomeDataOptions = {}
   const hasNewSections = sections.length > existingSections.length;
 
   return {
-    tabs: ORDER_TABS,
+    tabs: normalizeOrderTabs(orders.tabs),
     sections,
     page: orders.page,
     pageSize: orders.pageSize,

@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import Taro, { useReachBottom } from '@tarojs/taro';
+import { useState } from 'react';
+import Taro from '@tarojs/taro';
 import { Text, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
 import { BaseEmpty } from '@/core/components/BaseEmpty';
@@ -12,6 +12,13 @@ import { showWechatToast } from '@/core/utils/wechat-actions';
 import { fetchOrderHomeData, type OrderHomeData } from '@/pkg-order/services';
 import type { OrderHomeActionData, OrderHomeItemData } from '@/pkg-order/services/model';
 import './index.scss';
+
+const ORDER_TAB_KEYS = ['all', 'pendingPay', 'pendingReceive', 'pendingReview', 'aftersale'];
+
+function normalizeOrderTabKey(value?: string) {
+  const normalizedValue = typeof value === 'string' ? value.trim() : '';
+  return ORDER_TAB_KEYS.includes(normalizedValue) ? normalizedValue : 'all';
+}
 
 function resolveOrderActionRoute(actionText: string) {
   if (actionText === '去评价') return MINI_PACKAGE_ROUTES.orderReviewCreate;
@@ -91,10 +98,11 @@ const OrderIndexPage = observer(function OrderIndexPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const pageRuntime = usePageRuntime({
     initPage: async () => {
-      const nextData = await fetchOrderHomeData();
       const requestedTabKey = Taro.getCurrentInstance().router?.params?.tab;
-      const matchedTab = nextData.tabs.find((tab) => tab.key === requestedTabKey);
-      const nextActiveTabKey = matchedTab?.key ?? nextData.tabs[0]?.key ?? 'all';
+      const nextActiveTabKey = normalizeOrderTabKey(requestedTabKey);
+      const nextData = await fetchOrderHomeData({
+        tabKey: nextActiveTabKey,
+      });
       setPageData(nextData);
       setActiveTabKey(nextActiveTabKey);
       setLoadingMore(false);
@@ -102,6 +110,17 @@ const OrderIndexPage = observer(function OrderIndexPage() {
     loginRequired: true,
     loginReason: '登录后可查看订单',
   });
+
+  async function switchOrderTab(tabKey: string) {
+    if (tabKey === activeTabKey) return;
+
+    setActiveTabKey(tabKey);
+    setLoadingMore(false);
+    const nextData = await pageRuntime.withLoading(() => fetchOrderHomeData({
+      tabKey,
+    }));
+    setPageData(nextData);
+  }
 
   async function loadMoreOrders() {
     if (!pageData?.hasMore || loadingMore) return;
@@ -111,6 +130,7 @@ const OrderIndexPage = observer(function OrderIndexPage() {
       const nextData = await fetchOrderHomeData({
         page: pageData.page + 1,
         pageSize: pageData.pageSize,
+        tabKey: activeTabKey,
         existingSections: pageData.sections,
       });
       setPageData(nextData);
@@ -119,23 +139,22 @@ const OrderIndexPage = observer(function OrderIndexPage() {
     }
   }
 
-  useReachBottom(() => {
-    void loadMoreOrders();
-  });
-
-  const visibleSections = useMemo(() => {
-    if (!pageData) return [];
-    if (activeTabKey === 'all') return pageData.sections;
-    return pageData.sections.filter((section) => section.tabKey === activeTabKey);
-  }, [activeTabKey, pageData]);
-
   return pageRuntime.renderPage(() => {
     if (!pageData) return null;
     const emptyCopy = resolveOrderEmptyCopy(activeTabKey);
+    const visibleSections = pageData.sections;
 
     return (
       <View className="_pg">
-        <PageShell title="我的订单" className="_pg-shell" reserveTabBarSpace={false}>
+        <PageShell
+          title="我的订单"
+          className="_pg-shell"
+          reserveTabBarSpace={false}
+          scrollViewProps={{
+            lowerThreshold: 180,
+            onScrollToLower: () => void loadMoreOrders(),
+          }}
+        >
           <PageHeader>
             <View className="_pg-tabs">
               {pageData.tabs.map((tab) => {
@@ -145,9 +164,12 @@ const OrderIndexPage = observer(function OrderIndexPage() {
                   <View
                     className={`_pg-tabs_item ${active ? '_pg-tabs_item--active' : ''}`}
                     key={tab.key}
-                    onClick={() => setActiveTabKey(tab.key)}
+                    onClick={() => void switchOrderTab(tab.key)}
                   >
                     <Text>{tab.text}</Text>
+                    {typeof tab.count === 'number' && tab.count > 0 ? (
+                      <Text className="_pg-tabs_count">{tab.count > 99 ? '99+' : tab.count}</Text>
+                    ) : null}
                     {active ? <View className="_pg-tabs_indicator" /> : null}
                   </View>
                 );

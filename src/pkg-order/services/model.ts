@@ -3,6 +3,7 @@ import type { HkpAddressSummary, HkpCouponSummary, HkpFilterTab, HkpOrderSummary
 export interface OrderHomeTabData {
   key: string;
   text: string;
+  count?: number;
 }
 
 export interface OrderHomeActionData {

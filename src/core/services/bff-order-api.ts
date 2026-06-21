@@ -169,6 +169,16 @@ export interface BffOrderPageResult {
   size?: number;
   pageSize?: number;
   hasMore?: boolean;
+  statusCounts?: Record<string, number | string>;
+  tabCounts?: Record<string, number | string>;
+  sceneCounts?: Record<string, number | string>;
+  tabs?: BffOrderTabCount[];
+}
+
+export interface BffOrderTabCount {
+  key?: string;
+  text?: string;
+  count?: number | string;
 }
 
 export interface NormalizedBffOrderPage {
@@ -178,12 +188,15 @@ export interface NormalizedBffOrderPage {
   total?: number;
   hasMore: boolean;
   locallyPaged?: boolean;
+  tabCounts?: Record<string, number>;
+  tabs?: BffOrderTabCount[];
 }
 
 export interface FetchBffOrdersOptions {
   showErrorToast?: boolean;
   page?: number;
   size?: number;
+  status?: string;
 }
 
 export interface FetchMergedBffOrderPageOptions extends FetchBffOrdersOptions {
@@ -196,6 +209,7 @@ export interface FetchBffOrderStatusCountsOptions {
 }
 
 export interface BffOrderStatusCounts {
+  total?: number;
   pendingPay?: number;
   pendingPayment?: number;
   unpaid?: number;
@@ -208,6 +222,9 @@ export interface BffOrderStatusCounts {
   refunding?: number;
   counts?: BffOrderStatusCounts;
   statusCounts?: BffOrderStatusCounts;
+  tabCounts?: Record<string, number | string>;
+  sceneCounts?: Record<string, number | string>;
+  tabs?: BffOrderTabCount[];
   [key: string]: unknown;
 }
 
@@ -474,6 +491,17 @@ function readBffOrderPageTotal(response: BffOrderPageResult) {
   return undefined;
 }
 
+function normalizeCountRecord(record?: Record<string, number | string>) {
+  if (!record) return undefined;
+  return Object.entries(record).reduce<Record<string, number>>((result, [key, value]) => {
+    const numberValue = typeof value === 'number' ? value : Number(value);
+    if (Number.isFinite(numberValue)) {
+      result[key] = Math.max(0, Math.floor(numberValue));
+    }
+    return result;
+  }, {});
+}
+
 export function sortBffOrdersByCreatedAt(orders: BffOrder[]) {
   return orders.slice().sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
 }
@@ -516,6 +544,7 @@ export function normalizeBffOrderPage(
   const responsePageSize = normalizePositiveInteger(response.size ?? response.pageSize, pageSize);
   const responsePage = normalizePositiveInteger(response.page ?? response.current, page);
   const total = readBffOrderPageTotal(response);
+  const tabCounts = normalizeCountRecord(response.tabCounts);
   const hasMore = typeof response.hasMore === 'boolean'
     ? response.hasMore
     : typeof total === 'number'
@@ -529,7 +558,30 @@ export function normalizeBffOrderPage(
     total,
     hasMore,
     locallyPaged: false,
+    tabCounts,
+    tabs: response.tabs,
   };
+}
+
+// 调用订单中心新版聚合分页接口，承接后端三业态分页和状态 Tab 计数。
+export async function fetchBffOrderCenterPage(
+  sceneType: BffOrderSceneType,
+  page: number,
+  pageSize: number,
+  status?: string,
+  showErrorToast = true,
+) {
+  const response = await request<BffOrderPageResult>({
+    url: appendQuery('/api/bff/orders/page', {
+      sceneType,
+      status,
+      page,
+      pageSize,
+    }),
+    method: 'GET',
+    showErrorToast,
+  });
+  return normalizeBffOrderPage(response, page, pageSize);
 }
 
 export async function fetchBffOrderPage(
@@ -552,7 +604,9 @@ export async function fetchMergedBffOrderPage(
   const page = normalizePositiveInteger(options.page, 1);
   const pageSize = normalizePositiveInteger(options.pageSize ?? options.size, 10);
   const scenes = options.scenes?.length ? options.scenes : DEFAULT_BFF_ORDER_SCENES;
-  const allPage = await fetchBffOrderPage('ALL', page, pageSize, false).catch(() => undefined);
+  const allPage = await fetchBffOrderCenterPage('ALL', page, pageSize, options.status, false)
+    .catch(() => fetchBffOrderPage('ALL', page, pageSize, false))
+    .catch(() => undefined);
   if (allPage && (allPage.orders.length > 0 || typeof allPage.total === 'number')) return allPage;
 
   const sceneResults = await Promise.allSettled(
@@ -567,23 +621,34 @@ export async function fetchMergedBffOrderPage(
   }
 
   const mergedOrders = sortBffOrdersByCreatedAt(dedupeBffOrders(scenePages.flatMap((scenePage) => scenePage.orders)));
+  const filteredOrders = options.status && options.status !== 'all'
+    ? mergedOrders.filter((order) => {
+      const normalizedStatus = String(order.orderStatus || '').toUpperCase();
+      const normalizedTab = String(options.status || '').toLowerCase();
+      if (normalizedTab === 'pendingpay') return ['PENDING', 'PENDING_PAYMENT', 'UNPAID', 'PAYING'].includes(normalizedStatus);
+      if (normalizedTab === 'pendingreceive') return ['PAID', 'WAIT_USE', 'FULFILLING', 'PART_USED', 'PARTIALLY_USED', 'PARTIALLYUSED'].includes(normalizedStatus);
+      if (normalizedTab === 'pendingreview') return ['FULFILLED', 'USED', 'COMPLETED', 'SUCCESS'].includes(normalizedStatus);
+      if (normalizedTab === 'aftersale') return ['REFUNDING', 'REFUND_PENDING', 'REFUND_PROCESSING', 'REFUNDED'].includes(normalizedStatus);
+      return normalizedStatus === String(options.status || '').toUpperCase();
+    })
+    : mergedOrders;
   const total = scenePages.every((scenePage) => typeof scenePage.total === 'number')
     ? scenePages.reduce((sum, scenePage) => sum + (scenePage.total || 0), 0)
     : undefined;
   const hasScenePagingSignal = scenePages.some((scenePage) => (
     scenePage.locallyPaged || scenePage.hasMore || typeof scenePage.total === 'number'
   ));
-  const shouldSliceMergedLocally = !hasScenePagingSignal && mergedOrders.length > pageSize;
+  const shouldSliceMergedLocally = !hasScenePagingSignal && filteredOrders.length > pageSize;
   const startIndex = shouldSliceMergedLocally ? (page - 1) * pageSize : 0;
 
   return {
-    orders: mergedOrders.slice(startIndex, startIndex + pageSize),
+    orders: filteredOrders.slice(startIndex, startIndex + pageSize),
     page,
     pageSize,
-    total,
+    total: options.status && options.status !== 'all' ? filteredOrders.length : total,
     hasMore: shouldSliceMergedLocally
-      ? startIndex + pageSize < mergedOrders.length
-      : scenePages.some((scenePage) => scenePage.hasMore) || mergedOrders.length > pageSize,
+      ? startIndex + pageSize < filteredOrders.length
+      : scenePages.some((scenePage) => scenePage.hasMore) || filteredOrders.length > pageSize,
   };
 }
 
