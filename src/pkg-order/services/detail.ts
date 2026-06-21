@@ -1,7 +1,6 @@
 import {
   fetchBffOrderDetail,
   getBffTicketVoucherText,
-  isBffTicketVoucherReady,
   type BffOrder,
   type BffTicketVoucher,
 } from '@/core/services/bff-order-api';
@@ -161,7 +160,7 @@ function compactFields<T extends { value: string }>(fields: T[]) {
 
 function mapTicketInstances(order: BffOrder): OrderTicketInstanceData[] {
   const voucherInstances = (order.ticketVouchers || [])
-    .filter(isBffTicketVoucherReady)
+    .filter(isDisplayableTicketVoucher)
     .map((voucher) => mapTicketVoucher(order, voucher))
     .filter((ticket): ticket is OrderTicketInstanceData => Boolean(ticket));
   if (voucherInstances.length) return voucherInstances;
@@ -200,6 +199,26 @@ function resolveTicketVoucherStatusText(voucher: BffTicketVoucher) {
     getBffTicketVoucherText(voucher, 'ticketStatus')
       || getBffTicketVoucherText(voucher, 'status')
       || getBffTicketVoucherText(voucher, 'useStatus'),
+  );
+}
+
+function isDisplayableTicketVoucher(voucher?: BffTicketVoucher) {
+  if (!voucher) return false;
+  const status = String(
+    getBffTicketVoucherText(voucher, 'ticketStatus')
+      || getBffTicketVoucherText(voucher, 'status')
+      || getBffTicketVoucherText(voucher, 'useStatus')
+      || '',
+  ).toUpperCase();
+  if (['FAILED', 'FAIL'].includes(status)) return false;
+
+  return Boolean(
+    getBffTicketVoucherText(voucher, 'ticketCode')
+      || getBffTicketVoucherText(voucher, 'voucherCode')
+      || getBffTicketVoucherText(voucher, 'qrCodePayload')
+      || getBffTicketVoucherText(voucher, 'codeImage')
+      || getBffTicketVoucherText(voucher, 'qrImage')
+      || getBffTicketVoucherText(voucher, 'qrCodeUrl'),
   );
 }
 

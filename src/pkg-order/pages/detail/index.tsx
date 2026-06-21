@@ -15,6 +15,7 @@ import './index.scss';
 
 const TICKET_ORDER_DETAIL_POLL_INTERVAL_MS = 3000;
 const TICKET_ORDER_DETAIL_POLLING_STATUSES = [
+  'PENDING_PAYMENT',
   'PAYING',
   'PAID',
   'WAIT_USE',
@@ -26,6 +27,7 @@ const TICKET_ORDER_DETAIL_POLLING_STATUSES = [
   'REFUND_PENDING',
   'REFUND_PROCESSING',
 ];
+const TICKET_ORDER_DETAIL_TERMINAL_TICKET_STATUS_TEXTS = ['已核销', '已作废', '已退款', '已过期'];
 
 function formatPayExpireAt(payExpireAt?: string) {
   if (!payExpireAt) return '30分钟内';
@@ -73,7 +75,12 @@ function shouldPollTicketOrderDetail(detailData?: OrderDetailData) {
   if (detailData.sceneType !== 'TICKET') return false;
 
   const normalizedStatus = String(detailData.orderStatus || '').toUpperCase();
-  return TICKET_ORDER_DETAIL_POLLING_STATUSES.includes(normalizedStatus);
+  if (!TICKET_ORDER_DETAIL_POLLING_STATUSES.includes(normalizedStatus)) return false;
+
+  if (!detailData.ticketInstances.length) return true;
+  return detailData.ticketInstances.some((ticket) => (
+    !TICKET_ORDER_DETAIL_TERMINAL_TICKET_STATUS_TEXTS.includes(ticket.statusText)
+  ));
 }
 
 function resolveTicketOrderPollingSnapshot(detailData?: OrderDetailData) {
