@@ -198,6 +198,18 @@
     background: #ffffff;
   }
 
+  &_canvas-host {
+    position: fixed;
+    top: -9999px;
+    left: -9999px;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  &_canvas {
+    display: block;
+  }
+
   &_payload {
     display: block;
     margin-top: 18px;

@@ -1,11 +1,13 @@
 import Taro, { useDidHide, useDidShow } from '@tarojs/taro';
-import { Text, View } from '@tarojs/components';
+import { Canvas, Text, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
+import drawQrcode from 'weapp-qrcode';
 import { AppImage } from '@/core/components/AppImage';
 import { PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import { useEffect, useRef, useState } from 'react';
+import type { CSSProperties } from 'react';
 import { navigateToMiniRoute } from '@/core/utils/navigation';
 import { requestWechatPayment, showWechatConfirm, showWechatToast } from '@/core/utils/wechat-actions';
 import { syncBffPaymentStatusSilently } from '@/core/services/bff-api';
@@ -14,6 +16,9 @@ import { fetchDetailData, type OrderDetailData } from '@/pkg-order/services/deta
 import './index.scss';
 
 const TICKET_ORDER_DETAIL_POLL_INTERVAL_MS = 3000;
+const TICKET_CODE_CANVAS_ID_PREFIX = 'ticket-order-code-canvas';
+const TICKET_CODE_CANVAS_SIZE_PX = 300;
+const WEAPP_DESIGN_WIDTH = 750;
 const TICKET_ORDER_DETAIL_POLLING_STATUSES = [
   'PENDING_PAYMENT',
   'PAYING',
@@ -56,6 +61,41 @@ function resolveAmountLabel(detailData: OrderDetailData) {
 
 function resolveCouponDetailRoute(couponNo: string) {
   return `${MINI_PACKAGE_ROUTES.memberCouponDetail}?id=${encodeURIComponent(couponNo)}`;
+}
+
+function resolveTicketCodeCanvasSizeRpx() {
+  try {
+    const systemInfo = Taro.getSystemInfoSync();
+    if (!systemInfo.windowWidth) return TICKET_CODE_CANVAS_SIZE_PX * 2;
+
+    return Math.round((TICKET_CODE_CANVAS_SIZE_PX * WEAPP_DESIGN_WIDTH) / systemInfo.windowWidth);
+  } catch {
+    return TICKET_CODE_CANVAS_SIZE_PX * 2;
+  }
+}
+
+function resolveTicketQrKey(ticket: OrderDetailData['ticketInstances'][number], index: number) {
+  return `${ticket.ticketNo || ticket.qrCodePayload || 'ticket'}-${index}`;
+}
+
+function resolveTicketQrCanvasId(index: number) {
+  return `${TICKET_CODE_CANVAS_ID_PREFIX}-${index}`;
+}
+
+function convertTicketQrCanvasToImage(canvasId: string) {
+  return new Promise<string>((resolve, reject) => {
+    Taro.canvasToTempFilePath({
+      canvasId,
+      x: 0,
+      y: 0,
+      width: TICKET_CODE_CANVAS_SIZE_PX,
+      height: TICKET_CODE_CANVAS_SIZE_PX,
+      destWidth: TICKET_CODE_CANVAS_SIZE_PX,
+      destHeight: TICKET_CODE_CANVAS_SIZE_PX,
+      success: (result) => resolve(result.tempFilePath),
+      fail: reject,
+    });
+  });
 }
 
 function resolveOrderFooterActionsClassName() {
@@ -103,9 +143,15 @@ function resolveTicketOrderPollingSnapshot(detailData?: OrderDetailData) {
 
 const DetailPage = observer(function DetailPage() {
   const [detailData, setDetailData] = useState<OrderDetailData>();
+  const [ticketQrCanvasSizeRpx] = useState(resolveTicketCodeCanvasSizeRpx);
+  const [localTicketQrImages, setLocalTicketQrImages] = useState<Record<string, string>>({});
   const pageVisibleRef = useRef(true);
   const pollingRequestRef = useRef(false);
   const pollingSnapshotRef = useRef('');
+  const hiddenTicketQrCanvasStyle: CSSProperties = {
+    width: `${ticketQrCanvasSizeRpx}rpx`,
+    height: `${ticketQrCanvasSizeRpx}rpx`,
+  };
 
   function applyDetailData(nextData: OrderDetailData) {
     pollingSnapshotRef.current = resolveTicketOrderPollingSnapshot(nextData);
@@ -178,6 +224,64 @@ const DetailPage = observer(function DetailPage() {
       clearInterval(timer);
     };
   }, [detailData?.id, detailData?.orderStatus, detailData?.sceneType, detailData?.ticketInstances.length]);
+
+  useEffect(() => {
+    if (!detailData?.ticketInstances.length) {
+      setLocalTicketQrImages({});
+      return undefined;
+    }
+
+    const qrTargets = detailData.ticketInstances
+      .map((ticket, index) => ({
+        key: resolveTicketQrKey(ticket, index),
+        canvasId: resolveTicketQrCanvasId(index),
+        payload: ticket.qrImageSrc ? '' : ticket.qrCodePayload,
+      }))
+      .filter((item): item is { key: string; canvasId: string; payload: string } => Boolean(item.payload));
+    const nextKeys = new Set(qrTargets.map((item) => item.key));
+
+    setLocalTicketQrImages((images) => {
+      const nextImages: Record<string, string> = {};
+      let changed = false;
+      Object.entries(images).forEach(([key, imageSrc]) => {
+        if (nextKeys.has(key)) {
+          nextImages[key] = imageSrc;
+          return;
+        }
+        changed = true;
+      });
+      return changed ? nextImages : images;
+    });
+
+    if (!qrTargets.length) return undefined;
+
+    let cancelled = false;
+    Taro.nextTick(() => {
+      qrTargets.forEach((item) => {
+        drawQrcode({
+          width: TICKET_CODE_CANVAS_SIZE_PX,
+          height: TICKET_CODE_CANVAS_SIZE_PX,
+          canvasId: item.canvasId,
+          text: item.payload,
+          background: '#ffffff',
+          foreground: '#111111',
+          correctLevel: 2,
+          callback: () => {
+            void convertTicketQrCanvasToImage(item.canvasId)
+              .then((imageSrc) => {
+                if (cancelled) return;
+                setLocalTicketQrImages((images) => ({ ...images, [item.key]: imageSrc }));
+              })
+              .catch(() => undefined);
+          },
+        });
+      });
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [detailData?.id, detailData?.ticketInstances]);
 
   async function handlePrimaryAction() {
     if (!detailData) return;
@@ -290,50 +394,64 @@ const DetailPage = observer(function DetailPage() {
             {detailData.ticketInstances.length ? (
               <View className="_pg-card">
                 <Text className="_pg-card_section-title">入园凭证</Text>
-                {detailData.ticketInstances.map((ticket) => (
-                  <View className="_pg-ticket-code" key={ticket.ticketNo || ticket.qrCodePayload}>
-                    <View className="_pg-ticket-code_header">
-                      <Text className="_pg-ticket-code_title">{ticket.productName}</Text>
-                      <Text className="_pg-ticket-code_status">{ticket.statusText}</Text>
+                {detailData.ticketInstances.map((ticket, index) => {
+                  const localQrImageSrc = localTicketQrImages[resolveTicketQrKey(ticket, index)];
+                  const qrImageSrc = ticket.qrImageSrc || localQrImageSrc;
+
+                  return (
+                    <View className="_pg-ticket-code" key={resolveTicketQrKey(ticket, index)}>
+                      <View className="_pg-ticket-code_header">
+                        <Text className="_pg-ticket-code_title">{ticket.productName}</Text>
+                        <Text className="_pg-ticket-code_status">{ticket.statusText}</Text>
+                      </View>
+                      {qrImageSrc ? (
+                        <AppImage className="_pg-ticket-code_qr" src={qrImageSrc} mode="aspectFit" emptyState="error" />
+                      ) : null}
+                      {!ticket.qrImageSrc && ticket.qrCodePayload ? (
+                        <View className="_pg-ticket-code_canvas-host" style={hiddenTicketQrCanvasStyle}>
+                          <Canvas
+                            canvasId={resolveTicketQrCanvasId(index)}
+                            className="_pg-ticket-code_canvas"
+                            style={hiddenTicketQrCanvasStyle}
+                          />
+                        </View>
+                      ) : null}
+                      {ticket.qrCodePayload ? (
+                        <Text className="_pg-ticket-code_payload">{ticket.qrCodePayload}</Text>
+                      ) : null}
+                      {ticket.ticketNo ? (
+                        <View className="_pg-line-row">
+                          <Text className="_pg-line-row_label">票码</Text>
+                          <Text className="_pg-line-row_value">{ticket.ticketNo}</Text>
+                        </View>
+                      ) : null}
+                      {ticket.skuName ? (
+                        <View className="_pg-line-row">
+                          <Text className="_pg-line-row_label">票种</Text>
+                          <Text className="_pg-line-row_value">{ticket.skuName}</Text>
+                        </View>
+                      ) : null}
+                      {ticket.visitDate ? (
+                        <View className="_pg-line-row">
+                          <Text className="_pg-line-row_label">游玩日期</Text>
+                          <Text className="_pg-line-row_value">{ticket.visitDate}</Text>
+                        </View>
+                      ) : null}
+                      {ticket.validTimeText ? (
+                        <View className="_pg-line-row">
+                          <Text className="_pg-line-row_label">有效期</Text>
+                          <Text className="_pg-line-row_value">{ticket.validTimeText}</Text>
+                        </View>
+                      ) : null}
+                      {ticket.useTimesText ? (
+                        <View className="_pg-line-row">
+                          <Text className="_pg-line-row_label">次数</Text>
+                          <Text className="_pg-line-row_value">{ticket.useTimesText}</Text>
+                        </View>
+                      ) : null}
                     </View>
-                    {ticket.qrImageSrc ? (
-                      <AppImage className="_pg-ticket-code_qr" src={ticket.qrImageSrc} mode="aspectFit" emptyState="error" />
-                    ) : null}
-                    {ticket.qrCodePayload ? (
-                      <Text className="_pg-ticket-code_payload">{ticket.qrCodePayload}</Text>
-                    ) : null}
-                    {ticket.ticketNo ? (
-                      <View className="_pg-line-row">
-                        <Text className="_pg-line-row_label">票码</Text>
-                        <Text className="_pg-line-row_value">{ticket.ticketNo}</Text>
-                      </View>
-                    ) : null}
-                    {ticket.skuName ? (
-                      <View className="_pg-line-row">
-                        <Text className="_pg-line-row_label">票种</Text>
-                        <Text className="_pg-line-row_value">{ticket.skuName}</Text>
-                      </View>
-                    ) : null}
-                    {ticket.visitDate ? (
-                      <View className="_pg-line-row">
-                        <Text className="_pg-line-row_label">游玩日期</Text>
-                        <Text className="_pg-line-row_value">{ticket.visitDate}</Text>
-                      </View>
-                    ) : null}
-                    {ticket.validTimeText ? (
-                      <View className="_pg-line-row">
-                        <Text className="_pg-line-row_label">有效期</Text>
-                        <Text className="_pg-line-row_value">{ticket.validTimeText}</Text>
-                      </View>
-                    ) : null}
-                    {ticket.useTimesText ? (
-                      <View className="_pg-line-row">
-                        <Text className="_pg-line-row_label">次数</Text>
-                        <Text className="_pg-line-row_value">{ticket.useTimesText}</Text>
-                      </View>
-                    ) : null}
-                  </View>
-                ))}
+                  );
+                })}
               </View>
             ) : null}
 
