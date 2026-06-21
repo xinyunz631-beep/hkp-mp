@@ -36,6 +36,9 @@ export interface OrderHomeSectionData {
 export interface OrderHomeData {
   tabs: OrderHomeTabData[];
   sections: OrderHomeSectionData[];
+  page: number;
+  pageSize: number;
+  hasMore: boolean;
 }
 
 export interface OrderCheckoutProductData {

@@ -158,6 +158,61 @@ export interface BffOrder {
   updatedAt?: string;
 }
 
+export interface BffOrderPageResult {
+  list?: BffOrder[];
+  items?: BffOrder[];
+  records?: BffOrder[];
+  total?: number;
+  totalCount?: number;
+  page?: number;
+  current?: number;
+  size?: number;
+  pageSize?: number;
+  hasMore?: boolean;
+}
+
+export interface NormalizedBffOrderPage {
+  orders: BffOrder[];
+  page: number;
+  pageSize: number;
+  total?: number;
+  hasMore: boolean;
+  locallyPaged?: boolean;
+}
+
+export interface FetchBffOrdersOptions {
+  showErrorToast?: boolean;
+  page?: number;
+  size?: number;
+}
+
+export interface FetchMergedBffOrderPageOptions extends FetchBffOrdersOptions {
+  pageSize?: number;
+  scenes?: BffOrderSceneType[];
+}
+
+export interface FetchBffOrderStatusCountsOptions {
+  showErrorToast?: boolean;
+}
+
+export interface BffOrderStatusCounts {
+  pendingPay?: number;
+  pendingPayment?: number;
+  unpaid?: number;
+  pendingReceive?: number;
+  pendingUse?: number;
+  pendingFulfillment?: number;
+  pendingReview?: number;
+  aftersale?: number;
+  afterSale?: number;
+  refunding?: number;
+  counts?: BffOrderStatusCounts;
+  statusCounts?: BffOrderStatusCounts;
+  [key: string]: unknown;
+}
+
+const DEFAULT_BFF_ORDER_SCENES: BffOrderSceneType[] = ['TICKET', 'MALL', 'HOTEL'];
+
 export interface BffOrderPrepay {
   payNo?: string;
   orderNo?: string;
@@ -396,6 +451,154 @@ function appendQuery(url: string, params: Record<string, string | number | undef
   return query ? `${url}?${query}` : url;
 }
 
+function normalizePositiveInteger(value: number | undefined, fallback: number) {
+  return Number.isFinite(value) && Number(value) > 0 ? Math.floor(Number(value)) : fallback;
+}
+
+function normalizeOrderNo(value?: string) {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function isBffOrderPageResult(response: BffOrder[] | BffOrderPageResult): response is BffOrderPageResult {
+  return Boolean(response && !Array.isArray(response) && typeof response === 'object');
+}
+
+function readBffOrderPageOrders(response: BffOrder[] | BffOrderPageResult) {
+  if (Array.isArray(response)) return response;
+  return response.list || response.items || response.records || [];
+}
+
+function readBffOrderPageTotal(response: BffOrderPageResult) {
+  if (typeof response.total === 'number' && response.total >= 0) return response.total;
+  if (typeof response.totalCount === 'number' && response.totalCount >= 0) return response.totalCount;
+  return undefined;
+}
+
+export function sortBffOrdersByCreatedAt(orders: BffOrder[]) {
+  return orders.slice().sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+}
+
+export function dedupeBffOrders(orders: BffOrder[]) {
+  const seenOrderNos = new Set<string>();
+  return orders.filter((order) => {
+    const orderNo = normalizeOrderNo(order.orderNo);
+    if (!orderNo || seenOrderNos.has(orderNo)) return false;
+    seenOrderNos.add(orderNo);
+    return true;
+  });
+}
+
+export function normalizeBffOrderPage(
+  response: BffOrder[] | BffOrderPageResult,
+  page: number,
+  pageSize: number,
+): NormalizedBffOrderPage {
+  const responseOrders = readBffOrderPageOrders(response);
+  if (!isBffOrderPageResult(response)) {
+    const shouldSliceLocally = responseOrders.length > pageSize;
+    const startIndex = shouldSliceLocally ? (page - 1) * pageSize : 0;
+    const orders = shouldSliceLocally
+      ? responseOrders.slice(startIndex, startIndex + pageSize)
+      : responseOrders;
+
+    return {
+      orders,
+      page,
+      pageSize,
+      hasMore: shouldSliceLocally
+        ? startIndex + pageSize < responseOrders.length
+        : orders.length === pageSize,
+      locallyPaged: shouldSliceLocally,
+    };
+  }
+
+  const orders = responseOrders;
+  const responsePageSize = normalizePositiveInteger(response.size ?? response.pageSize, pageSize);
+  const responsePage = normalizePositiveInteger(response.page ?? response.current, page);
+  const total = readBffOrderPageTotal(response);
+  const hasMore = typeof response.hasMore === 'boolean'
+    ? response.hasMore
+    : typeof total === 'number'
+      ? responsePage * responsePageSize < total
+      : orders.length >= responsePageSize;
+
+  return {
+    orders,
+    page: responsePage,
+    pageSize: responsePageSize,
+    total,
+    hasMore,
+    locallyPaged: false,
+  };
+}
+
+export async function fetchBffOrderPage(
+  sceneType: BffOrderSceneType,
+  page: number,
+  pageSize: number,
+  showErrorToast = true,
+) {
+  const response = await fetchBffOrders(sceneType, {
+    page,
+    size: pageSize,
+    showErrorToast,
+  });
+  return normalizeBffOrderPage(response, page, pageSize);
+}
+
+export async function fetchMergedBffOrderPage(
+  options: FetchMergedBffOrderPageOptions = {},
+): Promise<NormalizedBffOrderPage> {
+  const page = normalizePositiveInteger(options.page, 1);
+  const pageSize = normalizePositiveInteger(options.pageSize ?? options.size, 10);
+  const scenes = options.scenes?.length ? options.scenes : DEFAULT_BFF_ORDER_SCENES;
+  const allPage = await fetchBffOrderPage('ALL', page, pageSize, false).catch(() => undefined);
+  if (allPage && (allPage.orders.length > 0 || typeof allPage.total === 'number')) return allPage;
+
+  const sceneResults = await Promise.allSettled(
+    scenes.map((scene) => fetchBffOrderPage(scene, page, pageSize, options.showErrorToast ?? true)),
+  );
+  const scenePages = sceneResults
+    .filter((result): result is PromiseFulfilledResult<NormalizedBffOrderPage> => result.status === 'fulfilled')
+    .map((result) => result.value);
+  if (!scenePages.length) {
+    const rejected = sceneResults.find((result): result is PromiseRejectedResult => result.status === 'rejected');
+    throw rejected?.reason || new Error('ORDER_LIST_UNAVAILABLE');
+  }
+
+  const mergedOrders = sortBffOrdersByCreatedAt(dedupeBffOrders(scenePages.flatMap((scenePage) => scenePage.orders)));
+  const total = scenePages.every((scenePage) => typeof scenePage.total === 'number')
+    ? scenePages.reduce((sum, scenePage) => sum + (scenePage.total || 0), 0)
+    : undefined;
+  const hasScenePagingSignal = scenePages.some((scenePage) => (
+    scenePage.locallyPaged || scenePage.hasMore || typeof scenePage.total === 'number'
+  ));
+  const shouldSliceMergedLocally = !hasScenePagingSignal && mergedOrders.length > pageSize;
+  const startIndex = shouldSliceMergedLocally ? (page - 1) * pageSize : 0;
+
+  return {
+    orders: mergedOrders.slice(startIndex, startIndex + pageSize),
+    page,
+    pageSize,
+    total,
+    hasMore: shouldSliceMergedLocally
+      ? startIndex + pageSize < mergedOrders.length
+      : scenePages.some((scenePage) => scenePage.hasMore) || mergedOrders.length > pageSize,
+  };
+}
+
+// 会员页订单角标优先消费后端轻量计数接口；老后端未发布时由调用方静默降级。
+export function fetchBffOrderStatusCounts(
+  sceneType: BffOrderSceneType = 'ALL',
+  options: FetchBffOrderStatusCountsOptions = {},
+) {
+  return request<BffOrderStatusCounts>({
+    url: appendQuery('/api/bff/orders/status-counts', { sceneType }),
+    method: 'GET',
+    showErrorToast: options.showErrorToast ?? false,
+  });
+}
+
 export function submitBffOrder(data: BffOrderSubmitRequest) {
   return request<BffOrderSubmitResponse, BffOrderSubmitRequest>({
     url: '/api/bff/orders/submit',
@@ -481,10 +684,14 @@ export function fetchBffOrderDetail(orderNo: string, options: { showErrorToast?:
 
 export function fetchBffOrders(
   sceneType: BffOrderSceneType = 'TICKET',
-  options: { showErrorToast?: boolean } = {},
+  options: FetchBffOrdersOptions = {},
 ) {
-  return request<BffOrder[]>({
-    url: appendQuery('/api/bff/orders', { sceneType }),
+  return request<BffOrder[] | BffOrderPageResult>({
+    url: appendQuery('/api/bff/orders', {
+      sceneType,
+      page: options.page,
+      size: options.size,
+    }),
     method: 'GET',
     showErrorToast: options.showErrorToast,
   });

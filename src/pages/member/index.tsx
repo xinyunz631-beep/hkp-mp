@@ -8,6 +8,7 @@ import { AuthAction } from '@/core/components/AuthAction';
 import { PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { fetchBffCrmProfile } from '@/core/services/bff-crm-api';
+import { fetchOrderStatusBadgeCounts, type OrderStatusBadgeCounts } from '@/core/services/order-status-badges';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import { rootStore } from '@/core/store';
 import { resolveMemberAvatar, resolveMemberLevel } from '@/core/utils/member-profile';
@@ -43,6 +44,7 @@ interface ProfileServiceItem {
 
 interface MemberMetricState {
   favoriteCount?: number;
+  orderBadgeCounts?: OrderStatusBadgeCounts;
 }
 
 const PARK_PHONE = '4009778899';
@@ -53,7 +55,6 @@ const orderActions: ProfileOrderItem[] = [
     icon: 'coupon',
     route: `${MINI_PACKAGE_ROUTES.orderHome}?tab=pendingPay`,
     reason: '登录后可查看待支付订单',
-    badge: '1',
   },
   {
     key: 'pendingReceive',
@@ -119,6 +120,18 @@ const serviceActions: ProfileServiceItem[] = [
 
 function openMiniRoute(route: string) {
   navigateToMiniRoute(route);
+}
+
+function formatOrderBadge(count?: number) {
+  if (!count || count <= 0) return undefined;
+  return count > 99 ? '99+' : String(count);
+}
+
+function buildOrderActionItems(counts?: OrderStatusBadgeCounts) {
+  return orderActions.map((item) => ({
+    ...item,
+    badge: formatOrderBadge(counts?.[item.key as keyof OrderStatusBadgeCounts]),
+  }));
 }
 
 function handleLegacyBind() {
@@ -254,6 +267,10 @@ const MemberPage = observer(function MemberPage() {
   const memberLevel = resolveMemberLevel(memberProfile);
   const memberAvatar = resolveMemberAvatar(memberProfile);
   const displayName = memberProfile?.nickname || '微信用户';
+  const orderActionItems = useMemo(
+    () => buildOrderActionItems(memberMetrics.orderBadgeCounts),
+    [memberMetrics.orderBadgeCounts],
+  );
   const metrics = useMemo<ProfileMetricItem[]>(() => [
     {
       key: 'favorites',
@@ -287,9 +304,13 @@ const MemberPage = observer(function MemberPage() {
     }
 
     try {
-      const profile = await fetchBffCrmProfile();
+      const [profile, orderBadgeCounts] = await Promise.all([
+        fetchBffCrmProfile(),
+        fetchOrderStatusBadgeCounts().catch(() => undefined),
+      ]);
       setMemberMetrics({
         favoriteCount: profile.favoriteCount,
+        orderBadgeCounts,
       });
     } catch {
       // 会员页指标失败时保持现有页面可用，不回退假数据。
@@ -342,7 +363,7 @@ const MemberPage = observer(function MemberPage() {
           </View>
 
           <View className="_pg-order-card">
-            <View className="_pg-order_grid">{orderActions.map((item) => renderOrderAction(item))}</View>
+            <View className="_pg-order_grid">{orderActionItems.map((item) => renderOrderAction(item))}</View>
             <View className="_pg-order_line" />
           </View>
 

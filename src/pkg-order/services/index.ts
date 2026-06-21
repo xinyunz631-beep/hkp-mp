@@ -1,7 +1,17 @@
-import { fetchBffOrders, type BffOrder, type BffOrderSceneType } from '@/core/services/bff-order-api';
+import {
+  fetchMergedBffOrderPage,
+  sortBffOrdersByCreatedAt,
+  type BffOrder,
+  type BffOrderSceneType,
+} from '@/core/services/bff-order-api';
 import { fetchBffMallMyReviews, type BffMallMemberReviewsData } from '@/core/services/bff-mall-api';
 import { sanitizeMallRuntimeText, sanitizeMallRuntimeUrl } from '@/core/utils/mall-runtime';
-import type { OrderHomeActionData, OrderHomeData, OrderHomeItemData, OrderHomeSectionData } from './model';
+import type {
+  OrderHomeActionData,
+  OrderHomeData,
+  OrderHomeItemData,
+  OrderHomeSectionData,
+} from './model';
 
 export type { OrderHomeData } from './model';
 
@@ -14,9 +24,20 @@ const ORDER_TABS = [
 ];
 
 const ORDER_SCENES: BffOrderSceneType[] = ['TICKET', 'MALL', 'HOTEL'];
+const ORDER_HOME_PAGE_SIZE = 10;
+
+interface FetchOrderHomeDataOptions {
+  page?: number;
+  pageSize?: number;
+  existingSections?: OrderHomeSectionData[];
+}
 
 function formatCent(value?: number) {
   return `¥${((value || 0) / 100).toFixed(2)}`;
+}
+
+function normalizePositiveInteger(value: number | undefined, fallback: number) {
+  return Number.isFinite(value) && Number(value) > 0 ? Math.floor(Number(value)) : fallback;
 }
 
 function normalizeString(value?: string) {
@@ -93,17 +114,13 @@ function buildReviewedMallItemSet(data?: BffMallMemberReviewsData) {
     .filter((value) => value !== '::'));
 }
 
-// 订单中心优先承接后端全类型聚合，未发布或空结果时降级到当前三业态查询。
-async function fetchMergedBffOrders() {
-  const allOrders = await fetchBffOrders('ALL', { showErrorToast: false }).catch(() => undefined);
-  if (Array.isArray(allOrders) && allOrders.length > 0) return allOrders;
-
-  return Promise.all(ORDER_SCENES.map((scene) => fetchBffOrders(scene))).then((result) => result.flat());
-}
-
 function hasReviewedMallOrder(order: BffOrder, reviewedMallItems: Set<string>) {
   if (order.sceneType !== 'MALL') return true;
-  return (order.items || []).some((item) => reviewedMallItems.has(reviewLookupKey(order.orderNo, item.itemId || item.lineNo)));
+  const reviewableItemIds = (order.items || [])
+    .map((item) => item.itemId || item.lineNo)
+    .filter((itemId): itemId is string => Boolean(itemId));
+  if (!reviewableItemIds.length) return false;
+  return reviewableItemIds.every((itemId) => reviewedMallItems.has(reviewLookupKey(order.orderNo, itemId)));
 }
 
 function resolveTabKey(order: BffOrder, reviewedMallItems: Set<string>, reviewLookupReady: boolean) {
@@ -229,21 +246,43 @@ function mapOrderSection(order: BffOrder, reviewedMallItems: Set<string>, review
   };
 }
 
-// 获取真实订单列表，优先使用全类型聚合，未发布时再由前端合并当前已开放业态。
-export async function fetchOrderHomeData(): Promise<OrderHomeData> {
+function mergeOrderSections(
+  existingSections: OrderHomeSectionData[],
+  nextSections: OrderHomeSectionData[],
+) {
+  const seenSectionIds = new Set<string>();
+  return [...existingSections, ...nextSections].filter((section) => {
+    if (seenSectionIds.has(section.id)) return false;
+    seenSectionIds.add(section.id);
+    return true;
+  });
+}
+
+// 获取真实订单列表分页，优先使用全类型聚合，未发布时再由前端合并当前已开放业态。
+export async function fetchOrderHomeData(options: FetchOrderHomeDataOptions = {}): Promise<OrderHomeData> {
+  const page = normalizePositiveInteger(options.page, 1);
+  const pageSize = normalizePositiveInteger(options.pageSize, ORDER_HOME_PAGE_SIZE);
+  const existingSections = options.existingSections || [];
   const [orders, mallReviews] = await Promise.all([
-    fetchMergedBffOrders(),
+    fetchMergedBffOrderPage({
+      page,
+      pageSize,
+      scenes: ORDER_SCENES,
+    }),
     fetchBffMallMyReviews().catch(() => undefined),
   ]);
   const reviewLookupReady = Boolean(mallReviews);
   const reviewedMallItems = buildReviewedMallItemSet(mallReviews);
-  const sections = orders
-    .slice()
-    .sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')))
+  const nextSections = sortBffOrdersByCreatedAt(orders.orders)
     .map((order) => mapOrderSection(order, reviewedMallItems, reviewLookupReady));
+  const sections = mergeOrderSections(existingSections, nextSections);
+  const hasNewSections = sections.length > existingSections.length;
 
   return {
     tabs: ORDER_TABS,
     sections,
+    page: orders.page,
+    pageSize: orders.pageSize,
+    hasMore: orders.hasMore && hasNewSections,
   };
 }

@@ -4,6 +4,10 @@ import {
   type BffOrder,
   type BffTicketVoucher,
 } from '@/core/services/bff-order-api';
+import {
+  fetchBffMallMyReviews,
+  type BffMallMemberReviewsData,
+} from '@/core/services/bff-mall-api';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { sanitizeMallRuntimeText } from '@/core/utils/mall-runtime';
 import type {
@@ -54,6 +58,11 @@ function isClosedStatus(status?: string) {
   return ['CLOSED', 'EXPIRED', 'TIMEOUT', 'TIMEOUT_CLOSED', 'AUTO_CLOSED'].includes(String(status || '').toUpperCase());
 }
 
+// 判断订单是否属于已完成终态，商城评价入口必须和订单列表保持同一套口径。
+function isCompletedStatus(status?: string) {
+  return ['FULFILLED', 'USED', 'COMPLETED', 'SUCCESS'].includes(String(status || '').toUpperCase());
+}
+
 // 归一订单主状态，避免后端履约中间态直接暴露为内部状态码。
 function resolveStatusText(order: BffOrder) {
   const normalizedStatus = String(order.orderStatus || '').toUpperCase();
@@ -67,7 +76,7 @@ function resolveStatusText(order: BffOrder) {
     return '待使用';
   }
   if (['PART_USED', 'PARTIALLY_USED', 'PARTIALLYUSED'].includes(normalizedStatus)) return '部分使用';
-  if (['FULFILLED', 'USED', 'COMPLETED', 'SUCCESS'].includes(normalizedStatus)) return '已完成';
+  if (isCompletedStatus(normalizedStatus)) return '已完成';
   if (['CANCELED', 'CANCELLED'].includes(normalizedStatus)) return '已取消';
   if (isClosedStatus(normalizedStatus)) return '已关闭';
   if (['REFUNDING', 'REFUND_PENDING', 'REFUND_PROCESSING'].includes(normalizedStatus)) return '退款中';
@@ -196,6 +205,26 @@ function compactFields<T extends { value: string }>(fields: T[]) {
   return fields.filter((field) => Boolean(field.value && field.value !== '-'));
 }
 
+function reviewLookupKey(orderNo?: string, itemId?: string) {
+  return `${orderNo || ''}::${itemId || ''}`;
+}
+
+function buildReviewedMallItemSet(data?: BffMallMemberReviewsData) {
+  return new Set((data?.items || [])
+    .map((item) => reviewLookupKey(item.orderNo, item.itemId))
+    .filter((value) => value !== '::'));
+}
+
+// 判断商城订单是否已经评价，避免详情页重复暴露评价入口。
+function hasReviewedMallOrder(order: BffOrder, reviewedMallItems: Set<string>) {
+  if (order.sceneType !== 'MALL') return true;
+  const reviewableItemIds = (order.items || [])
+    .map((item) => item.itemId || item.lineNo)
+    .filter((itemId): itemId is string => Boolean(itemId));
+  if (!reviewableItemIds.length) return false;
+  return reviewableItemIds.every((itemId) => reviewedMallItems.has(reviewLookupKey(order.orderNo, itemId)));
+}
+
 // 按订单业态输出商品摘要字段，避免所有业态共用商城式字段。
 function resolveSceneProductFields(order: BffOrder, title: string, merchantName: string, mallSpecText: string): OrderDetailFieldData[] {
   const firstItem = order.items?.[0];
@@ -283,7 +312,7 @@ function resolveSceneFulfillmentFields(
 }
 
 // 按业态暴露已支持的详情内动作，避免和底部支付/退款主动作混在一起。
-function resolveSceneActions(order: BffOrder): OrderDetailData['sceneActions'] {
+function resolveSceneActions(order: BffOrder, reviewedMallItems?: Set<string>): OrderDetailData['sceneActions'] {
   const normalizedSceneType = String(order.sceneType || '').toUpperCase();
   const normalizedStatus = String(order.orderStatus || '').toUpperCase();
   const actions: OrderDetailData['sceneActions'] = [];
@@ -298,9 +327,11 @@ function resolveSceneActions(order: BffOrder): OrderDetailData['sceneActions'] {
 
   if (
     normalizedSceneType === 'MALL'
-    && ['FULFILLED', 'USED', 'COMPLETED', 'SUCCESS'].includes(normalizedStatus)
+    && isCompletedStatus(normalizedStatus)
+    && reviewedMallItems
+    && !hasReviewedMallOrder(order, reviewedMallItems)
   ) {
-    const firstItemId = normalizeString(order.items?.[0]?.itemId);
+    const firstItemId = normalizeString(order.items?.[0]?.itemId || order.items?.[0]?.lineNo);
     const itemQuery = firstItemId ? `&itemId=${encodeURIComponent(firstItemId)}` : '';
     actions.push({
       text: '评价晒单',
@@ -405,7 +436,7 @@ function mapTicketVoucher(order: BffOrder, voucher: BffTicketVoucher): OrderTick
   };
 }
 
-function mapOrderToDetail(order: BffOrder): OrderDetailData {
+function mapOrderToDetail(order: BffOrder, reviewedMallItems?: Set<string>): OrderDetailData {
   const firstItem = order.items?.[0];
   const context = order.context || {};
   const primaryActionType = resolvePrimaryAction(order);
@@ -439,7 +470,7 @@ function mapOrderToDetail(order: BffOrder): OrderDetailData {
       { label: '手机号', value: order.contactPhone || '' },
       { label: '收货地址', value: addressText || '' },
     ]),
-    sceneActions: resolveSceneActions(order),
+    sceneActions: resolveSceneActions(order, reviewedMallItems),
     amountFields: [
       { label: '商品金额', value: formatCent(order.originalAmountCent) },
       { label: '优惠金额', value: `- ${formatCent(order.discountAmountCent)}` },
@@ -463,11 +494,19 @@ function mapOrderToDetail(order: BffOrder): OrderDetailData {
   };
 }
 
+// 只有商城完成态需要查询评价记录，避免其它业态详情页多一次无意义请求。
+function shouldLoadMallReviewLookup(order: BffOrder) {
+  return order.sceneType === 'MALL' && isCompletedStatus(order.orderStatus);
+}
+
 // 获取真实订单详情，接口失败时由页面异常态承接，不回退本地订单。
 export async function fetchDetailData(orderId?: string, options: FetchDetailDataOptions = {}) {
   if (!orderId) throw new Error('缺少订单编号');
   const order = await fetchBffOrderDetail(orderId, {
     showErrorToast: options.showErrorToast,
   });
-  return mapOrderToDetail(order);
+  const mallReviews = shouldLoadMallReviewLookup(order)
+    ? await fetchBffMallMyReviews().catch(() => undefined)
+    : undefined;
+  return mapOrderToDetail(order, mallReviews ? buildReviewedMallItemSet(mallReviews) : undefined);
 }

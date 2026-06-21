@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import Taro from '@tarojs/taro';
+import Taro, { useReachBottom } from '@tarojs/taro';
 import { Text, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
 import { BaseEmpty } from '@/core/components/BaseEmpty';
@@ -88,6 +88,7 @@ function resolveOrderEmptyCopy(activeTabKey: string) {
 const OrderIndexPage = observer(function OrderIndexPage() {
   const [pageData, setPageData] = useState<OrderHomeData>();
   const [activeTabKey, setActiveTabKey] = useState('all');
+  const [loadingMore, setLoadingMore] = useState(false);
   const pageRuntime = usePageRuntime({
     initPage: async () => {
       const nextData = await fetchOrderHomeData();
@@ -96,9 +97,30 @@ const OrderIndexPage = observer(function OrderIndexPage() {
       const nextActiveTabKey = matchedTab?.key ?? nextData.tabs[0]?.key ?? 'all';
       setPageData(nextData);
       setActiveTabKey(nextActiveTabKey);
+      setLoadingMore(false);
     },
     loginRequired: true,
     loginReason: '登录后可查看订单',
+  });
+
+  async function loadMoreOrders() {
+    if (!pageData?.hasMore || loadingMore) return;
+
+    setLoadingMore(true);
+    try {
+      const nextData = await fetchOrderHomeData({
+        page: pageData.page + 1,
+        pageSize: pageData.pageSize,
+        existingSections: pageData.sections,
+      });
+      setPageData(nextData);
+    } finally {
+      setLoadingMore(false);
+    }
+  }
+
+  useReachBottom(() => {
+    void loadMoreOrders();
   });
 
   const visibleSections = useMemo(() => {
@@ -201,6 +223,12 @@ const OrderIndexPage = observer(function OrderIndexPage() {
                 description={emptyCopy.description}
               />
             )}
+
+            {visibleSections.length > 0 ? (
+              <View className="_pg-load-more">
+                <Text>{loadingMore ? '加载中...' : pageData.hasMore ? '继续下滑加载更多' : '没有更多订单了'}</Text>
+              </View>
+            ) : null}
           </View>
         </PageShell>
       </View>

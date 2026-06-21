@@ -40,7 +40,7 @@ function resolveOrderTitle(order: BffOrder) {
 
 function resolveOrderStatusText(order: BffOrder) {
   const normalizedStatus = String(order.orderStatus || '').toUpperCase();
-  if (['PENDING_PAYMENT', 'PAYING'].includes(normalizedStatus)) return '待付款';
+  if (['PENDING', 'PENDING_PAYMENT', 'UNPAID', 'PAYING'].includes(normalizedStatus)) return '待付款';
   if (['PAID', 'WAIT_USE', 'FULFILLING'].includes(normalizedStatus)) {
     if (order.sceneType === 'HOTEL') return '待入住';
     if (order.sceneType === 'MALL') {
@@ -49,9 +49,11 @@ function resolveOrderStatusText(order: BffOrder) {
     return '待使用';
   }
   if (['PART_USED', 'PARTIALLY_USED', 'PARTIALLYUSED'].includes(normalizedStatus)) return '部分使用';
-  if (['FULFILLED', 'USED', 'COMPLETED'].includes(normalizedStatus)) return '已完成';
+  if (['FULFILLED', 'USED', 'COMPLETED', 'SUCCESS'].includes(normalizedStatus)) return '已完成';
   if (['CANCELED', 'CANCELLED'].includes(normalizedStatus)) return '已取消';
-  if (['REFUNDING', 'REFUNDED'].includes(normalizedStatus)) return '退款中';
+  if (['CLOSED', 'EXPIRED', 'TIMEOUT', 'TIMEOUT_CLOSED', 'AUTO_CLOSED'].includes(normalizedStatus)) return '已关闭';
+  if (['REFUNDING', 'REFUND_PENDING', 'REFUND_PROCESSING'].includes(normalizedStatus)) return '退款中';
+  if (normalizedStatus === 'REFUNDED') return '已退款';
   return order.orderStatus || '处理中';
 }
 
