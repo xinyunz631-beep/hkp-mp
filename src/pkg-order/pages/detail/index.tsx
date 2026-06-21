@@ -22,6 +22,9 @@ const TICKET_ORDER_DETAIL_POLLING_STATUSES = [
   'PART_USED',
   'PARTIALLY_USED',
   'PARTIALLYUSED',
+  'REFUNDING',
+  'REFUND_PENDING',
+  'REFUND_PROCESSING',
 ];
 
 function formatPayExpireAt(payExpireAt?: string) {

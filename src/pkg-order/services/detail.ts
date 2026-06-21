@@ -60,7 +60,8 @@ function resolveStatusText(order: BffOrder) {
   if (['PART_USED', 'PARTIALLY_USED', 'PARTIALLYUSED'].includes(normalizedStatus)) return '部分使用';
   if (['FULFILLED', 'USED', 'COMPLETED'].includes(normalizedStatus)) return '已完成';
   if (['CANCELED', 'CANCELLED'].includes(normalizedStatus)) return '已取消';
-  if (['REFUNDING', 'REFUNDED'].includes(normalizedStatus)) return '退款中';
+  if (['REFUNDING', 'REFUND_PENDING', 'REFUND_PROCESSING'].includes(normalizedStatus)) return '退款中';
+  if (normalizedStatus === 'REFUNDED') return '已退款';
   return order.orderStatus || '处理中';
 }
 
