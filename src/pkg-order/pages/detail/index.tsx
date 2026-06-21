@@ -135,9 +135,16 @@ function resolveTicketOrderPollingSnapshot(detailData?: OrderDetailData) {
   return JSON.stringify({
     sceneType: detailData.sceneType || '',
     orderStatus: detailData.orderStatus || '',
+    payNo: detailData.payNo || '',
+    paymentStatus: detailData.paymentStatus || '',
     statusText: detailData.statusText || '',
     primaryActionType: detailData.primaryActionType || '',
     refundButtonText: detailData.refundButtonText || '',
+    couponFields: detailData.couponFields.map((field) => ({
+      label: field.label,
+      value: field.value,
+      couponNos: field.couponLinks?.map((link) => `${link.couponNo}:${link.detailText || ''}`),
+    })),
     ticketInstances: detailData.ticketInstances.map((ticket) => ({
       ticketNo: ticket.ticketNo,
       qrCodePayload: ticket.qrCodePayload,
@@ -187,6 +194,10 @@ const DetailPage = observer(function DetailPage() {
   }
 
   async function pollTicketOrderDetailSilently(orderId: string) {
+    if (String(detailData?.orderStatus || '').toUpperCase() === 'PAYING') {
+      await syncBffPaymentStatusSilently(detailData?.payNo);
+    }
+
     const probeData = await fetchDetailData(orderId, { showErrorToast: false });
     if (!pageVisibleRef.current) return;
 

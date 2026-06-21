@@ -93,6 +93,14 @@ function buildReviewedMallItemSet(data?: BffMallMemberReviewsData) {
     .filter((value) => value !== '::'));
 }
 
+// 订单中心优先承接后端全类型聚合，未发布或空结果时降级到当前三业态查询。
+async function fetchMergedBffOrders() {
+  const allOrders = await fetchBffOrders('ALL', { showErrorToast: false }).catch(() => undefined);
+  if (Array.isArray(allOrders) && allOrders.length > 0) return allOrders;
+
+  return Promise.all(ORDER_SCENES.map((scene) => fetchBffOrders(scene))).then((result) => result.flat());
+}
+
 function hasReviewedMallOrder(order: BffOrder, reviewedMallItems: Set<string>) {
   if (order.sceneType !== 'MALL') return true;
   return (order.items || []).some((item) => reviewedMallItems.has(reviewLookupKey(order.orderNo, item.itemId || item.lineNo)));
@@ -221,10 +229,10 @@ function mapOrderSection(order: BffOrder, reviewedMallItems: Set<string>, review
   };
 }
 
-// 获取真实订单列表，当前 BFF 按业态查询，因此前端合并票务、商城和酒店订单。
+// 获取真实订单列表，优先使用全类型聚合，未发布时再由前端合并当前已开放业态。
 export async function fetchOrderHomeData(): Promise<OrderHomeData> {
   const [orders, mallReviews] = await Promise.all([
-    Promise.all(ORDER_SCENES.map((scene) => fetchBffOrders(scene))).then((result) => result.flat()),
+    fetchMergedBffOrders(),
     fetchBffMallMyReviews().catch(() => undefined),
   ]);
   const reviewLookupReady = Boolean(mallReviews);

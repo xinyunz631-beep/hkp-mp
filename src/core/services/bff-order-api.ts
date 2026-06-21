@@ -1,7 +1,7 @@
 import { request } from '@/core/request';
 import { resolveCurrentMiniProgramAppId } from '@/core/wechat/auth';
 
-export type BffOrderSceneType = 'TICKET' | 'MALL' | 'HOTEL' | 'DINING';
+export type BffOrderSceneType = 'TICKET' | 'MALL' | 'HOTEL' | 'DINING' | 'ALL';
 export type BffOrderPaymentChannel = 'WECHAT' | 'ALIPAY' | string;
 
 export interface BffOrderSelectionItem {
@@ -128,7 +128,10 @@ export interface BffOrder {
   orderNo: string;
   sceneType?: BffOrderSceneType;
   orderStatus?: string;
+  payNo?: string;
+  paymentStatus?: string;
   paymentChannel?: BffOrderPaymentChannel;
+  paidAt?: string;
   channel?: string;
   originalAmountCent?: number;
   freightAmountCent?: number;
@@ -476,10 +479,14 @@ export function fetchBffOrderDetail(orderNo: string, options: { showErrorToast?:
   });
 }
 
-export function fetchBffOrders(sceneType: BffOrderSceneType = 'TICKET') {
+export function fetchBffOrders(
+  sceneType: BffOrderSceneType = 'TICKET',
+  options: { showErrorToast?: boolean } = {},
+) {
   return request<BffOrder[]>({
     url: appendQuery('/api/bff/orders', { sceneType }),
     method: 'GET',
+    showErrorToast: options.showErrorToast,
   });
 }
 

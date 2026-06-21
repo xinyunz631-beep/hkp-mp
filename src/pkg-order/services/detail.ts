@@ -84,6 +84,11 @@ function resolvePrimaryAction(order: BffOrder): OrderDetailData['primaryActionTy
   return 'none';
 }
 
+function resolvePaymentFact(order: BffOrder, key: string) {
+  return normalizeString(order[key as keyof BffOrder] as string | undefined)
+    || normalizeString(order.context?.[key]);
+}
+
 function resolveRefundButtonText(primaryActionType: OrderDetailData['primaryActionType']) {
   if (primaryActionType === 'pay') return '继续支付';
   if (primaryActionType === 'aftersale') return '申请售后';
@@ -280,6 +285,8 @@ function mapOrderToDetail(order: BffOrder): OrderDetailData {
     id: order.orderNo,
     sceneType: order.sceneType,
     orderStatus: order.orderStatus,
+    payNo: resolvePaymentFact(order, 'payNo'),
+    paymentStatus: resolvePaymentFact(order, 'paymentStatus'),
     statusText: resolveStatusText(order),
     paidAmountText: formatCent(order.payableAmountCent),
     primaryActionType,
@@ -321,6 +328,10 @@ function mapOrderToDetail(order: BffOrder): OrderDetailData {
       { label: '订单编号', value: order.orderNo },
       { label: '下单时间', value: formatDateTime(order.createdAt) },
       { label: '更新时间', value: formatDateTime(order.updatedAt) },
+      { label: '支付流水', value: resolvePaymentFact(order, 'payNo') },
+      { label: '支付状态', value: resolvePaymentFact(order, 'paymentStatus') },
+      { label: '支付时间', value: formatDateTime(resolvePaymentFact(order, 'paidAt')) },
+      { label: '支付截止', value: formatDateTime(order.payExpireAt || resolvePaymentFact(order, 'payExpireAt')) },
       { label: '支付方式', value: order.paymentChannel || '' },
       { label: '渠道', value: order.channel || '' },
     ]),

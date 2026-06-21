@@ -104,6 +104,8 @@ export interface OrderDetailData {
   id: string;
   sceneType?: string;
   orderStatus?: string;
+  payNo?: string;
+  paymentStatus?: string;
   statusText: string;
   paidAmountText: string;
   primaryActionType?: 'pay' | 'aftersale' | 'refund' | 'none';
