@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Taro from '@tarojs/taro';
 import { Text, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
@@ -96,6 +96,10 @@ const OrderIndexPage = observer(function OrderIndexPage() {
   const [pageData, setPageData] = useState<OrderHomeData>();
   const [activeTabKey, setActiveTabKey] = useState('all');
   const [loadingMore, setLoadingMore] = useState(false);
+  const [tabLoading, setTabLoading] = useState(false);
+  const [scrollTop, setScrollTop] = useState(0);
+  const tabRequestSeqRef = useRef(0);
+  const scrollTopTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const pageRuntime = usePageRuntime({
     initPage: async () => {
       const requestedTabKey = Taro.getCurrentInstance().router?.params?.tab;
@@ -106,20 +110,59 @@ const OrderIndexPage = observer(function OrderIndexPage() {
       setPageData(nextData);
       setActiveTabKey(nextActiveTabKey);
       setLoadingMore(false);
+      setTabLoading(false);
     },
     loginRequired: true,
     loginReason: '登录后可查看订单',
   });
 
+  useEffect(() => () => {
+    if (scrollTopTimerRef.current) {
+      clearTimeout(scrollTopTimerRef.current);
+    }
+  }, []);
+
+  function scrollOrderContentToTop() {
+    if (scrollTopTimerRef.current) {
+      clearTimeout(scrollTopTimerRef.current);
+    }
+
+    setScrollTop(1);
+    scrollTopTimerRef.current = setTimeout(() => {
+      setScrollTop(0);
+    }, 0);
+  }
+
   async function switchOrderTab(tabKey: string) {
     if (tabKey === activeTabKey) return;
 
+    const requestSeq = tabRequestSeqRef.current + 1;
+    tabRequestSeqRef.current = requestSeq;
     setActiveTabKey(tabKey);
     setLoadingMore(false);
-    const nextData = await pageRuntime.withLoading(() => fetchOrderHomeData({
-      tabKey,
-    }));
-    setPageData(nextData);
+    setTabLoading(true);
+    setPageData((currentData) => currentData ? {
+      ...currentData,
+      sections: [],
+      page: 1,
+      hasMore: false,
+    } : currentData);
+    scrollOrderContentToTop();
+
+    try {
+      const nextData = await fetchOrderHomeData({ tabKey });
+      if (tabRequestSeqRef.current === requestSeq) {
+        setPageData(nextData);
+      }
+    } catch {
+      if (tabRequestSeqRef.current === requestSeq) {
+        void showWechatToast('订单加载失败，请稍后重试');
+      }
+    } finally {
+      if (tabRequestSeqRef.current === requestSeq) {
+        setTabLoading(false);
+      }
+    }
   }
 
   async function loadMoreOrders() {
@@ -142,7 +185,12 @@ const OrderIndexPage = observer(function OrderIndexPage() {
   return pageRuntime.renderPage(() => {
     if (!pageData) return null;
     const emptyCopy = resolveOrderEmptyCopy(activeTabKey);
-    const visibleSections = pageData.sections;
+    const visibleSections = tabLoading ? [] : pageData.sections;
+    const contentClassName = [
+      '_pg-content',
+      tabLoading ? '_pg-content--loading' : '',
+      !tabLoading && visibleSections.length === 0 ? '_pg-content--empty' : '',
+    ].filter(Boolean).join(' ');
 
     return (
       <View className="_pg">
@@ -152,6 +200,8 @@ const OrderIndexPage = observer(function OrderIndexPage() {
           reserveTabBarSpace={false}
           scrollViewProps={{
             lowerThreshold: 180,
+            scrollTop,
+            scrollWithAnimation: true,
             onScrollToLower: () => void loadMoreOrders(),
           }}
         >
@@ -177,9 +227,13 @@ const OrderIndexPage = observer(function OrderIndexPage() {
             </View>
           </PageHeader>
 
-          <View className="_pg-content">
+          <View className={contentClassName}>
 
-            {visibleSections.length > 0 ? (
+            {tabLoading ? (
+              <View className="_pg-tab-loading">
+                <Text>加载中...</Text>
+              </View>
+            ) : visibleSections.length > 0 ? (
               visibleSections.map((section) => (
                 <View className="_pg-section" key={section.id}>
                   <View className="_pg-section_header">

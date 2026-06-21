@@ -14,9 +14,17 @@
 }
 
 ._pg-content {
-  min-height: 100%;
+  min-height: var(--page-layout-content-height);
   box-sizing: border-box;
   background: #f6f7fb;
+
+  &--empty,
+  &--loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 48px 30px 72px;
+  }
 }
 
 ._pg-tabs {
@@ -102,10 +110,21 @@
 }
 
 ._pg-empty {
-  margin: 48px 30px 0;
+  margin: 0;
   border-radius: 28px;
   background: #ffffff;
   box-shadow: 0 12px 32px rgba(22, 32, 29, 0.08);
+}
+
+._pg-tab-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 280px;
+  color: #9ca3af;
+  font-size: 26px;
+  line-height: 1.5;
 }
 
 ._pg-load-more {
