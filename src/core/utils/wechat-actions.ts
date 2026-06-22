@@ -66,6 +66,19 @@ function getWechatFailMessage(error: unknown) {
   return resolveErrorMessage(error, '');
 }
 
+function resolveWechatPaymentFailMessage(error: unknown) {
+  const errMsg = getWechatFailMessage(error);
+  if (/cancel/i.test(errMsg)) return '支付已取消';
+  if (/has no permission|permission denied|not allowed|no permission|没有权限/i.test(errMsg)) {
+    return '当前小程序暂无微信支付权限，请联系工作人员处理';
+  }
+  if (/paymentParams|paySign|prepay|timeStamp|nonceStr|package/i.test(errMsg)) {
+    return '支付参数异常，请稍后再试';
+  }
+
+  return resolveErrorMessage(error, '支付未完成');
+}
+
 // 展示微信小程序原生轻提示，页面只传业务文案。
 export function showWechatToast(title: string, icon: 'success' | 'error' | 'loading' | 'none' = 'none') {
   return Taro.showToast({
@@ -131,7 +144,7 @@ export async function requestWechatPayment({
       const errMsg = getWechatFailMessage(error);
       if (allowPending && /cancel/i.test(errMsg)) return 'pending';
 
-      await showWechatToast(resolveErrorMessage(error, '支付未完成'));
+      await showWechatToast(resolveWechatPaymentFailMessage(error));
       return 'failed';
     }
   }
