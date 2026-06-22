@@ -12,6 +12,7 @@ import { PageHeader, PageShare, PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import type { HkpSkuGroup } from '@/core/types/hkp';
+import { formatCurrency } from '@/core/utils/money';
 import { navigateBackOrHome, navigateToMiniRoute } from '@/core/utils/navigation';
 import {
   clampSkuQuantity,
@@ -442,7 +443,7 @@ const ProductsPage = observer(function ProductsPage() {
                   <View className="_pg-product_body">
                     <Text className="_pg-product_title">{renderHighlightedProductTitle(product.title, activeKeyword)}</Text>
                     <Text className="_pg-product_size">{product.subtitle}</Text>
-                    <Text className="_pg-product_price">¥ {product.price}</Text>
+                    <Text className="_pg-product_price">{formatCurrency(product.price)}</Text>
                   </View>
                   <View
                     className="_pg-product_cart"

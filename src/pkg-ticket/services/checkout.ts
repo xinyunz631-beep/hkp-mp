@@ -1,5 +1,6 @@
 import { confirmBffOrder } from '@/core/services/bff-order-api';
 import { fetchBffCouponAvailable, type BffAvailableCouponView } from '@/core/services/bff-coupon-api';
+import { centToYuan, parseNumberLike, yuanToCent } from '@/core/utils/money';
 import { quoteBffTickets } from './ticket-api';
 import type { HkpDateOption } from '@/core/types/hkp';
 import {
@@ -56,16 +57,6 @@ export interface TicketCheckoutPageData extends TicketCheckoutData {
   travelers: TicketOrderTraveler[];
 }
 
-// 读取服务端金额并转换为页面展示的元单位。
-function centToYuan(value?: number) {
-  if (typeof value !== 'number' || !Number.isFinite(value)) return 0;
-  return Number((value / 100).toFixed(2));
-}
-
-function yuanToCent(value: number) {
-  return Math.round(value * 100);
-}
-
 // 生成当前确认单可展示的票务日期，真实可售性由后端确认接口校验。
 function buildCheckoutDates(selectedDate: string): HkpDateOption[] {
   return [
@@ -77,16 +68,17 @@ function buildCheckoutDates(selectedDate: string): HkpDateOption[] {
   ];
 }
 
-function formatYuan(amountCent = 0) {
-  const amount = amountCent / 100;
+function formatYuan(amountCent: unknown = 0) {
+  const amount = centToYuan(amountCent);
   if (Number.isInteger(amount)) return String(amount);
   return amount.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
 }
 
 // 格式化后端百分比折扣字段，85 表示 8.5 折。
-function formatDiscountPercent(discountPercent?: number) {
-  if (typeof discountPercent !== 'number' || !Number.isFinite(discountPercent) || discountPercent <= 0) return '';
-  const discount = discountPercent > 10 ? discountPercent / 10 : discountPercent;
+function formatDiscountPercent(discountPercent?: number | string) {
+  const normalizedDiscountPercent = parseNumberLike(discountPercent);
+  if (typeof normalizedDiscountPercent !== 'number' || normalizedDiscountPercent <= 0) return '';
+  const discount = normalizedDiscountPercent > 10 ? normalizedDiscountPercent / 10 : normalizedDiscountPercent;
   const text = Number.isInteger(discount) ? String(discount) : discount.toFixed(1).replace(/0+$/, '').replace(/\.$/, '');
   return `${text}折`;
 }
@@ -100,7 +92,7 @@ function calculateDraftOrderAmountCent(draft: TicketOrderDraft) {
 
 function toTicketCoupon(coupon: BffAvailableCouponView): TicketCoupon {
   const thresholdAmount = centToYuan(coupon.thresholdAmountCent);
-  const discountAmountCent = typeof coupon.discountAmount === 'number' ? coupon.discountAmount : coupon.discountAmountCent;
+  const discountAmountCent = parseNumberLike(coupon.discountAmount) ?? parseNumberLike(coupon.discountAmountCent);
   const discountAmount = centToYuan(discountAmountCent);
   const validDate = coupon.validEndAt ? coupon.validEndAt.slice(0, 10) : '';
   const available = coupon.available !== false && coupon.status === 'AVAILABLE';
@@ -196,14 +188,14 @@ export async function fetchCheckoutData(draftId?: string, selectedCouponId?: str
   ]);
   const availableCouponsResponse = await fetchBffCouponAvailable({
     sceneType: 'TICKET',
-    orderAmountCent: confirmation.originalAmountCent || ticketQuote.originalAmountCent || calculateDraftOrderAmountCent(draft),
+    orderAmountCent: confirmation.originalAmountCent ?? ticketQuote.originalAmountCent ?? calculateDraftOrderAmountCent(draft),
     itemIds: draft.products.map((product) => product.productCode || product.id),
     skuIds: draft.products.map((product) => product.skuId || `${product.productCode || product.id}_standard`),
     visitDate: draft.selectedDate,
   });
-  const originalAmount = centToYuan(confirmation.originalAmountCent || ticketQuote.originalAmountCent);
+  const originalAmount = centToYuan(confirmation.originalAmountCent ?? ticketQuote.originalAmountCent);
   const discountAmount = centToYuan(confirmation.discountAmountCent);
-  const payableAmount = centToYuan(confirmation.payableAmountCent || ticketQuote.payableAmountCent);
+  const payableAmount = centToYuan(confirmation.payableAmountCent ?? ticketQuote.payableAmountCent);
   const totalQuantity = draft.products.reduce((total, product) => total + product.quantity, 0);
   const coupons = (availableCouponsResponse.coupons ?? []).map(toTicketCoupon);
   const nextDraft = {

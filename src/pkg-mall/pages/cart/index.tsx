@@ -12,6 +12,7 @@ import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { createMallCheckoutDraft } from '@/core/services/mall-checkout-draft';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import { resolveErrorMessage } from '@/core/utils/error-message';
+import { formatCurrency } from '@/core/utils/money';
 import { navigateToMiniRoute } from '@/core/utils/navigation';
 import { previewWechatImages, showWechatConfirm, showWechatToast } from '@/core/utils/wechat-actions';
 import {
@@ -214,7 +215,7 @@ const CartPage = observer(function CartPage() {
               <>
                 <View className="_pg-footer_summary">
                   <Text className="_pg-footer_summary-label">合计:</Text>
-                  <Text className="_pg-footer_summary-amount">¥{totalAmount.toFixed(0)}</Text>
+                  <Text className="_pg-footer_summary-amount">{formatCurrency(totalAmount)}</Text>
                 </View>
 
                 <View className="_pg-footer_button" onClick={() => void handlePrimaryAction()}>
@@ -262,7 +263,7 @@ const CartPage = observer(function CartPage() {
                         </View>
                       ) : null}
                       <View className="_pg-item_footer">
-                        <Text className="_pg-item_price">¥ {item.price}</Text>
+                        <Text className="_pg-item_price">{formatCurrency(item.price)}</Text>
                         <QuantityStepper value={item.quantity} min={0} onChange={(value) => void handleQuantityChange(item, value)} />
                       </View>
                       {item.giftText ? <Text className="_pg-item_gift">{item.giftText}</Text> : null}
@@ -313,7 +314,7 @@ const CartPage = observer(function CartPage() {
                   <AppImage className="_pg-recommend_image" src={product.image.src} mode="aspectFit" emptyState="error" />
                   <Text className="_pg-recommend_name">{product.title}</Text>
                   <View className="_pg-recommend_footer">
-                    <Text className="_pg-recommend_price">¥ {product.price}</Text>
+                    <Text className="_pg-recommend_price">{formatCurrency(product.price)}</Text>
                     <Text className="_pg-recommend_sales">{product.salesText}</Text>
                   </View>
                 </View>

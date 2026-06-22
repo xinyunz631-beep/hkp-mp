@@ -9,6 +9,7 @@ import { PageHeader, PageShare, PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES, type MiniPackageRoute } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import type { HkpSkuGroup } from '@/core/types/hkp';
+import { formatCurrency } from '@/core/utils/money';
 import { navigateToMiniRoute } from '@/core/utils/navigation';
 import {
   clampSkuQuantity,
@@ -311,7 +312,7 @@ const MallIndexPage = observer(function MallIndexPage() {
                   <View className="_pg-product-card_body">
                     <Text className="_pg-product-card_title">{product.title}</Text>
                     <View className="_pg-product-card_footer">
-                      <Text className="_pg-product-card_price">¥{product.price}</Text>
+                      <Text className="_pg-product-card_price">{formatCurrency(product.price)}</Text>
                       <View
                         className="_pg-product-card_cart"
                         onClick={(event) => {

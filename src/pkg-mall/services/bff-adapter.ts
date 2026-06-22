@@ -2,6 +2,7 @@ import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import type { BffAvailableCouponView } from '@/core/services/bff-coupon-api';
 import type { MallShippingRule } from '@/core/services/mall-checkout-draft';
 import type { HkpCouponSummary, HkpProductSummary, HkpSkuGroup } from '@/core/types/hkp';
+import { centToYuan, parseNumberLike } from '@/core/utils/money';
 import {
   extractMallRuntimeHtmlImageUrls,
   sanitizeMallRuntimeHtml,
@@ -29,11 +30,6 @@ import type {
   MallSkuVariant,
 } from './types';
 
-function centToYuan(value?: number) {
-  if (typeof value !== 'number' || !Number.isFinite(value)) return 0;
-  return Number((value / 100).toFixed(2));
-}
-
 function firstText(...values: Array<string | undefined>) {
   return values.find((value) => typeof value === 'string' && value.trim())?.trim() ?? '';
 }
@@ -59,20 +55,21 @@ function productImageOf(product: BffMallProduct) {
 }
 
 function productMarketPrice(product: BffMallProduct) {
-  const marketCent = product.marketMinPrice ?? product.marketMaxPrice;
+  const marketCent = parseNumberLike(product.marketMinPrice ?? product.marketMaxPrice);
   return typeof marketCent === 'number' && marketCent > 0 ? centToYuan(marketCent) : undefined;
 }
 
-function formatYuan(amountCent = 0) {
-  const amount = amountCent / 100;
+function formatYuan(amountCent: unknown = 0) {
+  const amount = centToYuan(amountCent);
   if (Number.isInteger(amount)) return String(amount);
   return amount.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
 }
 
 // 格式化后端百分比折扣字段，85 表示 8.5 折。
-function formatDiscountPercent(discountPercent?: number) {
-  if (typeof discountPercent !== 'number' || !Number.isFinite(discountPercent) || discountPercent <= 0) return '';
-  const discount = discountPercent > 10 ? discountPercent / 10 : discountPercent;
+function formatDiscountPercent(discountPercent?: number | string) {
+  const normalizedDiscountPercent = parseNumberLike(discountPercent);
+  if (typeof normalizedDiscountPercent !== 'number' || normalizedDiscountPercent <= 0) return '';
+  const discount = normalizedDiscountPercent > 10 ? normalizedDiscountPercent / 10 : normalizedDiscountPercent;
   const text = Number.isInteger(discount) ? String(discount) : discount.toFixed(1).replace(/0+$/, '').replace(/\.$/, '');
   return `${text}折`;
 }
@@ -195,7 +192,7 @@ export function toMallPromoCard(recommendation: BffMallRecommendation, index: nu
 }
 
 function couponDiscountCent(coupon: BffAvailableCouponView) {
-  return typeof coupon.discountAmount === 'number' ? coupon.discountAmount : coupon.discountAmountCent ?? 0;
+  return parseNumberLike(coupon.discountAmount) ?? parseNumberLike(coupon.discountAmountCent) ?? 0;
 }
 
 export function isMallAvailableCouponPreview(coupon: BffAvailableCouponView) {
@@ -274,10 +271,11 @@ function toMallSkuVariant(product: BffMallProduct, sku: BffMallSku): MallSkuVari
 }
 
 function toMallReviewItem(review: BffMallReviewItem): MallReviewItem {
+  const rating = parseNumberLike(review.rating);
   return {
     id: firstText(review.reviewId, review.itemId, review.createdAt, 'review'),
     author: review.anonymous ? '匿名用户' : firstMallText(review.userName),
-    rating: typeof review.rating === 'number' && Number.isFinite(review.rating) && review.rating > 0 ? review.rating : undefined,
+    rating: typeof rating === 'number' && rating > 0 ? rating : undefined,
     content: firstMallText(review.content),
     tags: sanitizeMallRuntimeTextList(review.tags),
     imageSrcs: sanitizeMallRuntimeUrlList(review.imageUrls),
@@ -321,7 +319,10 @@ export function toMallProductDetailData(
     skuGroups: toMallSkuGroups(product),
     skuVariants: toMallSkuVariants(product),
     promoText: firstMallText(product.promotionText, couponHintText),
-    reviewCountText: typeof reviewData?.totalCount === 'number' && reviewData.totalCount > 0 ? String(reviewData.totalCount) : '',
+    reviewCountText: (() => {
+      const totalCount = parseNumberLike(reviewData?.totalCount);
+      return typeof totalCount === 'number' && totalCount > 0 ? String(totalCount) : '';
+    })(),
     reviews,
     recommendProducts: recommendations,
     detailImages,

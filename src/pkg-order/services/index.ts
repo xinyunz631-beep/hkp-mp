@@ -6,6 +6,7 @@ import {
   type BffOrderTabCount,
 } from '@/core/services/bff-order-api';
 import { fetchBffMallMyReviews, type BffMallMemberReviewsData } from '@/core/services/bff-mall-api';
+import { formatCentCurrency } from '@/core/utils/money';
 import { sanitizeMallRuntimeText, sanitizeMallRuntimeUrl } from '@/core/utils/mall-runtime';
 import type {
   OrderHomeActionData,
@@ -34,8 +35,8 @@ interface FetchOrderHomeDataOptions {
   existingSections?: OrderHomeSectionData[];
 }
 
-function formatCent(value?: number) {
-  return `¥${((value || 0) / 100).toFixed(2)}`;
+function formatCent(value?: number | string) {
+  return formatCentCurrency(value);
 }
 
 function normalizePositiveInteger(value: number | undefined, fallback: number) {

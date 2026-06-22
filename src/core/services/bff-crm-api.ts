@@ -150,6 +150,10 @@ export interface BffCrmP1ConfigItem {
   startAt?: string;
   endAt?: string;
   extraPayload?: string;
+  templateNo?: string;
+  couponTemplateId?: string;
+  exchangeCode?: string;
+  couponQuantity?: number;
   description?: string;
   createdAt?: string;
   updatedAt?: string;

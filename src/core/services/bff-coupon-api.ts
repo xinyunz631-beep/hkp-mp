@@ -85,19 +85,50 @@ export interface BffCouponPackageView {
   coupons?: BffCouponTemplateView[];
   claimable?: boolean;
   reason?: string;
+  activityId?: string;
+  activityName?: string;
+}
+
+export interface BffMemberCouponPackageItemView extends BffCouponAssetView {
+  reason?: string;
+}
+
+export interface BffMemberCouponPackageView {
+  packageNo: string;
+  packageId?: string;
+  packageName: string;
+  packageStatus?: string;
+  sceneType: BffCouponSceneType;
+  source?: string;
+  sourceName?: string;
+  claimedAt?: string;
+  validEndAt?: string;
+  totalCount?: number;
+  availableCount?: number;
+  usedCount?: number;
+  expiredCount?: number;
+  packageItems?: BffMemberCouponPackageItemView[];
 }
 
 export interface BffCouponPackagesResponse {
   sceneType?: BffCouponSceneType;
-  packages?: BffCouponPackageView[];
+  packages?: Array<BffMemberCouponPackageView | BffCouponPackageView>;
+  claimablePackages?: BffCouponPackageView[];
 }
 
 export interface BffClaimCouponRequest {
-  templateNo: string;
+  templateNo?: string;
+  activityId?: string;
 }
 
 export interface BffClaimCouponResponse {
   coupon?: BffCouponAssetView;
+  activityId?: string;
+  activityName?: string;
+  couponNos?: string[];
+  coupons?: BffCouponAssetView[];
+  successCount?: number;
+  failCount?: number;
 }
 
 export interface BffAvailableCouponView {

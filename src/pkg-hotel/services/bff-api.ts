@@ -1,4 +1,5 @@
 import { request } from '@/core/request';
+import { parseNumberLike } from '@/core/utils/money';
 import {
   addHotelDays,
   calculateHotelNights,
@@ -137,7 +138,7 @@ function text(value: unknown, defaultValue = '') {
 }
 
 function number(value: unknown, defaultValue = 0) {
-  return typeof value === 'number' && Number.isFinite(value) ? value : defaultValue;
+  return parseNumberLike(value) ?? defaultValue;
 }
 
 function readImageSrc(item: Record<string, unknown>) {

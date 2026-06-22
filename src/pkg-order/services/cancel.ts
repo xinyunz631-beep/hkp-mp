@@ -1,12 +1,13 @@
 import { cancelBffOrder, fetchBffOrderDetail, type BffOrder } from '@/core/services/bff-order-api';
 import type { HkpOrderSummary } from '@/core/types/hkp';
+import { centToYuan } from '@/core/utils/money';
 import { sanitizeMallRuntimeText } from '@/core/utils/mall-runtime';
 import type { OrderCancelData } from './model';
 
 export type { OrderCancelData } from './model';
 
-function formatCent(value?: number) {
-  return Number(((value || 0) / 100).toFixed(2));
+function formatCent(value?: number | string) {
+  return centToYuan(value);
 }
 
 function normalizeString(value?: string) {

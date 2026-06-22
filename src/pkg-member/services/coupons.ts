@@ -5,6 +5,7 @@ import {
   type BffCouponStatus,
 } from '@/core/services/bff-coupon-api';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
+import { centToYuan, parseNumberLike } from '@/core/utils/money';
 
 export type MemberCouponStatus = 'claimed' | 'used' | 'expired';
 export const MEMBER_COUPON_USE_TYPE_OFFLINE = 1;
@@ -64,8 +65,8 @@ let memberCouponSnapshot: MemberCouponItem[] = [];
 let memberCouponsLoaded = false;
 let memberCouponsRequest: Promise<MemberCouponItem[]> | null = null;
 
-function formatYuan(amountCent = 0) {
-  const amount = amountCent / 100;
+function formatYuan(amountCent: unknown = 0) {
+  const amount = centToYuan(amountCent);
   if (Number.isInteger(amount)) return String(amount);
   return amount.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
 }
@@ -136,27 +137,33 @@ function resolveStatusText(status?: BffCouponStatus) {
 }
 
 // 格式化后端百分比折扣字段，85 表示 8.5 折。
-function formatDiscountPercent(discountPercent?: number) {
-  if (typeof discountPercent !== 'number' || !Number.isFinite(discountPercent) || discountPercent <= 0) return '';
-  const discount = discountPercent > 10 ? discountPercent / 10 : discountPercent;
+function formatDiscountPercent(discountPercent?: number | string) {
+  const normalizedDiscount = parseNumberLike(discountPercent);
+  if (typeof normalizedDiscount !== 'number' || normalizedDiscount <= 0) return '';
+  const discount = normalizedDiscount > 10 ? normalizedDiscount / 10 : normalizedDiscount;
   const text = Number.isInteger(discount) ? String(discount) : discount.toFixed(1).replace(/0+$/, '').replace(/\.$/, '');
   return `${text}折`;
 }
 
 function resolveAmountText(coupon: BffCouponAssetView) {
-  if (coupon.discountAmountCent && coupon.discountAmountCent > 0) {
-    return formatYuan(coupon.discountAmountCent);
+  const discountAmountCent = parseNumberLike(coupon.discountAmountCent);
+  if (typeof discountAmountCent === 'number' && discountAmountCent > 0) {
+    return formatYuan(discountAmountCent);
   }
 
   return formatDiscountPercent(coupon.discountPercent) || '券';
 }
 
 function resolveThresholdText(coupon: BffCouponAssetView) {
-  if (coupon.thresholdAmountCent && coupon.thresholdAmountCent > 0) {
-    return `满${formatYuan(coupon.thresholdAmountCent)}元可用`;
+  const thresholdAmountCent = parseNumberLike(coupon.thresholdAmountCent);
+  if (typeof thresholdAmountCent === 'number' && thresholdAmountCent > 0) {
+    return `满${formatYuan(thresholdAmountCent)}元可用`;
   }
 
-  if (coupon.discountAmountCent || coupon.discountPercent) {
+  if (
+    typeof parseNumberLike(coupon.discountAmountCent) === 'number'
+    || typeof parseNumberLike(coupon.discountPercent) === 'number'
+  ) {
     return '无门槛使用';
   }
 
@@ -164,14 +171,16 @@ function resolveThresholdText(coupon: BffCouponAssetView) {
 }
 
 function resolveBenefitText(coupon: BffCouponAssetView) {
-  if (coupon.discountAmountCent && coupon.discountAmountCent > 0) {
-    return `立减${formatYuan(coupon.discountAmountCent)}元`;
+  const discountAmountCent = parseNumberLike(coupon.discountAmountCent);
+  if (typeof discountAmountCent === 'number' && discountAmountCent > 0) {
+    return `立减${formatYuan(discountAmountCent)}元`;
   }
 
   const discountText = formatDiscountPercent(coupon.discountPercent);
   if (discountText) {
-    const maxDiscountText = coupon.maxDiscountCent && coupon.maxDiscountCent > 0
-      ? `，最高减${formatYuan(coupon.maxDiscountCent)}元`
+    const maxDiscountCent = parseNumberLike(coupon.maxDiscountCent);
+    const maxDiscountText = typeof maxDiscountCent === 'number' && maxDiscountCent > 0
+      ? `，最高减${formatYuan(maxDiscountCent)}元`
       : '';
     return `享${discountText}优惠${maxDiscountText}`;
   }

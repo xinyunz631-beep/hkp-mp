@@ -67,8 +67,11 @@ const MemberCouponCenterPage = observer(function MemberCouponCenterPage() {
     try {
       const response = await pageRuntime.withLoading(async () => {
         const claimResponse = await claimMemberCoupon(coupon);
-        if (claimResponse.coupon) {
-          cacheClaimedMemberCoupon(claimResponse.coupon);
+        const claimedCoupons = claimResponse.coupons?.length
+          ? claimResponse.coupons
+          : (claimResponse.coupon ? [claimResponse.coupon] : []);
+        if (claimedCoupons.length > 0) {
+          claimedCoupons.forEach((claimedCoupon) => cacheClaimedMemberCoupon(claimedCoupon));
         } else {
           invalidateMemberCouponSnapshot();
         }
@@ -77,8 +80,9 @@ const MemberCouponCenterPage = observer(function MemberCouponCenterPage() {
         return claimResponse;
       });
       await showWechatToast('领取成功', 'success');
-      if (response.coupon?.couponNo) {
-        navigateToMiniRoute(resolveCouponDetailRoute(response.coupon.couponNo));
+      const firstCouponNo = response.coupons?.[0]?.couponNo || response.coupon?.couponNo || response.couponNos?.[0];
+      if (firstCouponNo) {
+        navigateToMiniRoute(resolveCouponDetailRoute(firstCouponNo));
       }
     } catch (error) {
       await showWechatToast(resolveErrorMessage(error, '领取失败，请稍后再试'));

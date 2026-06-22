@@ -9,6 +9,7 @@ import { PageHeader, PageShare, PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES, type MiniPackageRoute } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import type { HkpProductSummary, HkpSkuGroup } from '@/core/types/hkp';
+import { formatCurrency } from '@/core/utils/money';
 import { navigateBackOrHome, navigateToMiniRoute } from '@/core/utils/navigation';
 import {
   clampSkuQuantity,
@@ -328,8 +329,10 @@ const CategoryPage = observer(function CategoryPage() {
                             <View className="_pg-product_footer">
                               <View className="_pg-product_price-row">
                                 <Text className="_pg-product_price-symbol">¥</Text>
-                                <Text className="_pg-product_price">{product.price}</Text>
-                                {product.marketPrice ? <Text className="_pg-product_market">¥{product.marketPrice}</Text> : null}
+                                <Text className="_pg-product_price">{formatCurrency(product.price, { showSymbol: false })}</Text>
+                                {typeof product.marketPrice === 'number' ? (
+                                  <Text className="_pg-product_market">{formatCurrency(product.marketPrice)}</Text>
+                                ) : null}
                               </View>
                               <View
                                 className="_pg-product_cart"

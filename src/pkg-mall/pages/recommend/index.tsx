@@ -8,6 +8,7 @@ import { BaseEmpty } from '@/core/components/BaseEmpty';
 import { PageHeader, PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
+import { formatCurrency } from '@/core/utils/money';
 import { showWechatToast } from '@/core/utils/wechat-actions';
 import { fetchRecommendData } from '@/pkg-mall/services/recommend';
 import './index.scss';
@@ -148,7 +149,7 @@ const RecommendPage = observer(function RecommendPage() {
                     ))}
                   </View>
                   <View className="_pg-item_footer">
-                    <Text className="_pg-item_price">¥ {product.price}</Text>
+                    <Text className="_pg-item_price">{formatCurrency(product.price)}</Text>
                     <Text className="_pg-item_sales">{product.salesText}</Text>
                   </View>
                 </View>

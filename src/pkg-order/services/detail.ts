@@ -9,6 +9,7 @@ import {
   type BffMallMemberReviewsData,
 } from '@/core/services/bff-mall-api';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
+import { formatCentCurrency } from '@/core/utils/money';
 import { sanitizeMallRuntimeText } from '@/core/utils/mall-runtime';
 import type {
   OrderDetailData,
@@ -23,8 +24,8 @@ export interface FetchDetailDataOptions {
   showErrorToast?: boolean;
 }
 
-function formatCent(value?: number) {
-  return `¥${((value || 0) / 100).toFixed(2)}`;
+function formatCent(value?: number | string) {
+  return formatCentCurrency(value);
 }
 
 function normalizeString(value?: string) {

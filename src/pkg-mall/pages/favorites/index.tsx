@@ -8,6 +8,7 @@ import { AppShareButton } from '@/core/components/AppShareButton';
 import { PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
+import { formatCurrency } from '@/core/utils/money';
 import { showWechatConfirm, showWechatToast } from '@/core/utils/wechat-actions';
 import { fetchFavoritesData, removeMallFavoriteItem } from '@/pkg-mall/services/favorites';
 import './index.scss';
@@ -153,7 +154,7 @@ const FavoritesPage = observer(function FavoritesPage() {
                       {item.invalid ? (
                         <Text className="_pg-item_status">失效</Text>
                       ) : item.price > 0 ? (
-                        <Text className="_pg-item_price">¥ {item.price}</Text>
+                        <Text className="_pg-item_price">{formatCurrency(item.price)}</Text>
                       ) : (
                         <Text className="_pg-item_status">暂无报价</Text>
                       )}

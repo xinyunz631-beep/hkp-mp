@@ -1,5 +1,6 @@
 import { confirmBffOrder, createBffOrder, payBffOrder, type BffOrderUnifiedRequest, type BffOrderPaymentResponse } from '@/core/services/bff-order-api';
 import { fetchBffCouponAvailable, type BffAvailableCouponView } from '@/core/services/bff-coupon-api';
+import { centToYuan, parseNumberLike, yuanToCent } from '@/core/utils/money';
 import {
   ensureHotelOrderDraft,
   resolveHotelDraftAmount,
@@ -47,39 +48,32 @@ function resolveGuestFields(roomCount: number, guests: Array<{ id: string; label
 }
 
 function resolveHotelPayableAmountCent(value?: number) {
-  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
+  const amount = parseNumberLike(value);
+  if (typeof amount !== 'number' || amount < 0) {
     throw new Error('酒店确认单金额暂不可用，请稍后再试');
   }
 
-  return value;
+  return amount;
 }
 
-function yuanToCent(value: number) {
-  return Math.round(value * 100);
-}
-
-function centToYuan(value?: number) {
-  if (typeof value !== 'number' || !Number.isFinite(value)) return 0;
-  return Number((value / 100).toFixed(2));
-}
-
-function formatYuan(amountCent = 0) {
-  const amount = amountCent / 100;
+function formatYuan(amountCent: unknown = 0) {
+  const amount = centToYuan(amountCent);
   if (Number.isInteger(amount)) return String(amount);
   return amount.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
 }
 
 // 格式化后端百分比折扣字段，85 表示 8.5 折。
-function formatDiscountPercent(discountPercent?: number) {
-  if (typeof discountPercent !== 'number' || !Number.isFinite(discountPercent) || discountPercent <= 0) return '';
-  const discount = discountPercent > 10 ? discountPercent / 10 : discountPercent;
+function formatDiscountPercent(discountPercent?: number | string) {
+  const normalizedDiscountPercent = parseNumberLike(discountPercent);
+  if (typeof normalizedDiscountPercent !== 'number' || normalizedDiscountPercent <= 0) return '';
+  const discount = normalizedDiscountPercent > 10 ? normalizedDiscountPercent / 10 : normalizedDiscountPercent;
   const text = Number.isInteger(discount) ? String(discount) : discount.toFixed(1).replace(/0+$/, '').replace(/\.$/, '');
   return `${text}折`;
 }
 
 function toHotelCoupon(coupon: BffAvailableCouponView): HotelCheckoutCouponData {
   const thresholdAmount = centToYuan(coupon.thresholdAmountCent);
-  const discountAmountCent = typeof coupon.discountAmount === 'number' ? coupon.discountAmount : coupon.discountAmountCent;
+  const discountAmountCent = parseNumberLike(coupon.discountAmount) ?? parseNumberLike(coupon.discountAmountCent);
   const discountAmount = centToYuan(discountAmountCent);
   const validDate = coupon.validEndAt ? coupon.validEndAt.slice(0, 10) : '';
   const available = coupon.available !== false && coupon.status === 'AVAILABLE';

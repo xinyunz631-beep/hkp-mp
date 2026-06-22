@@ -18,7 +18,10 @@
   box-sizing: border-box;
   background: #f6f7fb;
 
-  &--empty,
+  &--empty {
+    padding: 30px;
+  }
+
   &--loading {
     display: flex;
     align-items: center;

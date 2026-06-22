@@ -12,6 +12,7 @@ import { MINI_MAIN_ROUTES, MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { createMallCheckoutDraft } from '@/core/services/mall-checkout-draft';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import type { HkpSkuGroup } from '@/core/types/hkp';
+import { formatCurrency } from '@/core/utils/money';
 import { navigateToMiniRoute } from '@/core/utils/navigation';
 import {
   clampSkuQuantity,
@@ -340,8 +341,8 @@ const ProductDetailPage = observer(function ProductDetailPage() {
           <View className="_pg-info">
             <View className="_pg-info_price-row">
               <View className="_pg-info_price">
-                <Text className="_pg-info_price-current">¥{displayPrice}</Text>
-                {typeof product?.marketPrice === 'number' ? <Text className="_pg-info_price-origin">¥{product.marketPrice}</Text> : null}
+                <Text className="_pg-info_price-current">{formatCurrency(displayPrice ?? 0)}</Text>
+                {typeof product?.marketPrice === 'number' ? <Text className="_pg-info_price-origin">{formatCurrency(product.marketPrice)}</Text> : null}
               </View>
               <View className="_pg-info_icons">
                 <View
@@ -460,7 +461,7 @@ const ProductDetailPage = observer(function ProductDetailPage() {
                 >
                   <AppImage className="_pg-recommend_image" src={recommendProduct.image.src} mode="aspectFit" emptyState="error" />
                   <Text className="_pg-recommend_title">{recommendProduct.title}</Text>
-                  <Text className="_pg-recommend_price">¥ {recommendProduct.price}</Text>
+                  <Text className="_pg-recommend_price">{formatCurrency(recommendProduct.price)}</Text>
                 </View>
               ))}
             </View>

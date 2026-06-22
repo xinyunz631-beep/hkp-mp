@@ -13,13 +13,14 @@ import type {
   OrderLogisticsData,
   OrderLogisticsTraceItem,
 } from './model';
+import { parseNumberLike } from '@/core/utils/money';
 
 export function normalizeText(value?: string) {
   return typeof value === 'string' ? value.trim() : '';
 }
 
-function normalizeNumber(value?: number) {
-  return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+function normalizeNumber(value?: number | string) {
+  return parseNumberLike(value) ?? 0;
 }
 
 export function toOrderSummary(order?: BffOrderSummary): HkpOrderSummary {

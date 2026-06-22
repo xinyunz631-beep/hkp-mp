@@ -5,6 +5,7 @@ import {
   type BffMallFavoriteItem,
 } from '@/core/services/bff-mall-api';
 import type { HkpProductSummary } from '@/core/types/hkp';
+import { parseNumberLike } from '@/core/utils/money';
 import { sanitizeMallRuntimeText, sanitizeMallRuntimeUrl } from '@/core/utils/mall-runtime';
 
 export type MallFavoriteItem = HkpProductSummary & {
@@ -27,8 +28,9 @@ function normalizeText(value?: string) {
 }
 
 function normalizeOptionalCount(value?: number) {
-  return typeof value === 'number' && Number.isFinite(value) && value >= 0
-    ? value
+  const normalizedValue = parseNumberLike(value);
+  return typeof normalizedValue === 'number' && normalizedValue >= 0
+    ? normalizedValue
     : undefined;
 }
 
@@ -42,8 +44,8 @@ function toMallFavoriteItem(item: BffMallFavoriteItem): MallFavoriteItem {
       src: sanitizeMallRuntimeUrl(item.image?.src),
       alt: sanitizeMallRuntimeText(item.image?.alt) || title || '收藏商品',
     },
-    price: typeof item.price === 'number' && Number.isFinite(item.price) ? item.price : 0,
-    marketPrice: typeof item.marketPrice === 'number' && Number.isFinite(item.marketPrice) ? item.marketPrice : undefined,
+    price: parseNumberLike(item.price) ?? 0,
+    marketPrice: parseNumberLike(item.marketPrice),
     tag: sanitizeMallRuntimeText(item.tag),
     salesText: sanitizeMallRuntimeText(item.salesText),
     invalid: item.invalid,

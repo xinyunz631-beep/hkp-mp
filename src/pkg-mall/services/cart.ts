@@ -10,6 +10,7 @@ import {
 } from '@/core/services/bff-mall-api';
 import type { MallShippingRule } from '@/core/services/mall-checkout-draft';
 import type { HkpProductSummary } from '@/core/types/hkp';
+import { centToYuan, parseNumberLike } from '@/core/utils/money';
 import {
   sanitizeMallRuntimeText,
   sanitizeMallRuntimeUrl,
@@ -31,11 +32,6 @@ interface AddMallCartItemOptions {
 
 export interface MallCartCountData {
   totalQuantity: number;
-}
-
-function centToYuan(value?: number) {
-  if (typeof value !== 'number' || !Number.isFinite(value)) return 0;
-  return Number((value / 100).toFixed(2));
 }
 
 function normalizeString(value?: string) {
@@ -84,13 +80,15 @@ function imageSrcOf(item: BffMallCartItem) {
 }
 
 function priceOf(item: BffMallCartItem) {
-  if (typeof item.priceCent === 'number') return centToYuan(item.priceCent);
-  return typeof item.price === 'number' ? item.price : 0;
+  const priceCent = parseNumberLike(item.priceCent);
+  if (typeof priceCent === 'number') return centToYuan(priceCent);
+  return parseNumberLike(item.price) ?? 0;
 }
 
 function marketPriceOf(item: BffMallCartItem) {
-  if (typeof item.marketPriceCent === 'number') return centToYuan(item.marketPriceCent);
-  return typeof item.marketPrice === 'number' ? item.marketPrice : undefined;
+  const marketPriceCent = parseNumberLike(item.marketPriceCent);
+  if (typeof marketPriceCent === 'number') return centToYuan(marketPriceCent);
+  return parseNumberLike(item.marketPrice);
 }
 
 function toMallCartItem(item: BffMallCartItem): MallCartItem {
@@ -110,7 +108,7 @@ function toMallCartItem(item: BffMallCartItem): MallCartItem {
     marketPrice: marketPriceOf(item),
     tag: sanitizeMallRuntimeText(item.tag),
     salesText: sanitizeMallRuntimeText(item.salesText),
-    quantity: Math.max(1, Number(item.quantity) || 1),
+    quantity: Math.max(1, parseNumberLike(item.quantity) ?? 1),
     checked: item.checked !== false,
     skuText: sanitizeMallRuntimeText(item.skuText) || sanitizeMallRuntimeText(item.subtitle),
     merchantName: sanitizeMallRuntimeText(item.merchantName),
@@ -142,10 +140,10 @@ function toMallCartData(data: BffMallCartData): MallCartData {
     }))
     .filter((group) => group.items.length > 0);
   const recommendProducts = (data.recommendProducts ?? []).filter(isRenderableMallProduct).map(toMallProductSummary);
-  const totalAmountCent = typeof data.summary?.totalAmountCent === 'number' ? data.summary.totalAmountCent : data.totalAmountCent;
+  const totalAmountCent = parseNumberLike(data.summary?.totalAmountCent) ?? parseNumberLike(data.totalAmountCent);
   const totalAmount = typeof totalAmountCent === 'number'
     ? centToYuan(totalAmountCent)
-    : typeof data.totalAmount === 'number' ? data.totalAmount : 0;
+    : parseNumberLike(data.totalAmount) ?? 0;
 
   return {
     groups,
@@ -177,7 +175,7 @@ export async function fetchCartData() {
 export async function fetchMallCartCount() {
   const data = await fetchBffMallCartCount();
   return {
-    totalQuantity: Math.max(0, Number(data.totalQuantity) || 0),
+    totalQuantity: Math.max(0, parseNumberLike(data.totalQuantity) ?? 0),
   };
 }
 

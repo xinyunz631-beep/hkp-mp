@@ -3,6 +3,7 @@ import {
   fetchPurchaseResources,
   type CmsResourceSlotApiItem,
 } from './purchase-api';
+import { centToYuan, parseNumberLike } from '@/core/utils/money';
 import {
   fetchBffTicketCalendarBatch,
   fetchBffTicketProducts,
@@ -216,9 +217,10 @@ function resolveProductCategory(item: BffTicketProduct): TicketProduct['category
 }
 
 // 将后端分为单位的价格转为页面使用的元单位价格。
-function resolvePrice(priceCent?: number) {
-  if (!Number.isFinite(priceCent)) return 0;
-  return Math.max(0, Number(priceCent) / 100);
+function resolvePrice(priceCent?: number | string) {
+  const amount = parseNumberLike(priceCent);
+  if (typeof amount !== 'number') return 0;
+  return Math.max(0, centToYuan(amount));
 }
 
 function sameSkuInventoryDay(day: BffTicketInventoryDay, sku: BffTicketSkuRule) {

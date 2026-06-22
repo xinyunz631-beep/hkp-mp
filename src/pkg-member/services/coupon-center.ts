@@ -4,8 +4,10 @@ import {
   fetchBffMemberCouponPackages,
   type BffCouponPackageView,
   type BffCouponTemplateView,
+  type BffMemberCouponPackageView,
 } from '@/core/services/bff-coupon-api';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
+import { centToYuan, parseNumberLike } from '@/core/utils/money';
 
 export type MemberCouponCenterTabKey = 'recommend' | 'kcoin';
 export type MemberCouponCenterSource = 'package' | 'kcoin';
@@ -27,6 +29,7 @@ export interface MemberCouponCenterCoupon {
   claimable: boolean;
   disabledReason?: string;
   templateNo?: string;
+  activityId?: string;
   targetRoute?: string;
   kCoinPrice?: number;
 }
@@ -47,8 +50,8 @@ const couponCenterBaseData: Omit<MemberCouponCenterData, 'coupons'> = {
   emptyDescription: '耐心等待活动发布',
 };
 
-function formatYuan(amountCent = 0) {
-  const amount = amountCent / 100;
+function formatYuan(amountCent: unknown = 0) {
+  const amount = centToYuan(amountCent);
   if (Number.isInteger(amount)) return String(amount);
   return amount.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
 }
@@ -78,21 +81,24 @@ function readExtraText(extraPayload: Record<string, unknown>, keys: string[]) {
 }
 
 // 格式化后端百分比折扣字段，85 表示 8.5 折。
-function formatDiscountPercent(discountPercent?: number) {
-  if (typeof discountPercent !== 'number' || !Number.isFinite(discountPercent) || discountPercent <= 0) return '';
-  const discount = discountPercent > 10 ? discountPercent / 10 : discountPercent;
+function formatDiscountPercent(discountPercent?: number | string) {
+  const normalizedDiscount = parseNumberLike(discountPercent);
+  if (typeof normalizedDiscount !== 'number' || normalizedDiscount <= 0) return '';
+  const discount = normalizedDiscount > 10 ? normalizedDiscount / 10 : normalizedDiscount;
   const text = Number.isInteger(discount) ? String(discount) : discount.toFixed(1).replace(/0+$/, '').replace(/\.$/, '');
   return `${text}折`;
 }
 
 function resolveTemplateAmountText(template?: BffCouponTemplateView) {
-  if (template?.discountAmountCent && template.discountAmountCent > 0) return formatYuan(template.discountAmountCent);
+  const discountAmountCent = parseNumberLike(template?.discountAmountCent);
+  if (typeof discountAmountCent === 'number' && discountAmountCent > 0) return formatYuan(discountAmountCent);
   return formatDiscountPercent(template?.discountPercent) || '券';
 }
 
 function resolveTemplateThresholdText(template?: BffCouponTemplateView) {
-  if (template?.thresholdAmountCent && template.thresholdAmountCent > 0) {
-    return `满¥${formatYuan(template.thresholdAmountCent)}可用`;
+  const thresholdAmountCent = parseNumberLike(template?.thresholdAmountCent);
+  if (typeof thresholdAmountCent === 'number' && thresholdAmountCent > 0) {
+    return `满¥${formatYuan(thresholdAmountCent)}可用`;
   }
 
   return '无门槛优惠';
@@ -106,11 +112,18 @@ function resolveTemplateValidityText(template?: BffCouponTemplateView) {
   return '领取后按券规则生效';
 }
 
+function isClaimableCouponPackage(
+  couponPackage: BffCouponPackageView | BffMemberCouponPackageView,
+): couponPackage is BffCouponPackageView {
+  return Array.isArray((couponPackage as BffCouponPackageView).coupons);
+}
+
 function toPackageCoupon(couponPackage: BffCouponPackageView): MemberCouponCenterCoupon {
   const firstCoupon = couponPackage.coupons?.[0];
   const templateNo = firstCoupon?.templateNo;
-  const claimable = couponPackage.claimable !== false && Boolean(templateNo);
-  const disabledReason = couponPackage.reason || (templateNo ? undefined : '当前优惠券暂不可领取');
+  const activityId = couponPackage.activityId;
+  const claimable = couponPackage.claimable !== false && Boolean(templateNo || activityId);
+  const disabledReason = couponPackage.reason || (templateNo || activityId ? undefined : '当前优惠券暂不可领取');
 
   return {
     id: couponPackage.packageNo,
@@ -124,6 +137,7 @@ function toPackageCoupon(couponPackage: BffCouponPackageView): MemberCouponCente
     claimable,
     disabledReason,
     templateNo,
+    activityId,
   };
 }
 
@@ -155,7 +169,9 @@ export async function fetchMemberCouponCenterData() {
     fetchBffMemberCouponPackages(),
     fetchBffCrmP1Exchanges(),
   ]);
-  const packageCoupons = (packagesResponse.packages ?? []).map(toPackageCoupon);
+  const claimablePackages = packagesResponse.claimablePackages
+    ?? (packagesResponse.packages ?? []).filter(isClaimableCouponPackage);
+  const packageCoupons = claimablePackages.map(toPackageCoupon);
   const kcoinCoupons = crmExchanges.map(toKcoinCoupon).filter((coupon): coupon is MemberCouponCenterCoupon => Boolean(coupon));
 
   return {
@@ -164,11 +180,11 @@ export async function fetchMemberCouponCenterData() {
   };
 }
 
-// 领取优惠券，后端真实入参是 promotion 模板编号 templateNo。
+// 领取优惠券，优先承接活动领券，其次按 promotion 模板编号领取。
 export async function claimMemberCoupon(coupon: MemberCouponCenterCoupon) {
-  if (!coupon.templateNo) {
+  if (!coupon.activityId && !coupon.templateNo) {
     throw new Error(coupon.disabledReason || '当前优惠券暂不可领取');
   }
 
-  return claimBffCoupon({ templateNo: coupon.templateNo });
+  return claimBffCoupon(coupon.activityId ? { activityId: coupon.activityId } : { templateNo: coupon.templateNo });
 }
