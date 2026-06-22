@@ -43,7 +43,7 @@ const CheckoutPage = observer(function CheckoutPage() {
   });
 
   async function refreshCheckoutByCoupon(nextCouponId?: string | null) {
-    if (!checkoutData) return;
+    if (!checkoutData) return false;
 
     try {
       const nextData = await pageRuntime.withLoading(() => fetchCheckoutData({
@@ -53,9 +53,10 @@ const CheckoutPage = observer(function CheckoutPage() {
       }));
       setCheckoutData(nextData);
       setSelectedCouponId(nextData.selectedCouponId);
-      setCouponPopupVisible(false);
+      return true;
     } catch (error) {
       await showWechatToast(resolveErrorMessage(error, '优惠券暂不可用，请稍后再试'));
+      return false;
     }
   }
 
@@ -318,13 +319,12 @@ const CheckoutPage = observer(function CheckoutPage() {
                 visible={couponPopupVisible}
                 coupons={couponOptions}
                 selectedCouponId={selectedCouponId}
-                clearText="不使用优惠券"
                 onClose={() => setCouponPopupVisible(false)}
                 onClear={() => {
-                  void refreshCheckoutByCoupon(null);
+                  return refreshCheckoutByCoupon(null);
                 }}
                 onSelect={(coupon) => {
-                  void refreshCheckoutByCoupon(coupon.id);
+                  return refreshCheckoutByCoupon(coupon.id);
                 }}
               />
             ) : null}

@@ -133,6 +133,8 @@ function toMallCoupon(coupon: BffAvailableCouponView) {
     validityText: validDate ? `有效期至 ${validDate}` : '按券规则生效',
     status: available ? 'available' as const : 'disabled' as const,
     tag: available ? (coupon.reason || '可用') : (coupon.unavailableReason || coupon.reason || '暂不可用'),
+    minimumAmount: thresholdAmount,
+    discountAmount,
   };
 }
 

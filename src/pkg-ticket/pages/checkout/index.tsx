@@ -142,38 +142,23 @@ const CheckoutPage = observer(function CheckoutPage() {
 
   const ticketAmount = checkoutData?.ticketItem.price ?? 0;
   const addonAmount = checkoutData ? checkoutData.addonItem.price * addonQuantity : 0;
-  const originAmount = ticketAmount + addonAmount;
   const selectedCoupon = checkoutData?.draft?.coupons.find((coupon) => coupon.id === selectedCouponId);
-  const selectedCouponUsable = Boolean(
-    selectedCoupon
-    && selectedCoupon.status === 'available'
-    && originAmount >= selectedCoupon.minimumAmount,
-  );
   const discountAmount = checkoutData?.discountAmount ?? 0;
   const payAmount = checkoutData ? checkoutData.payableAmount : 0;
   const couponOptions = useMemo(() => {
     if (!checkoutData) return [];
 
-    return (checkoutData.draft?.coupons ?? []).map((coupon) => {
-      const usable = coupon.status === 'available' && originAmount >= coupon.minimumAmount;
-
-      return {
-        ...coupon,
-        status: usable ? coupon.status : 'disabled' as const,
-        tag: usable ? coupon.tag : '未满足',
-      };
-    });
-  }, [checkoutData, originAmount]);
-  const couponText = selectedCouponUsable && selectedCoupon
+    return checkoutData.draft?.coupons ?? [];
+  }, [checkoutData]);
+  const couponText = selectedCoupon
     ? `${selectedCoupon.amountText} ${selectedCoupon.thresholdText}`
-    : selectedCoupon
-      ? '未满足使用门槛'
-      : '请选择优惠券';
+    : '请选择优惠券';
   const hasCoupons = couponOptions.length > 0;
 
   async function refreshCheckoutByCoupon(nextCouponId?: string | null) {
-    if (!draftId) return;
+    if (!draftId) return false;
 
+    const previousCouponId = selectedCouponId;
     updateTicketOrderDraft(draftId, {
       selectedCouponId: nextCouponId ?? undefined,
       addonQuantity,
@@ -185,9 +170,17 @@ const CheckoutPage = observer(function CheckoutPage() {
       const nextData = await pageRuntime.withLoading(() => fetchCheckoutData(draftId, nextCouponId));
       setCheckoutData(nextData);
       setSelectedCouponId(nextData.draft?.selectedCouponId);
-      setCouponPopupVisible(false);
+      if (nextData.couponNoticeText) await showWechatToast(nextData.couponNoticeText);
+      return true;
     } catch (error) {
+      updateTicketOrderDraft(draftId, {
+        selectedCouponId: previousCouponId,
+        addonQuantity,
+        contact: contactForm,
+        travelers: travelerForms,
+      });
       await showWechatToast(resolveErrorMessage(error, '优惠券暂不可用，请稍后再试'));
+      return false;
     }
   }
 
@@ -367,7 +360,7 @@ const CheckoutPage = observer(function CheckoutPage() {
     try {
       nextOrder = await pageRuntime.withLoading(() => submitTicketOrderDraft(draftId, {
         selectedDate,
-        selectedCouponId: selectedCouponUsable ? selectedCouponId : undefined,
+        selectedCouponId,
         addonQuantity,
         contact: nextContact,
         travelers: nextTravelers,
@@ -733,14 +726,13 @@ const CheckoutPage = observer(function CheckoutPage() {
                   <CouponSelectionPopup
                     visible={couponPopupVisible}
                     coupons={couponOptions}
-                    selectedCouponId={selectedCouponUsable ? selectedCouponId : undefined}
-                    clearText="不使用优惠券"
+                    selectedCouponId={selectedCouponId}
                     onClose={() => setCouponPopupVisible(false)}
                     onClear={() => {
-                      void refreshCheckoutByCoupon(null);
+                      return refreshCheckoutByCoupon(null);
                     }}
                     onSelect={(coupon) => {
-                      void refreshCheckoutByCoupon(coupon.id);
+                      return refreshCheckoutByCoupon(coupon.id);
                     }}
                   />
                 ) : null}

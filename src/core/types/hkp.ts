@@ -45,6 +45,8 @@ export interface HkpCouponSummary {
   validityText: string;
   status: HkpCouponStatus;
   tag?: string;
+  minimumAmount?: number;
+  discountAmount?: number;
 }
 
 export interface HkpAddressSummary {

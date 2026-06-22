@@ -1,8 +1,9 @@
 import { ScrollView, Text, View } from '@tarojs/components';
-import { Calendar, InputNumber } from '@nutui/nutui-react-taro';
+import { Calendar, Checkbox, InputNumber } from '@nutui/nutui-react-taro';
 import classNames from 'classnames';
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
+import { AppBottomSheet } from '@/core/components/AppBottomSheet';
 import { AppIcon } from '@/core/components/AppIcon';
 import { AppImage } from '@/core/components/AppImage';
 import { AppPopup } from '@/core/components/AppPopup';
@@ -128,10 +129,9 @@ interface CouponSelectionPopupProps {
   title?: string;
   coupons: HkpCouponSummary[];
   selectedCouponId?: string;
-  clearText?: string;
   onClose: () => void;
-  onClear?: () => void;
-  onSelect: (coupon: HkpCouponSummary) => void;
+  onClear?: () => boolean | void | Promise<boolean | void>;
+  onSelect: (coupon: HkpCouponSummary) => boolean | void | Promise<boolean | void>;
 }
 
 function isDateUnit(value: unknown): value is string | number {
@@ -583,46 +583,104 @@ export function CouponSelectionPopup({
   title = '选择优惠券',
   coupons,
   selectedCouponId,
-  clearText,
   onClose,
   onClear,
   onSelect,
 }: CouponSelectionPopupProps) {
+  const [draftCouponId, setDraftCouponId] = useState<string | undefined>(selectedCouponId);
+  const [couponUpdating, setCouponUpdating] = useState(false);
+  const draftCoupon = coupons.find((coupon) => coupon.id === draftCouponId && coupon.status === 'available');
+  const selectedCount = draftCoupon ? 1 : 0;
+  const selectedDiscount = draftCoupon?.discountAmount ?? 0;
+  const selectedDiscountText = selectedDiscount > 0
+    ? `优惠 ${formatCurrency(selectedDiscount, { showSymbol: false })}元`
+    : (draftCoupon ? '优惠以订单确认为准' : '优惠 0.00元');
+
+  useEffect(() => {
+    if (visible) setDraftCouponId(selectedCouponId);
+  }, [selectedCouponId, visible]);
+
+  // 选择/取消券时立即走确认单刷新，由后端返回真实优惠金额和可用状态。
+  async function handleCouponPress(coupon: HkpCouponSummary) {
+    if (coupon.status !== 'available' || couponUpdating) return;
+
+    const previousCouponId = draftCouponId;
+    const nextCouponId = draftCouponId === coupon.id ? undefined : coupon.id;
+    setDraftCouponId(nextCouponId);
+    setCouponUpdating(true);
+
+    try {
+      const result = nextCouponId ? await onSelect(coupon) : await onClear?.();
+      if (result === false) setDraftCouponId(previousCouponId);
+    } catch {
+      setDraftCouponId(previousCouponId);
+    } finally {
+      setCouponUpdating(false);
+    }
+  }
+
+  // 选券请求已在点击时完成，底部确认只负责收起弹窗。
+  function handleConfirm() {
+    onClose();
+  }
+
   return (
-    <AppPopup visible={visible} className="coupon-popup" contentClassName="hkp-coupon-popup" onClose={onClose}>
-      <View className="hkp-coupon-popup__header">
-        <Text className="hkp-coupon-popup__title">{title}</Text>
-        <View className="hkp-coupon-popup__close" onClick={onClose}>
-          <AppIcon name="close" size={16} color="#667085" />
-        </View>
-      </View>
-      <View className="hkp-coupon-popup__list">
-        {onClear ? (
-          <View
-            className="hkp-coupon-popup__clear"
-            onClick={onClear}
-          >
-            <Text>{clearText || '不使用优惠券'}</Text>
+    <AppBottomSheet
+      visible={visible}
+      title={title}
+      className="coupon-popup"
+      contentClassName="hkp-coupon-popup"
+      bodyClassName="hkp-coupon-popup__body"
+      footerClassName="hkp-coupon-popup__footer"
+      bodyMinHeight={300}
+      bodyMaxHeight="52vh"
+      footer={(
+        <View className="hkp-coupon-popup__footer-content">
+          <View className="hkp-coupon-popup__summary">
+            <View className="hkp-coupon-popup__summary-row">
+              <Text className="hkp-coupon-popup__summary-count">已选 {selectedCount} 张</Text>
+              <Text className="hkp-coupon-popup__summary-discount">{selectedDiscountText}</Text>
+            </View>
+            <Text className="hkp-coupon-popup__summary-name">
+              {couponUpdating ? '正在更新优惠' : (draftCoupon ? draftCoupon.title : '请选择本次订单可使用的优惠券')}
+            </Text>
           </View>
-        ) : null}
+          <View className="hkp-coupon-popup__confirm" onClick={handleConfirm}>
+            <Text>确认</Text>
+          </View>
+        </View>
+      )}
+      onClose={onClose}
+    >
+      <View className="hkp-coupon-popup__list">
         {coupons.map((coupon) => (
           <View
             className={classNames(
               'hkp-coupon-popup__item',
-              selectedCouponId === coupon.id && 'hkp-coupon-popup__item--active',
+              draftCouponId === coupon.id && 'hkp-coupon-popup__item--active',
               coupon.status !== 'available' && 'hkp-coupon-popup__item--disabled',
+              couponUpdating && 'hkp-coupon-popup__item--updating',
             )}
             key={coupon.id}
-            onClick={() => {
-              if (coupon.status === 'available') onSelect(coupon);
-            }}
+            onClick={() => handleCouponPress(coupon)}
           >
             <CouponCard coupon={coupon} />
-            {selectedCouponId === coupon.id ? <Text className="hkp-coupon-popup__checked">已选</Text> : null}
+            <View
+              className="hkp-coupon-popup__checkbox"
+              onClick={(event) => {
+                event.stopPropagation();
+                handleCouponPress(coupon);
+              }}
+            >
+              <Checkbox
+                checked={draftCouponId === coupon.id}
+                disabled={couponUpdating || coupon.status !== 'available'}
+              />
+            </View>
           </View>
         ))}
         {coupons.length === 0 ? <Text className="hkp-coupon-popup__empty">暂无可用优惠券</Text> : null}
       </View>
-    </AppPopup>
+    </AppBottomSheet>
   );
 }

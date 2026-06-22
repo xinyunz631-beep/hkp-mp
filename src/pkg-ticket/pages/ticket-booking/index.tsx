@@ -8,11 +8,12 @@ import { AppIcon } from '@/core/components/AppIcon';
 import { AppImage } from '@/core/components/AppImage';
 import { AppShareButton } from '@/core/components/AppShareButton';
 import { BaseEmpty } from '@/core/components/BaseEmpty';
-import { CouponSelectionPopup, DateSelectionPopup, QuantityStepper } from '@/core/components/commerce';
+import { DateSelectionPopup, QuantityStepper } from '@/core/components/commerce';
 import { AppPopup } from '@/core/components/AppPopup';
 import { PageShare, PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
+import { formatCurrency } from '@/core/utils/money';
 import { navigateToMiniRoute } from '@/core/utils/navigation';
 import {
   callWechatPhone,
@@ -264,24 +265,6 @@ function TicketBookingDateRow({
   );
 }
 
-function TicketBookingCouponRow({
-  couponText,
-  onClick,
-}: {
-  couponText: string;
-  onClick: () => void;
-}) {
-  return (
-    <View className="_pg-coupon" onClick={onClick}>
-      <Text className="_pg-coupon_label">优惠券</Text>
-      <View className="_pg-coupon_value">
-        <Text>{couponText}</Text>
-        <AppIcon name="arrowRight" className="_pg-coupon_chevron" size={16} color="#c0c5cf" />
-      </View>
-    </View>
-  );
-}
-
 function TicketSectionTitle({
   title,
   rightText,
@@ -364,10 +347,8 @@ const TicketBookingPage = observer(function TicketBookingPage() {
   const [quantities, setQuantities] = useState<TicketQuantityMap>({});
   const [selectedDate, setSelectedDate] = useState('');
   const [datePopupVisible, setDatePopupVisible] = useState(false);
-  const [couponPopupVisible, setCouponPopupVisible] = useState(false);
   const [rulesPopupVisible, setRulesPopupVisible] = useState(false);
   const [selectedRuleProductId, setSelectedRuleProductId] = useState<string>();
-  const [selectedCouponId, setSelectedCouponId] = useState<string>();
   const [activeSectionKey, setActiveSectionKey] = useState<TicketBookingSectionKey>('ticket');
   const [sectionOffsets, setSectionOffsets] = useState<TicketSectionOffsets>({});
   const [stickyPanelHeight, setStickyPanelHeight] = useState(0);
@@ -389,7 +370,7 @@ const TicketBookingPage = observer(function TicketBookingPage() {
   const selectedProducts = useMemo(() => products.filter((product) => (quantities[product.id] ?? 0) > 0), [products, quantities]);
   const hasSelectedProducts = selectedProducts.length > 0;
   const totalAmount = products.reduce((total, product) => total + (quantities[product.id] ?? 0) * product.price, 0);
-  const selectedCoupon = bookingData?.coupons.find((coupon) => coupon.id === selectedCouponId);
+  const totalAmountText = formatCurrency(totalAmount);
   const selectedRuleProduct = selectedRuleProductId
     ? products.find((product) => product.id === selectedRuleProductId)
     : undefined;
@@ -404,33 +385,6 @@ const TicketBookingPage = observer(function TicketBookingPage() {
           ...bookingData.parkInfo.warmTips,
         ],
   ) : [];
-  const selectedCouponUsable = Boolean(
-    selectedCoupon
-    && selectedCoupon.status === 'available'
-    && totalAmount >= selectedCoupon.minimumAmount,
-  );
-  const discountAmount = selectedCouponUsable && selectedCoupon ? selectedCoupon.discountAmount : 0;
-  const payableAmount = Math.max(0, totalAmount - discountAmount);
-  const couponText = selectedCouponUsable && selectedCoupon
-    ? `${selectedCoupon.amountText} ${selectedCoupon.thresholdText}`
-    : selectedCoupon
-      ? '未满足使用门槛'
-      : '请选择优惠券';
-  const couponOptions = useMemo(() => {
-    if (!bookingData) return [];
-
-    return bookingData.coupons.map((coupon) => {
-      const usable = coupon.status === 'available' && totalAmount >= coupon.minimumAmount;
-
-      return {
-        ...coupon,
-        status: usable ? coupon.status : 'disabled' as const,
-        tag: usable ? coupon.tag : '未满足',
-      };
-    });
-  }, [bookingData, totalAmount]);
-  const hasCoupons = couponOptions.length > 0;
-
   useShareAppMessage(() => ({
     title: shareTitle,
     path: MINI_PACKAGE_ROUTES.ticketBooking,
@@ -444,7 +398,6 @@ const TicketBookingPage = observer(function TicketBookingPage() {
     setBookingData(nextData);
     setQuantities(createInitialQuantities(nextData.products));
     setSelectedDate(nextData.parkInfo.travelDate);
-    setSelectedCouponId(undefined);
     setSelectedRuleProductId(undefined);
     setActiveSectionKey(nextActiveSectionKey);
     setSectionOffsets({});
@@ -588,8 +541,7 @@ const TicketBookingPage = observer(function TicketBookingPage() {
     const draft = createTicketOrderDraft({
       parkName: bookingData.parkInfo.name,
       selectedDate,
-      selectedCouponId: selectedCouponUsable ? selectedCouponId : undefined,
-      coupons: bookingData.coupons,
+      coupons: [],
       addonQuantity,
       products: selectedProducts.map((product) => ({
         id: product.id,
@@ -641,11 +593,10 @@ const TicketBookingPage = observer(function TicketBookingPage() {
         // reserveTabBarSpace={false}
         footer={(
           <TicketSubmitFooter
-            label="订单总金额:"
-            amountText={`¥${payableAmount}`}
+            label="票种小计:"
+            amountText={totalAmountText}
             buttonText="提交订单"
             disabled={!hasSelectedProducts}
-            discountText={discountAmount > 0 ? `已优惠 ¥${discountAmount.toFixed(2)}` : undefined}
             onSubmit={handleSubmit}
           />
         )}
@@ -680,12 +631,6 @@ const TicketBookingPage = observer(function TicketBookingPage() {
                       expanded={datePopupVisible}
                       onToggle={() => setDatePopupVisible(true)}
                     />
-                {hasCoupons ? (
-                  <TicketBookingCouponRow
-                    couponText={couponText}
-                    onClick={() => setCouponPopupVisible(true)}
-                  />
-                ) : null}
                   </View>
                 </View>
                 <View className="_pg-sticky-panel">
@@ -758,23 +703,6 @@ const TicketBookingPage = observer(function TicketBookingPage() {
                   ))}
                 </View>
               </AppPopup>
-              {hasCoupons ? (
-                <CouponSelectionPopup
-                  visible={couponPopupVisible}
-                  coupons={couponOptions}
-                  selectedCouponId={selectedCouponUsable ? selectedCouponId : undefined}
-                  clearText="不使用优惠券"
-                  onClose={() => setCouponPopupVisible(false)}
-                  onClear={() => {
-                    setSelectedCouponId(undefined);
-                    setCouponPopupVisible(false);
-                  }}
-                  onSelect={(coupon) => {
-                    setSelectedCouponId(coupon.id);
-                    setCouponPopupVisible(false);
-                  }}
-                />
-              ) : null}
             </>
           ) : null}
         </PageShare>

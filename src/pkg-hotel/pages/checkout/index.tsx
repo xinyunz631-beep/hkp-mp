@@ -78,7 +78,7 @@ const CheckoutPage = observer(function CheckoutPage() {
   const hasCouponDiscount = Boolean(checkoutData && checkoutData.discountAmount > 0);
 
   async function refreshHotelCheckout(nextRoomCount = roomCount, nextCouponId: string | null | undefined = selectedCouponId) {
-    if (!checkoutData) return;
+    if (!checkoutData) return false;
 
     try {
       const nextData = await pageRuntime.withLoading(() => fetchCheckoutData({
@@ -96,9 +96,10 @@ const CheckoutPage = observer(function CheckoutPage() {
       });
       setRoomCount(nextData.roomCount);
       setSelectedCouponId(nextData.selectedCouponId);
-      setCouponPopupVisible(false);
+      return true;
     } catch (error) {
       await showWechatToast(resolveErrorMessage(error, '优惠券暂不可用，请稍后再试'));
+      return false;
     }
   }
 
@@ -325,13 +326,12 @@ const CheckoutPage = observer(function CheckoutPage() {
                 visible={couponPopupVisible}
                 coupons={couponOptions}
                 selectedCouponId={selectedCouponId}
-                clearText="不使用优惠券"
                 onClose={() => setCouponPopupVisible(false)}
                 onClear={() => {
-                  void refreshHotelCheckout(roomCount, null);
+                  return refreshHotelCheckout(roomCount, null);
                 }}
                 onSelect={(coupon) => {
-                  void refreshHotelCheckout(roomCount, coupon.id);
+                  return refreshHotelCheckout(roomCount, coupon.id);
                 }}
               />
             ) : null}
