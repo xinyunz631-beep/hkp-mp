@@ -76,7 +76,12 @@ export class AppStore {
 
   // 写入待展示新人礼，登录弹窗关闭后由全局新人礼弹窗消费。
   showNewUserGift(gift?: BffNewUserGiftSummary | null) {
-    if (!gift?.activityId || !gift.recordId || !gift.giftItems?.length) return;
+    const giftItems = gift?.giftItems || [];
+    const issuedCouponCount = Math.max(
+      gift?.couponNos?.filter(Boolean).length || 0,
+      giftItems.filter((item) => item.couponNo).length,
+    );
+    if (!gift?.activityId || !gift.recordId || giftItems.length !== 3 || issuedCouponCount < 3) return;
     this.newUserGift = gift;
     this.newUserGiftVisible = true;
   }

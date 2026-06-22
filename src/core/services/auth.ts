@@ -86,8 +86,8 @@ function buildLoginProfileFromMemberInfo(memberInfo?: BffMemberInfo | null) {
 async function resolveAuthorizedNewUserGift(result: BffPhoneAuthorizeResponse) {
   if (result.newUserGift) return result.newUserGift;
   if (!result.isRegister && !result.registeredNow) return undefined;
-  const giftResult = await fetchBffNewUserGift().catch(() => undefined);
-  return giftResult?.newUserGift || undefined;
+  const newUserGift = await fetchBffNewUserGift().catch(() => undefined);
+  return newUserGift || undefined;
 }
 
 // 按后端会员状态接口刷新全局会员资料；默认先 login/token，再以 member/status 为准。

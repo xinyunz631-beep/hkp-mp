@@ -6,18 +6,16 @@ import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { confirmBffNewUserGift } from '@/core/services/bff-new-user-gift-api';
 import { rootStore } from '@/core/store';
 import { navigateToMiniRoute } from '@/core/utils/navigation';
-import { showWechatToast } from '@/core/utils/wechat-actions';
-import { resolveErrorMessage } from '@/core/utils/error-message';
 import './index.scss';
 
-// 常驻渲染新人注册礼弹窗，登录链路发现新用户礼包后展示三张券。
+// 常驻渲染新人注册礼到账弹窗，登录链路发现新用户礼包后展示三张券。
 export const NewUserGiftPopup = observer(function NewUserGiftPopup() {
   const gift = rootStore.app.newUserGift;
   const visible = rootStore.app.newUserGiftVisible && Boolean(gift);
   const shownRecordRef = useRef('');
   const [submitting, setSubmitting] = useState(false);
 
-  async function markPopup(action: 'shown' | 'confirmed' | 'closed') {
+  async function markPopup(action: 'shown' | 'closed') {
     if (!gift?.activityId || !gift.recordId) return;
     await confirmBffNewUserGift(gift.activityId, {
       recordId: gift.recordId,
@@ -36,13 +34,11 @@ export const NewUserGiftPopup = observer(function NewUserGiftPopup() {
     rootStore.app.clearNewUserGift();
   }
 
-  async function handleConfirm() {
+  async function handleViewCoupons() {
     if (submitting) return;
     setSubmitting(true);
     try {
-      await markPopup('confirmed');
-    } catch (error) {
-      await showWechatToast(resolveErrorMessage(error, '新人礼已到账，可稍后在优惠券中查看'));
+      await markPopup('closed').catch(() => undefined);
     } finally {
       setSubmitting(false);
       rootStore.app.clearNewUserGift();
@@ -84,7 +80,7 @@ export const NewUserGiftPopup = observer(function NewUserGiftPopup() {
             </View>
           ))}
         </View>
-        <Button className="new-user-gift-popup__primary" loading={submitting} onClick={handleConfirm}>
+        <Button className="new-user-gift-popup__primary" loading={submitting} onClick={handleViewCoupons}>
           {gift.popupButtonText || '去查看优惠券'}
         </Button>
         <Button className="new-user-gift-popup__ghost" disabled={submitting} onClick={handleClose}>
