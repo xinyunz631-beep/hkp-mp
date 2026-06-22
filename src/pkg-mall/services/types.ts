@@ -72,6 +72,8 @@ export interface MallProductDetailData {
   attributeLines?: string[];
   shippingSummary?: string;
   afterSaleRule?: string;
+  canBuy: boolean;
+  unavailableReasons: string[];
 }
 
 export interface MallSkuVariant extends HkpSkuVariantBase {
@@ -83,6 +85,7 @@ export interface MallSkuVariant extends HkpSkuVariantBase {
   skuText: string;
   giftText?: string;
   shippingRule?: MallShippingRule;
+  unavailableReason?: string;
 }
 
 export interface MallCartItem extends HkpProductSummary {

@@ -156,22 +156,24 @@ export function toMallBannerItem(category: BffMallCategory): MallBannerItem | un
 function buildMallRecommendationPath(recommendation: BffMallRecommendation) {
   const basePath = MINI_PACKAGE_ROUTES.mallProducts;
   const keyword = firstText(recommendation.keyword);
+  const sourceRefType = firstText(recommendation.sourceRefType, recommendation.sourceType);
+  const sourceRefId = firstText(recommendation.sourceRefId, recommendation.keyword);
 
-  if (recommendation.sourceType === 'manual') {
+  if (sourceRefType === 'manual') {
     const recommendationId = firstText(recommendation.poolId);
     return recommendationId ? `${basePath}?recommendationId=${encodeURIComponent(recommendationId)}` : basePath;
   }
 
-  if (recommendation.sourceType === 'search' && keyword) {
+  if (sourceRefType === 'search' && keyword) {
     return `${basePath}?keyword=${encodeURIComponent(keyword)}`;
   }
 
-  if (recommendation.sourceType === 'category' && keyword) {
-    return `${basePath}?categoryId=${encodeURIComponent(keyword)}`;
+  if (sourceRefType === 'category' && sourceRefId) {
+    return `${basePath}?sourceRefType=category&sourceRefId=${encodeURIComponent(sourceRefId)}`;
   }
 
-  if (recommendation.sourceType === 'coupon' && keyword) {
-    return `${basePath}?couponId=${encodeURIComponent(keyword)}`;
+  if (sourceRefType === 'coupon' && sourceRefId) {
+    return `${basePath}?sourceRefType=coupon&sourceRefId=${encodeURIComponent(sourceRefId)}`;
   }
 
   return basePath;
@@ -179,7 +181,7 @@ function buildMallRecommendationPath(recommendation: BffMallRecommendation) {
 
 export function toMallPromoCard(recommendation: BffMallRecommendation, index: number): MallPromoCard {
   const title = firstMallText(recommendation.title);
-  const subtitle = sanitizeMallRuntimeText(recommendation.keyword);
+  const subtitle = firstMallText(recommendation.sourceRefLabel, recommendation.keyword);
   const id = firstText(recommendation.poolId, title, `recommend-${index}`);
   return {
     id,
@@ -260,15 +262,27 @@ function toMallSkuGroups(product: BffMallProduct): HkpSkuGroup[] {
 
 function toMallSkuVariant(product: BffMallProduct, sku: BffMallSku): MallSkuVariant {
   const skuId = firstText(sku.skuId, sku.skuCode, productIdOf(product));
+  const availability = (product.skuAvailability ?? []).find((item) => (
+    firstText(item.skuId, item.skuCode) === skuId
+  ));
+  const unavailableReason = firstMallText(
+    availability?.unavailableReason,
+    ...(availability?.unavailableReasons ?? []),
+  );
+  const availableStock = typeof availability?.availableStock === 'number'
+    ? availability.availableStock
+    : sku.stock;
+  const stock = availability?.canBuy === false ? 0 : Math.max(0, Number(availableStock ?? 0));
   return {
     id: skuId,
     optionIds: sku.optionIds ?? {},
     price: centToYuan(sku.price ?? product.minPrice),
-    stock: Math.max(0, Number(sku.stock ?? 0)),
+    stock,
     imageSrc: firstMallUrl(sku.imageUrl, productImageOf(product)),
     skuText: firstMallText(sku.skuText, product.subtitle),
     giftText: firstMallText(sku.giftText) || undefined,
     shippingRule: normalizeShippingRule(product.shippingRule),
+    unavailableReason: unavailableReason || undefined,
   };
 }
 
@@ -313,6 +327,7 @@ export function toMallProductDetailData(
   const attributeLines = buildAttributeLines(product);
   const reviews = (reviewData?.items ?? []).map(toMallReviewItem);
   const couponHintText = product.couponIds?.length ? '下单时以结算页可用优惠为准' : '';
+  const unavailableReasons = sanitizeMallRuntimeTextList(product.unavailableReasons);
   return {
     product: summary,
     merchantName: firstMallText(product.merchantName),
@@ -333,6 +348,8 @@ export function toMallProductDetailData(
     attributeLines,
     shippingSummary: buildShippingSummary(product.shippingRule),
     afterSaleRule: firstMallText(product.afterSaleRule),
+    canBuy: product.canBuy !== false && unavailableReasons.length === 0,
+    unavailableReasons,
   };
 }
 

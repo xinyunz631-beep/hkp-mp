@@ -7,6 +7,8 @@ interface FetchProductsDataOptions {
   categoryId?: string;
   recommendationId?: string;
   couponId?: string;
+  sourceRefType?: string;
+  sourceRefId?: string;
   sort?: 'priceAsc' | 'priceDesc';
 }
 
@@ -27,6 +29,8 @@ export async function fetchProductsData(options: FetchProductsDataOptions = {}) 
     categoryId: options.categoryId,
     recommendationId: options.recommendationId,
     couponId: options.couponId,
+    sourceRefType: options.sourceRefType,
+    sourceRefId: options.sourceRefId,
     sort: options.sort,
   }, {
     pageSize: MALL_PRODUCTS_PAGE_SIZE,

@@ -47,12 +47,36 @@ export interface BffMallSku {
   saleStatus?: string;
 }
 
+export interface BffMallSkuAvailability {
+  skuId?: string;
+  skuCode?: string;
+  canBuy?: boolean;
+  availableStock?: number;
+  lockedStock?: number;
+  limitPerOrder?: number;
+  unavailableReason?: string;
+  unavailableReasons?: string[];
+}
+
 export interface BffMallShippingRule {
   shippingMode?: string;
   freightAmount?: number;
+  freeShippingThreshold?: number;
+  deliveryTemplateId?: string;
   supportedRegionKeywords?: string[];
   unsupportedRegionKeywords?: string[];
   reasonText?: string;
+}
+
+export interface BffMallDeliveryTemplateSummary {
+  templateId?: string;
+  templateName?: string;
+  providerCode?: string;
+  providerName?: string;
+  enabled?: boolean;
+  billingSummary?: string;
+  regionSummary?: string;
+  unavailableReason?: string;
 }
 
 export interface BffMallProduct {
@@ -88,7 +112,11 @@ export interface BffMallProduct {
   recommendProductIds?: string[];
   specGroups?: BffMallSkuSpecGroup[];
   skus?: BffMallSku[];
+  skuAvailability?: BffMallSkuAvailability[];
+  canBuy?: boolean;
+  unavailableReasons?: string[];
   shippingRule?: BffMallShippingRule;
+  deliveryTemplateSummary?: BffMallDeliveryTemplateSummary;
   publishStatus?: string;
   channels?: string[];
 }
@@ -109,6 +137,9 @@ export interface BffMallRecommendation {
   placement?: string;
   keyword?: string;
   sourceType?: string;
+  sourceRefType?: string;
+  sourceRefId?: string;
+  sourceRefLabel?: string;
   linkedProductIds?: string[];
   sortOrder?: number;
 }
@@ -272,6 +303,8 @@ export interface FetchBffMallProductsParams {
   categoryId?: string;
   recommendationId?: string;
   couponId?: string;
+  sourceRefType?: string;
+  sourceRefId?: string;
   sort?: string;
   page?: number;
   size?: number;
@@ -353,6 +386,8 @@ export function fetchBffMallProducts(params: FetchBffMallProductsParams = {}) {
       categoryId: params.categoryId,
       recommendationId: params.recommendationId,
       couponId: params.couponId,
+      sourceRefType: params.sourceRefType,
+      sourceRefId: params.sourceRefId,
       sort: params.sort,
       page: params.page,
       size: params.size,

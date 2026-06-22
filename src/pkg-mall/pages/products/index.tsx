@@ -76,6 +76,14 @@ function resolveProductsRouteCouponId() {
   return Taro.getCurrentInstance().router?.params?.couponId || '';
 }
 
+function resolveProductsRouteSourceRefType() {
+  return Taro.getCurrentInstance().router?.params?.sourceRefType || '';
+}
+
+function resolveProductsRouteSourceRefId() {
+  return Taro.getCurrentInstance().router?.params?.sourceRefId || '';
+}
+
 function isDefaultFilterState(filterState: MallProductsFilterState) {
   return filterState.priceRange === 'all' && filterState.tag === 'all';
 }
@@ -160,6 +168,8 @@ const ProductsPage = observer(function ProductsPage() {
   const [categoryId, setCategoryId] = useState('');
   const [recommendationId, setRecommendationId] = useState('');
   const [couponId, setCouponId] = useState('');
+  const [sourceRefType, setSourceRefType] = useState('');
+  const [sourceRefId, setSourceRefId] = useState('');
   const [skuVisible, setSkuVisible] = useState(false);
   const [skuDetailData, setSkuDetailData] = useState<MallProductDetailData>();
   const [skuGroups, setSkuGroups] = useState<HkpSkuGroup[]>([]);
@@ -171,17 +181,23 @@ const ProductsPage = observer(function ProductsPage() {
       const nextCategoryId = resolveProductsRouteCategoryId();
       const nextRecommendationId = resolveProductsRouteRecommendationId();
       const nextCouponId = resolveProductsRouteCouponId();
+      const nextSourceRefType = resolveProductsRouteSourceRefType();
+      const nextSourceRefId = resolveProductsRouteSourceRefId();
       const nextData = await fetchProductsData({
         keyword: nextKeyword,
         categoryId: nextCategoryId,
         recommendationId: nextRecommendationId,
         couponId: nextCouponId,
+        sourceRefType: nextSourceRefType,
+        sourceRefId: nextSourceRefId,
       });
       setListData(nextData);
       setKeyword(nextKeyword);
       setCategoryId(nextCategoryId);
       setRecommendationId(nextRecommendationId);
       setCouponId(nextCouponId);
+      setSourceRefType(nextSourceRefType);
+      setSourceRefId(nextSourceRefId);
     },
   });
 
@@ -218,6 +234,8 @@ const ProductsPage = observer(function ProductsPage() {
       categoryId,
       recommendationId,
       couponId,
+      sourceRefType,
+      sourceRefId,
       sort: nextSort,
     });
     setListData(nextData);
@@ -309,6 +327,11 @@ const ProductsPage = observer(function ProductsPage() {
     });
 
     if (!nextDetailData) return;
+
+    if (nextDetailData.canBuy === false) {
+      await showWechatToast(nextDetailData.unavailableReasons[0] || '当前商品暂不可购买');
+      return;
+    }
 
     const availableVariants = getSalableSkuVariants(nextDetailData.skuVariants);
 

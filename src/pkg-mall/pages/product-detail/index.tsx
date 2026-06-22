@@ -91,6 +91,8 @@ const ProductDetailPage = observer(function ProductDetailPage() {
   const merchantName = detailData?.merchantName?.trim() || '';
   const attributeLines = detailData?.attributeLines ?? [];
   const hasSkuConfig = skuVariants.length > 0;
+  const productUnavailableText = detailData?.unavailableReasons?.[0] || '';
+  const productCanBuy = detailData?.canBuy !== false;
   const hasCouponCards = coupons.length > 0;
   const reviewTitle = detailData?.reviewCountText?.trim()
     ? `评论（${detailData.reviewCountText.trim()}）`
@@ -110,6 +112,10 @@ const ProductDetailPage = observer(function ProductDetailPage() {
   const selectedSkuText = skuState.selectedText;
 
   function openSkuPopup(nextAction: MallSkuAction) {
+    if (!productCanBuy) {
+      void showWechatToast(productUnavailableText || '当前商品暂不可购买');
+      return;
+    }
     if (!hasSkuConfig) {
       void showWechatToast('当前商品暂不可下单');
       return;
@@ -129,6 +135,11 @@ const ProductDetailPage = observer(function ProductDetailPage() {
   async function handleSkuSubmit() {
     if (skuState.submitTip) {
       await showWechatToast(skuState.submitTip);
+      return;
+    }
+
+    if (!productCanBuy) {
+      await showWechatToast(productUnavailableText || '当前商品暂不可购买');
       return;
     }
 
@@ -299,10 +310,16 @@ const ProductDetailPage = observer(function ProductDetailPage() {
               </View>
             </View>
             <View className="_pg-footer_buttons">
-              <View className="_pg-footer_button _pg-footer_button--cart" onClick={() => openSkuPopup('cart')}>
+              <View
+                className={`_pg-footer_button _pg-footer_button--cart ${!productCanBuy ? '_pg-footer_button--disabled' : ''}`}
+                onClick={() => openSkuPopup('cart')}
+              >
                 <Text>加入购物车</Text>
               </View>
-              <View className="_pg-footer_button _pg-footer_button--buy" onClick={() => openSkuPopup('buy')}>
+              <View
+                className={`_pg-footer_button _pg-footer_button--buy ${!productCanBuy ? '_pg-footer_button--disabled' : ''}`}
+                onClick={() => openSkuPopup('buy')}
+              >
                 <Text>立即购买</Text>
               </View>
             </View>
@@ -358,6 +375,12 @@ const ProductDetailPage = observer(function ProductDetailPage() {
           </View>
 
           <View className="_pg-benefit">
+            {!productCanBuy ? (
+              <View className="_pg-benefit_row _pg-benefit_row--warning">
+                <Text className="_pg-benefit_label">状态</Text>
+                <Text className="_pg-benefit_text">{productUnavailableText || '当前商品暂不可购买'}</Text>
+              </View>
+            ) : null}
             <View className="_pg-benefit_row">
               <Text className="_pg-benefit_label">优惠</Text>
               <View className="_pg-benefit_tag">折扣</View>
@@ -505,7 +528,7 @@ const ProductDetailPage = observer(function ProductDetailPage() {
               selectionText={skuState.missingSelectionText || (skuState.selectedText ? `已选 ${skuState.selectedText}` : '')}
               stockText={skuState.stockText}
               maxQuantity={skuState.maxQuantity}
-              submitDisabled={!hasSkuConfig || !skuState.isPurchasable}
+              submitDisabled={!productCanBuy || !hasSkuConfig || !skuState.isPurchasable}
               submitText={skuAction === 'buy' ? '立即购买' : '加入购物车'}
               onClose={() => setSkuVisible(false)}
               onSubmit={() => void handleSkuSubmit()}
