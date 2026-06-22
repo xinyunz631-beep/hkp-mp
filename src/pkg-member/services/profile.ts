@@ -86,6 +86,7 @@ function normalizeBffCrmProfile(
   const currentProfile = rootStore.memberInfo;
   const mobile = profile.phone || currentProfile?.mobile || '';
   const growthValue = profile.growthValue ?? currentProfile?.growthValue ?? DEFAULT_MEMBER_GROWTH_VALUE;
+  const pointsBalance = profile.pointsBalance ?? currentProfile?.points ?? 0;
 
   return {
     id: mobile || currentProfile?.id || 'current-member',
@@ -103,7 +104,7 @@ function normalizeBffCrmProfile(
     levelNo: profile.levelNo || DEFAULT_MEMBER_LEVEL_NO,
     levelName: profile.levelName || DEFAULT_MEMBER_LEVEL_NAME,
     growthValue,
-    points: currentProfile?.points ?? growthValue,
+    points: pointsBalance,
   };
 }
 

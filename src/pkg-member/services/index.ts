@@ -81,6 +81,7 @@ export async function fetchMemberHomeData(): Promise<MemberHomeData> {
   const profile = center.profile;
   const couponCount = profile.couponCount ?? 0;
   const growthValue = profile.growthValue ?? 0;
+  const pointsBalance = profile.pointsBalance ?? 0;
   const nextLevelText = profile.nextLevelGrowth
     ? `再获得 ${Math.max(profile.nextLevelGrowth - growthValue, 0)} 成长值即可升级${profile.nextLevelName || '下一等级'}`
     : `${profile.levelName || '会员'}权益已生效`;
@@ -92,7 +93,7 @@ export async function fetchMemberHomeData(): Promise<MemberHomeData> {
   }));
 
   return {
-    points: growthValue,
+    points: pointsBalance,
     growthText: nextLevelText,
     couponCount,
     couponHintText: couponCount ? `当前有 ${couponCount} 张可用券` : '暂无可用会员券',

@@ -14,6 +14,8 @@ export interface BffCrmProfile {
   regionName?: string;
   carPlateNo?: string;
   onlineStoreUrl?: string;
+  memberSchemeId?: string;
+  memberSchemeName?: string;
   levelCode?: string;
   levelName?: string;
   levelNo?: number;
@@ -23,6 +25,7 @@ export interface BffCrmProfile {
   nextLevelCode?: string;
   nextLevelName?: string;
   nextLevelGrowth?: number;
+  pointsBalance?: number;
   couponCount?: number;
   favoriteCount?: number;
   distributionAmountCent?: number;
