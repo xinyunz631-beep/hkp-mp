@@ -173,6 +173,7 @@ function resolveItemImage(order: BffOrder) {
     firstItem?.attributes?.imageUrl
       || firstItem?.attributes?.imageSrc
       || firstItem?.attributes?.mainImageUrl,
+    { allowMockImage: true },
   );
 }
 

@@ -5,6 +5,10 @@ const MALL_RUNTIME_URL_PATTERNS = [new RegExp(`/${LEGACY_PLACEHOLDER_PATH_PREFIX
 const MALL_RUNTIME_HTML_URL_PATTERN = new RegExp(`https?:\\/\\/[^\\s"'<>]*\\/${LEGACY_PLACEHOLDER_PATH_PREFIX}-\\d{8}[^\\s"'<>]*`, 'gi');
 const EDGE_PUNCTUATION_REGEXP = /^[\s:：,，;；|/、-]+|[\s:：,，;；|/、-]+$/g;
 
+type MallRuntimeUrlOptions = {
+  allowMockImage?: boolean;
+};
+
 function trimText(value?: string) {
   return typeof value === 'string' ? value.trim() : '';
 }
@@ -39,10 +43,10 @@ export function sanitizeMallRuntimeText(value?: string) {
   return MALL_RUNTIME_EXACT_TEXTS.has(compacted) ? '' : compacted;
 }
 
-export function sanitizeMallRuntimeUrl(value?: string) {
+export function sanitizeMallRuntimeUrl(value?: string, options: MallRuntimeUrlOptions = {}) {
   const normalized = trimText(value);
   if (!normalized) return '';
-  if (MALL_RUNTIME_URL_PATTERNS.some((pattern) => pattern.test(normalized))) return '';
+  if (!options.allowMockImage && MALL_RUNTIME_URL_PATTERNS.some((pattern) => pattern.test(normalized))) return '';
   return normalized;
 }
 
