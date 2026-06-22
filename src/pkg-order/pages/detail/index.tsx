@@ -195,7 +195,7 @@ const DetailPage = observer(function DetailPage() {
     if (!confirmed) return;
 
     try {
-      await confirmReceiveBffOrder(orderId, { remark: '会员确认收货' });
+      await confirmReceiveBffOrder(orderId, { remark: '会员确认收货' }, { showErrorToast: false });
       await loadDetailData({ showErrorToast: false, orderId });
       await showWechatToast('已确认收货', 'success');
     } catch (error) {

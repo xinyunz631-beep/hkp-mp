@@ -14,6 +14,6 @@ export async function fetchLogisticsData(orderId?: string): Promise<OrderLogisti
 // 物流页确认商城订单收货，提交成功后重新读取物流页真实数据。
 export async function confirmLogisticsReceipt(orderId?: string): Promise<OrderLogisticsData> {
   if (!orderId) throw new Error('缺少订单编号');
-  await confirmReceiveBffOrder(orderId, { remark: '会员确认收货' });
+  await confirmReceiveBffOrder(orderId, { remark: '会员确认收货' }, { showErrorToast: false });
   return fetchLogisticsData(orderId);
 }

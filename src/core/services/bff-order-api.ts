@@ -748,11 +748,16 @@ export function payBffOrder(orderNo: string, paymentChannel: BffOrderPaymentChan
 }
 
 // 商城订单确认收货，后端负责校验订单业态和可确认状态。
-export function confirmReceiveBffOrder(orderNo: string, data: BffOrderConfirmReceiveRequest = {}) {
+export function confirmReceiveBffOrder(
+  orderNo: string,
+  data: BffOrderConfirmReceiveRequest = {},
+  options: { showErrorToast?: boolean } = {},
+) {
   return request<BffOrderConfirmReceiveResponse, BffOrderConfirmReceiveRequest>({
     url: `/api/bff/orders/${encodeURIComponent(orderNo)}/confirm-receive`,
     method: 'POST',
     data,
+    showErrorToast: options.showErrorToast,
   });
 }
 
