@@ -3,8 +3,8 @@ import type { LoginUserProfile } from '@/core/types/auth';
 export const DEFAULT_MEMBER_LEVEL_ID = '8000000000001001';
 export const DEFAULT_MEMBER_LEVEL_NO = 1;
 export const DEFAULT_MEMBER_LEVEL_NAME = '初级会员';
-export const DEFAULT_MEMBER_GROWTH_VALUE = 1800;
-export const DEFAULT_MEMBER_AVATAR_URL = 'https://wx.qlogo.cn/mmhead/AhLk989Zrl2foUe0CrwzoKJpCozr2Kw28TVCpLBf4Ch0eicHphDdfPWkkOpyKCQmcM9ia49iac4svM/0';
+export const DEFAULT_MEMBER_GROWTH_VALUE = 0;
+export const DEFAULT_MEMBER_AVATAR_URL = '';
 const GENERIC_MEMBER_LEVEL_NAMES = new Set(['会员', 'Hello Kitty Park 会员']);
 
 export interface MemberLevelSource {

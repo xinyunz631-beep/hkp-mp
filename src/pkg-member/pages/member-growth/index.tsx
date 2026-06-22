@@ -4,6 +4,7 @@ import { observer } from 'mobx-react';
 import { AppIcon } from '@/core/components/AppIcon';
 import { AppImage } from '@/core/components/AppImage';
 import { AppPopup } from '@/core/components/AppPopup';
+import { BaseEmpty } from '@/core/components/BaseEmpty';
 import { PageShare, PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
@@ -79,7 +80,11 @@ function renderLevelBadge(level: MemberGrowthLevel, active: boolean) {
   );
 }
 
-// 渲染会员权益页面，权益图先用图片占位承载，后续替换路径即可。
+function resolveLevelBenefitImageSrc(level: MemberGrowthLevel) {
+  return level.benefits.find((benefit) => benefit.imageSrc)?.imageSrc || level.imageSrc;
+}
+
+// 渲染会员权益页面，按 CRM BFF 返回的等级、成长值和权益内容展示。
 const MemberGrowthPage = observer(function MemberGrowthPage() {
   const [pageData, setPageData] = useState<MemberGrowthData>();
   const [selectedLevelId, setSelectedLevelId] = useState('');
@@ -168,7 +173,53 @@ const MemberGrowthPage = observer(function MemberGrowthPage() {
     );
   }
 
-  function renderBenefitSwiper(levels: MemberGrowthLevel[], benefitImageSrc: string) {
+  function renderBenefitContent(level: MemberGrowthLevel) {
+    const benefitImageSrc = resolveLevelBenefitImageSrc(level);
+
+    if (benefitImageSrc) {
+      return (
+        <AppImage
+          className="_pg-benefit-image"
+          src={benefitImageSrc}
+          mode="aspectFill"
+          width="100%"
+          height={920}
+          placeholderColor="#d9e0e8"
+          showErrorIcon={false}
+        />
+      );
+    }
+
+    if (level.benefits.length > 0) {
+      return (
+        <View className="_pg-benefit-list">
+          {level.benefits.map((benefit) => (
+            <View className="_pg-benefit-card" key={benefit.id}>
+              {benefit.highlightText ? (
+                <Text className="_pg-benefit-card_badge">{benefit.highlightText}</Text>
+              ) : null}
+              <Text className="_pg-benefit-card_title">{benefit.title}</Text>
+              {benefit.summary ? (
+                <Text className="_pg-benefit-card_summary">{benefit.summary}</Text>
+              ) : null}
+            </View>
+          ))}
+        </View>
+      );
+    }
+
+    return (
+      <View className="_pg-benefit-empty">
+        <BaseEmpty
+          title={`${level.name}权益暂未配置`}
+          description="权益内容同步后会在这里展示"
+          size="small"
+        />
+      </View>
+    );
+  }
+
+  function renderBenefitSwiper(levels: MemberGrowthLevel[]) {
     return (
       <Swiper
         className="_pg-benefit-swiper"
@@ -193,15 +244,7 @@ const MemberGrowthPage = observer(function MemberGrowthPage() {
                 enhanced
                 showScrollbar={false}
               >
-                <AppImage
-                  className="_pg-benefit-image"
-                  src={benefitImageSrc}
-                  mode="aspectFill"
-                  width="100%"
-                  height={920}
-                  placeholderColor="#d9e0e8"
-                  showErrorIcon={false}
-                />
+                {renderBenefitContent(level)}
               </ScrollView>
             </SwiperItem>
           );
@@ -263,11 +306,31 @@ const MemberGrowthPage = observer(function MemberGrowthPage() {
   }
 
   return pageRuntime.renderPage(() => {
-    if (!pageData || !currentLevel || !selectedLevel || sortedLevels.length === 0) return null;
+    if (!pageData) return null;
+
+    if (sortedLevels.length === 0) {
+      return (
+        <View className="_pg">
+          <PageShell
+            title="会员权益"
+            className="_pg-shell"
+            scrollViewProps={{}}
+          >
+            <View className="_pg-empty-page">
+              <BaseEmpty
+                title="暂无会员等级信息"
+                description="会员等级配置同步后可查看权益"
+              />
+            </View>
+          </PageShell>
+        </View>
+      );
+    }
+
+    if (!currentLevel || !selectedLevel) return null;
 
     const displayName = memberProfile?.nickname || '微信用户';
     const displayAvatar = resolveMemberAvatar(memberProfile, pageData.avatarImageSrc);
-    const memberBenefitImageSrc = '';
 
     return (
       <View className="_pg">
@@ -317,8 +380,8 @@ const MemberGrowthPage = observer(function MemberGrowthPage() {
             </View>
 
             <View className="_pg-body">
-              {/* {renderGrowthSummary()} */}
-              {renderBenefitSwiper(sortedLevels, memberBenefitImageSrc)}
+              {renderGrowthSummary()}
+              {renderBenefitSwiper(sortedLevels)}
             </View>
           </View>
 

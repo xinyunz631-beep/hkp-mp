@@ -9,7 +9,7 @@ import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import { rootStore } from '@/core/store';
 import { resolveMemberAvatar, resolveMemberLevel } from '@/core/utils/member-profile';
 import { navigateToMiniRoute } from '@/core/utils/navigation';
-import { showWechatToast } from '@/core/utils/wechat-actions';
+import { showAppModal } from '@/core/utils/wechat-actions';
 import {
   fetchMemberHomeData,
   type MemberHomeData,
@@ -44,6 +44,16 @@ function resolveSectionRoute(action: MemberHomeSectionItem['action']) {
   return '';
 }
 
+// 拦截暂未进入本轮闭环的会员服务，避免跳到未接真实接口的页面。
+function showDeferredMemberServiceModal(title: string) {
+  return showAppModal({
+    title,
+    content: '该服务正在整理中，开放后可在会员中心查看。',
+    confirmText: '知道了',
+    showCancel: false,
+  });
+}
+
 // 会员首页快捷入口统一映射图标，优先复用项目图标封装。
 function resolveShortcutIcon(action: MemberHomeShortcut['action']) {
   if (action === 'memberCode') return 'check' as const;
@@ -69,13 +79,13 @@ const MemberIndexPage = observer(function MemberIndexPage() {
   // 处理会员首页快捷入口跳转，未开放能力统一走轻提示兜底。
   function handleShortcutTap(shortcut: MemberHomeShortcut) {
     if (shortcut.disabled) {
-      void showWechatToast('服务准备中，请稍后再试');
+      void showDeferredMemberServiceModal(shortcut.title);
       return;
     }
 
     const nextRoute = resolveShortcutRoute(shortcut.action);
     if (!nextRoute) {
-      void showWechatToast('服务准备中，请稍后再试');
+      void showDeferredMemberServiceModal(shortcut.title);
       return;
     }
 
@@ -85,13 +95,13 @@ const MemberIndexPage = observer(function MemberIndexPage() {
   // 处理会员权益和更多服务区动作，避免 render 内散写业务分支。
   function handleSectionTap(item: MemberHomeSectionItem) {
     if (item.disabled) {
-      void showWechatToast('服务准备中，请稍后再试');
+      void showDeferredMemberServiceModal(item.title);
       return;
     }
 
     const nextRoute = resolveSectionRoute(item.action);
     if (!nextRoute) {
-      void showWechatToast('服务准备中，请稍后再试');
+      void showDeferredMemberServiceModal(item.title);
       return;
     }
 

@@ -3,16 +3,11 @@ import { observer } from 'mobx-react';
 import { BaseEmpty } from '@/core/components/BaseEmpty';
 import { PageShell } from '@/core/components/PageShell';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
-import { fetchShareRuleData } from '@/pkg-member/services/share-rule';
 import './index.scss';
 
 // 渲染分享规则的暂缓状态，完整业务页另行进入。
 const ShareRulePage = observer(function ShareRulePage() {
-  const pageRuntime = usePageRuntime({
-    initPage: async () => {
-      await fetchShareRuleData();
-    },
-  });
+  const pageRuntime = usePageRuntime();
 
   return pageRuntime.renderPage(() => (
     <View className="_pg">

@@ -6,8 +6,6 @@ import './index.scss';
 type BaseEmptyStatus = 'empty' | 'error' | 'network';
 type BaseEmptySize = 'small' | 'base';
 
-const DEFAULT_EMPTY_IMAGE = 'https://wx.qlogo.cn/mmhead/AhLk989Zrl2foUe0CrwzoKJpCozr2Kw28TVCpLBf4Ch0eicHphDdfPWkkOpyKCQmcM9ia49iac4svM/0';
-
 interface BaseEmptyProps {
   className?: string;
   title?: ReactNode;
@@ -52,7 +50,7 @@ export function BaseEmpty({
   return (
     <Empty
       className={emptyClassName}
-      image={image || (status === 'empty' ? DEFAULT_EMPTY_IMAGE : undefined)}
+      image={image}
       status={status}
       size={size}
       title={title}

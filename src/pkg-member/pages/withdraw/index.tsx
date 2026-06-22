@@ -3,16 +3,11 @@ import { observer } from 'mobx-react';
 import { BaseEmpty } from '@/core/components/BaseEmpty';
 import { PageShell } from '@/core/components/PageShell';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
-import { fetchWithdrawData } from '@/pkg-member/services/withdraw';
 import './index.scss';
 
 // 渲染申请提现的暂缓状态，完整业务页另行进入。
 const WithdrawPage = observer(function WithdrawPage() {
-  const pageRuntime = usePageRuntime({
-    initPage: async () => {
-      await fetchWithdrawData();
-    },
-  });
+  const pageRuntime = usePageRuntime();
 
   return pageRuntime.renderPage(() => (
     <View className="_pg">

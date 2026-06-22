@@ -105,20 +105,43 @@ const MemberGrowthDetailPage = observer(function MemberGrowthDetailPage() {
     return (
       <View className="_pg-rule-popup">
         <Text className="_pg-rule-popup_title">成长值说明</Text>
-        <View className="_pg-growth-rules">
-          {data.growthRuleSections.map((section) => (
-            <View className="_pg-growth-rule" key={section.id}>
-              <Text className="_pg-growth-rule_title">{section.title}</Text>
-              <Text className="_pg-growth-rule_content">{section.content}</Text>
-            </View>
-          ))}
-        </View>
+        {data.growthRuleSections.length > 0 ? (
+          <View className="_pg-growth-rules">
+            {data.growthRuleSections.map((section) => (
+              <View className="_pg-growth-rule" key={section.id}>
+                <Text className="_pg-growth-rule_title">{section.title}</Text>
+                <Text className="_pg-growth-rule_content">{section.content}</Text>
+              </View>
+            ))}
+          </View>
+        ) : (
+          <BaseEmpty
+            title="暂无成长值规则"
+            description="规则内容同步后会在这里展示"
+            size="small"
+          />
+        )}
       </View>
     );
   }
 
   return pageRuntime.renderPage(() => {
-    if (!pageData || !currentLevel) return null;
+    if (!pageData) return null;
+
+    if (!currentLevel) {
+      return (
+        <View className="_pg">
+          <PageShell title="成长值明细" className="_pg-shell" scrollViewProps={{}}>
+            <View className="_pg-body">
+              <BaseEmpty
+                title="暂无会员等级信息"
+                description="会员等级配置同步后可查看成长值"
+              />
+            </View>
+          </PageShell>
+        </View>
+      );
+    }
 
     const displayName = memberProfile?.nickname || '微信用户';
     const displayAvatar = resolveMemberAvatar(memberProfile, pageData.avatarImageSrc);

@@ -7,13 +7,14 @@ import { AppImage } from '@/core/components/AppImage';
 import { AuthAction } from '@/core/components/AuthAction';
 import { PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
+import { fetchBffMemberCoupons, type BffMemberCouponsResponse } from '@/core/services/bff-coupon-api';
 import { fetchBffCrmProfile } from '@/core/services/bff-crm-api';
 import { fetchOrderStatusBadgeCounts, type OrderStatusBadgeCounts } from '@/core/services/order-status-badges';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import { rootStore } from '@/core/store';
 import { resolveMemberAvatar, resolveMemberLevel } from '@/core/utils/member-profile';
 import { navigateToMiniRoute } from '@/core/utils/navigation';
-import { callWechatPhone, showWechatConfirm } from '@/core/utils/wechat-actions';
+import { callWechatPhone, showAppModal, showWechatConfirm } from '@/core/utils/wechat-actions';
 import './index.scss';
 
 interface ProfileMetricItem {
@@ -44,6 +45,7 @@ interface ProfileServiceItem {
 
 interface MemberMetricState {
   favoriteCount?: number;
+  couponCount?: number;
   orderBadgeCounts?: OrderStatusBadgeCounts;
 }
 
@@ -127,6 +129,23 @@ function formatOrderBadge(count?: number) {
   return count > 99 ? '99+' : String(count);
 }
 
+// 从我的优惠券 BFF 响应里读取真实券资产数量，避免使用会员概况里的旧汇总字段。
+function resolveMemberCouponCount(response?: BffMemberCouponsResponse) {
+  if (!response) return undefined;
+
+  if (typeof response.total === 'number' && Number.isFinite(response.total)) {
+    return Math.max(0, response.total);
+  }
+
+  const statusCountTotal = Object.values(response.statusCounts ?? {}).reduce<number>((sum, count) => (
+    typeof count === 'number' && Number.isFinite(count) ? sum + count : sum
+  ), 0);
+
+  if (statusCountTotal > 0) return statusCountTotal;
+
+  return (response.list ?? response.coupons ?? []).length;
+}
+
 function buildOrderActionItems(counts?: OrderStatusBadgeCounts) {
   return orderActions.map((item) => ({
     ...item,
@@ -152,16 +171,12 @@ async function handleInvoice() {
 }
 
 async function handleShareIncome() {
-  const confirmed = await showWechatConfirm({
+  await showAppModal({
     title: '分销收益',
-    content: '当前暂无可结算收益，奖励入账后会在这里展示明细。如需了解邀请奖励规则，可以联系乐园客服。',
-    confirmText: '联系客服',
-    cancelText: '知道了',
+    content: '分享收益服务正在整理中，开放后可在会员中心查看。',
+    confirmText: '知道了',
+    showCancel: false,
   });
-
-  if (confirmed) {
-    await callWechatPhone(PARK_PHONE);
-  }
 }
 
 function handleServiceAction(item: ProfileServiceItem) {
@@ -283,19 +298,21 @@ const MemberPage = observer(function MemberPage() {
     },
     {
       key: 'coupons',
-      value: 5,
+      value: typeof memberMetrics.couponCount === 'number' && Number.isFinite(memberMetrics.couponCount)
+        ? memberMetrics.couponCount
+        : '-',
       label: '优惠券',
       route: MINI_PACKAGE_ROUTES.memberCoupons,
       reason: '登录后可查看优惠券',
     },
     {
       key: 'income',
-      value: 0,
+      value: '-',
       label: '分销收益',
       action: 'shareIncome',
       reason: '登录后可查看分销收益',
     },
-  ], [memberMetrics.favoriteCount]);
+  ], [memberMetrics.couponCount, memberMetrics.favoriteCount]);
 
   async function refreshMemberMetrics() {
     if (!rootStore.isLoggedIn) {
@@ -304,11 +321,13 @@ const MemberPage = observer(function MemberPage() {
     }
 
     try {
-      const [profile, orderBadgeCounts] = await Promise.all([
+      const [profile, couponData, orderBadgeCounts] = await Promise.all([
         fetchBffCrmProfile(),
+        fetchBffMemberCoupons({ page: 1, size: 1 }).catch(() => undefined),
         fetchOrderStatusBadgeCounts().catch(() => undefined),
       ]);
       setMemberMetrics({
+        couponCount: resolveMemberCouponCount(couponData),
         favoriteCount: profile.favoriteCount,
         orderBadgeCounts,
       });

@@ -1,8 +1,17 @@
-import { resolveMockData } from '@/core/services/mock';
 import {
-  DEFAULT_MEMBER_GROWTH_VALUE,
-  DEFAULT_MEMBER_LEVEL_ID,
-} from '@/core/utils/member-profile';
+  fetchBffCrmCenter,
+  type BffCrmBenefit,
+  type BffCrmLevelRule,
+} from '@/core/services/bff-crm-api';
+
+export interface MemberGrowthBenefit {
+  id: string;
+  levelId: string;
+  title: string;
+  summary: string;
+  highlightText: string;
+  imageSrc: string;
+}
 
 export interface MemberGrowthLevel {
   id: string;
@@ -10,6 +19,8 @@ export interface MemberGrowthLevel {
   name: string;
   growthThreshold: number;
   themeColor: string;
+  imageSrc: string;
+  benefits: MemberGrowthBenefit[];
 }
 
 export interface MemberGrowthRuleSection {
@@ -30,6 +41,8 @@ export interface MemberGrowthData {
   avatarImageSrc: string;
   member: {
     levelId: string;
+    levelNo?: number;
+    levelName?: string;
     growthValue: number;
   };
   levels: MemberGrowthLevel[];
@@ -38,85 +51,94 @@ export interface MemberGrowthData {
   growthRecords: MemberGrowthRecord[];
 }
 
-const memberGrowthData: MemberGrowthData = {
-  backgroundImageSrc: '',
-  avatarImageSrc: '',
-  member: {
-    levelId: DEFAULT_MEMBER_LEVEL_ID,
-    growthValue: DEFAULT_MEMBER_GROWTH_VALUE,
-  },
-  levels: [
-    {
-      id: '8000000000001001',
-      levelNo: 1,
-      name: '初级会员',
-      growthThreshold: 0,
-      themeColor: '#f6c24b',
-    },
-    {
-      id: '8000000000001002',
-      levelNo: 2,
-      name: '中级会员',
-      growthThreshold: 6000,
-      themeColor: '#20c7d8',
-    },
-    {
-      id: '8000000000001003',
-      levelNo: 3,
-      name: '高级会员',
-      growthThreshold: 30000,
-      themeColor: '#c51df4',
-    },
-  ],
-  levelRuleIntro: [
-    '用户成长值达到对应升级门槛，立即完成升级。',
-    '用户等级暂无有效期限制。',
-  ],
-  growthRuleSections: [
-    {
-      id: '8000000000003001',
-      title: '消费',
-      content: '您在Hello Kitty乐园的消费行为，包括线上商城、门票预定、园内消费及酒店预定都可获得成长值。',
-    },
-    {
-      id: '8000000000003002',
-      title: '活跃',
-      content: '您在Hello Kitty乐园消费行为，包括注册、评价、转发分享以及邀请好友等，都可获得成长值。',
-    },
-    {
-      id: '8000000000003003',
-      title: '任务',
-      content: '参与会员中心的任务、问卷答题等，可获得相应成长值。',
-    },
-    {
-      id: '8000000000003004',
-      title: '游戏',
-      content: '参与会员中心的各种小游戏，达到指定要求，可获得相应成长值。',
-    },
-  ],
-  growthRecords: [
-    {
-      id: '8000000000004001',
-      title: '门票预订',
-      value: 920,
-      time: '2026-05-28 10:20',
-    },
-    {
-      id: '8000000000004002',
-      title: '官方商城消费',
-      value: 680,
-      time: '2026-05-27 15:36',
-    },
-    {
-      id: '8000000000004003',
-      title: '会员任务',
-      value: 200,
-      time: '2026-05-26 09:12',
-    },
-  ],
-};
+function normalizeText(value?: string) {
+  return value?.trim() || '';
+}
 
-// 获取会员等级及成长值数据，真实接口接入后在这里归一字段和空态。
-export function fetchMemberGrowthData() {
-  return resolveMockData<MemberGrowthData>(memberGrowthData);
+function normalizeNonNegativeNumber(value?: number) {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) return 0;
+
+  return Math.floor(value);
+}
+
+function isEnabledStatus(status?: string) {
+  const normalizedStatus = normalizeText(status).toUpperCase();
+  return !normalizedStatus || ['ENABLED', 'ACTIVE', 'PUBLISHED', 'VALID'].includes(normalizedStatus);
+}
+
+function toMemberGrowthBenefit(benefit: BffCrmBenefit): MemberGrowthBenefit | null {
+  const id = normalizeText(benefit.benefitNo);
+  const levelId = normalizeText(benefit.levelCode);
+  const title = normalizeText(benefit.benefitTitle);
+
+  if (!id || !levelId || !title || !isEnabledStatus(benefit.status)) return null;
+
+  return {
+    id,
+    levelId,
+    title,
+    summary: normalizeText(benefit.benefitSummary || benefit.description),
+    highlightText: normalizeText(benefit.highlightText),
+    imageSrc: normalizeText(benefit.iconUrl),
+  };
+}
+
+function groupBenefitsByLevel(benefits: BffCrmBenefit[]) {
+  return benefits.reduce<Record<string, MemberGrowthBenefit[]>>((result, benefit) => {
+    const nextBenefit = toMemberGrowthBenefit(benefit);
+    if (!nextBenefit) return result;
+
+    const levelBenefits = result[nextBenefit.levelId] ?? [];
+    levelBenefits.push(nextBenefit);
+    result[nextBenefit.levelId] = levelBenefits;
+    return result;
+  }, {});
+}
+
+function toMemberGrowthLevel(
+  level: BffCrmLevelRule,
+  benefitMap: Record<string, MemberGrowthBenefit[]>,
+): MemberGrowthLevel | null {
+  const id = normalizeText(level.levelCode);
+  const name = normalizeText(level.levelName);
+
+  if (!id || !name || !isEnabledStatus(level.status)) return null;
+
+  return {
+    id,
+    levelNo: normalizeNonNegativeNumber(level.levelNo),
+    name,
+    growthThreshold: normalizeNonNegativeNumber(level.growthThreshold),
+    themeColor: normalizeText(level.badgeColor) || '#ec6d9c',
+    imageSrc: normalizeText(level.iconUrl),
+    benefits: benefitMap[id] ?? [],
+  };
+}
+
+// 获取会员等级及成长值数据，只读取 CRM BFF，不再回退本地等级、规则或记录数据。
+export async function fetchMemberGrowthData() {
+  const center = await fetchBffCrmCenter();
+  const benefitMap = groupBenefitsByLevel(center.benefits ?? []);
+  const levels = (center.levels ?? [])
+    .map((level) => toMemberGrowthLevel(level, benefitMap))
+    .filter((level): level is MemberGrowthLevel => Boolean(level))
+    .sort((firstLevel, secondLevel) => (
+      firstLevel.growthThreshold - secondLevel.growthThreshold
+      || firstLevel.levelNo - secondLevel.levelNo
+    ));
+
+  return {
+    backgroundImageSrc: '',
+    avatarImageSrc: normalizeText(center.profile.avatarUrl),
+    member: {
+      levelId: normalizeText(center.profile.levelCode),
+      levelNo: center.profile.levelNo,
+      levelName: normalizeText(center.profile.levelName),
+      growthValue: normalizeNonNegativeNumber(center.profile.growthValue),
+    },
+    levels,
+    levelRuleIntro: [],
+    growthRuleSections: [],
+    growthRecords: [],
+  };
 }

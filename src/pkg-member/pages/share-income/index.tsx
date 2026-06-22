@@ -3,16 +3,11 @@ import { observer } from 'mobx-react';
 import { BaseEmpty } from '@/core/components/BaseEmpty';
 import { PageShell } from '@/core/components/PageShell';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
-import { fetchShareIncomeData } from '@/pkg-member/services/share-income';
 import './index.scss';
 
 // 渲染收益明细的暂缓状态，完整业务页另行进入。
 const ShareIncomePage = observer(function ShareIncomePage() {
-  const pageRuntime = usePageRuntime({
-    initPage: async () => {
-      await fetchShareIncomeData();
-    },
-  });
+  const pageRuntime = usePageRuntime();
 
   return pageRuntime.renderPage(() => (
     <View className="_pg">

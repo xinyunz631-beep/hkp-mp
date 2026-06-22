@@ -18,7 +18,7 @@
 - 订单状态、核销状态等后台静默轮询只能作为变更探针：必须无 loading、无 toast、单飞请求、防页面隐藏后继续跑、无变化不 `setState`；探针响应不得直接渲染，发现变化后再调用页面正常详情刷新入口更新页面。
 - Swiper、横滑列表、图片组和卡片列表必须兼容接口返回空数据：先过滤有效项，只渲染真实存在的数据；没有数据时不要生成 `SwiperItem`、空卡片、空图片节点或额外占位，除非用户明确要求保留占位。
 - 列表跳详情时，路由参数必须使用接口返回数据里的 `id` 字段拼接；不要在前端额外造 `projectId`、`detailId` 等平行 id 字段，除非真实接口字段就叫这个名字。
-- mock / fallback 数据也必须贴近真实接口形态：详情 id、活动 id、商品 id 等后端长 ID 在前端统一按数字字符串承载，例如 `'1000000000001001'`；不要用 `happyDrift`、`worldCup` 这类英文语义词当接口 id，除非真实接口字段明确就是业务 code。
+- 运行态页面和 service 禁止新增 mock / fallback 业务数据；真实接口缺 endpoint、缺字段或缺配置时进入空态、异常态、阻断态，并同步 BFF 闭环文档。
 - 用户可见文案禁止出现 `mock`、组件库、技术栈、开发态或测试态字眼。
 - 用户可见文案必须按真实 C 端业务语境表达，不得暴露实现层、调试层或产品内部分类词；输入提示、空态、按钮和列表标题都要让普通游客能直接理解。
 - 用户可见文案禁止出现实现过程描述，例如“按票种生成”“实名槽位”“接口返回”“草稿”等；页面上应表达为“请补充出游人信息”“返回重新选择”“订单信息已保存”等游客可理解话术。
@@ -112,7 +112,7 @@
 - 向后端、微信能力、支付、上传或授权链路传当前小程序 `appId/appid` 时，必须统一使用微信官方 `getAccountInfoSync().miniProgram.appId` 获取当前运行 AppID；获取不到才兜底 `wx72b9e08ce45d3e79`。页面、service、request、支付或上传代码禁止直接把配置 AppID 当首选值传参。
 - 项目分享只允许微信好友分享：页面使用 `useShareAppMessage` 配置分享内容，可见分享按钮统一优先使用 `AppShareButton` / `openType="share"`；分享属于公开传播能力，不校验登录态，不要把分享按钮包进 `AuthAction`、`requireLogin` 或受保护路由判断；禁止 `useShareTimeline`、`onShareTimeline`、`shareTimeline`、朋友圈分享入口，以及用 `showShareMenu` 做二级分享引导。
 - 图片预览、扫码、地图、电话、复制、确认弹窗和 toast 默认优先使用 `src/core/utils/wechat-actions.ts` 封装；确认类弹窗统一走 `showAppModal()` / `showWechatConfirm()`，不要在页面直接散写 `Taro.showModal`，确认按钮颜色默认使用项目主色。
-- 微信支付默认优先使用 `src/core/utils/wechat-actions.ts` 的 `requestWechatPayment()`，无真实支付参数时由封装函数完成本地支付 / 暂不支付闭环；页面不要直接散写 `Taro.requestPayment` 或临时支付 modal。
+- 微信支付默认优先使用 `src/core/utils/wechat-actions.ts` 的 `requestWechatPayment()`；无真实支付参数时必须按失败/待支付阻断处理，不允许用本地弹窗模拟支付成功或冒充交易闭环。页面不要直接散写 `Taro.requestPayment` 或临时支付 modal。
 - 新增或使用 `chooseLocation` 等微信隐私 API 时，必须同步检查 `src/app.config.ts` 的 `requiredPrivateInfos` 和 `permission` 声明，避免开发工具内接口直接 fail 后被业务 toast 误判为用户取消。
 - 搜索、筛选、表单、交易确认等页面的业务细节默认沉淀到 service/types、接口联调文档或必要 current 文档；不再维护页面级 UI 设计说明。本文件只保留微信 API、文案边界、状态组件、布局安全区等跨页面通用约束。
 - 页面可见点击必须落到跳转、弹层、微信 API、本地状态变化、登录拦截或提交结果，不允许用“即将开放”作为非暂缓页面兜底。
@@ -153,8 +153,7 @@
 - 业务分包页面：`src/pkg-{package}/pages/{page}/index.*`
 - 主包 service：`src/core/services/{page}.ts`
 - 分包 service：`src/pkg-{package}/services/{page}.ts`
-- 分包基础数据：`src/pkg-{package}/services/mock-data.ts`
-- 本地数据工具：`src/core/services/mock.ts`
+- 真实接口页禁止新增分包运行态 `services/mock-data.ts` 或 `src/core/services/mock.ts`；后端缺口必须进入 BFF 闭环文档。
 - HKP 通用 DTO：`src/core/types/hkp.ts`
 - 项目级图片组件：`src/core/components/AppImage`
 - 项目级图标组件：`src/core/components/AppIcon`
@@ -166,7 +165,7 @@
 - 默认按影响范围运行最小门禁，不要每次无差别全跑。
 - 只改 SCSS / 页面视觉：运行 `yarn check:page-convention` 和 `git diff --check`；不运行 `typecheck`、`package-boundary`。
 - 改 TS/TSX 页面或组件逻辑：运行 `yarn typecheck`、`yarn check:page-convention` 和 `git diff --check`；未动 import / 路由 / 分包时不运行 `package-boundary`。
-- 改 service / mock / store / utils / hooks：运行 `yarn typecheck` 和 `git diff --check`；未触达页面 render / SCSS 时不运行 `page-convention`。
+- 改 service / store / utils / hooks：运行 `yarn typecheck` 和 `git diff --check`；未触达页面 render / SCSS 时不运行 `page-convention`。
 - 改路由、`app.config.ts`、分包结构、主包和分包 import 边界：运行 `yarn typecheck`、`yarn check:package-boundary` 和 `git diff --check`。
 - 只改 skill / `docs/codex` / 说明性文档：通常只运行 `git diff --check`，必要时用 `grep` 确认规则落点。
 - `yarn check:page-convention` 会拦截缺少 `_pg` 根节点、页面名前缀 class、双下划线元素写法、非 `_pg-*` 页面 selector，以及用 `♡/✨/›/×` 等文本符号冒充图标。

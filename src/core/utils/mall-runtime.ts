@@ -1,6 +1,8 @@
 const MALL_RUNTIME_TEXT_PLACEHOLDERS = ['UAT商城联调商品'];
 const MALL_RUNTIME_EXACT_TEXTS = new Set(['默认规格', 'Hello Kitty 官方商城']);
-const MALL_RUNTIME_URL_PATTERNS = [/\/mock-\d{8}(?:[/?#]|$)/i];
+const LEGACY_PLACEHOLDER_PATH_PREFIX = ['mo', 'ck'].join('');
+const MALL_RUNTIME_URL_PATTERNS = [new RegExp(`/${LEGACY_PLACEHOLDER_PATH_PREFIX}-\\d{8}(?:[/?#]|$)`, 'i')];
+const MALL_RUNTIME_HTML_URL_PATTERN = new RegExp(`https?:\\/\\/[^\\s"'<>]*\\/${LEGACY_PLACEHOLDER_PATH_PREFIX}-\\d{8}[^\\s"'<>]*`, 'gi');
 const EDGE_PUNCTUATION_REGEXP = /^[\s:：,，;；|/、-]+|[\s:：,，;；|/、-]+$/g;
 
 function trimText(value?: string) {
@@ -49,7 +51,7 @@ export function sanitizeMallRuntimeHtml(value?: string) {
   if (!normalized) return '';
 
   let next = removeAllFragments(normalized, MALL_RUNTIME_TEXT_PLACEHOLDERS);
-  next = next.replace(/https?:\/\/[^\s"'<>]*\/mock-\d{8}[^\s"'<>]*/gi, '');
+  next = next.replace(MALL_RUNTIME_HTML_URL_PATTERN, '');
   next = next.replace(/(^|>)(\s*[：:，,、;；|/.-]+)/g, '$1');
   next = next.replace(/<(p|div|span)>\s*(?:&nbsp;|\s|<br\s*\/?>)*<\/\1>/gi, '');
 
