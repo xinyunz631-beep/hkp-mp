@@ -235,6 +235,10 @@ export interface BffCouponRefundReturnResponse {
   refundNo?: string;
   returnedCount?: number;
   returnedCouponNos?: string[];
+  pendingReviewCount?: number;
+  pendingReviewCouponNos?: string[];
+  notReturnedCount?: number;
+  notReturnedCouponNos?: string[];
   operatedAt?: string;
 }
 

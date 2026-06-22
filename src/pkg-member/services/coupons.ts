@@ -250,6 +250,17 @@ function resolveReasonText(coupon: BffCouponAssetView) {
   const explicitReason = String(coupon.reason || '').trim();
   if (explicitReason) return explicitReason;
 
+  const normalizedRefundReturnStatus = String(coupon.refundReturnStatus || '')
+    .trim()
+    .replace(/[_\s-]/g, '')
+    .toUpperCase();
+  if (normalizedRefundReturnStatus === 'PENDINGREVIEW') {
+    return '退款后返还需要人工审核，审核完成后会继续更新到券状态里。';
+  }
+  if (normalizedRefundReturnStatus === 'NOTRETURNED') {
+    return '该优惠券按退款返还口径当前不再返还，可在售后记录里继续查看处理结果。';
+  }
+
   if (coupon.status === 'LOCKED') return '该优惠券已被当前订单占用，完成支付或释放后可继续使用。';
   if (coupon.status === 'USED') return '该优惠券已随订单完成核销。';
   if (coupon.status === 'EXPIRED') return '该优惠券已超过可使用时效。';
@@ -266,10 +277,15 @@ function resolveOrderNoText(coupon: BffCouponAssetView) {
 }
 
 function resolveRefundReturnStatusText(refundReturnStatus?: string) {
-  const normalizedStatus = String(refundReturnStatus || '').toUpperCase();
+  const normalizedStatus = String(refundReturnStatus || '')
+    .trim()
+    .replace(/[_\s-]/g, '')
+    .toUpperCase();
   if (!normalizedStatus) return '';
   if (normalizedStatus === 'RETURNED' || normalizedStatus === 'SUCCESS') return '退款后已返还';
   if (normalizedStatus === 'PROCESSING' || normalizedStatus === 'PENDING') return '返还处理中';
+  if (normalizedStatus === 'PENDINGREVIEW') return '待人工审核';
+  if (normalizedStatus === 'NOTRETURNED') return '不再返还';
   if (normalizedStatus === 'PARTIAL_RETURNED') return '部分返还';
   return '';
 }
