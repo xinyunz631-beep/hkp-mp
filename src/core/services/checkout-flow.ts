@@ -32,6 +32,11 @@ export interface CheckoutAmountState {
   payableAmount: number;
 }
 
+export interface NormalizeCheckoutAmountOptions {
+  sceneLabel?: string;
+  requirePayableAmount?: boolean;
+}
+
 export interface CheckoutCouponState {
   requestedCouponId?: string;
   selectedCouponId?: string;
@@ -86,11 +91,21 @@ function formatDiscountPercent(discountPercent?: number | string) {
 export function normalizeCheckoutAmounts(
   confirmation: BffOrderConfirmResponse | BffOrder | undefined,
   fallback: CheckoutAmountFallback = {},
+  options: NormalizeCheckoutAmountOptions = {},
 ): CheckoutAmountState {
   const originalAmountCent = normalizeCent(confirmation?.originalAmountCent, fallback.originalAmountCent ?? fallback.payableAmountCent ?? 0);
   const freightAmountCent = normalizeCent(confirmation?.freightAmountCent, fallback.freightAmountCent ?? 0);
   const discountAmountCent = normalizeCent(confirmation?.discountAmountCent, fallback.discountAmountCent ?? 0);
-  const payableAmountCent = normalizeCent(confirmation?.payableAmountCent, fallback.payableAmountCent ?? Math.max(0, originalAmountCent + freightAmountCent - discountAmountCent));
+  const confirmedPayableAmountCent = parseNumberLike(confirmation?.payableAmountCent);
+  const requirePayableAmount = options.requirePayableAmount ?? true;
+
+  if (requirePayableAmount && (typeof confirmedPayableAmountCent !== 'number' || confirmedPayableAmountCent < 0)) {
+    throw new Error(`${options.sceneLabel || '订单确认'}金额暂不可用，请稍后再试`);
+  }
+
+  const payableAmountCent = typeof confirmedPayableAmountCent === 'number' && confirmedPayableAmountCent >= 0
+    ? confirmedPayableAmountCent
+    : normalizeCent(fallback.payableAmountCent, Math.max(0, originalAmountCent + freightAmountCent - discountAmountCent));
 
   return {
     originalAmountCent,
@@ -154,10 +169,10 @@ export function resolveCheckoutCouponState(
   };
 }
 
-// 将 BFF 可用券统一转成项目券卡片 DTO，金额单位只接受 discountAmountCent。
+// 将 BFF 可用券统一转成项目券卡片 DTO，优先使用分字段，兼容历史 discountAmount 字段。
 export function toCheckoutCouponSummary(coupon: BffAvailableCouponView, fallbackTitle: string): HkpCouponSummary {
   const thresholdAmount = centToYuan(coupon.thresholdAmountCent);
-  const discountAmountCent = parseNumberLike(coupon.discountAmountCent);
+  const discountAmountCent = parseNumberLike(coupon.discountAmountCent) ?? parseNumberLike(coupon.discountAmount);
   const discountAmount = centToYuan(discountAmountCent);
   const validDate = coupon.validEndAt ? coupon.validEndAt.slice(0, 10) : '';
   const available = coupon.available !== false && coupon.status === 'AVAILABLE';

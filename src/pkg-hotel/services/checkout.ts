@@ -76,7 +76,9 @@ export async function fetchCheckoutData(params: FetchHotelCheckoutParams = {}) {
   const fallbackAmountCent = yuanToCent(resolveHotelDraftAmount(draft, roomCount));
   const amounts = normalizeCheckoutAmounts(confirmation, {
     originalAmountCent: fallbackAmountCent,
-    payableAmountCent: fallbackAmountCent,
+  }, {
+    sceneLabel: '酒店确认单',
+    requirePayableAmount: true,
   });
   const availableCouponsResponse = await fetchBffCouponAvailable({
     sceneType: 'HOTEL',

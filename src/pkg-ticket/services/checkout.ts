@@ -160,7 +160,9 @@ export async function fetchCheckoutData(draftId?: string, selectedCouponId?: str
   ]);
   const amounts = normalizeCheckoutAmounts(confirmation, {
     originalAmountCent: ticketQuote.originalAmountCent ?? calculateDraftOrderAmountCent(draft),
-    payableAmountCent: ticketQuote.payableAmountCent ?? ticketQuote.originalAmountCent ?? calculateDraftOrderAmountCent(draft),
+  }, {
+    sceneLabel: '门票确认单',
+    requirePayableAmount: true,
   });
   const availableCouponsResponse = await fetchBffCouponAvailable({
     sceneType: 'TICKET',

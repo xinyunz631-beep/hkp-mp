@@ -126,7 +126,9 @@ export async function fetchCheckoutData(options: FetchCheckoutDataOptions = {}) 
   const amounts = normalizeCheckoutAmounts(confirmation, {
     originalAmountCent: fallbackOriginalAmountCent,
     freightAmountCent: yuanToCent(deliveryCheck.freightAmount),
-    payableAmountCent: fallbackOriginalAmountCent + yuanToCent(deliveryCheck.freightAmount),
+  }, {
+    sceneLabel: '商城确认单',
+    requirePayableAmount: true,
   });
   const availableCouponsResponse = await fetchBffCouponAvailable({
     sceneType: 'MALL',
