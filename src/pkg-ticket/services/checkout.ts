@@ -1,15 +1,20 @@
-import { confirmBffOrder, type BffOrderConfirmResponse } from '@/core/services/bff-order-api';
-import { fetchBffCouponAvailable, type BffAvailableCouponView } from '@/core/services/bff-coupon-api';
-import { centToYuan, parseNumberLike, yuanToCent } from '@/core/utils/money';
+import { confirmBffOrder } from '@/core/services/bff-order-api';
+import { fetchBffCouponAvailable } from '@/core/services/bff-coupon-api';
+import {
+  normalizeCheckoutAmounts,
+  resolveCheckoutCouponState,
+  toCheckoutCouponSummary,
+} from '@/core/services/checkout-flow';
+import { yuanToCent } from '@/core/utils/money';
 import { quoteBffTickets } from './ticket-api';
 import type { HkpDateOption } from '@/core/types/hkp';
 import {
-  buildTicketUnifiedOrderRequest,
   createTicketOrderTravelers,
   getTicketOrderDraft,
   type TicketOrderDraft,
   type TicketOrderTraveler,
 } from './order-draft';
+import { buildTicketCheckoutOrderRequest } from './checkout-adapter';
 import type { TicketCoupon } from './ticket-booking';
 
 export interface TicketCheckoutTicketItem {
@@ -69,81 +74,11 @@ function buildCheckoutDates(selectedDate: string): HkpDateOption[] {
   ];
 }
 
-function formatYuan(amountCent: unknown = 0) {
-  const amount = centToYuan(amountCent);
-  if (Number.isInteger(amount)) return String(amount);
-  return amount.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
-}
-
-// 格式化后端百分比折扣字段，85 表示 8.5 折。
-function formatDiscountPercent(discountPercent?: number | string) {
-  const normalizedDiscountPercent = parseNumberLike(discountPercent);
-  if (typeof normalizedDiscountPercent !== 'number' || normalizedDiscountPercent <= 0) return '';
-  const discount = normalizedDiscountPercent > 10 ? normalizedDiscountPercent / 10 : normalizedDiscountPercent;
-  const text = Number.isInteger(discount) ? String(discount) : discount.toFixed(1).replace(/0+$/, '').replace(/\.$/, '');
-  return `${text}折`;
-}
-
 function calculateDraftOrderAmountCent(draft: TicketOrderDraft) {
   return draft.products.reduce((total, product) => {
     const unitPriceCent = product.unitPriceCent ?? yuanToCent(product.price);
     return total + unitPriceCent * product.quantity;
   }, 0);
-}
-
-// 归一化后端返回的券号数组，避免空值进入用券事实判断。
-function normalizeCouponNos(couponNos?: string[]) {
-  return (couponNos ?? []).map((couponNo) => String(couponNo || '').trim()).filter(Boolean);
-}
-
-// 以后端确认结果为唯一事实源，只有被 applied 的券才允许回显为已选。
-function resolveConfirmedCouponId(confirmation: BffOrderConfirmResponse, requestedCouponId?: string) {
-  const appliedCouponNos = normalizeCouponNos(confirmation.appliedCouponNos);
-  if (appliedCouponNos.length > 0) return appliedCouponNos[0];
-  if (!requestedCouponId) return undefined;
-
-  const rejectedCouponNos = normalizeCouponNos(confirmation.rejectedCoupons?.map((coupon) => coupon.couponNo || ''));
-  if (rejectedCouponNos.includes(requestedCouponId)) return undefined;
-  if (Array.isArray(confirmation.appliedCouponNos)) return undefined;
-
-  const selectedCouponNos = normalizeCouponNos(confirmation.selectedCouponNos);
-  const hasDiscount = (parseNumberLike(confirmation.discountAmountCent) ?? 0) > 0;
-  return selectedCouponNos.includes(requestedCouponId) && hasDiscount ? requestedCouponId : undefined;
-}
-
-// 从确认单拒券结果中提取游客可理解的提示，缺省时使用通用重算文案。
-function resolveCouponNoticeText(
-  confirmation: BffOrderConfirmResponse,
-  requestedCouponId?: string,
-  confirmedCouponId?: string,
-) {
-  if (!requestedCouponId || requestedCouponId === confirmedCouponId) return '';
-
-  const rejectedCoupon = confirmation.rejectedCoupons?.find((coupon) => coupon.couponNo === requestedCouponId);
-  return rejectedCoupon?.unavailableReason
-    || rejectedCoupon?.reason
-    || confirmation.warnings?.find(Boolean)
-    || '该优惠券暂不可用，已重新计算订单金额';
-}
-
-function toTicketCoupon(coupon: BffAvailableCouponView): TicketCoupon {
-  const thresholdAmount = centToYuan(coupon.thresholdAmountCent);
-  const discountAmountCent = parseNumberLike(coupon.discountAmountCent);
-  const discountAmount = centToYuan(discountAmountCent);
-  const validDate = coupon.validEndAt ? coupon.validEndAt.slice(0, 10) : '';
-  const available = coupon.available !== false && coupon.status === 'AVAILABLE';
-
-  return {
-    id: coupon.couponNo,
-    title: coupon.couponName || '门票优惠券',
-    amountText: discountAmount > 0 ? `¥${formatYuan(discountAmountCent)}` : (formatDiscountPercent(coupon.discountPercent) || '优惠券'),
-    thresholdText: thresholdAmount > 0 ? `满¥${thresholdAmount.toFixed(2)}可用` : '无门槛',
-    validityText: validDate ? `有效期至 ${validDate}` : '按券规则生效',
-    status: available ? 'available' : 'disabled',
-    tag: available ? (coupon.reason || '可用') : (coupon.unavailableReason || coupon.reason || '暂不可用'),
-    minimumAmount: thresholdAmount,
-    discountAmount,
-  };
 }
 
 // 根据草稿和统一订单确认结果生成门票确认单页面数据。
@@ -197,7 +132,7 @@ export async function fetchCheckoutData(draftId?: string, selectedCouponId?: str
     : typeof selectedCouponId === 'undefined'
       ? draft.selectedCouponId
       : selectedCouponId;
-  const orderRequest = buildTicketUnifiedOrderRequest(draft, {
+  const orderRequest = buildTicketCheckoutOrderRequest(draft, {
     selectedDate: draft.selectedDate,
     selectedCouponId: resolvedSelectedCouponId,
     addonQuantity: draft.addonQuantity,
@@ -223,23 +158,24 @@ export async function fetchCheckoutData(draftId?: string, selectedCouponId?: str
     }),
     confirmBffOrder(orderRequest),
   ]);
+  const amounts = normalizeCheckoutAmounts(confirmation, {
+    originalAmountCent: ticketQuote.originalAmountCent ?? calculateDraftOrderAmountCent(draft),
+    payableAmountCent: ticketQuote.payableAmountCent ?? ticketQuote.originalAmountCent ?? calculateDraftOrderAmountCent(draft),
+  });
   const availableCouponsResponse = await fetchBffCouponAvailable({
     sceneType: 'TICKET',
-    orderAmountCent: confirmation.originalAmountCent ?? ticketQuote.originalAmountCent ?? calculateDraftOrderAmountCent(draft),
+    orderAmountCent: amounts.originalAmountCent,
     itemIds: draft.products.map((product) => product.productCode || product.id),
     skuIds: draft.products.map((product) => product.skuId || `${product.productCode || product.id}_standard`),
     visitDate: draft.selectedDate,
   });
-  const originalAmount = centToYuan(confirmation.originalAmountCent ?? ticketQuote.originalAmountCent);
-  const discountAmount = centToYuan(confirmation.discountAmountCent);
-  const payableAmount = centToYuan(confirmation.payableAmountCent ?? ticketQuote.payableAmountCent);
   const totalQuantity = draft.products.reduce((total, product) => total + product.quantity, 0);
-  const coupons = (availableCouponsResponse.coupons ?? []).map(toTicketCoupon);
-  const confirmedCouponId = resolveConfirmedCouponId(confirmation, resolvedSelectedCouponId);
-  const couponNoticeText = resolveCouponNoticeText(confirmation, resolvedSelectedCouponId, confirmedCouponId);
+  const coupons = (availableCouponsResponse.coupons ?? [])
+    .map((coupon) => toCheckoutCouponSummary(coupon, '门票优惠券')) as TicketCoupon[];
+  const couponState = resolveCheckoutCouponState(confirmation, resolvedSelectedCouponId);
   const nextDraft = {
     ...draft,
-    selectedCouponId: confirmedCouponId,
+    selectedCouponId: couponState.selectedCouponId,
     coupons,
   };
 
@@ -250,7 +186,7 @@ export async function fetchCheckoutData(draftId?: string, selectedCouponId?: str
       quantity: totalQuantity,
       travelDate: draft.selectedDate,
       tagText: '预定须知',
-      price: originalAmount || payableAmount,
+      price: amounts.originalAmount || amounts.payableAmount,
     },
     addonItem: {
       merchantTitle: '',
@@ -268,11 +204,11 @@ export async function fetchCheckoutData(draftId?: string, selectedCouponId?: str
       helperText: '证件信息用于入园核验，请确保与实际出行人一致',
       errorText: '请补全证件信息',
     },
-    discountText: discountAmount > 0 ? `已优惠 ¥${discountAmount.toFixed(2)}` : '',
+    discountText: amounts.discountAmount > 0 ? `已优惠 ¥${amounts.discountAmount.toFixed(2)}` : '',
     couponText: coupons.length > 0 ? '请选择优惠券' : '',
-    couponNoticeText,
-    discountAmount,
-    payableAmount,
+    couponNoticeText: couponState.couponNoticeText,
+    discountAmount: amounts.discountAmount,
+    payableAmount: amounts.payableAmount,
     payButtonText: '提交订单',
     draft: nextDraft,
     draftMissing: false,

@@ -1,6 +1,13 @@
-import { confirmBffOrder, createBffOrder, payBffOrder, type BffOrderUnifiedRequest, type BffOrderPaymentResponse } from '@/core/services/bff-order-api';
-import { fetchBffCouponAvailable, type BffAvailableCouponView } from '@/core/services/bff-coupon-api';
-import { centToYuan, parseNumberLike, yuanToCent } from '@/core/utils/money';
+import { confirmBffOrder } from '@/core/services/bff-order-api';
+import { fetchBffCouponAvailable } from '@/core/services/bff-coupon-api';
+import {
+  normalizeCheckoutAmounts,
+  resolveCheckoutCouponState,
+  submitAndPayBffOrder,
+  toCheckoutCouponSummary,
+  type CheckoutSubmitResult,
+} from '@/core/services/checkout-flow';
+import { yuanToCent } from '@/core/utils/money';
 import {
   ensureHotelOrderDraft,
   resolveHotelDraftAmount,
@@ -10,11 +17,12 @@ import {
 import {
   calculateHotelNights,
   formatHotelStayDateText,
-  type HotelCheckoutData,
   type HotelCheckoutCouponData,
+  type HotelCheckoutData,
   type HotelOccupancy,
   type HotelStayRange,
 } from './model';
+import { buildHotelCheckoutOrderRequest } from './checkout-adapter';
 
 export type { HotelCheckoutData } from './model';
 
@@ -29,11 +37,7 @@ export interface FetchHotelCheckoutParams {
   selectedCouponId?: string | null;
 }
 
-export interface HotelCheckoutOrderResult {
-  orderNo: string;
-  payableAmount: number;
-  payment?: BffOrderPaymentResponse;
-}
+export interface HotelCheckoutOrderResult extends CheckoutSubmitResult {}
 
 function resolveGuestFields(roomCount: number, guests: Array<{ id: string; label: string; name: string }>) {
   return Array.from({ length: roomCount }, (_, index) => {
@@ -47,97 +51,9 @@ function resolveGuestFields(roomCount: number, guests: Array<{ id: string; label
   });
 }
 
-function resolveHotelPayableAmountCent(value?: number) {
-  const amount = parseNumberLike(value);
-  if (typeof amount !== 'number' || amount < 0) {
-    throw new Error('酒店确认单金额暂不可用，请稍后再试');
-  }
-
-  return amount;
-}
-
-function formatYuan(amountCent: unknown = 0) {
-  const amount = centToYuan(amountCent);
-  if (Number.isInteger(amount)) return String(amount);
-  return amount.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
-}
-
-// 格式化后端百分比折扣字段，85 表示 8.5 折。
-function formatDiscountPercent(discountPercent?: number | string) {
-  const normalizedDiscountPercent = parseNumberLike(discountPercent);
-  if (typeof normalizedDiscountPercent !== 'number' || normalizedDiscountPercent <= 0) return '';
-  const discount = normalizedDiscountPercent > 10 ? normalizedDiscountPercent / 10 : normalizedDiscountPercent;
-  const text = Number.isInteger(discount) ? String(discount) : discount.toFixed(1).replace(/0+$/, '').replace(/\.$/, '');
-  return `${text}折`;
-}
-
-function toHotelCoupon(coupon: BffAvailableCouponView): HotelCheckoutCouponData {
-  const thresholdAmount = centToYuan(coupon.thresholdAmountCent);
-  const discountAmountCent = parseNumberLike(coupon.discountAmount) ?? parseNumberLike(coupon.discountAmountCent);
-  const discountAmount = centToYuan(discountAmountCent);
-  const validDate = coupon.validEndAt ? coupon.validEndAt.slice(0, 10) : '';
-  const available = coupon.available !== false && coupon.status === 'AVAILABLE';
-
-  return {
-    id: coupon.couponNo,
-    title: coupon.couponName || '酒店优惠券',
-    amountText: discountAmount > 0 ? `¥${formatYuan(discountAmountCent)}` : (formatDiscountPercent(coupon.discountPercent) || '优惠券'),
-    thresholdText: thresholdAmount > 0 ? `满¥${thresholdAmount.toFixed(2)}可用` : '无门槛',
-    validityText: validDate ? `有效期至 ${validDate}` : '按券规则生效',
-    status: available ? 'available' : 'disabled',
-    tag: available ? (coupon.reason || '可用') : (coupon.unavailableReason || coupon.reason || '暂不可用'),
-    minimumAmount: thresholdAmount,
-    discountAmount,
-  };
-}
-
 function resolveSelectedCouponId(params: FetchHotelCheckoutParams, draft: NonNullable<ReturnType<typeof ensureHotelOrderDraft>>) {
   if (Object.prototype.hasOwnProperty.call(params, 'selectedCouponId')) return params.selectedCouponId;
   return draft.selectedCouponId;
-}
-
-// 生成酒店统一订单请求，酒店商品价格和库存由后端确认接口最终计算。
-function buildHotelUnifiedOrderRequest(
-  draft: NonNullable<ReturnType<typeof ensureHotelOrderDraft>>,
-  payload?: Partial<SubmitHotelOrderDraftPayload> & { selectedCouponId?: string | null },
-): BffOrderUnifiedRequest {
-  const roomCount = Number(payload?.roomCount || draft.occupancy.roomCount || 1);
-  const guestNames = payload?.guestNames?.filter(Boolean) || draft.guests.map((item) => item.name).filter(Boolean);
-  const hasPayloadCoupon = payload ? Object.prototype.hasOwnProperty.call(payload, 'selectedCouponId') : false;
-  const selectedCouponNo = hasPayloadCoupon ? payload?.selectedCouponId : draft.selectedCouponId;
-  const selectedCouponNos = selectedCouponNo ? [selectedCouponNo] : undefined;
-  return {
-    sceneType: 'HOTEL',
-    paymentChannel: 'WECHAT',
-    freightAmountCent: 0,
-    selectedCouponNos,
-    contactName: payload?.contact?.name || draft.contact.name,
-    contactPhone: payload?.contact?.mobile || draft.contact.mobile,
-    context: {
-      checkInDate: draft.stayRange.checkIn,
-      checkOutDate: draft.stayRange.checkOut,
-      roomCount: String(roomCount),
-      guestNames: guestNames.join('、'),
-      hotelName: draft.hotelName,
-      roomTitle: draft.product.title,
-      ratePlanTitle: draft.ratePlan.title,
-    },
-    items: [
-      {
-        lineNo: '1',
-        itemId: draft.hotelId,
-        skuId: draft.ratePlan.id,
-        itemType: 'HOTEL_ROOM',
-        quantity: roomCount,
-        attributes: {
-          roomTypeId: draft.product.id,
-          ratePlanId: draft.ratePlan.id,
-          checkInDate: draft.stayRange.checkIn,
-          checkOutDate: draft.stayRange.checkOut,
-        },
-      },
-    ],
-  };
 }
 
 // 获取酒店确认订单真实数据，价格和优惠以统一订单确认接口为准。
@@ -153,23 +69,33 @@ export async function fetchCheckoutData(params: FetchHotelCheckoutParams = {}) {
   const nights = calculateHotelNights(draft.stayRange);
   const roomCount = params.roomCount || draft.occupancy.roomCount;
   const selectedCouponId = resolveSelectedCouponId(params, draft);
-  const confirmation = await confirmBffOrder(buildHotelUnifiedOrderRequest(draft, {
+  const confirmation = await confirmBffOrder(buildHotelCheckoutOrderRequest(draft, {
     roomCount,
-    selectedCouponId: selectedCouponId ?? undefined,
+    selectedCouponId,
   }));
+  const fallbackAmountCent = yuanToCent(resolveHotelDraftAmount(draft, roomCount));
+  const amounts = normalizeCheckoutAmounts(confirmation, {
+    originalAmountCent: fallbackAmountCent,
+    payableAmountCent: fallbackAmountCent,
+  });
   const availableCouponsResponse = await fetchBffCouponAvailable({
     sceneType: 'HOTEL',
-    orderAmountCent: confirmation.originalAmountCent ?? yuanToCent(resolveHotelDraftAmount(draft, roomCount)),
+    orderAmountCent: amounts.originalAmountCent,
     itemIds: [draft.hotelId, draft.product.id],
     skuIds: draft.ratePlan.id,
     checkInDate: draft.stayRange.checkIn,
     checkOutDate: draft.stayRange.checkOut,
   });
-  const payableAmountCent = resolveHotelPayableAmountCent(confirmation.payableAmountCent);
-  const totalAmount = Number((payableAmountCent / 100).toFixed(2));
-  const discountAmount = Number(((confirmation.discountAmountCent ?? 0) / 100).toFixed(2));
-  const coupons = (availableCouponsResponse.coupons ?? []).map(toHotelCoupon);
-  const selectedCoupon = coupons.find((coupon) => coupon.id === selectedCouponId);
+  const couponState = resolveCheckoutCouponState(confirmation, selectedCouponId);
+  const coupons = (availableCouponsResponse.coupons ?? [])
+    .map((coupon) => toCheckoutCouponSummary(coupon, '酒店优惠券')) as HotelCheckoutCouponData[];
+  const selectedCoupon = coupons.find((coupon) => coupon.id === couponState.selectedCouponId);
+  const confirmedCouponId = selectedCoupon?.id || couponState.selectedCouponId;
+
+  if (Object.prototype.hasOwnProperty.call(params, 'selectedCouponId')) {
+    updateHotelOrderDraft(draft.id, { selectedCouponId: confirmedCouponId });
+  }
+
   const checkoutData: HotelCheckoutData = {
     draftId: draft.id,
     hotelId: draft.hotelId,
@@ -189,18 +115,19 @@ export async function fetchCheckoutData(params: FetchHotelCheckoutParams = {}) {
     occupancy: draft.occupancy,
     roomCount,
     maxRoomCount: Math.min(3, Math.max(draft.ratePlan.stock, 1)),
-    unitAmount: Number((totalAmount / roomCount).toFixed(2)),
-    totalAmount,
-    discountAmount,
+    unitAmount: Number((amounts.payableAmount / roomCount).toFixed(2)),
+    totalAmount: amounts.payableAmount,
+    discountAmount: amounts.discountAmount,
     guestFields: resolveGuestFields(roomCount, draft.guests),
     contactNamePlaceholder: '填写联系人姓名',
     contactNameValue: draft.contact.name,
     mobilePlaceholder: '用于接收确认消息',
     mobileValue: draft.contact.mobile,
-    selectedCouponId: selectedCoupon?.id,
+    selectedCouponId: confirmedCouponId,
     couponText: selectedCoupon ? `${selectedCoupon.amountText} ${selectedCoupon.thresholdText}` : '',
+    couponNoticeText: couponState.couponNoticeText,
     coupons,
-    discountText: '',
+    discountText: amounts.discountAmount > 0 ? `已优惠 ¥${amounts.discountAmount.toFixed(2)}` : '',
     invoiceText: draft.invoiceText,
     cancelRule: draft.ratePlan.cancelRule,
     checkInTimeText: draft.checkInTimeText,
@@ -210,12 +137,12 @@ export async function fetchCheckoutData(params: FetchHotelCheckoutParams = {}) {
   return checkoutData;
 }
 
-// 提交酒店订单并发起真实支付，失败时直接抛错给页面展示。
+// 提交酒店订单并申请真实预支付，页面统一处理微信支付结果。
 export async function submitHotelCheckoutOrder(draftId: string, payload: SubmitHotelOrderDraftPayload): Promise<HotelCheckoutOrderResult | undefined> {
   const draft = ensureHotelOrderDraft({ draftId });
   if (!draft) return undefined;
 
-  updateHotelOrderDraft(draftId, {
+  const nextDraft = updateHotelOrderDraft(draftId, {
     occupancy: {
       ...draft.occupancy,
       roomCount: payload.roomCount,
@@ -227,28 +154,9 @@ export async function submitHotelCheckoutOrder(draftId: string, payload: SubmitH
     })),
     contact: payload.contact,
     selectedCouponId: payload.selectedCouponId ?? undefined,
+  }) || draft;
+
+  return submitAndPayBffOrder(buildHotelCheckoutOrderRequest(nextDraft, payload), {
+    sceneLabel: '酒店订单',
   });
-
-  const createResult = await createBffOrder(buildHotelUnifiedOrderRequest(draft, payload));
-  const orderNo = createResult.order?.orderNo;
-  if (!orderNo) {
-    throw new Error('订单创建失败：缺少订单编号');
-  }
-
-  const createPayableAmountCent = resolveHotelPayableAmountCent(createResult.order?.payableAmountCent);
-  if (createPayableAmountCent === 0) {
-    return {
-      orderNo,
-      payableAmount: 0,
-    };
-  }
-
-  const payment = await payBffOrder(orderNo, 'WECHAT');
-  const payableAmountCent = payment.order?.payableAmountCent ?? createPayableAmountCent;
-  const payableAmount = Number((resolveHotelPayableAmountCent(payableAmountCent) / 100).toFixed(2));
-  return {
-    orderNo,
-    payableAmount,
-    payment,
-  };
 }

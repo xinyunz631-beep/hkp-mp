@@ -8,12 +8,12 @@ import { CouponSelectionPopup, QuantityStepper } from '@/core/components/commerc
 import { StatusException } from '@/core/components/status';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { PageShare, PageShell } from '@/core/components/PageShell';
+import { useCheckoutController } from '@/core/runtime/use-checkout-controller';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
-import { syncBffPaymentStatusSilently } from '@/core/services/bff-api';
 import { isBffTicketOrderIssued } from '@/core/services/bff-order-api';
 import { resolveErrorMessage } from '@/core/utils/error-message';
 import { navigateBackInPageStack, navigateToMiniRoute } from '@/core/utils/navigation';
-import { requestWechatPayment, showWechatConfirm, showWechatToast } from '@/core/utils/wechat-actions';
+import { showWechatConfirm, showWechatToast } from '@/core/utils/wechat-actions';
 import { TicketSubmitFooter } from '@/pkg-ticket/components/TicketSubmitFooter';
 import { fetchCheckoutData, type TicketCheckoutPageData } from '@/pkg-ticket/services/checkout';
 import {
@@ -91,11 +91,9 @@ function getTravelerTabTitle(traveler: TicketOrderTraveler, index: number) {
 }
 
 const CheckoutPage = observer(function CheckoutPage() {
-  const [checkoutData, setCheckoutData] = useState<TicketCheckoutPageData>();
   const [draftId, setDraftId] = useState('');
   const [addonQuantity, setAddonQuantity] = useState(1);
   const [selectedDate, setSelectedDate] = useState('');
-  const [selectedCouponId, setSelectedCouponId] = useState<string>();
   const [couponPopupVisible, setCouponPopupVisible] = useState(false);
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [travelerForms, setTravelerForms] = useState<TicketOrderTraveler[]>([]);
@@ -105,15 +103,31 @@ const CheckoutPage = observer(function CheckoutPage() {
     mobile: '',
     idCard: '',
   });
+  const checkoutController = useCheckoutController<TicketCheckoutPageData, Parameters<typeof submitTicketOrderDraft>[1]>({
+    load: (params) => {
+      const routeDraftId = Taro.getCurrentInstance().router?.params?.draftId || '';
+      return fetchCheckoutData(
+        params.draftId ? String(params.draftId) : draftId || routeDraftId,
+        Object.prototype.hasOwnProperty.call(params, 'selectedCouponId') ? params.selectedCouponId : undefined,
+      );
+    },
+    readSelectedCouponId: (data) => data.draft?.selectedCouponId,
+    readCouponNoticeText: (data) => data.couponNoticeText,
+    readPayableAmount: (data) => data.payableAmount,
+    submit: (data, payload) => submitTicketOrderDraft(data.draft?.id || draftId, payload),
+    buildSuccessRoute: (result) => `${MINI_PACKAGE_ROUTES.orderDetail}?orderId=${encodeURIComponent(result.orderNo)}`,
+    isOrderComplete: (result) => isBffTicketOrderIssued(result.orderStatus, result.order?.ticketVouchers),
+    submitErrorText: '门票订单提交暂不可用，请稍后再试',
+    emptySubmitText: '订单提交失败，请重新选择门票',
+    completeSuccessText: '出票成功',
+  });
   const pageRuntime = usePageRuntime({
     initPage: async () => {
       const nextDraftId = Taro.getCurrentInstance().router?.params?.draftId || '';
-      const nextData = await fetchCheckoutData(nextDraftId);
+      const nextData = await checkoutController.load({ draftId: nextDraftId });
       setDraftId(nextDraftId);
-      setCheckoutData(nextData);
       setAddonQuantity(nextData.addonItem.quantity);
       setSelectedDate(nextData.ticketItem.travelDate);
-      setSelectedCouponId(nextData.draft?.selectedCouponId);
       setTravelerForms(nextData.travelers);
       setActiveTravelerId(nextData.travelers[0]?.id || '');
       setSubmitAttempted(false);
@@ -139,6 +153,8 @@ const CheckoutPage = observer(function CheckoutPage() {
       />
     ),
   });
+  const checkoutData = checkoutController.data;
+  const selectedCouponId = checkoutController.selectedCouponId;
 
   const ticketAmount = checkoutData?.ticketItem.price ?? 0;
   const addonAmount = checkoutData ? checkoutData.addonItem.price * addonQuantity : 0;
@@ -168,8 +184,7 @@ const CheckoutPage = observer(function CheckoutPage() {
 
     try {
       const nextData = await pageRuntime.withLoading(() => fetchCheckoutData(draftId, nextCouponId));
-      setCheckoutData(nextData);
-      setSelectedCouponId(nextData.draft?.selectedCouponId);
+      checkoutController.setData(nextData);
       if (nextData.couponNoticeText) await showWechatToast(nextData.couponNoticeText);
       return true;
     } catch (error) {
@@ -356,57 +371,14 @@ const CheckoutPage = observer(function CheckoutPage() {
     });
     if (!confirmed) return;
 
-    let nextOrder: Awaited<ReturnType<typeof submitTicketOrderDraft>>;
-    try {
-      nextOrder = await pageRuntime.withLoading(() => submitTicketOrderDraft(draftId, {
-        selectedDate,
-        selectedCouponId,
-        addonQuantity,
-        contact: nextContact,
-        travelers: nextTravelers,
-      }));
-    } catch (error) {
-      await showWechatToast(resolveErrorMessage(error, '门票订单提交暂不可用，请稍后再试'));
-      return;
-    }
-
-    if (!nextOrder) {
-      await showWechatToast('订单提交失败，请重新选择门票');
-      return;
-    }
-
-    if (isBffTicketOrderIssued(nextOrder.orderStatus, nextOrder.ticketVouchers)) {
-      await showWechatToast('出票成功', 'success');
-      navigateToMiniRoute(`${MINI_PACKAGE_ROUTES.orderDetail}?orderId=${encodeURIComponent(nextOrder.orderNo)}`, {
-        loginMode: 'none',
-      });
-      return;
-    }
-
-    if (nextOrder.payableAmount <= 0) {
-      await showWechatToast('下单成功', 'success');
-      navigateToMiniRoute(`${MINI_PACKAGE_ROUTES.orderDetail}?orderId=${encodeURIComponent(nextOrder.orderNo)}`, {
-        loginMode: 'none',
-      });
-      return;
-    }
-
-    const paymentParams = nextOrder.payment?.prepay?.paymentParams || nextOrder.payment?.prepay?.payParams;
-    if (!paymentParams) {
-      await showWechatToast('支付参数缺失，请稍后再试');
-      return;
-    }
-
-    const paymentStatus = await requestWechatPayment({
-      amount: nextOrder.payableAmount || payAmount,
-      paymentParams: paymentParams as unknown as Parameters<typeof Taro.requestPayment>[0],
-    });
-    if (paymentStatus !== 'success') return;
-
-    await syncBffPaymentStatusSilently(nextOrder.payment?.prepay?.payNo);
-    await showWechatToast('支付成功', 'success');
-    navigateToMiniRoute(`${MINI_PACKAGE_ROUTES.orderDetail}?orderId=${encodeURIComponent(nextOrder.orderNo)}`, {
-      loginMode: 'none',
+    await checkoutController.submitAndPay({
+      selectedDate,
+      selectedCouponId,
+      addonQuantity,
+      contact: nextContact,
+      travelers: nextTravelers,
+    }, {
+      withLoading: pageRuntime.withLoading,
     });
   }
 

@@ -65,6 +65,7 @@ export interface OrderCheckoutData {
   canSubmit?: boolean;
   deliveryErrors?: string[];
   couponText: string;
+  couponNoticeText?: string;
   selectedCouponId?: string;
   coupons: HkpCouponSummary[];
   discountText: string;

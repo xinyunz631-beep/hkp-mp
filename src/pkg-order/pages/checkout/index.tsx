@@ -2,17 +2,15 @@ import Taro from '@tarojs/taro';
 import { Text, View } from '@tarojs/components';
 import classNames from 'classnames';
 import { observer } from 'mobx-react';
-import { useState } from 'react';
 import { AppIcon } from '@/core/components/AppIcon';
 import { AppImage } from '@/core/components/AppImage';
 import { CouponSelectionPopup, FixedSubmitBar } from '@/core/components/commerce';
 import { PageShare, PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
+import { useCheckoutController } from '@/core/runtime/use-checkout-controller';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
-import { syncBffPaymentStatusSilently } from '@/core/services/bff-api';
-import { resolveErrorMessage } from '@/core/utils/error-message';
 import { navigateToMiniRoute } from '@/core/utils/navigation';
-import { previewWechatImages, requestWechatPayment, showWechatConfirm, showWechatToast } from '@/core/utils/wechat-actions';
+import { previewWechatImages, showWechatConfirm, showWechatToast } from '@/core/utils/wechat-actions';
 import { fetchCheckoutData, submitOrderCheckoutOrder, type OrderCheckoutData } from '@/pkg-order/services/checkout';
 import './index.scss';
 
@@ -26,39 +24,30 @@ function resolveCheckoutRouteParams() {
 }
 
 const CheckoutPage = observer(function CheckoutPage() {
-  const [checkoutData, setCheckoutData] = useState<OrderCheckoutData>();
-  const [selectedCouponId, setSelectedCouponId] = useState<string>();
-  const [couponPopupVisible, setCouponPopupVisible] = useState(false);
+  const checkoutController = useCheckoutController<OrderCheckoutData, undefined>({
+    load: (params) => fetchCheckoutData({
+      ...resolveCheckoutRouteParams(),
+      ...(Object.prototype.hasOwnProperty.call(params, 'selectedCouponId') ? { selectedCouponId: params.selectedCouponId } : {}),
+      ...(params.draftId ? { draftId: String(params.draftId) } : {}),
+      ...(params.addressId ? { addressId: String(params.addressId) } : {}),
+    }),
+    readSelectedCouponId: (data) => data.selectedCouponId,
+    readCouponNoticeText: (data) => data.couponNoticeText,
+    readPayableAmount: (data) => data.totalAmount,
+    submit: (data) => submitOrderCheckoutOrder(data),
+    buildSuccessRoute: (result) => `${MINI_PACKAGE_ROUTES.orderDetail}?orderId=${encodeURIComponent(result.orderNo)}`,
+    submitErrorText: '商城订单提交暂不可用，请稍后再试',
+    emptySubmitText: '订单信息已失效，请重新选择商品',
+  });
   const pageRuntime = usePageRuntime({
     initPage: async () => {
-      const nextData = await fetchCheckoutData({
-        ...resolveCheckoutRouteParams(),
-        ...(selectedCouponId ? { selectedCouponId } : {}),
-      });
-      setCheckoutData(nextData);
-      setSelectedCouponId(nextData.selectedCouponId);
-      setCouponPopupVisible(false);
+      await checkoutController.load({});
     },
     refreshOnShow: true,
   });
-
-  async function refreshCheckoutByCoupon(nextCouponId?: string | null) {
-    if (!checkoutData) return false;
-
-    try {
-      const nextData = await pageRuntime.withLoading(() => fetchCheckoutData({
-        draftId: checkoutData.draftId,
-        addressId: checkoutData.address?.id,
-        selectedCouponId: nextCouponId,
-      }));
-      setCheckoutData(nextData);
-      setSelectedCouponId(nextData.selectedCouponId);
-      return true;
-    } catch (error) {
-      await showWechatToast(resolveErrorMessage(error, '优惠券暂不可用，请稍后再试'));
-      return false;
-    }
-  }
+  const checkoutData = checkoutController.data;
+  const selectedCouponId = checkoutController.selectedCouponId;
+  const couponPopupVisible = checkoutController.couponPopupVisible;
 
   async function handleDiscountPress() {
     if (!checkoutData) return;
@@ -79,43 +68,8 @@ const CheckoutPage = observer(function CheckoutPage() {
       return;
     }
 
-    let order: Awaited<ReturnType<typeof submitOrderCheckoutOrder>>;
-    try {
-      order = await pageRuntime.withLoading(() => submitOrderCheckoutOrder(checkoutData));
-    } catch (error) {
-      await showWechatToast(resolveErrorMessage(error, '商城订单提交暂不可用，请稍后再试'));
-      return;
-    }
-
-    if (!order) {
-      await showWechatToast('订单信息已失效，请重新选择商品');
-      return;
-    }
-
-    if (order.payableAmount <= 0) {
-      await showWechatToast('下单成功', 'success');
-      navigateToMiniRoute(`${MINI_PACKAGE_ROUTES.orderDetail}?orderId=${encodeURIComponent(order.orderNo)}`, {
-        loginMode: 'none',
-      });
-      return;
-    }
-
-    const paymentParams = order.payment?.prepay?.paymentParams || order.payment?.prepay?.payParams;
-    if (!paymentParams) {
-      await showWechatToast('支付参数缺失，请稍后再试');
-      return;
-    }
-
-    const paymentStatus = await requestWechatPayment({
-      amount: order.payableAmount || checkoutData.totalAmount,
-      paymentParams: paymentParams as unknown as Parameters<typeof Taro.requestPayment>[0],
-    });
-    if (paymentStatus !== 'success') return;
-
-    await syncBffPaymentStatusSilently(order.payment?.prepay?.payNo);
-    await showWechatToast('支付成功', 'success');
-    navigateToMiniRoute(`${MINI_PACKAGE_ROUTES.orderDetail}?orderId=${encodeURIComponent(order.orderNo)}`, {
-      loginMode: 'none',
+    await checkoutController.submitAndPay(undefined, {
+      withLoading: pageRuntime.withLoading,
     });
   }
 
@@ -280,7 +234,7 @@ const CheckoutPage = observer(function CheckoutPage() {
 
             {hasCoupons ? (
               <View className="_pg-card _pg-card--compact">
-                <View className="_pg-line-row _pg-line-row--link" onClick={() => setCouponPopupVisible(true)}>
+                <View className="_pg-line-row _pg-line-row--link" onClick={checkoutController.openCouponPopup}>
                   <Text className="_pg-line-row_label">优惠券</Text>
                   <View className="_pg-line-row_value-wrap">
                     <Text className="_pg-line-row_coupon">{couponText}</Text>
@@ -319,12 +273,24 @@ const CheckoutPage = observer(function CheckoutPage() {
                 visible={couponPopupVisible}
                 coupons={couponOptions}
                 selectedCouponId={selectedCouponId}
-                onClose={() => setCouponPopupVisible(false)}
-                onClear={() => {
-                  return refreshCheckoutByCoupon(null);
+                onClose={checkoutController.closeCouponPopup}
+                onClear={async () => {
+                  const refreshed = await checkoutController.refreshByCoupon(null, {
+                    withLoading: pageRuntime.withLoading,
+                  }, {
+                    draftId: checkoutData.draftId,
+                    addressId: checkoutData.address?.id,
+                  });
+                  return Boolean(refreshed);
                 }}
-                onSelect={(coupon) => {
-                  return refreshCheckoutByCoupon(coupon.id);
+                onSelect={async (coupon) => {
+                  const refreshed = await checkoutController.refreshByCoupon(coupon.id, {
+                    withLoading: pageRuntime.withLoading,
+                  }, {
+                    draftId: checkoutData.draftId,
+                    addressId: checkoutData.address?.id,
+                  });
+                  return Boolean(refreshed);
                 }}
               />
             ) : null}

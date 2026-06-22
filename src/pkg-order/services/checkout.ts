@@ -1,24 +1,27 @@
+import { confirmBffOrder } from '@/core/services/bff-order-api';
+import { fetchBffCouponAvailable } from '@/core/services/bff-coupon-api';
 import {
-  confirmBffOrder,
-  createBffOrder,
-  payBffOrder,
-  type BffOrderPaymentResponse,
-  type BffOrderUnifiedRequest,
-} from '@/core/services/bff-order-api';
-import { fetchBffCouponAvailable, type BffAvailableCouponView } from '@/core/services/bff-coupon-api';
+  normalizeCheckoutAmounts,
+  resolveCheckoutCouponState,
+  submitAndPayBffOrder,
+  toCheckoutCouponSummary,
+  type CheckoutSubmitResult,
+} from '@/core/services/checkout-flow';
 import {
   getMallCheckoutDraft,
-  getMallCheckoutSelectedAddressId,
   isMallCheckoutAddressRequired,
-  setMallCheckoutSelectedAddressId,
   updateMallCheckoutDraft,
   validateMallCheckoutDelivery,
   type MallCheckoutDraft,
 } from '@/core/services/mall-checkout-draft';
-import { centToYuan, formatCurrency, parseNumberLike, yuanToCent } from '@/core/utils/money';
+import { formatCurrency, yuanToCent } from '@/core/utils/money';
 import { sanitizeMallRuntimeText, sanitizeMallRuntimeUrl } from '@/core/utils/mall-runtime';
 import type { OrderCheckoutData } from './model';
-import { fetchAddressData, formatOrderAddress } from './address';
+import {
+  buildMallCheckoutOrderRequest,
+  persistMallCheckoutAddress,
+  resolveMallCheckoutAddress,
+} from './checkout-adapter';
 
 export type { OrderCheckoutData } from './model';
 
@@ -28,83 +31,7 @@ interface FetchCheckoutDataOptions {
   selectedCouponId?: string | null;
 }
 
-export interface MallCheckoutOrderResult {
-  orderNo: string;
-  payableAmount: number;
-  payment?: BffOrderPaymentResponse;
-}
-
-function formatYuan(amountCent: unknown = 0) {
-  const amount = centToYuan(amountCent);
-  if (Number.isInteger(amount)) return String(amount);
-  return amount.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
-}
-
-// 格式化后端百分比折扣字段，85 表示 8.5 折。
-function formatDiscountPercent(discountPercent?: number | string) {
-  const normalizedDiscountPercent = parseNumberLike(discountPercent);
-  if (typeof normalizedDiscountPercent !== 'number' || normalizedDiscountPercent <= 0) return '';
-  const discount = normalizedDiscountPercent > 10 ? normalizedDiscountPercent / 10 : normalizedDiscountPercent;
-  const text = Number.isInteger(discount) ? String(discount) : discount.toFixed(1).replace(/0+$/, '').replace(/\.$/, '');
-  return `${text}折`;
-}
-
-function resolvePayableAmountCent(value: unknown) {
-  const amount = parseNumberLike(value);
-  if (typeof amount !== 'number' || amount < 0) {
-    throw new Error('商城确认单金额暂不可用，请稍后再试');
-  }
-
-  return amount;
-}
-
-async function resolveCheckoutAddress(options: FetchCheckoutDataOptions, required: boolean) {
-  if (!required) return undefined;
-  const selectedAddressId = options.addressId ?? getMallCheckoutSelectedAddressId(options.draftId);
-  const { addresses } = await fetchAddressData();
-  const selectedAddress = addresses.find((address) => address.id === selectedAddressId);
-  const defaultAddress = addresses.find((address) => address.isDefault) ?? addresses[0];
-  return selectedAddress ?? defaultAddress;
-}
-
-function buildMallUnifiedOrderRequest(
-  draft: MallCheckoutDraft,
-  address: Awaited<ReturnType<typeof resolveCheckoutAddress>>,
-  selectedCouponId?: string,
-): BffOrderUnifiedRequest {
-  return {
-    sceneType: 'MALL',
-    channel: 'MINI_PROGRAM',
-    paymentChannel: 'WECHAT',
-    freightAmountCent: yuanToCent(validateMallCheckoutDelivery(draft, address).freightAmount),
-    selectedCouponNos: selectedCouponId ? [selectedCouponId] : undefined,
-    contactName: address?.name,
-    contactPhone: address?.mobile,
-    context: address
-      ? {
-        addressId: address.id,
-        addressText: formatOrderAddress(address),
-      }
-      : undefined,
-    items: draft.products.map((item, index) => ({
-      lineNo: String(index + 1),
-      itemId: item.productId,
-      skuId: item.id,
-      itemType: 'SKU',
-      quantity: item.quantity,
-      attributes: {
-        productId: item.productId,
-        spuId: item.productId,
-        skuId: item.id,
-        merchantName: sanitizeMallRuntimeText(item.merchantName),
-        skuName: sanitizeMallRuntimeText(item.specText),
-        specName: sanitizeMallRuntimeText(item.specText),
-        imageUrl: sanitizeMallRuntimeUrl(item.imageSrc),
-        giftText: sanitizeMallRuntimeText(item.giftText) || '',
-      },
-    })),
-  };
-}
+export interface MallCheckoutOrderResult extends CheckoutSubmitResult {}
 
 function resolveSelectedCouponId(options: FetchCheckoutDataOptions, draft: MallCheckoutDraft) {
   if (Object.prototype.hasOwnProperty.call(options, 'selectedCouponId')) {
@@ -112,30 +39,6 @@ function resolveSelectedCouponId(options: FetchCheckoutDataOptions, draft: MallC
   }
 
   return draft.selectedCouponId;
-}
-
-function couponDiscountCent(coupon: BffAvailableCouponView) {
-  return parseNumberLike(coupon.discountAmount) ?? parseNumberLike(coupon.discountAmountCent) ?? 0;
-}
-
-function toMallCoupon(coupon: BffAvailableCouponView) {
-  const thresholdAmount = centToYuan(coupon.thresholdAmountCent);
-  const discountAmountCent = couponDiscountCent(coupon);
-  const discountAmount = centToYuan(discountAmountCent);
-  const validDate = coupon.validEndAt ? coupon.validEndAt.slice(0, 10) : '';
-  const available = coupon.available !== false && coupon.status === 'AVAILABLE';
-
-  return {
-    id: coupon.couponNo,
-    title: coupon.couponName || coupon.couponNo || '优惠券',
-    amountText: discountAmount > 0 ? `¥${formatYuan(discountAmountCent)}` : (formatDiscountPercent(coupon.discountPercent) || '优惠券'),
-    thresholdText: thresholdAmount > 0 ? `满¥${thresholdAmount.toFixed(2)}可用` : '无门槛',
-    validityText: validDate ? `有效期至 ${validDate}` : '按券规则生效',
-    status: available ? 'available' as const : 'disabled' as const,
-    tag: available ? (coupon.reason || '可用') : (coupon.unavailableReason || coupon.reason || '暂不可用'),
-    minimumAmount: thresholdAmount,
-    discountAmount,
-  };
 }
 
 function buildDeliveryAmountField(requiresAddress: boolean, freightAmount = 0) {
@@ -151,7 +54,7 @@ function buildDeliveryAmountField(requiresAddress: boolean, freightAmount = 0) {
 
 function buildReadonlyCheckoutData(
   draft: MallCheckoutDraft,
-  address: Awaited<ReturnType<typeof resolveCheckoutAddress>>,
+  address: Awaited<ReturnType<typeof resolveMallCheckoutAddress>>,
   deliveryCheck: ReturnType<typeof validateMallCheckoutDelivery>,
   productsAmount: number,
   requiresAddress: boolean,
@@ -186,6 +89,7 @@ function buildReadonlyCheckoutData(
     canSubmit: deliveryCheck.canSubmit,
     deliveryErrors: deliveryCheck.errors,
     couponText: '',
+    couponNoticeText: '',
     selectedCouponId: undefined,
     coupons: [],
     discountText: '',
@@ -198,16 +102,14 @@ function buildReadonlyCheckoutData(
   };
 }
 
-// 获取商城确认单真实数据，金额和优惠以统一订单确认接口为准。
+// 获取商城确认单真实数据，金额和用券事实以统一订单确认接口为准。
 export async function fetchCheckoutData(options: FetchCheckoutDataOptions = {}) {
   const draft = getMallCheckoutDraft(options.draftId);
   if (!draft) throw new Error('订单信息已失效，请重新选择商品');
 
   const requiresAddress = isMallCheckoutAddressRequired(draft);
-  const address = await resolveCheckoutAddress(options, requiresAddress);
-  if (requiresAddress && address?.id) {
-    setMallCheckoutSelectedAddressId(draft.id, address.id);
-  }
+  const address = await resolveMallCheckoutAddress(options, requiresAddress);
+  persistMallCheckoutAddress(draft.id, address);
 
   const deliveryCheck = validateMallCheckoutDelivery(draft, address);
   const productsAmount = draft.products.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
@@ -215,20 +117,33 @@ export async function fetchCheckoutData(options: FetchCheckoutDataOptions = {}) 
   if (!deliveryCheck.canSubmit) return readonlyData;
 
   const selectedCouponId = resolveSelectedCouponId(options, draft);
-  const confirmation = await confirmBffOrder(buildMallUnifiedOrderRequest(draft, address, selectedCouponId));
+  const confirmation = await confirmBffOrder(buildMallCheckoutOrderRequest({
+    draft,
+    address,
+    selectedCouponId,
+  }));
+  const fallbackOriginalAmountCent = yuanToCent(productsAmount);
+  const amounts = normalizeCheckoutAmounts(confirmation, {
+    originalAmountCent: fallbackOriginalAmountCent,
+    freightAmountCent: yuanToCent(deliveryCheck.freightAmount),
+    payableAmountCent: fallbackOriginalAmountCent + yuanToCent(deliveryCheck.freightAmount),
+  });
   const availableCouponsResponse = await fetchBffCouponAvailable({
     sceneType: 'MALL',
-    orderAmountCent: confirmation.originalAmountCent ?? yuanToCent(productsAmount + deliveryCheck.freightAmount),
+    orderAmountCent: amounts.originalAmountCent + amounts.freightAmountCent,
     itemIds: draft.products.map((item) => item.productId),
     skuIds: draft.products.map((item) => item.id),
   });
-  const totalAmount = centToYuan(resolvePayableAmountCent(confirmation.payableAmountCent));
-  const discountAmount = centToYuan(confirmation.discountAmountCent);
-  const coupons = (availableCouponsResponse.coupons ?? []).map(toMallCoupon);
-  const selectedCoupon = coupons.find((coupon) => coupon.id === selectedCouponId);
+  const couponState = resolveCheckoutCouponState(confirmation, selectedCouponId);
+  const coupons = (availableCouponsResponse.coupons ?? [])
+    .map((coupon) => toCheckoutCouponSummary(coupon, '商城优惠券'));
+  const selectedCoupon = coupons.find((coupon) => coupon.id === couponState.selectedCouponId);
+  const confirmedCouponId = selectedCoupon?.id || couponState.selectedCouponId;
+
   if (Object.prototype.hasOwnProperty.call(options, 'selectedCouponId')) {
-    updateMallCheckoutDraft(draft.id, { selectedCouponId: selectedCoupon?.id });
+    updateMallCheckoutDraft(draft.id, { selectedCouponId: confirmedCouponId });
   }
+
   const couponText = selectedCoupon
     ? `${selectedCoupon.amountText} ${selectedCoupon.thresholdText}`
     : coupons.length > 0
@@ -238,44 +153,29 @@ export async function fetchCheckoutData(options: FetchCheckoutDataOptions = {}) 
   return {
     ...readonlyData,
     couponText,
-    selectedCouponId: selectedCoupon?.id,
+    couponNoticeText: couponState.couponNoticeText,
+    selectedCouponId: confirmedCouponId,
     coupons,
-    discountText: discountAmount > 0 ? `已优惠 ${formatCurrency(discountAmount)}` : '',
+    discountText: amounts.discountAmount > 0 ? `已优惠 ${formatCurrency(amounts.discountAmount)}` : '',
     amountFields: [
-      { label: '商品金额', value: formatCurrency(centToYuan(confirmation.originalAmountCent)) },
-      buildDeliveryAmountField(requiresAddress, centToYuan(confirmation.freightAmountCent)),
+      { label: '商品金额', value: formatCurrency(amounts.originalAmount) },
+      buildDeliveryAmountField(requiresAddress, amounts.freightAmount),
     ],
-    totalAmount,
-    discountAmount,
+    totalAmount: amounts.payableAmount,
+    discountAmount: amounts.discountAmount,
   };
 }
 
-// 创建商城统一订单并发起真实预支付。
+// 创建商城统一订单并申请真实预支付，页面只负责调起微信支付。
 export async function submitOrderCheckoutOrder(data: OrderCheckoutData): Promise<MallCheckoutOrderResult | undefined> {
   const draft = getMallCheckoutDraft(data.draftId);
   if (!draft) return undefined;
 
-  const createResult = await createBffOrder(buildMallUnifiedOrderRequest(draft, data.address, data.selectedCouponId));
-  const orderNo = createResult.order?.orderNo;
-  if (!orderNo) {
-    throw new Error('订单创建失败：缺少订单编号');
-  }
-
-  const createPayableAmountCent = resolvePayableAmountCent(createResult.order?.payableAmountCent);
-  if (createPayableAmountCent === 0) {
-    return {
-      orderNo,
-      payableAmount: 0,
-    };
-  }
-
-  const payment = await payBffOrder(orderNo, 'WECHAT');
-  const payableAmountCent = payment.order?.payableAmountCent ?? createPayableAmountCent;
-  const payableAmount = centToYuan(resolvePayableAmountCent(payableAmountCent));
-
-  return {
-    orderNo,
-    payableAmount,
-    payment,
-  };
+  return submitAndPayBffOrder(buildMallCheckoutOrderRequest({
+    draft,
+    address: data.address,
+    selectedCouponId: data.selectedCouponId,
+  }), {
+    sceneLabel: '商城订单',
+  });
 }

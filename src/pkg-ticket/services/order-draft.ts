@@ -1,13 +1,13 @@
 import { MINI_STORAGE_KEYS } from '@/core/constants/storage';
 import {
-  createBffOrder,
   isBffTicketOrderIssued,
-  payBffOrder,
   type BffOrderPaymentResponse,
   type BffTicketVoucher,
   type BffOrderUnifiedRequest,
 } from '@/core/services/bff-order-api';
+import { submitAndPayBffOrder, type CheckoutSubmitResult } from '@/core/services/checkout-flow';
 import { getCache, setCache } from '@/core/utils/cache';
+import { buildTicketCheckoutOrderRequest } from './checkout-adapter';
 import type { TicketCoupon } from './ticket-booking';
 
 export interface TicketOrderDraftProduct {
@@ -89,13 +89,9 @@ export interface SubmitTicketOrderDraftPayload {
   travelers: TicketOrderTraveler[];
 }
 
-export interface TicketOrderSubmitResult {
+export interface TicketOrderSubmitResult extends CheckoutSubmitResult {
   id: string;
-  orderNo: string;
-  orderStatus?: string;
-  payableAmount: number;
   ticketVouchers?: BffTicketVoucher[];
-  payment?: BffOrderPaymentResponse;
 }
 
 // 读取全部本地门票订单草稿，异常时返回空列表。
@@ -358,15 +354,6 @@ export function buildTicketUnifiedOrderRequest(
   };
 }
 
-// 读取订单应付金额，后端未返回金额时阻断支付链路。
-function resolveTicketPayableAmountCent(value?: number) {
-  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
-    throw new Error('门票订单金额暂不可用，请稍后再试');
-  }
-
-  return value;
-}
-
 // 生成门票订单草稿编号，仅用于本地确认单草稿，不参与真实订单编号。
 function createTicketDraftId() {
   const random = Math.random().toString(36).slice(2, 8).toUpperCase();
@@ -491,35 +478,24 @@ export async function submitTicketOrderDraft(draftId: string, payload: SubmitTic
     travelers: payload.travelers,
   }) || draft;
 
-  const createResult = await createBffOrder(buildTicketUnifiedOrderRequest(nextDraft, payload));
-  const orderNo = createResult.order?.orderNo;
-  if (!orderNo) {
-    throw new Error('订单创建失败：缺少订单编号');
-  }
+  const submitResult = await submitAndPayBffOrder(buildTicketCheckoutOrderRequest(nextDraft, payload), {
+    sceneLabel: '门票订单',
+    validateCreatedOrder: (order) => {
+      if (String(order.orderStatus || '').toUpperCase() === 'CLOSED') {
+        throw new Error('门票出票失败，请稍后重试或联系工作人员');
+      }
+    },
+    isOrderComplete: (order) => isBffTicketOrderIssued(order.orderStatus, order.ticketVouchers),
+  });
 
-  if (String(createResult.order?.orderStatus || '').toUpperCase() === 'CLOSED') {
-    throw new Error('门票出票失败，请稍后重试或联系工作人员');
-  }
-
-  const createPayableAmountCent = resolveTicketPayableAmountCent(createResult.order?.payableAmountCent);
-  if (createPayableAmountCent === 0 || isBffTicketOrderIssued(createResult.order?.orderStatus, createResult.order?.ticketVouchers)) {
-    return {
-      id: orderNo,
-      orderNo,
-      orderStatus: createResult.order?.orderStatus,
-      payableAmount: Number((createPayableAmountCent / 100).toFixed(2)),
-      ticketVouchers: createResult.order?.ticketVouchers,
-    };
-  }
-
-  const payment = await payBffOrder(orderNo, 'WECHAT');
-  const payableAmountCent = payment.order?.payableAmountCent ?? createPayableAmountCent;
   return {
-    id: orderNo,
-    orderNo,
-    orderStatus: payment.order?.orderStatus ?? createResult.order?.orderStatus,
-    payableAmount: Number((resolveTicketPayableAmountCent(payableAmountCent) / 100).toFixed(2)),
-    ticketVouchers: payment.order?.ticketVouchers ?? createResult.order?.ticketVouchers,
-    payment,
+    id: submitResult.orderNo,
+    orderNo: submitResult.orderNo,
+    orderStatus: submitResult.orderStatus,
+    payableAmount: submitResult.payableAmount,
+    payableAmountCent: submitResult.payableAmountCent,
+    order: submitResult.order,
+    ticketVouchers: submitResult.order?.ticketVouchers,
+    payment: submitResult.payment,
   };
 }

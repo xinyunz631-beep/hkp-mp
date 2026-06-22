@@ -164,6 +164,7 @@ export interface HotelCheckoutData {
   mobileValue: string;
   selectedCouponId?: string;
   couponText: string;
+  couponNoticeText?: string;
   coupons: HotelCheckoutCouponData[];
   discountText: string;
   invoiceText: string;
