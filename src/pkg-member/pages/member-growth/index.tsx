@@ -92,7 +92,7 @@ const MemberGrowthPage = observer(function MemberGrowthPage() {
   const memberProfile = rootStore.memberInfo;
   const pageRuntime = usePageRuntime({
     initPage: async () => {
-      const nextData = await fetchMemberGrowthData();
+      const nextData = await fetchMemberGrowthData({ includeRecords: false });
       setPageData(nextData);
     },
     loginRequired: true,

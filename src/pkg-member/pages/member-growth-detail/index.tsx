@@ -48,7 +48,7 @@ const MemberGrowthDetailPage = observer(function MemberGrowthDetailPage() {
   const memberProfile = rootStore.memberInfo;
   const pageRuntime = usePageRuntime({
     initPage: async () => {
-      const nextData = await fetchMemberGrowthData();
+      const nextData = await fetchMemberGrowthData({ includeRecords: true });
       setPageData(nextData);
     },
     loginRequired: true,

@@ -1,6 +1,12 @@
 import {
   fetchBffCrmCenter,
+  fetchBffCrmGrowth,
+  fetchBffCrmGrowthRecords,
   type BffCrmBenefit,
+  type BffCrmGrowth,
+  type BffCrmGrowthLevel,
+  type BffCrmGrowthRecord,
+  type BffCrmGrowthRuleSection,
   type BffCrmLevelRule,
 } from '@/core/services/bff-crm-api';
 
@@ -51,14 +57,22 @@ export interface MemberGrowthData {
   growthRecords: MemberGrowthRecord[];
 }
 
-function normalizeText(value?: string) {
-  return value?.trim() || '';
+interface FetchMemberGrowthDataOptions {
+  includeRecords?: boolean;
 }
 
-function normalizeNonNegativeNumber(value?: number) {
-  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) return 0;
+function normalizeText(value: unknown) {
+  return typeof value === 'string' ? value.trim() : '';
+}
 
-  return Math.floor(value);
+function normalizeNumber(value: unknown, fallback = 0) {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string' && value.trim()) {
+    const nextValue = Number(value.trim());
+    if (Number.isFinite(nextValue)) return nextValue;
+  }
+
+  return fallback;
 }
 
 function isEnabledStatus(status?: string) {
@@ -95,32 +109,79 @@ function groupBenefitsByLevel(benefits: BffCrmBenefit[]) {
   }, {});
 }
 
+function indexGrowthLevels(levels: BffCrmGrowthLevel[]) {
+  return levels.reduce<Record<string, BffCrmGrowthLevel>>((result, level) => {
+    const id = normalizeText(level.id);
+    if (!id) return result;
+
+    result[id] = level;
+    return result;
+  }, {});
+}
+
 function toMemberGrowthLevel(
   level: BffCrmLevelRule,
+  growthLevelMap: Record<string, BffCrmGrowthLevel>,
   benefitMap: Record<string, MemberGrowthBenefit[]>,
 ): MemberGrowthLevel | null {
   const id = normalizeText(level.levelCode);
   const name = normalizeText(level.levelName);
-
   if (!id || !name || !isEnabledStatus(level.status)) return null;
 
+  const growthLevel = growthLevelMap[id];
   return {
     id,
-    levelNo: normalizeNonNegativeNumber(level.levelNo),
+    levelNo: Math.max(1, Math.floor(normalizeNumber(growthLevel?.levelNo, normalizeNumber(level.levelNo, 1)))),
     name,
-    growthThreshold: normalizeNonNegativeNumber(level.growthThreshold),
-    themeColor: normalizeText(level.badgeColor) || '#ec6d9c',
+    growthThreshold: Math.max(0, normalizeNumber(growthLevel?.growthThreshold, normalizeNumber(level.growthThreshold))),
+    themeColor: normalizeText(growthLevel?.themeColor) || normalizeText(level.badgeColor) || '#ec6d9c',
     imageSrc: normalizeText(level.iconUrl),
     benefits: benefitMap[id] ?? [],
   };
 }
 
-// 获取会员等级及成长值数据，只读取 CRM BFF，不再回退本地等级、规则或记录数据。
-export async function fetchMemberGrowthData() {
-  const center = await fetchBffCrmCenter();
+function normalizeGrowthRuleSection(
+  section: BffCrmGrowthRuleSection,
+  index: number,
+): MemberGrowthRuleSection | undefined {
+  const title = normalizeText(section.title);
+  const content = normalizeText(section.content);
+  if (!title || !content) return undefined;
+
+  return {
+    id: normalizeText(section.id) || `growth-rule-${index + 1}`,
+    title,
+    content,
+  };
+}
+
+function normalizeGrowthRecord(record: BffCrmGrowthRecord, index: number): MemberGrowthRecord | undefined {
+  const title = normalizeText(record.title);
+  if (!title) return undefined;
+
+  return {
+    id: normalizeText(record.id) || `growth-record-${index + 1}`,
+    title,
+    value: normalizeNumber(record.value),
+    time: normalizeText(record.time),
+  };
+}
+
+// 获取成长值聚合数据，组合等级权益、规则说明和真实流水，避免页面继续消费假数据。
+export async function fetchMemberGrowthData(options: FetchMemberGrowthDataOptions = {}) {
+  const includeRecords = options.includeRecords !== false;
+  const [center, growth, growthRecords] = await Promise.all([
+    fetchBffCrmCenter(),
+    fetchBffCrmGrowth(),
+    includeRecords
+      ? fetchBffCrmGrowthRecords().catch(() => undefined)
+      : Promise.resolve(undefined),
+  ]);
+
   const benefitMap = groupBenefitsByLevel(center.benefits ?? []);
+  const growthLevelMap = indexGrowthLevels(growth.levels ?? []);
   const levels = (center.levels ?? [])
-    .map((level) => toMemberGrowthLevel(level, benefitMap))
+    .map((level) => toMemberGrowthLevel(level, growthLevelMap, benefitMap))
     .filter((level): level is MemberGrowthLevel => Boolean(level))
     .sort((firstLevel, secondLevel) => (
       firstLevel.growthThreshold - secondLevel.growthThreshold
@@ -128,17 +189,21 @@ export async function fetchMemberGrowthData() {
     ));
 
   return {
-    backgroundImageSrc: '',
-    avatarImageSrc: normalizeText(center.profile.avatarUrl),
+    backgroundImageSrc: normalizeText(growth.backgroundImageSrc),
+    avatarImageSrc: normalizeText(growth.avatarImageSrc) || normalizeText(center.profile.avatarUrl),
     member: {
-      levelId: normalizeText(center.profile.levelCode),
+      levelId: normalizeText(growth.member?.levelId) || normalizeText(center.profile.levelCode),
       levelNo: center.profile.levelNo,
       levelName: normalizeText(center.profile.levelName),
-      growthValue: normalizeNonNegativeNumber(center.profile.growthValue),
+      growthValue: Math.max(0, normalizeNumber(growth.member?.growthValue, normalizeNumber(center.profile.growthValue))),
     },
     levels,
-    levelRuleIntro: [],
-    growthRuleSections: [],
-    growthRecords: [],
+    levelRuleIntro: (growth.levelRuleIntro || []).map(normalizeText).filter(Boolean),
+    growthRuleSections: (growth.growthRuleSections || [])
+      .map(normalizeGrowthRuleSection)
+      .filter((section): section is MemberGrowthRuleSection => Boolean(section)),
+    growthRecords: (growthRecords || growth.growthRecords || [])
+      .map(normalizeGrowthRecord)
+      .filter((record): record is MemberGrowthRecord => Boolean(record)),
   };
 }

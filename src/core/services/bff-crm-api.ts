@@ -159,9 +159,61 @@ export interface BffCrmP1ConfigItem {
   updatedAt?: string;
 }
 
+export interface BffCrmGrowthMember {
+  levelId?: string;
+  growthValue?: number;
+}
+
+export interface BffCrmGrowthLevel {
+  id: string;
+  levelNo: number;
+  name: string;
+  growthThreshold: number;
+  themeColor?: string;
+}
+
+export interface BffCrmGrowthRuleSection {
+  id: string;
+  title: string;
+  content: string;
+}
+
+export interface BffCrmGrowthRecord {
+  id: string;
+  title: string;
+  value: number;
+  time: string;
+}
+
+export interface BffCrmGrowth {
+  backgroundImageSrc?: string;
+  avatarImageSrc?: string;
+  member?: BffCrmGrowthMember;
+  levels?: BffCrmGrowthLevel[];
+  levelRuleIntro?: string[];
+  growthRuleSections?: BffCrmGrowthRuleSection[];
+  growthRecords?: BffCrmGrowthRecord[];
+}
+
 export function fetchBffCrmCenter() {
   return request<BffCrmCenter>({
     url: '/api/bff/crm/center',
+    method: 'GET',
+  });
+}
+
+// 查询成长值聚合数据，返回等级说明、规则分段和最近流水。
+export function fetchBffCrmGrowth() {
+  return request<BffCrmGrowth>({
+    url: '/api/bff/crm/growth',
+    method: 'GET',
+  });
+}
+
+// 查询成长值流水列表，供成长值明细页独立刷新真实记录。
+export function fetchBffCrmGrowthRecords() {
+  return request<BffCrmGrowthRecord[]>({
+    url: '/api/bff/crm/growth/records',
     method: 'GET',
   });
 }
