@@ -115,8 +115,8 @@ export function SceneActionBar({ detailData, onSceneAction }: {
             '_pg-scene-actions_button',
             action.tone === 'primary' ? '_pg-scene-actions_button--primary' : '',
           ].filter(Boolean).join(' ')}
-          key={`${action.text}-${action.route}`}
-          onClick={() => onSceneAction(action.route)}
+          key={`${action.text}-${action.actionType || action.route || 'action'}`}
+          onClick={() => onSceneAction(action)}
         >
           {action.text}
         </View>

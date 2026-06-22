@@ -15,7 +15,7 @@ export interface OrderDetailSceneViewProps {
   ticketQr: TicketQrRenderOptions;
   onCouponPress: (couponNo: string) => void;
   onPrimaryAction: () => void;
-  onSceneAction: (route: string) => void;
+  onSceneAction: (action: OrderDetailData['sceneActions'][number]) => void;
   onViewAftersale: () => void;
 }
 

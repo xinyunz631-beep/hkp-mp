@@ -63,6 +63,20 @@ function isCompletedStatus(status?: string) {
   return ['FULFILLED', 'USED', 'COMPLETED', 'SUCCESS'].includes(String(status || '').toUpperCase());
 }
 
+// 判断商城订单是否允许展示会员确认收货入口，最终可确认性以后端接口校验为准。
+function canConfirmMallReceive(order: BffOrder) {
+  if (order.sceneType !== 'MALL') return false;
+  if (!hasMallLogisticsContext(order)) return false;
+  return ['PAID', 'FULFILLING', 'WAIT_USE', 'WAIT_RECEIVE', 'PENDING_RECEIVE', 'SHIPPED', 'DELIVERING', 'DELIVERED']
+    .includes(String(order.orderStatus || '').toUpperCase());
+}
+
+// 用订单更新时间生成详情状态版本，供静默轮询判断是否需要刷新。
+function resolveStatusVersion(order: BffOrder) {
+  const timestamp = Date.parse(order.updatedAt || '');
+  return Number.isFinite(timestamp) ? timestamp : undefined;
+}
+
 // 归一订单主状态，避免后端履约中间态直接暴露为内部状态码。
 function resolveStatusText(order: BffOrder) {
   const normalizedStatus = String(order.orderStatus || '').toUpperCase();
@@ -325,6 +339,14 @@ function resolveSceneActions(order: BffOrder, reviewedMallItems?: Set<string>): 
     });
   }
 
+  if (canConfirmMallReceive(order)) {
+    actions.push({
+      text: '确认收货',
+      actionType: 'confirmReceive',
+      tone: 'primary',
+    });
+  }
+
   if (
     normalizedSceneType === 'MALL'
     && isCompletedStatus(normalizedStatus)
@@ -453,6 +475,8 @@ function mapOrderToDetail(order: BffOrder, reviewedMallItems?: Set<string>): Ord
     id: order.orderNo,
     sceneType: order.sceneType,
     orderStatus: order.orderStatus,
+    updatedAt: order.updatedAt,
+    statusVersion: resolveStatusVersion(order),
     payNo: resolvePaymentFact(order, 'payNo'),
     paymentStatus: resolvePaymentFact(order, 'paymentStatus'),
     statusText: resolveStatusText(order),

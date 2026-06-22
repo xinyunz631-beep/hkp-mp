@@ -111,6 +111,11 @@
     font-size: 22px;
     line-height: 54px;
     text-align: center;
+
+    &--disabled {
+      border-color: #d0d5dd;
+      color: #9ca3af;
+    }
   }
 }
 

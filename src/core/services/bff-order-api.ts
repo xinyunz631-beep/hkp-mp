@@ -280,6 +280,44 @@ export interface BffOrderPaymentResponse {
   prepay?: BffOrderPrepay;
 }
 
+export interface BffOrderConfirmReceiveRequest {
+  receivedAt?: string;
+  remark?: string;
+}
+
+export interface BffOrderConfirmReceiveResponse {
+  orderNo?: string;
+  orderStatus?: string;
+  fulfillmentStatus?: string;
+  reviewStatus?: string;
+  updatedAt?: string;
+}
+
+export interface BffOrderStatusSnapshotTicketVoucher {
+  ticketCode?: string;
+  voucherCode?: string;
+  ticketStatus?: string;
+  usedNum?: number;
+  totalNum?: number;
+}
+
+export interface BffOrderStatusSnapshot {
+  orderNo?: string;
+  sceneType?: BffOrderSceneType;
+  orderStatus?: string;
+  paymentStatus?: string;
+  fulfillmentStatus?: string;
+  refundStatus?: string;
+  aftersaleStatus?: string;
+  logisticsStatus?: string;
+  reviewStatus?: string;
+  payNo?: string;
+  version?: number;
+  updatedAt?: string;
+  ticketVoucherVersion?: number;
+  ticketVouchersSummary?: BffOrderStatusSnapshotTicketVoucher[];
+}
+
 interface BffOrderPaymentPayload {
   paymentChannel: BffOrderPaymentChannel;
   appId: string;
@@ -706,6 +744,24 @@ export function payBffOrder(orderNo: string, paymentChannel: BffOrderPaymentChan
       paymentChannel,
       appId: resolveCurrentMiniProgramAppId(),
     },
+  });
+}
+
+// 商城订单确认收货，后端负责校验订单业态和可确认状态。
+export function confirmReceiveBffOrder(orderNo: string, data: BffOrderConfirmReceiveRequest = {}) {
+  return request<BffOrderConfirmReceiveResponse, BffOrderConfirmReceiveRequest>({
+    url: `/api/bff/orders/${encodeURIComponent(orderNo)}/confirm-receive`,
+    method: 'POST',
+    data,
+  });
+}
+
+// 查询订单轻量状态快照，用于页面后台轮询探针，探针结果不直接渲染。
+export function fetchBffOrderStatusSnapshot(orderNo: string, options: { showErrorToast?: boolean } = {}) {
+  return request<BffOrderStatusSnapshot>({
+    url: `/api/bff/orders/${encodeURIComponent(orderNo)}/status-snapshot`,
+    method: 'GET',
+    showErrorToast: options.showErrorToast,
   });
 }
 

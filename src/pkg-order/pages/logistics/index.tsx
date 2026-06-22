@@ -6,26 +6,59 @@ import { AppImage } from '@/core/components/AppImage';
 import { BaseEmpty } from '@/core/components/BaseEmpty';
 import { PageShell } from '@/core/components/PageShell';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
+import { resolveErrorMessage } from '@/core/utils/error-message';
 import {
   callWechatPhone,
   copyWechatText,
   previewWechatImages,
+  showWechatConfirm,
   showWechatToast,
 } from '@/core/utils/wechat-actions';
-import { fetchLogisticsData, type OrderLogisticsData } from '@/pkg-order/services/logistics';
+import {
+  confirmLogisticsReceipt,
+  fetchLogisticsData,
+  type OrderLogisticsData,
+} from '@/pkg-order/services/logistics';
 import './index.scss';
 
 const LogisticsPage = observer(function LogisticsPage() {
   const [pageData, setPageData] = useState<OrderLogisticsData>();
+  const [confirming, setConfirming] = useState(false);
+  const orderId = Taro.getCurrentInstance().router?.params?.orderId;
   const pageRuntime = usePageRuntime({
     initPage: async () => {
-      const orderId = Taro.getCurrentInstance().router?.params?.orderId;
       const nextData = await fetchLogisticsData(orderId);
       setPageData(nextData);
+      setConfirming(false);
     },
     loginRequired: true,
     loginReason: '登录后可查看物流',
   });
+
+  // 物流页确认收货，成功后重读物流数据，失败时透出后端业务原因。
+  async function handleConfirmReceive() {
+    if (!orderId || confirming) return;
+
+    const confirmed = await showWechatConfirm({
+      title: '确认收货',
+      content: '确认已收到商品？确认后订单将进入待评价状态。',
+      confirmText: '确认收货',
+      cancelText: '再看看',
+    });
+
+    if (!confirmed) return;
+
+    setConfirming(true);
+    try {
+      const nextData = await confirmLogisticsReceipt(orderId);
+      setPageData(nextData);
+      await showWechatToast('已确认收货', 'success');
+    } catch (error) {
+      await showWechatToast(resolveErrorMessage(error, '确认收货失败，请稍后再试'));
+    } finally {
+      setConfirming(false);
+    }
+  }
 
   return pageRuntime.renderPage(() => {
     if (!pageData) return null;
@@ -92,8 +125,11 @@ const LogisticsPage = observer(function LogisticsPage() {
 
               {pageData.confirmButtonText ? (
                 <View className="_pg-summary_action-row">
-                  <View className="_pg-summary_button">
-                    {pageData.confirmButtonText}
+                  <View
+                    className={`_pg-summary_button ${confirming ? '_pg-summary_button--disabled' : ''}`}
+                    onClick={() => void handleConfirmReceive()}
+                  >
+                    {confirming ? '提交中...' : pageData.confirmButtonText}
                   </View>
                 </View>
               ) : null}

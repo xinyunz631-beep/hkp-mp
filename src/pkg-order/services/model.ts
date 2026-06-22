@@ -94,7 +94,8 @@ export interface OrderDetailCouponFieldData extends OrderDetailFieldData {
 
 export interface OrderDetailSceneActionData {
   text: string;
-  route: string;
+  route?: string;
+  actionType?: 'navigate' | 'confirmReceive';
   tone?: 'default' | 'primary';
 }
 
@@ -114,6 +115,8 @@ export interface OrderDetailData {
   id: string;
   sceneType?: string;
   orderStatus?: string;
+  updatedAt?: string;
+  statusVersion?: number;
   payNo?: string;
   paymentStatus?: string;
   statusText: string;

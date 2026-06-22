@@ -8,9 +8,16 @@ import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { navigateToMiniRoute } from '@/core/utils/navigation';
+import { resolveErrorMessage } from '@/core/utils/error-message';
 import { requestWechatPayment, showWechatConfirm, showWechatToast } from '@/core/utils/wechat-actions';
 import { syncBffPaymentStatusSilently } from '@/core/services/bff-api';
-import { payBffOrder, refundBffOrder } from '@/core/services/bff-order-api';
+import {
+  confirmReceiveBffOrder,
+  fetchBffOrderStatusSnapshot,
+  payBffOrder,
+  refundBffOrder,
+  type BffOrderStatusSnapshot,
+} from '@/core/services/bff-order-api';
 import { fetchDetailData, type OrderDetailData } from '@/pkg-order/services/detail';
 import { OrderDetailSceneView } from './components/OrderDetailSceneView';
 import './index.scss';
@@ -96,9 +103,12 @@ function shouldPollTicketOrderDetail(detailData?: OrderDetailData) {
 function resolveTicketOrderPollingSnapshot(detailData?: OrderDetailData) {
   if (!detailData) return '';
 
+  if (detailData.statusVersion) return `version:${detailData.statusVersion}`;
+
   return JSON.stringify({
     sceneType: detailData.sceneType || '',
     orderStatus: detailData.orderStatus || '',
+    updatedAt: detailData.updatedAt || '',
     payNo: detailData.payNo || '',
     paymentStatus: detailData.paymentStatus || '',
     statusText: detailData.statusText || '',
@@ -116,6 +126,32 @@ function resolveTicketOrderPollingSnapshot(detailData?: OrderDetailData) {
       statusText: ticket.statusText,
       useTimesText: ticket.useTimesText,
     })),
+  });
+}
+
+// 归一轻量状态快照，尽量与详情接口的 updatedAt 基线保持一致，避免无变化时反复刷新详情。
+function resolveStatusSnapshotPollingSnapshot(snapshot?: BffOrderStatusSnapshot) {
+  if (!snapshot) return '';
+
+  const updatedAt = Date.parse(snapshot.updatedAt || '');
+  if (Number.isFinite(updatedAt)) return `version:${updatedAt}`;
+
+  if (typeof snapshot.version === 'number' && Number.isFinite(snapshot.version)) {
+    return `version:${snapshot.version}`;
+  }
+
+  return JSON.stringify({
+    sceneType: snapshot.sceneType || '',
+    orderStatus: snapshot.orderStatus || '',
+    paymentStatus: snapshot.paymentStatus || '',
+    fulfillmentStatus: snapshot.fulfillmentStatus || '',
+    refundStatus: snapshot.refundStatus || '',
+    aftersaleStatus: snapshot.aftersaleStatus || '',
+    logisticsStatus: snapshot.logisticsStatus || '',
+    reviewStatus: snapshot.reviewStatus || '',
+    payNo: snapshot.payNo || '',
+    ticketVoucherVersion: snapshot.ticketVoucherVersion || 0,
+    ticketVouchersSummary: snapshot.ticketVouchersSummary || [],
   });
 }
 
@@ -147,8 +183,36 @@ const DetailPage = observer(function DetailPage() {
     navigateToMiniRoute(detailData.aftersaleEntryRoute);
   }
 
-  function handleSceneAction(route: string) {
-    navigateToMiniRoute(route);
+  // 详情页确认商城订单收货，成功后重读详情，失败时展示后端返回原因。
+  async function confirmReceiveOrder(orderId: string) {
+    const confirmed = await showWechatConfirm({
+      title: '确认收货',
+      content: '确认已收到商品？确认后订单将进入待评价状态。',
+      confirmText: '确认收货',
+      cancelText: '再看看',
+    });
+
+    if (!confirmed) return;
+
+    try {
+      await confirmReceiveBffOrder(orderId, { remark: '会员确认收货' });
+      await loadDetailData({ showErrorToast: false, orderId });
+      await showWechatToast('已确认收货', 'success');
+    } catch (error) {
+      await showWechatToast(resolveErrorMessage(error, '确认收货失败，请稍后再试'));
+    }
+  }
+
+  // 处理业态动作，确认收货使用接口动作，其余动作仍走路由跳转。
+  function handleSceneAction(action: OrderDetailData['sceneActions'][number]) {
+    if (action.actionType === 'confirmReceive' && detailData?.id) {
+      void confirmReceiveOrder(detailData.id);
+      return;
+    }
+
+    if (action.route) {
+      navigateToMiniRoute(action.route);
+    }
   }
 
   async function loadDetailData(options: { showErrorToast?: boolean; orderId?: string; skipApplyWhenHidden?: boolean } = {}) {
@@ -166,13 +230,14 @@ const DetailPage = observer(function DetailPage() {
       await syncBffPaymentStatusSilently(detailData?.payNo);
     }
 
-    const probeData = await fetchDetailData(orderId, { showErrorToast: false });
+    const statusSnapshot = await fetchBffOrderStatusSnapshot(orderId, { showErrorToast: false });
     if (!pageVisibleRef.current) return;
 
-    const nextSnapshot = resolveTicketOrderPollingSnapshot(probeData);
+    const nextSnapshot = resolveStatusSnapshotPollingSnapshot(statusSnapshot);
 
     if (nextSnapshot !== pollingSnapshotRef.current) {
       await loadDetailData({ showErrorToast: false, orderId, skipApplyWhenHidden: true });
+      pollingSnapshotRef.current = nextSnapshot;
     }
   }
 
