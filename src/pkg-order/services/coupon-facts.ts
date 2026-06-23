@@ -11,6 +11,10 @@ function normalizeString(value?: string) {
   return typeof value === 'string' ? value.trim() : '';
 }
 
+function normalizeRejectedStatus(value?: string) {
+  return normalizeString(value).replace(/[_\s-]/g, '').toUpperCase();
+}
+
 function normalizeCouponNos(values?: string[]) {
   if (!values?.length) return [];
 
@@ -64,6 +68,29 @@ function buildRejectedCouponLink(coupon: BffOrderRejectedCoupon) {
   } satisfies OrderDetailCouponLinkData;
 }
 
+function filterRejectedCoupons(
+  coupons: BffOrderRejectedCoupon[] | undefined,
+  statuses: string[],
+  matched: boolean,
+) {
+  const statusSet = new Set(statuses.map(normalizeRejectedStatus));
+  return (coupons || []).filter((coupon) => {
+    const status = normalizeRejectedStatus(coupon.status);
+    const hasMatchedStatus = statusSet.has(status);
+    return matched ? hasMatchedStatus : !hasMatchedStatus;
+  });
+}
+
+function formatRejectedCoupons(coupons: BffOrderRejectedCoupon[]) {
+  return Array.from(new Set(
+    coupons.map(resolveRejectedCouponText).filter(Boolean),
+  )).join('；');
+}
+
+function buildRejectedCouponLinks(coupons: BffOrderRejectedCoupon[]) {
+  return compactCouponLinks(coupons.map(buildRejectedCouponLink));
+}
+
 function compactCouponFields(fields: OrderDetailCouponFieldData[]) {
   return fields.filter((field) => Boolean(field.value && field.value !== '-'));
 }
@@ -81,20 +108,17 @@ function mapCouponField(
 }
 
 export function mapOrderCouponFields(order: BffOrder) {
-  const rejectedCoupons = Array.from(new Set(
-    (order.rejectedCoupons || [])
-      .map(resolveRejectedCouponText)
-      .filter(Boolean),
-  )).join('；');
-  const rejectedCouponLinks = compactCouponLinks(
-    (order.rejectedCoupons || []).map(buildRejectedCouponLink),
-  );
+  const ineffectiveCoupons = filterRejectedCoupons(order.rejectedCoupons, ['pendingReview', 'notReturned'], false);
+  const pendingReviewCoupons = filterRejectedCoupons(order.rejectedCoupons, ['pendingReview'], true);
+  const notReturnedCoupons = filterRejectedCoupons(order.rejectedCoupons, ['notReturned'], true);
 
   return compactCouponFields([
     mapCouponField('下单选择', formatCouponNos(order.selectedCouponNos), buildCouponLinks(order.selectedCouponNos)),
     mapCouponField('实际使用', formatCouponNos(order.appliedCouponNos), buildCouponLinks(order.appliedCouponNos)),
     mapCouponField('锁定中', formatCouponNos(order.lockedCouponNos), buildCouponLinks(order.lockedCouponNos)),
-    mapCouponField('未生效', rejectedCoupons, rejectedCouponLinks),
+    mapCouponField('未生效', formatRejectedCoupons(ineffectiveCoupons), buildRejectedCouponLinks(ineffectiveCoupons)),
+    mapCouponField('退款待审核', formatRejectedCoupons(pendingReviewCoupons), buildRejectedCouponLinks(pendingReviewCoupons)),
+    mapCouponField('退款未返还', formatRejectedCoupons(notReturnedCoupons), buildRejectedCouponLinks(notReturnedCoupons)),
     mapCouponField('已释放', formatCouponNos(order.releasedCouponNos), buildCouponLinks(order.releasedCouponNos)),
     mapCouponField('退款返还', formatCouponNos(order.refundReturnedCouponNos), buildCouponLinks(order.refundReturnedCouponNos)),
   ]);

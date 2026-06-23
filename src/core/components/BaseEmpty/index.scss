@@ -4,6 +4,17 @@
   box-sizing: border-box;
 }
 
+.base-empty__image {
+  display: block;
+  width: 220px;
+  height: 170px;
+}
+
+.base-empty__image--small {
+  width: 156px;
+  height: 120px;
+}
+
 .base-empty .nut-empty-title {
   color: $color-text-primary;
   font-weight: 500;

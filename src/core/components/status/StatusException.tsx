@@ -1,5 +1,6 @@
 import { Text, View } from '@tarojs/components';
 import classNames from 'classnames';
+import { AppIcon } from '@/core/components/AppIcon';
 import { ApiRequestError, HttpStatusCode } from '@/core/request';
 import { navigateBackOrHome } from '@/core/utils/navigation';
 import './StatusException.scss';
@@ -89,7 +90,7 @@ export function StatusException({
               })}
               onClick={handleRetry}
             >
-              <Text className="status-exception__action-icon">↻</Text>
+              <AppIcon className="status-exception__action-icon" name="reload" size={11} color="#ffffff" />
               <Text className="status-exception__action-text">{actionText}</Text>
             </View>
           ) : null}

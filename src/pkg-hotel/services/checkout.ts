@@ -1,4 +1,4 @@
-import { confirmBffOrder } from '@/core/services/bff-order-api';
+import { confirmBffOrder, type BffOrderConfirmResponse, type BffOrderItem } from '@/core/services/bff-order-api';
 import { fetchBffCouponAvailable } from '@/core/services/bff-coupon-api';
 import {
   normalizeCheckoutAmounts,
@@ -7,7 +7,7 @@ import {
   toCheckoutCouponSummary,
   type CheckoutSubmitResult,
 } from '@/core/services/checkout-flow';
-import { yuanToCent } from '@/core/utils/money';
+import { centToYuan, parseNumberLike, yuanToCent } from '@/core/utils/money';
 import {
   ensureHotelOrderDraft,
   resolveHotelDraftAmount,
@@ -54,6 +54,34 @@ function resolveGuestFields(roomCount: number, guests: Array<{ id: string; label
 function resolveSelectedCouponId(params: FetchHotelCheckoutParams, draft: NonNullable<ReturnType<typeof ensureHotelOrderDraft>>) {
   if (Object.prototype.hasOwnProperty.call(params, 'selectedCouponId')) return params.selectedCouponId;
   return draft.selectedCouponId;
+}
+
+function isHotelCheckoutLine(item: BffOrderItem, draft: NonNullable<ReturnType<typeof ensureHotelOrderDraft>>) {
+  return item.lineNo === '1'
+    || item.itemType === 'HOTEL_ROOM'
+    || item.itemId === draft.hotelId
+    || item.skuId === draft.ratePlan.id
+    || item.attributes?.roomTypeId === draft.product.id
+    || item.attributes?.ratePlanId === draft.ratePlan.id;
+}
+
+function resolveHotelProductAmount(
+  confirmation: BffOrderConfirmResponse,
+  draft: NonNullable<ReturnType<typeof ensureHotelOrderDraft>>,
+) {
+  const line = confirmation.items?.find((item) => isHotelCheckoutLine(item, draft));
+  const lineAmountCent = parseNumberLike(line?.amountCent);
+
+  if (typeof lineAmountCent === 'number' && lineAmountCent >= 0) return centToYuan(lineAmountCent);
+
+  const unitPriceCent = parseNumberLike(line?.unitPriceCent);
+  const quantity = parseNumberLike(line?.quantity);
+
+  if (typeof unitPriceCent === 'number' && unitPriceCent >= 0 && typeof quantity === 'number' && quantity > 0) {
+    return centToYuan(unitPriceCent * quantity);
+  }
+
+  return undefined;
 }
 
 // 获取酒店确认订单真实数据，价格和优惠以统一订单确认接口为准。
@@ -118,6 +146,7 @@ export async function fetchCheckoutData(params: FetchHotelCheckoutParams = {}) {
     roomCount,
     maxRoomCount: Math.min(3, Math.max(draft.ratePlan.stock, 1)),
     unitAmount: Number((amounts.payableAmount / roomCount).toFixed(2)),
+    productAmount: resolveHotelProductAmount(confirmation, draft),
     totalAmount: amounts.payableAmount,
     discountAmount: amounts.discountAmount,
     guestFields: resolveGuestFields(roomCount, draft.guests),

@@ -268,17 +268,18 @@ function mergeOrderSections(
 }
 
 // 归一后端订单 Tab 计数，保证旧后端降级时仍保留稳定的本地 Tab 顺序。
-function normalizeOrderTabs(serverTabs?: BffOrderTabCount[]) {
+function normalizeOrderTabs(serverTabs?: BffOrderTabCount[], tabCounts?: Record<string, number>) {
   const serverTabMap = new Map((serverTabs || [])
     .filter((tab) => tab.key)
     .map((tab) => [String(tab.key), tab]));
 
   return ORDER_TABS.map((tab) => {
     const serverTab = serverTabMap.get(tab.key);
+    const serverCount = normalizeCount(serverTab?.count) ?? normalizeCount(tabCounts?.[tab.key]);
     return {
       ...tab,
       text: normalizeString(serverTab?.text) || tab.text,
-      count: normalizeCount(serverTab?.count),
+      count: serverCount,
     };
   });
 }
@@ -306,7 +307,7 @@ export async function fetchOrderHomeData(options: FetchOrderHomeDataOptions = {}
   const hasNewSections = sections.length > existingSections.length;
 
   return {
-    tabs: normalizeOrderTabs(orders.tabs),
+    tabs: normalizeOrderTabs(orders.tabs, orders.tabCounts),
     sections,
     page: orders.page,
     pageSize: orders.pageSize,

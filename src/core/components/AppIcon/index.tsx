@@ -23,6 +23,7 @@ import {
   Phone,
   Photograph,
   QrCode,
+  Reload,
   Scan,
   Search,
   Service,
@@ -63,6 +64,7 @@ export type AppIconName =
   | 'phone'
   | 'photograph'
   | 'profile'
+  | 'reload'
   | 'scan'
   | 'search'
   | 'service'
@@ -112,6 +114,7 @@ const nutIconMap: Record<AppIconName, NutIconComponent | undefined> = {
   phone: Phone,
   photograph: Photograph,
   profile: User,
+  reload: Reload,
   scan: Scan,
   search: Search,
   service: Service,

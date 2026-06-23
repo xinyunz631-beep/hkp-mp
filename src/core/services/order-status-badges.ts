@@ -127,8 +127,8 @@ function resolveServerCountsPayload(payload?: BffOrderStatusCounts) {
   ));
 }
 
-function readServerCount(payload: BffOrderStatusCounts | undefined, keys: string[]) {
-  if (!payload) return 0;
+function readServerCountOptional(payload: BffOrderStatusCounts | undefined, keys: string[]) {
+  if (!payload) return undefined;
   for (const key of keys) {
     const value = payload[key];
     if (typeof value === 'number' && Number.isFinite(value)) return Math.max(0, Math.floor(value));
@@ -137,7 +137,13 @@ function readServerCount(payload: BffOrderStatusCounts | undefined, keys: string
       if (Number.isFinite(numberValue)) return Math.max(0, Math.floor(numberValue));
     }
   }
-  return 0;
+  return undefined;
+}
+
+function readServerTabCount(payload: BffOrderStatusCounts | undefined, tabKey: string) {
+  const matchedTab = payload?.tabs?.find((tab) => tab.key === tabKey);
+  const numberValue = typeof matchedTab?.count === 'number' ? matchedTab.count : Number(matchedTab?.count);
+  return Number.isFinite(numberValue) ? Math.max(0, Math.floor(numberValue)) : 0;
 }
 
 function hasServerCountSignal(payload?: BffOrderStatusCounts) {
@@ -145,15 +151,19 @@ function hasServerCountSignal(payload?: BffOrderStatusCounts) {
   return SERVER_COUNT_KEYS.some((key) => typeof payload[key] !== 'undefined');
 }
 
+function hasServerTabSignal(payload?: BffOrderStatusCounts) {
+  return Boolean(payload?.tabs?.some((tab) => tab.key && typeof tab.count !== 'undefined'));
+}
+
 function normalizeServerBadgeCounts(payload?: BffOrderStatusCounts): OrderStatusBadgeCounts | undefined {
   const countsPayload = resolveServerCountsPayload(payload);
-  if (!hasServerCountSignal(countsPayload)) return undefined;
+  if (!hasServerCountSignal(countsPayload) && !hasServerTabSignal(payload)) return undefined;
 
   return {
-    pendingPay: readServerCount(countsPayload, ['pendingPay', 'pendingPayment', 'unpaid']),
-    pendingReceive: readServerCount(countsPayload, ['pendingReceive', 'pendingUse', 'pendingFulfillment']),
-    pendingReview: readServerCount(countsPayload, ['pendingReview', 'reviewPending', 'toReview', 'unreviewed']),
-    aftersale: readServerCount(countsPayload, ['aftersale', 'afterSale', 'refunding', 'refund']),
+    pendingPay: readServerCountOptional(countsPayload, ['pendingPay', 'pendingPayment', 'unpaid']) ?? readServerTabCount(payload, 'pendingPay'),
+    pendingReceive: readServerCountOptional(countsPayload, ['pendingReceive', 'pendingUse', 'pendingFulfillment']) ?? readServerTabCount(payload, 'pendingReceive'),
+    pendingReview: readServerCountOptional(countsPayload, ['pendingReview', 'reviewPending', 'toReview', 'unreviewed']) ?? readServerTabCount(payload, 'pendingReview'),
+    aftersale: readServerCountOptional(countsPayload, ['aftersale', 'afterSale', 'refunding', 'refund']) ?? readServerTabCount(payload, 'aftersale'),
   };
 }
 

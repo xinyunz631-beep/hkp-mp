@@ -9,10 +9,8 @@ import { PageShare, PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { useCheckoutController } from '@/core/runtime/use-checkout-controller';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
-import { navigateToMiniRoute } from '@/core/utils/navigation';
 import { showWechatToast } from '@/core/utils/wechat-actions';
 import { fetchCheckoutData, submitHotelCheckoutOrder, type HotelCheckoutData } from '@/pkg-hotel/services/checkout';
-import { serializeHotelOccupancy } from '@/pkg-hotel/services/model';
 import { updateHotelOrderDraft } from '@/pkg-hotel/services/order-draft';
 import './index.scss';
 
@@ -84,6 +82,7 @@ const CheckoutPage = observer(function CheckoutPage() {
   }, [checkoutData, roomCount]);
   const activeGuestField = guestFields[activeRoomIndex] ?? guestFields[0];
   const totalAmount = checkoutData ? checkoutData.totalAmount : 0;
+  const productAmount = checkoutData?.productAmount;
   const couponOptions = checkoutData?.coupons ?? [];
   const selectedCoupon = couponOptions.find((coupon) => coupon.id === selectedCouponId);
   const hasCoupons = couponOptions.length > 0;
@@ -119,20 +118,6 @@ const CheckoutPage = observer(function CheckoutPage() {
     setRoomCount(nextRoomCount);
     setActiveRoomIndex((current) => Math.min(current, nextRoomCount - 1));
     void refreshHotelCheckout(nextRoomCount, selectedCouponId);
-  }
-
-  function handleDetailPress() {
-    if (!checkoutData) return;
-
-    const url = [
-      `${MINI_PACKAGE_ROUTES.hotelRoomDetail}?hotelId=${encodeURIComponent(checkoutData.hotelId)}`,
-      `productId=${encodeURIComponent(checkoutData.productId)}`,
-      `checkIn=${encodeURIComponent(checkoutData.checkIn)}`,
-      `checkOut=${encodeURIComponent(checkoutData.checkOut)}`,
-      `occupancy=${serializeHotelOccupancy(checkoutData.occupancy)}`,
-    ].join('&');
-
-    navigateToMiniRoute(url);
   }
 
   async function handleSubmit() {
@@ -200,10 +185,11 @@ const CheckoutPage = observer(function CheckoutPage() {
                   <Text className="_pg-product_meta">{checkoutData.productSubtitle}</Text>
                   <Text className="_pg-product_plan">{checkoutData.ratePlanTitle}</Text>
                 </View>
-                <View className="_pg-product_link" onClick={handleDetailPress}>
-                  <Text>详情</Text>
-                  <AppIcon name="arrowRight" size={16} color="#9ca3af" />
-                </View>
+                {typeof productAmount === 'number' ? (
+                  <View className="_pg-product_amount-wrap">
+                    <Text className="_pg-product_amount">¥{productAmount.toFixed(2)}</Text>
+                  </View>
+                ) : null}
               </View>
               <View className="_pg-summary-row">
                 <Text>入住日期</Text>

@@ -155,6 +155,7 @@ export interface HotelCheckoutData {
   roomCount: number;
   maxRoomCount: number;
   unitAmount: number;
+  productAmount?: number;
   totalAmount: number;
   discountAmount: number;
   guestFields: HotelGuestFieldData[];
