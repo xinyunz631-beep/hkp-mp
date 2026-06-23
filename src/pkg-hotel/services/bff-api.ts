@@ -1,5 +1,5 @@
 import { request } from '@/core/request';
-import { parseNumberLike } from '@/core/utils/money';
+import { centToYuan, parseNumberLike } from '@/core/utils/money';
 import {
   addHotelDays,
   calculateHotelNights,
@@ -70,6 +70,14 @@ interface BffHotelRoomView {
   filterKeys?: string[];
   sortOrder?: number;
   ratePlans?: Array<Record<string, unknown>>;
+  displayPrice?: number | string;
+  displayPriceCent?: number | string;
+  minPrice?: number | string;
+  minPriceCent?: number | string;
+  price?: number | string;
+  priceCent?: number | string;
+  salePrice?: number | string;
+  salePriceCent?: number | string;
 }
 
 interface BffHotelInventoryDayView {
@@ -190,6 +198,26 @@ function mapInventoryKey(roomTypeId: string, ratePlanId: string) {
   return `${roomTypeId}::${ratePlanId}`;
 }
 
+function resolveBackendDisplayPrice(source?: Record<string, unknown>) {
+  const centAmount = parseNumberLike(
+    source?.displayPriceCent
+      ?? source?.salePriceCent
+      ?? source?.minPriceCent
+      ?? source?.priceCent,
+  );
+  if (typeof centAmount === 'number' && centAmount >= 0) return centToYuan(centAmount);
+
+  const yuanAmount = parseNumberLike(
+    source?.displayPrice
+      ?? source?.salePrice
+      ?? source?.minPrice
+      ?? source?.price,
+  );
+  if (typeof yuanAmount === 'number' && yuanAmount >= 0) return yuanAmount;
+
+  return undefined;
+}
+
 function groupInventory(records: BffHotelInventoryDayView[]) {
   return records.reduce<InventoryLookup>((result, item) => {
     const roomTypeId = text(item.roomTypeId);
@@ -212,12 +240,7 @@ function resolveRatePlanInventory(roomTypeId: string, ratePlanId: string, lookup
   const stock = nights.length
     ? Math.min(...nights.map((item) => number(item.availableStock)))
     : 0;
-  const price = nights.length
-    ? Math.max(0, Math.round(nights.reduce((sum, item) => sum + number(item.price), 0) / nights.length / 100))
-    : 0;
-
   return {
-    price,
     stock: restricted ? 0 : stock,
   };
 }
@@ -235,7 +258,7 @@ function mapRatePlan(room: BffHotelRoomView, plan: Record<string, unknown>, look
     cancelRule: text(plan.cancelRule),
     policyText: text(plan.policyText),
     filterKeys: Array.isArray(plan.filterKeys) ? plan.filterKeys.map(String) : [],
-    price: inventory.price,
+    price: resolveBackendDisplayPrice(plan) ?? resolveBackendDisplayPrice(room as unknown as Record<string, unknown>),
     stock: inventory.stock,
   };
 }
@@ -271,7 +294,7 @@ function mapRoom(room: BffHotelRoomView, stayRange: HotelStayRange, lookup: Inve
     includeText: text(room.includeText) || facilityTags.join('、'),
     tagsText,
     filterKeys: Array.from(new Set([...filterKeys, ...ratePlans.flatMap((plan) => plan.filterKeys)])),
-    price: displayRatePlan?.price || 0,
+    price: displayRatePlan?.price,
     stock: displayRatePlan?.stock || 0,
     ratePlans,
   };

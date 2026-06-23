@@ -156,8 +156,8 @@ const CheckoutPage = observer(function CheckoutPage() {
   const checkoutData = checkoutController.data;
   const selectedCouponId = checkoutController.selectedCouponId;
 
-  const ticketAmount = checkoutData?.ticketItem.price ?? 0;
-  const addonAmount = checkoutData ? checkoutData.addonItem.price * addonQuantity : 0;
+  const ticketAmount = checkoutData?.ticketItem.price;
+  const addonAmount = checkoutData?.addonItem.price ?? 0;
   const selectedCoupon = checkoutData?.draft?.coupons.find((coupon) => coupon.id === selectedCouponId);
   const discountAmount = checkoutData?.discountAmount ?? 0;
   const payAmount = checkoutData ? checkoutData.payableAmount : 0;
@@ -450,7 +450,6 @@ const CheckoutPage = observer(function CheckoutPage() {
                         <Text className="_pg-product_note">{product.noticeText}</Text>
                       </View>
                       <View className="_pg-product_side">
-                        <Text className="_pg-product_price">¥{(product.price * product.quantity).toFixed(2)}</Text>
                         <Text className="_pg-product_count">x{product.quantity}</Text>
                       </View>
                     </View>
@@ -665,11 +664,13 @@ const CheckoutPage = observer(function CheckoutPage() {
 
             <View className="_pg-card _pg-card--compact">
               <View className="_pg-amount-summary">
-                <View className="_pg-amount-summary_row">
-                  <Text className="_pg-amount-summary_label">票品金额</Text>
-                  <Text className="_pg-amount-summary_value">¥{ticketAmount.toFixed(2)}</Text>
-                </View>
-                {hasAddonItem ? (
+                {typeof ticketAmount === 'number' ? (
+                  <View className="_pg-amount-summary_row">
+                    <Text className="_pg-amount-summary_label">票品金额</Text>
+                    <Text className="_pg-amount-summary_value">¥{ticketAmount.toFixed(2)}</Text>
+                  </View>
+                ) : null}
+                {hasAddonItem && addonAmount > 0 ? (
                   <View className="_pg-amount-summary_row">
                     <Text className="_pg-amount-summary_label">套餐加购</Text>
                     <Text className="_pg-amount-summary_value">¥{addonAmount.toFixed(2)}</Text>

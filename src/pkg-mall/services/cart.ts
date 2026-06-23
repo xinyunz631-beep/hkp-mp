@@ -32,6 +32,7 @@ interface AddMallCartItemOptions {
 
 export interface MallCartCountData {
   totalQuantity: number;
+  totalAmount: number;
 }
 
 function normalizeString(value?: string) {
@@ -91,6 +92,17 @@ function marketPriceOf(item: BffMallCartItem) {
   return parseNumberLike(item.marketPrice);
 }
 
+// 统一解析购物车汇总金额，优先消费接口分单位字段。
+function resolveCartTotalAmount(data: {
+  summary?: { totalAmount?: number; totalAmountCent?: number };
+  totalAmount?: number;
+  totalAmountCent?: number;
+}) {
+  const totalAmountCent = parseNumberLike(data.summary?.totalAmountCent) ?? parseNumberLike(data.totalAmountCent);
+  if (typeof totalAmountCent === 'number') return centToYuan(totalAmountCent);
+  return parseNumberLike(data.summary?.totalAmount) ?? parseNumberLike(data.totalAmount) ?? 0;
+}
+
 function toMallCartItem(item: BffMallCartItem): MallCartItem {
   const productId = normalizeString(item.productId) || item.id;
   const skuId = normalizeString(item.skuId);
@@ -140,10 +152,7 @@ function toMallCartData(data: BffMallCartData): MallCartData {
     }))
     .filter((group) => group.items.length > 0);
   const recommendProducts = (data.recommendProducts ?? []).filter(isRenderableMallProduct).map(toMallProductSummary);
-  const totalAmountCent = parseNumberLike(data.summary?.totalAmountCent) ?? parseNumberLike(data.totalAmountCent);
-  const totalAmount = typeof totalAmountCent === 'number'
-    ? centToYuan(totalAmountCent)
-    : parseNumberLike(data.totalAmount) ?? 0;
+  const totalAmount = resolveCartTotalAmount(data);
 
   return {
     groups,
@@ -161,6 +170,7 @@ function countCartGroups(groups: MallCartMerchantGroup[]) {
 function emitMallCartCountChange(data: MallCartData) {
   Taro.eventCenter.trigger(MALL_CART_COUNT_CHANGE_EVENT, {
     totalQuantity: countCartGroups(data.groups),
+    totalAmount: data.totalAmount,
   } satisfies MallCartCountData);
 }
 
@@ -175,7 +185,18 @@ export async function fetchCartData() {
 export async function fetchMallCartCount() {
   const data = await fetchBffMallCartCount();
   return {
-    totalQuantity: Math.max(0, parseNumberLike(data.totalQuantity) ?? 0),
+    totalQuantity: Math.max(0, parseNumberLike(data.summary?.totalQuantity) ?? parseNumberLike(data.totalQuantity) ?? 0),
+    totalAmount: resolveCartTotalAmount(data),
+  };
+}
+
+// 获取购物车数量和金额汇总，供需要展示总金额的入口使用。
+export async function fetchMallCartSummary() {
+  const data = toMallCartData(await fetchBffMallCart());
+  emitMallCartCountChange(data);
+  return {
+    totalQuantity: countCartGroups(data.groups),
+    totalAmount: data.totalAmount,
   };
 }
 

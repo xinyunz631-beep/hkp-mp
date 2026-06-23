@@ -221,6 +221,9 @@ export interface BffMallCartData {
 
 export interface BffMallCartCountData {
   totalQuantity?: number;
+  totalAmount?: number;
+  totalAmountCent?: number;
+  summary?: BffMallCartSummary;
 }
 
 export interface BffMallFavoriteImage {

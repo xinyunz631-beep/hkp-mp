@@ -5,7 +5,6 @@ import {
   resolveCheckoutCouponState,
   toCheckoutCouponSummary,
 } from '@/core/services/checkout-flow';
-import { yuanToCent } from '@/core/utils/money';
 import { quoteBffTickets } from './ticket-api';
 import type { HkpDateOption } from '@/core/types/hkp';
 import {
@@ -22,7 +21,7 @@ export interface TicketCheckoutTicketItem {
   quantity: number;
   travelDate: string;
   tagText: string;
-  price: number;
+  price?: number;
 }
 
 export interface TicketCheckoutAddonItem {
@@ -72,13 +71,6 @@ function buildCheckoutDates(selectedDate: string): HkpDateOption[] {
       subtitle: '待确认',
     },
   ];
-}
-
-function calculateDraftOrderAmountCent(draft: TicketOrderDraft) {
-  return draft.products.reduce((total, product) => {
-    const unitPriceCent = product.unitPriceCent ?? yuanToCent(product.price);
-    return total + unitPriceCent * product.quantity;
-  }, 0);
 }
 
 // 根据草稿和统一订单确认结果生成门票确认单页面数据。
@@ -159,14 +151,14 @@ export async function fetchCheckoutData(draftId?: string, selectedCouponId?: str
     confirmBffOrder(orderRequest),
   ]);
   const amounts = normalizeCheckoutAmounts(confirmation, {
-    originalAmountCent: ticketQuote.originalAmountCent ?? calculateDraftOrderAmountCent(draft),
+    originalAmountCent: ticketQuote.originalAmountCent,
   }, {
     sceneLabel: '门票确认单',
     requirePayableAmount: true,
   });
   const availableCouponsResponse = await fetchBffCouponAvailable({
     sceneType: 'TICKET',
-    orderAmountCent: amounts.originalAmountCent,
+    orderAmountCent: amounts.hasOriginalAmount ? amounts.originalAmountCent : undefined,
     itemIds: draft.products.map((product) => product.productCode || product.id),
     skuIds: draft.products.map((product) => product.skuId || `${product.productCode || product.id}_standard`),
     visitDate: draft.selectedDate,
@@ -188,7 +180,7 @@ export async function fetchCheckoutData(draftId?: string, selectedCouponId?: str
       quantity: totalQuantity,
       travelDate: draft.selectedDate,
       tagText: '预定须知',
-      price: amounts.originalAmount || amounts.payableAmount,
+      price: amounts.hasOriginalAmount ? amounts.originalAmount : undefined,
     },
     addonItem: {
       merchantTitle: '',
@@ -206,10 +198,10 @@ export async function fetchCheckoutData(draftId?: string, selectedCouponId?: str
       helperText: '证件信息用于入园核验，请确保与实际出行人一致',
       errorText: '请补全证件信息',
     },
-    discountText: amounts.discountAmount > 0 ? `已优惠 ¥${amounts.discountAmount.toFixed(2)}` : '',
+    discountText: amounts.hasDiscountAmount && amounts.discountAmount > 0 ? `已优惠 ¥${amounts.discountAmount.toFixed(2)}` : '',
     couponText: coupons.length > 0 ? '请选择优惠券' : '',
     couponNoticeText: couponState.couponNoticeText,
-    discountAmount: amounts.discountAmount,
+    discountAmount: amounts.hasDiscountAmount ? amounts.discountAmount : 0,
     payableAmount: amounts.payableAmount,
     payButtonText: '提交订单',
     draft: nextDraft,

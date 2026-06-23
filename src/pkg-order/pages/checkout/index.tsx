@@ -123,7 +123,7 @@ const CheckoutPage = observer(function CheckoutPage() {
             <FixedSubmitBar
               className="_pg-submit"
               label={<Text className="_pg-submit_label">金额:</Text>}
-              amountText={<Text className="_pg-submit_amount">¥{checkoutData.totalAmount.toFixed(2)}</Text>}
+              amountText={<Text className="_pg-submit_amount">{checkoutData.amountReady ? `¥${checkoutData.totalAmount.toFixed(2)}` : '待确认'}</Text>}
               extra={hasCouponDiscount ? <Text className="_pg-submit_extra">已优惠: ¥{checkoutData.discountAmount.toFixed(2)}</Text> : undefined}
               buttonText="去支付"
               disabled={deliveryUnavailable}
@@ -198,7 +198,7 @@ const CheckoutPage = observer(function CheckoutPage() {
                   <AppIcon name="shop" size={16} color="#23262f" />
                   <Text>{merchantDisplayName}</Text>
                 </View>
-                <Text className="_pg-products-header_count">共{checkoutData.products.reduce((total, item) => total + item.quantity, 0)}件</Text>
+                <Text className="_pg-products-header_count">共{checkoutData.products.length}种商品</Text>
               </View>
               {checkoutData.products.map((item) => (
                 <View
@@ -258,14 +258,16 @@ const CheckoutPage = observer(function CheckoutPage() {
               </View>
             ) : null}
 
-            <View className="_pg-card">
-              {checkoutData.amountFields.map((item) => (
-                <View className="_pg-line-row" key={item.label}>
-                  <Text className="_pg-line-row_label">{item.label}</Text>
-                  <Text className="_pg-line-row_value _pg-line-row_value--amount">{item.value}</Text>
-                </View>
-              ))}
-            </View>
+            {checkoutData.amountFields.length > 0 ? (
+              <View className="_pg-card">
+                {checkoutData.amountFields.map((item) => (
+                  <View className="_pg-line-row" key={item.label}>
+                    <Text className="_pg-line-row_label">{item.label}</Text>
+                    <Text className="_pg-line-row_value _pg-line-row_value--amount">{item.value}</Text>
+                  </View>
+                ))}
+              </View>
+            ) : null}
           </View>
           <PageShare>
             {hasCoupons ? (

@@ -28,13 +28,6 @@ export function formatCurrency(value: unknown, options: FormatCurrencyOptions = 
   return `${options.showSymbol === false ? '' : '¥'}${text}`;
 }
 
-// 将金额元转为分，统一提交给后端或支付接口前的数据形态。
-export function yuanToCent(value: unknown) {
-  const amount = parseNumberLike(value);
-  if (typeof amount !== 'number') return 0;
-  return Math.round(amount * 100);
-}
-
 // 将金额分转为元，统一接口返回金额的展示转换。
 export function centToYuan(value: unknown) {
   const amount = parseNumberLike(value);

@@ -46,7 +46,7 @@ export interface HotelRatePlanData {
   cancelRule: string;
   policyText: string;
   filterKeys: string[];
-  price: number;
+  price?: number;
   stock: number;
 }
 
@@ -66,7 +66,7 @@ export interface HotelProductCardData {
   includeText: string;
   tagsText: string;
   filterKeys: string[];
-  price: number;
+  price?: number;
   stock: number;
   ratePlans: HotelRatePlanData[];
 }
@@ -154,7 +154,6 @@ export interface HotelCheckoutData {
   occupancy: HotelOccupancy;
   roomCount: number;
   maxRoomCount: number;
-  unitAmount: number;
   productAmount?: number;
   totalAmount: number;
   discountAmount: number;

@@ -13,7 +13,6 @@ import { AppPopup } from '@/core/components/AppPopup';
 import { PageShare, PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
-import { formatCurrency } from '@/core/utils/money';
 import { navigateToMiniRoute } from '@/core/utils/navigation';
 import {
   callWechatPhone,
@@ -366,8 +365,6 @@ const TicketBookingPage = observer(function TicketBookingPage() {
   }, [bookingData, packages, products]);
   const selectedProducts = useMemo(() => products.filter((product) => (quantities[product.id] ?? 0) > 0), [products, quantities]);
   const hasSelectedProducts = selectedProducts.length > 0;
-  const totalAmount = products.reduce((total, product) => total + (quantities[product.id] ?? 0) * product.price, 0);
-  const totalAmountText = formatCurrency(totalAmount);
   const selectedRuleProduct = selectedRuleProductId
     ? products.find((product) => product.id === selectedRuleProductId)
     : undefined;
@@ -583,8 +580,8 @@ const TicketBookingPage = observer(function TicketBookingPage() {
         // reserveTabBarSpace={false}
         footer={(
           <TicketSubmitFooter
-            label="票种小计:"
-            amountText={totalAmountText}
+            label="已选:"
+            amountText={`${selectedProducts.length}种票品`}
             buttonText="提交订单"
             disabled={!hasSelectedProducts}
             onSubmit={handleSubmit}

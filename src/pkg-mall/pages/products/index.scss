@@ -102,6 +102,16 @@
 
 ._pg-list {
   padding: 0 30px;
+
+  &_more {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 82px;
+    color: #a1a1aa;
+    font-size: 22px;
+    line-height: 1.4;
+  }
 }
 
 ._pg-product {
@@ -238,62 +248,5 @@
       color: $color-primary;
       font-weight: 500;
     }
-  }
-}
-
-._pg-footer {
-  display: flex;
-  align-items: stretch;
-  min-height: 112px;
-  box-shadow: 0 -10px 26px rgba(0, 0, 0, 0.04);
-
-  &_summary {
-    min-width: 0;
-    flex: 1;
-    padding: 20px 24px;
-    background: #ffffff;
-  }
-
-  &_price {
-    display: flex;
-    align-items: baseline;
-    gap: 8px;
-  }
-
-  &_label {
-    color: #34363b;
-    font-size: 20px;
-    font-weight: 500;
-  }
-
-  &_amount {
-    color: $color-primary;
-    font-size: 34px;
-    font-weight: 500;
-  }
-
-  &_discount {
-    display: block;
-    margin-top: 4px;
-    color: #98a2b3;
-    font-size: 18px;
-  }
-
-  &_button {
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 340px;
-    min-height: 112px;
-    background: $color-primary;
-    color: #ffffff;
-    font-size: 30px;
-    font-weight: 500;
-  }
-
-  &_cart-badge {
-    top: 18px;
-    right: 42px;
   }
 }

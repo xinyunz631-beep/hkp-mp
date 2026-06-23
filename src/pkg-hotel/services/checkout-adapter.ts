@@ -24,7 +24,6 @@ export function buildHotelCheckoutOrderRequest(
   return {
     sceneType: 'HOTEL',
     paymentChannel: 'WECHAT',
-    freightAmountCent: 0,
     selectedCouponNos: buildSelectedCouponNos(selectedCouponId),
     contactName: payload.contact?.name || draft.contact.name,
     contactPhone: payload.contact?.mobile || draft.contact.mobile,

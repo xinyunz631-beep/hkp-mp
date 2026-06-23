@@ -26,6 +26,10 @@ export interface CheckoutAmountState {
   freightAmountCent: number;
   discountAmountCent: number;
   payableAmountCent: number;
+  hasOriginalAmount: boolean;
+  hasFreightAmount: boolean;
+  hasDiscountAmount: boolean;
+  hasPayableAmount: boolean;
   originalAmount: number;
   freightAmount: number;
   discountAmount: number;
@@ -68,6 +72,29 @@ function normalizeCent(value: unknown, fallback = 0) {
   return typeof amount === 'number' && amount >= 0 ? amount : fallback;
 }
 
+function normalizeOptionalCent(value: unknown, fallback?: unknown) {
+  const amount = parseNumberLike(value);
+  if (typeof amount === 'number' && amount >= 0) {
+    return {
+      value: amount,
+      exists: true,
+    };
+  }
+
+  const fallbackAmount = parseNumberLike(fallback);
+  if (typeof fallbackAmount === 'number' && fallbackAmount >= 0) {
+    return {
+      value: fallbackAmount,
+      exists: true,
+    };
+  }
+
+  return {
+    value: 0,
+    exists: false,
+  };
+}
+
 function normalizeCouponNos(couponNos?: string[]) {
   return (couponNos ?? []).map((couponNo) => String(couponNo || '').trim()).filter(Boolean);
 }
@@ -93,28 +120,38 @@ export function normalizeCheckoutAmounts(
   fallback: CheckoutAmountFallback = {},
   options: NormalizeCheckoutAmountOptions = {},
 ): CheckoutAmountState {
-  const originalAmountCent = normalizeCent(confirmation?.originalAmountCent, fallback.originalAmountCent ?? fallback.payableAmountCent ?? 0);
-  const freightAmountCent = normalizeCent(confirmation?.freightAmountCent, fallback.freightAmountCent ?? 0);
-  const discountAmountCent = normalizeCent(confirmation?.discountAmountCent, fallback.discountAmountCent ?? 0);
+  const originalAmount = normalizeOptionalCent(confirmation?.originalAmountCent, fallback.originalAmountCent);
+  const freightAmount = normalizeOptionalCent(confirmation?.freightAmountCent, fallback.freightAmountCent);
+  const discountAmount = normalizeOptionalCent(confirmation?.discountAmountCent, fallback.discountAmountCent);
   const confirmedPayableAmountCent = parseNumberLike(confirmation?.payableAmountCent);
+  const fallbackPayableAmountCent = parseNumberLike(fallback.payableAmountCent);
   const requirePayableAmount = options.requirePayableAmount ?? true;
 
-  if (requirePayableAmount && (typeof confirmedPayableAmountCent !== 'number' || confirmedPayableAmountCent < 0)) {
+  if (
+    requirePayableAmount
+    && (typeof confirmedPayableAmountCent !== 'number' || confirmedPayableAmountCent < 0)
+    && (typeof fallbackPayableAmountCent !== 'number' || fallbackPayableAmountCent < 0)
+  ) {
     throw new Error(`${options.sceneLabel || '订单确认'}金额暂不可用，请稍后再试`);
   }
 
   const payableAmountCent = typeof confirmedPayableAmountCent === 'number' && confirmedPayableAmountCent >= 0
     ? confirmedPayableAmountCent
-    : normalizeCent(fallback.payableAmountCent, Math.max(0, originalAmountCent + freightAmountCent - discountAmountCent));
+    : normalizeCent(fallbackPayableAmountCent, 0);
 
   return {
-    originalAmountCent,
-    freightAmountCent,
-    discountAmountCent,
+    originalAmountCent: originalAmount.value,
+    freightAmountCent: freightAmount.value,
+    discountAmountCent: discountAmount.value,
     payableAmountCent,
-    originalAmount: centToYuan(originalAmountCent),
-    freightAmount: centToYuan(freightAmountCent),
-    discountAmount: centToYuan(discountAmountCent),
+    hasOriginalAmount: originalAmount.exists,
+    hasFreightAmount: freightAmount.exists,
+    hasDiscountAmount: discountAmount.exists,
+    hasPayableAmount: typeof confirmedPayableAmountCent === 'number' && confirmedPayableAmountCent >= 0
+      || typeof fallbackPayableAmountCent === 'number' && fallbackPayableAmountCent >= 0,
+    originalAmount: centToYuan(originalAmount.value),
+    freightAmount: centToYuan(freightAmount.value),
+    discountAmount: centToYuan(discountAmount.value),
     payableAmount: centToYuan(payableAmountCent),
   };
 }

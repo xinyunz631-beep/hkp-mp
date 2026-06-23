@@ -3,10 +3,8 @@ import { buildSelectedCouponNos } from '@/core/services/checkout-flow';
 import {
   getMallCheckoutSelectedAddressId,
   setMallCheckoutSelectedAddressId,
-  validateMallCheckoutDelivery,
   type MallCheckoutDraft,
 } from '@/core/services/mall-checkout-draft';
-import { yuanToCent } from '@/core/utils/money';
 import { sanitizeMallRuntimeText, sanitizeMallRuntimeUrl } from '@/core/utils/mall-runtime';
 import { fetchAddressData, formatOrderAddress } from './address';
 
@@ -36,19 +34,16 @@ export function persistMallCheckoutAddress(draftId: string, address?: Awaited<Re
   if (address?.id) setMallCheckoutSelectedAddressId(draftId, address.id);
 }
 
-// 生成商城统一订单请求，商品、地址、运费和券号都显式进入 BFF confirm/create。
+// 生成商城统一订单请求，前端只提交商品、地址和券号；金额、运费由 BFF 统一计算。
 export function buildMallCheckoutOrderRequest({
   draft,
   address,
   selectedCouponId,
 }: MallCheckoutRequestContext): BffOrderUnifiedRequest {
-  const deliveryCheck = validateMallCheckoutDelivery(draft, address);
-
   return {
     sceneType: 'MALL',
     channel: 'MINI_PROGRAM',
     paymentChannel: 'WECHAT',
-    freightAmountCent: yuanToCent(deliveryCheck.freightAmount),
     selectedCouponNos: buildSelectedCouponNos(selectedCouponId),
     contactName: address?.name,
     contactPhone: address?.mobile,

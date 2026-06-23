@@ -162,7 +162,6 @@ export function validateMallCheckoutDelivery(
   const errors: string[] = [];
   const addressSearchText = getAddressSearchText(address);
   const requiresAddress = isMallCheckoutAddressRequired(draft);
-  let freightAmount = 0;
 
   if (requiresAddress && !address) {
     errors.push('请先选择收货地址');
@@ -185,8 +184,6 @@ export function validateMallCheckoutDelivery(
       return;
     }
 
-    freightAmount += rule.freightAmount ?? 0;
-
     if (!addressSearchText) return;
 
     if (matchesAnyKeyword(addressSearchText, rule.unsupportedRegionKeywords)) {
@@ -208,10 +205,10 @@ export function validateMallCheckoutDelivery(
 
   return {
     canSubmit,
-    freightAmount: Number(freightAmount.toFixed(2)),
+    freightAmount: 0,
     shippingText: canSubmit
       ? requiresAddress
-        ? freightAmount > 0 ? `第三方配送 ¥${freightAmount.toFixed(2)}` : '第三方配送 包邮'
+        ? '第三方配送'
         : resolveNoLogisticsShippingText(draft)
       : uniqueErrors[0],
     errors: uniqueErrors,

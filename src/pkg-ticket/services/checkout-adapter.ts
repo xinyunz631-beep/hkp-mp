@@ -26,7 +26,6 @@ export function buildTicketCheckoutOrderRequest(
     sceneType: 'TICKET',
     channel: 'MINI_PROGRAM',
     paymentChannel: 'WECHAT',
-    freightAmountCent: 0,
     selectedCouponNos: buildSelectedCouponNos(payload.selectedCouponId),
     contactName: payload.contact.name,
     contactPhone: payload.contact.mobile,

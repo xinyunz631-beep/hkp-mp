@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react';
 import Taro from '@tarojs/taro';
 import { Text, View } from '@tarojs/components';
-import classNames from 'classnames';
 import { observer } from 'mobx-react';
 import { BaseEmpty } from '@/core/components/BaseEmpty';
 import { AppIcon } from '@/core/components/AppIcon';
@@ -22,6 +21,7 @@ import {
   updateMallCartCheckedItems,
   updateMallCartItem,
 } from '@/pkg-mall/services/cart';
+import { MallCartActionBar } from '@/pkg-mall/components/MallCartActionBar';
 import type { MallCartData, MallCartMerchantGroup, MallCartItem } from '@/pkg-mall/services/types';
 import './index.scss';
 
@@ -46,7 +46,7 @@ const CartPage = observer(function CartPage() {
   const checkedItems = flatItems.filter((item) => item.checked);
   const selectedCount = checkedItems.length;
   const selectedQuantity = checkedItems.reduce((sum, item) => sum + item.quantity, 0);
-  const totalAmount = checkedItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const totalAmount = cartData?.totalAmount ?? 0;
   const allChecked = flatItems.length > 0 && checkedItems.length === flatItems.length;
   const hasCartItems = flatItems.length > 0;
 
@@ -187,43 +187,26 @@ const CartPage = observer(function CartPage() {
           </Text>
         ) : undefined}
         footer={hasCartItems ? (
-          <View className="_pg-footer">
-            <View className="_pg-footer_select" onClick={handleToggleAll}>
-              <View className={`_pg-footer_checkbox ${allChecked ? '_pg-footer_checkbox--checked' : ''}`}>
-                {allChecked ? <AppIcon name="check" size={10} color="#ffffff" /> : null}
-              </View>
-              <Text className="_pg-footer_select-text">全选</Text>
-            </View>
-
-            {editMode ? (
-              <>
-                <View className="_pg-footer_summary">
-                  <Text className="_pg-footer_summary-label">已选</Text>
-                  <Text className="_pg-footer_summary-count">{selectedQuantity}</Text>
-                  <Text className="_pg-footer_summary-label">件</Text>
-                </View>
-                <View className="_pg-footer_actions">
-                  <View
-                    className={classNames('_pg-footer_button', '_pg-footer_button--danger')}
-                    onClick={() => void handlePrimaryAction()}
-                  >
-                    <Text>删除</Text>
-                  </View>
-                </View>
-              </>
-            ) : (
-              <>
-                <View className="_pg-footer_summary">
-                  <Text className="_pg-footer_summary-label">合计:</Text>
-                  <Text className="_pg-footer_summary-amount">{formatCurrency(totalAmount)}</Text>
-                </View>
-
-                <View className="_pg-footer_button" onClick={() => void handlePrimaryAction()}>
-                  <Text>结算</Text>
-                </View>
-              </>
-            )}
-          </View>
+          <MallCartActionBar
+            selectControl={{
+              checked: allChecked,
+              label: '全选',
+              onClick: handleToggleAll,
+            }}
+            summaryLines={editMode ? [{
+              label: '已选',
+              value: selectedQuantity,
+              suffix: '件',
+              valueKind: 'count',
+            }] : [{
+              label: '合计:',
+              value: formatCurrency(totalAmount),
+              valueKind: 'amount',
+            }]}
+            buttonText={editMode ? '删除' : '结算'}
+            buttonVariant={editMode ? 'danger' : 'primary'}
+            onButtonClick={handlePrimaryAction}
+          />
         ) : undefined}
       >
         <View className="_pg-page">

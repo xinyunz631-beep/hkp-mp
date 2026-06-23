@@ -8,6 +8,7 @@ import { callWechatPhone, copyWechatText, openWechatLocation, showWechatToast } 
 export interface MiniProgramAdClickTarget {
   id?: string;
   adNo?: string;
+  detailAdNo?: string;
   jumpType?: MiniProgramAdJumpType;
   jumpTarget?: string;
   jumpPath?: string;
@@ -15,6 +16,7 @@ export interface MiniProgramAdClickTarget {
   jumpAppId?: string;
   jumpUrl?: string;
   jumpCustomValue?: string;
+  jumpParams?: Record<string, unknown>;
   richText?: string;
   richTextHtml?: string;
 }
@@ -45,6 +47,31 @@ function isMiniProgramPathValue(value: string) {
   return value.startsWith('/') || value.startsWith('pages/') || value.startsWith('pkg-');
 }
 
+function normalizeAdJumpType(jumpType?: string) {
+  return jumpType?.trim().replace(/[\s-]+/g, '_').toUpperCase();
+}
+
+function resolveAdIdentifier(target: MiniProgramAdClickTarget) {
+  return target.detailAdNo || target.adNo || target.id;
+}
+
+function appendQueryParams(path: string, params?: Record<string, unknown>) {
+  if (!params) return path;
+  const queryItems = Object.entries(params)
+    .filter(([key, value]) => key && value !== undefined && value !== null && value !== '')
+    .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`);
+  if (!queryItems.length) return path;
+  return `${path}${path.includes('?') ? '&' : '?'}${queryItems.join('&')}`;
+}
+
+function resolveMiniProgramPathCandidate(target: MiniProgramAdClickTarget) {
+  const rawPath = target.jumpPath
+    || target.jumpTarget
+    || (target.jumpUrl && isMiniProgramPathValue(target.jumpUrl) ? target.jumpUrl : undefined);
+  if (!rawPath) return undefined;
+  return appendQueryParams(rawPath, target.jumpParams);
+}
+
 // 判断自定义值是否是乐园地址类动作，命中后调用微信地图。
 function isLocationCustomValue(value: string) {
   const lowerValue = value.toLowerCase();
@@ -69,6 +96,7 @@ export function resolveMiniProgramAdClickTarget(ad: MiniProgramAdView): MiniProg
   return {
     id: ad.id,
     adNo: ad.adNo,
+    detailAdNo: ad.detailAdNo,
     jumpType: ad.jumpType,
     jumpTarget: ad.jumpTarget,
     jumpPath: ad.jumpPath,
@@ -76,6 +104,7 @@ export function resolveMiniProgramAdClickTarget(ad: MiniProgramAdView): MiniProg
     jumpAppId: ad.jumpAppId,
     jumpUrl: ad.jumpUrl,
     jumpCustomValue: ad.jumpCustomValue,
+    jumpParams: ad.jumpParams,
     richText: ad.richText,
     richTextHtml: ad.richTextHtml,
   };
@@ -119,9 +148,10 @@ function withAdIdQuery(path: string, adId: string) {
 
 // 获取广告富文本详情页路径，必须使用后端广告 id。
 function resolveAdDetailPath(target: MiniProgramAdClickTarget, preferredPath?: string) {
-  if (!target.id) return undefined;
-  if (isAdRenderableDetailPath(preferredPath)) return withAdIdQuery(preferredPath as string, target.id);
-  return `${MINI_PACKAGE_ROUTES.ticketActivityDetail}?id=${encodeURIComponent(target.id)}`;
+  const adIdentifier = resolveAdIdentifier(target);
+  if (!adIdentifier) return undefined;
+  if (isAdRenderableDetailPath(preferredPath)) return withAdIdQuery(preferredPath as string, adIdentifier);
+  return `${MINI_PACKAGE_ROUTES.ticketActivityDetail}?id=${encodeURIComponent(adIdentifier)}`;
 }
 
 // 执行自定义广告值，优先识别业务动作，再降级为路径、H5 或复制。
@@ -166,14 +196,15 @@ export async function adClick(target: MiniProgramAdClickTarget | MiniProgramAdVi
     return false;
   }
 
-  const miniPath = normalizeAdMiniProgramPath(clickTarget.jumpPath || clickTarget.jumpTarget);
+  const jumpType = normalizeAdJumpType(clickTarget.jumpType);
+  const miniPath = normalizeAdMiniProgramPath(resolveMiniProgramPathCandidate(clickTarget));
   const appId = clickTarget.jumpAppId || clickTarget.jumpMiniProgramAppId;
 
-  if (clickTarget.jumpType === 'otherMiniProgram') {
+  if (jumpType === 'OTHERMINIPROGRAM' || jumpType === 'OTHER_MINI_PROGRAM') {
     if (appId) {
       await Taro.navigateToMiniProgram({
         appId,
-        path: normalizeOtherMiniProgramPath(clickTarget.jumpPath || clickTarget.jumpTarget),
+        path: normalizeOtherMiniProgramPath(resolveMiniProgramPathCandidate(clickTarget)),
       });
       return true;
     }
@@ -181,7 +212,7 @@ export async function adClick(target: MiniProgramAdClickTarget | MiniProgramAdVi
     return false;
   }
 
-  if (clickTarget.jumpType === 'h5') {
+  if (jumpType === 'H5') {
     if (clickTarget.jumpUrl) {
       await copyWechatText(clickTarget.jumpUrl, '链接已复制');
       return true;
@@ -190,9 +221,14 @@ export async function adClick(target: MiniProgramAdClickTarget | MiniProgramAdVi
     return false;
   }
 
-  if (clickTarget.jumpType === 'custom') {
+  if (jumpType === 'CUSTOM') {
     const handled = await executeCustomAdValue(clickTarget, clickTarget.jumpCustomValue);
     if (handled) return true;
+  }
+
+  if (jumpType === 'AD_DETAIL') {
+    const detailPath = resolveAdDetailPath(clickTarget, miniPath);
+    if (detailPath) return navigateByMiniProgramPath(detailPath);
   }
 
   if ((clickTarget.richTextHtml || clickTarget.richText) && (!miniPath || isAdRenderableDetailPath(miniPath))) {

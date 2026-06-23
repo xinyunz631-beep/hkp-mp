@@ -7,10 +7,9 @@ import {
   toCheckoutCouponSummary,
   type CheckoutSubmitResult,
 } from '@/core/services/checkout-flow';
-import { centToYuan, parseNumberLike, yuanToCent } from '@/core/utils/money';
+import { centToYuan, parseNumberLike } from '@/core/utils/money';
 import {
   ensureHotelOrderDraft,
-  resolveHotelDraftAmount,
   updateHotelOrderDraft,
   type SubmitHotelOrderDraftPayload,
 } from './order-draft';
@@ -74,13 +73,6 @@ function resolveHotelProductAmount(
 
   if (typeof lineAmountCent === 'number' && lineAmountCent >= 0) return centToYuan(lineAmountCent);
 
-  const unitPriceCent = parseNumberLike(line?.unitPriceCent);
-  const quantity = parseNumberLike(line?.quantity);
-
-  if (typeof unitPriceCent === 'number' && unitPriceCent >= 0 && typeof quantity === 'number' && quantity > 0) {
-    return centToYuan(unitPriceCent * quantity);
-  }
-
   return undefined;
 }
 
@@ -101,16 +93,13 @@ export async function fetchCheckoutData(params: FetchHotelCheckoutParams = {}) {
     roomCount,
     selectedCouponId,
   }));
-  const fallbackAmountCent = yuanToCent(resolveHotelDraftAmount(draft, roomCount));
-  const amounts = normalizeCheckoutAmounts(confirmation, {
-    originalAmountCent: fallbackAmountCent,
-  }, {
+  const amounts = normalizeCheckoutAmounts(confirmation, {}, {
     sceneLabel: '酒店确认单',
     requirePayableAmount: true,
   });
   const availableCouponsResponse = await fetchBffCouponAvailable({
     sceneType: 'HOTEL',
-    orderAmountCent: amounts.originalAmountCent,
+    orderAmountCent: amounts.hasOriginalAmount ? amounts.originalAmountCent : undefined,
     itemIds: [draft.hotelId, draft.product.id],
     skuIds: draft.ratePlan.id,
     checkInDate: draft.stayRange.checkIn,
@@ -145,10 +134,9 @@ export async function fetchCheckoutData(params: FetchHotelCheckoutParams = {}) {
     occupancy: draft.occupancy,
     roomCount,
     maxRoomCount: Math.min(3, Math.max(draft.ratePlan.stock, 1)),
-    unitAmount: Number((amounts.payableAmount / roomCount).toFixed(2)),
     productAmount: resolveHotelProductAmount(confirmation, draft),
     totalAmount: amounts.payableAmount,
-    discountAmount: amounts.discountAmount,
+    discountAmount: amounts.hasDiscountAmount ? amounts.discountAmount : 0,
     guestFields: resolveGuestFields(roomCount, draft.guests),
     contactNamePlaceholder: '填写联系人姓名',
     contactNameValue: draft.contact.name,
@@ -158,7 +146,7 @@ export async function fetchCheckoutData(params: FetchHotelCheckoutParams = {}) {
     couponText: selectedCoupon ? `${selectedCoupon.amountText} ${selectedCoupon.thresholdText}` : '',
     couponNoticeText: couponState.couponNoticeText,
     coupons,
-    discountText: amounts.discountAmount > 0 ? `已优惠 ¥${amounts.discountAmount.toFixed(2)}` : '',
+    discountText: amounts.hasDiscountAmount && amounts.discountAmount > 0 ? `已优惠 ¥${amounts.discountAmount.toFixed(2)}` : '',
     invoiceText: draft.invoiceText,
     cancelRule: draft.ratePlan.cancelRule,
     checkInTimeText: draft.checkInTimeText,

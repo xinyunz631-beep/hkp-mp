@@ -440,7 +440,7 @@ export function SkuPopup({
             emptyState="error"
           />
           <View className="hkp-sku-popup__summary-body">
-            <Text className="hkp-sku-popup__price">{formatCurrency(totalAmount ?? product.price * quantity)}</Text>
+            <Text className="hkp-sku-popup__price">{formatCurrency(totalAmount ?? product.price)}</Text>
             <Text className="hkp-sku-popup__title">{product.title}</Text>
             {selectionText ? <Text className="hkp-sku-popup__selected">{selectionText}</Text> : null}
             {stockText ? <Text className="hkp-sku-popup__stock">{stockText}</Text> : null}

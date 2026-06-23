@@ -1,7 +1,6 @@
 import { MINI_STORAGE_KEYS } from '@/core/constants/storage';
 import { getCache, setCache } from '@/core/utils/cache';
 import {
-  calculateHotelNights,
   normalizeHotelOccupancy,
   type HotelOccupancy,
   type HotelProductCardData,
@@ -105,10 +104,6 @@ function createHotelGuests(roomCount: number, seedGuests: HotelOrderDraftGuest[]
   });
 }
 
-function calculateDraftAmount(draft: HotelOrderDraft, roomCount = draft.occupancy.roomCount) {
-  return Number((draft.ratePlan.price * calculateHotelNights(draft.stayRange) * roomCount).toFixed(2));
-}
-
 export function getHotelOrderDraft(draftId?: string) {
   if (!draftId) return undefined;
   return listHotelOrderDrafts().find((draft) => draft.id === draftId);
@@ -170,8 +165,4 @@ export function ensureHotelOrderDraft(params: Partial<CreateHotelOrderDraftPaylo
   }
 
   return createHotelOrderDraft(params as CreateHotelOrderDraftPayload);
-}
-
-export function resolveHotelDraftAmount(draft: HotelOrderDraft, roomCount = draft.occupancy.roomCount) {
-  return calculateDraftAmount(draft, roomCount);
 }

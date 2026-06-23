@@ -23,7 +23,7 @@ import {
   shouldOpenQuickSkuPopup,
 } from '@/core/utils/sku';
 import { showWechatToast } from '@/core/utils/wechat-actions';
-import { MallCartBadge } from '@/pkg-mall/components/MallCartBadge';
+import { MallCartActionBar } from '@/pkg-mall/components/MallCartActionBar';
 import { useMallCartCount } from '@/pkg-mall/hooks/use-mall-cart-count';
 import { addMallCartItem } from '@/pkg-mall/services/cart';
 import { fetchProductDetailData } from '@/pkg-mall/services/product-detail';
@@ -52,6 +52,7 @@ const priceRangeOptions: Array<{ key: MallProductsPriceRangeKey; label: string }
   { key: '100to200', label: '100-200元' },
   { key: 'over200', label: '200元以上' },
 ];
+const MALL_PRODUCTS_VISIBLE_PAGE_SIZE = 10;
 
 // 读取商品列表路由关键词，承接搜索页键盘提交后的结果页。
 function resolveProductsRouteKeyword() {
@@ -174,7 +175,8 @@ const ProductsPage = observer(function ProductsPage() {
   const [skuDetailData, setSkuDetailData] = useState<MallProductDetailData>();
   const [skuGroups, setSkuGroups] = useState<HkpSkuGroup[]>([]);
   const [skuQuantity, setSkuQuantity] = useState(1);
-  const { cartCount } = useMallCartCount();
+  const [visibleProductCount, setVisibleProductCount] = useState(MALL_PRODUCTS_VISIBLE_PAGE_SIZE);
+  const { cartCount, cartAmount } = useMallCartCount({ includeAmount: true });
   const pageRuntime = usePageRuntime({
     initPage: async () => {
       const nextKeyword = resolveProductsRouteKeyword();
@@ -198,6 +200,7 @@ const ProductsPage = observer(function ProductsPage() {
       setCouponId(nextCouponId);
       setSourceRefType(nextSourceRefType);
       setSourceRefId(nextSourceRefId);
+      setVisibleProductCount(MALL_PRODUCTS_VISIBLE_PAGE_SIZE);
     },
   });
 
@@ -227,6 +230,24 @@ const ProductsPage = observer(function ProductsPage() {
       && matchProductTag(product, filterState.tag)
     ))
   ), [filterState, products]);
+  const visibleProducts = useMemo(() => (
+    filteredProducts.slice(0, visibleProductCount)
+  ), [filteredProducts, visibleProductCount]);
+  const hasMoreProducts = visibleProductCount < filteredProducts.length;
+
+  // 重置前端分页数量，接口全量结果继续缓存在 listData.products 内。
+  function resetVisibleProducts() {
+    setVisibleProductCount(MALL_PRODUCTS_VISIBLE_PAGE_SIZE);
+  }
+
+  // 触底时从页面缓存中放出下一页商品，不额外请求商品列表接口。
+  function handleLoadMoreProducts() {
+    if (!hasMoreProducts) return;
+    setVisibleProductCount((currentValue) => Math.min(
+      currentValue + MALL_PRODUCTS_VISIBLE_PAGE_SIZE,
+      filteredProducts.length,
+    ));
+  }
 
   async function loadProducts(nextKeyword: string, nextSort = resolveProductSort(activeTab, priceAscending)) {
     const nextData = await fetchProductsData({
@@ -240,6 +261,7 @@ const ProductsPage = observer(function ProductsPage() {
     });
     setListData(nextData);
     setKeyword(nextKeyword);
+    resetVisibleProducts();
   }
 
   async function handleSearch(nextKeyword = keyword) {
@@ -281,6 +303,7 @@ const ProductsPage = observer(function ProductsPage() {
     const nextFilterActive = !isDefaultFilterState(filterDraft);
     setFilterState(filterDraft);
     setActiveTab(nextFilterActive ? 'filter' : 'comprehensive');
+    resetVisibleProducts();
     setFilterVisible(false);
     await showWechatToast(nextFilterActive ? '已按条件筛选商品' : '已清除筛选');
   }
@@ -381,19 +404,30 @@ const ProductsPage = observer(function ProductsPage() {
         navbar={false}
         className="_pg-shell"
         reserveTabBarSpace={false}
-        scrollViewProps={{}}
+        scrollViewProps={{
+          lowerThreshold: 180,
+          onScrollToLower: handleLoadMoreProducts,
+        }}
         footer={(
-          <View className="_pg-footer">
-            <View
-              className="_pg-footer_button"
-              onClick={() => {
-                navigateToMiniRoute(MINI_PACKAGE_ROUTES.mallCart);
-              }}
-            >
-              <MallCartBadge count={cartCount} className="_pg-footer_cart-badge" />
-              <Text>去购物车</Text>
-            </View>
-          </View>
+          <MallCartActionBar
+            summaryLines={[
+              {
+                label: '已加购',
+                value: cartCount,
+                suffix: '件',
+                valueKind: 'count',
+              },
+              {
+                label: '合计',
+                value: formatCurrency(cartAmount),
+                valueKind: 'amount',
+              },
+            ]}
+            buttonText="去购物车"
+            onButtonClick={() => {
+              navigateToMiniRoute(MINI_PACKAGE_ROUTES.mallCart);
+            }}
+          />
         )}
       >
         <PageHeader>
@@ -460,7 +494,7 @@ const ProductsPage = observer(function ProductsPage() {
 
           {filteredProducts.length > 0 ? (
             <View className="_pg-list">
-              {filteredProducts.map((product) => (
+              {visibleProducts.map((product) => (
                 <View className="_pg-product" key={product.id} onClick={() => handleOpenDetail(product.id)}>
                   <AppImage className="_pg-product_image" src={product.image.src} mode="aspectFit" emptyState="error" />
                   <View className="_pg-product_body">
@@ -479,6 +513,11 @@ const ProductsPage = observer(function ProductsPage() {
                   </View>
                 </View>
               ))}
+              {!hasMoreProducts ? (
+                <View className="_pg-list_more">
+                  <Text>暂无更多～</Text>
+                </View>
+              ) : null}
             </View>
           ) : (
             <BaseEmpty
@@ -554,7 +593,7 @@ const ProductsPage = observer(function ProductsPage() {
               product={skuProduct}
               skuGroups={skuState.groups}
               quantity={skuQuantity}
-              totalAmount={(selectedVariant?.price ?? skuProduct.price) * skuQuantity}
+              totalAmount={selectedVariant?.price ?? skuProduct.price}
               selectionText={skuState.missingSelectionText || (skuState.selectedText ? `已选 ${skuState.selectedText}` : '')}
               stockText={skuState.stockText}
               maxQuantity={skuState.maxQuantity}

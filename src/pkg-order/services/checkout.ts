@@ -14,7 +14,7 @@ import {
   validateMallCheckoutDelivery,
   type MallCheckoutDraft,
 } from '@/core/services/mall-checkout-draft';
-import { formatCurrency, yuanToCent } from '@/core/utils/money';
+import { formatCurrency } from '@/core/utils/money';
 import { sanitizeMallRuntimeText, sanitizeMallRuntimeUrl } from '@/core/utils/mall-runtime';
 import type { OrderCheckoutData } from './model';
 import {
@@ -41,10 +41,12 @@ function resolveSelectedCouponId(options: FetchCheckoutDataOptions, draft: MallC
   return draft.selectedCouponId;
 }
 
-function buildDeliveryAmountField(requiresAddress: boolean, freightAmount = 0) {
+function buildDeliveryAmountField(requiresAddress: boolean, freightAmount?: number) {
   if (!requiresAddress) {
     return { label: '交付', value: '无需物流' };
   }
+
+  if (typeof freightAmount !== 'number') return undefined;
 
   return {
     label: '运费',
@@ -56,7 +58,6 @@ function buildReadonlyCheckoutData(
   draft: MallCheckoutDraft,
   address: Awaited<ReturnType<typeof resolveMallCheckoutAddress>>,
   deliveryCheck: ReturnType<typeof validateMallCheckoutDelivery>,
-  productsAmount: number,
   requiresAddress: boolean,
 ): OrderCheckoutData {
   const merchantNames = Array.from(new Set(
@@ -93,11 +94,9 @@ function buildReadonlyCheckoutData(
     selectedCouponId: undefined,
     coupons: [],
     discountText: '',
-    amountFields: [
-      { label: '商品金额', value: formatCurrency(productsAmount) },
-      buildDeliveryAmountField(requiresAddress, deliveryCheck.freightAmount),
-    ],
-    totalAmount: Number((productsAmount + deliveryCheck.freightAmount).toFixed(2)),
+    amountFields: [],
+    totalAmount: 0,
+    amountReady: false,
     discountAmount: 0,
   };
 }
@@ -112,8 +111,7 @@ export async function fetchCheckoutData(options: FetchCheckoutDataOptions = {}) 
   persistMallCheckoutAddress(draft.id, address);
 
   const deliveryCheck = validateMallCheckoutDelivery(draft, address);
-  const productsAmount = draft.products.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
-  const readonlyData = buildReadonlyCheckoutData(draft, address, deliveryCheck, productsAmount, requiresAddress);
+  const readonlyData = buildReadonlyCheckoutData(draft, address, deliveryCheck, requiresAddress);
   if (!deliveryCheck.canSubmit) return readonlyData;
 
   const selectedCouponId = resolveSelectedCouponId(options, draft);
@@ -122,17 +120,13 @@ export async function fetchCheckoutData(options: FetchCheckoutDataOptions = {}) 
     address,
     selectedCouponId,
   }));
-  const fallbackOriginalAmountCent = yuanToCent(productsAmount);
-  const amounts = normalizeCheckoutAmounts(confirmation, {
-    originalAmountCent: fallbackOriginalAmountCent,
-    freightAmountCent: yuanToCent(deliveryCheck.freightAmount),
-  }, {
+  const amounts = normalizeCheckoutAmounts(confirmation, {}, {
     sceneLabel: '商城确认单',
     requirePayableAmount: true,
   });
   const availableCouponsResponse = await fetchBffCouponAvailable({
     sceneType: 'MALL',
-    orderAmountCent: amounts.originalAmountCent + amounts.freightAmountCent,
+    orderAmountCent: amounts.hasOriginalAmount ? amounts.originalAmountCent : undefined,
     itemIds: draft.products.map((item) => item.productId),
     skuIds: draft.products.map((item) => item.id),
   });
@@ -152,19 +146,26 @@ export async function fetchCheckoutData(options: FetchCheckoutDataOptions = {}) 
       ? '请选择优惠券'
       : '';
 
+  const amountFields = [
+    amounts.hasOriginalAmount
+      ? { label: '商品金额', value: formatCurrency(amounts.originalAmount) }
+      : undefined,
+    buildDeliveryAmountField(requiresAddress, amounts.hasFreightAmount ? amounts.freightAmount : undefined),
+  ].filter((item): item is { label: string; value: string } => Boolean(item));
+
   return {
     ...readonlyData,
     couponText,
     couponNoticeText: couponState.couponNoticeText,
     selectedCouponId: confirmedCouponId,
     coupons,
-    discountText: amounts.discountAmount > 0 ? `已优惠 ${formatCurrency(amounts.discountAmount)}` : '',
-    amountFields: [
-      { label: '商品金额', value: formatCurrency(amounts.originalAmount) },
-      buildDeliveryAmountField(requiresAddress, amounts.freightAmount),
-    ],
+    discountText: amounts.hasDiscountAmount && amounts.discountAmount > 0
+      ? `已优惠 ${formatCurrency(amounts.discountAmount)}`
+      : '',
+    amountFields,
     totalAmount: amounts.payableAmount,
-    discountAmount: amounts.discountAmount,
+    amountReady: true,
+    discountAmount: amounts.hasDiscountAmount ? amounts.discountAmount : 0,
   };
 }
 

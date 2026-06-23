@@ -1,4 +1,4 @@
-export type MiniProgramAdJumpType = 'currentMiniProgram' | 'otherMiniProgram' | 'h5' | 'custom';
+export type MiniProgramAdJumpType = string;
 
 export interface MiniProgramAdPageView {
   id?: string;
@@ -25,12 +25,14 @@ export interface MiniProgramAdView {
   slotCode?: string;
   slotName?: string;
   title?: string;
+  subTitle?: string;
   subtitle?: string;
   content?: string;
   badgeText?: string;
   richText?: string;
   richTextHtml?: string;
   imageUrl?: string;
+  imageUrls?: string[];
   mobileImageUrl?: string;
   backgroundImage?: string;
   materialImage?: string;
@@ -42,12 +44,17 @@ export interface MiniProgramAdView {
   jumpAppId?: string;
   jumpUrl?: string;
   jumpCustomValue?: string;
+  jumpParams?: Record<string, unknown>;
+  detailAdNo?: string;
+  extraPayload?: Record<string, unknown>;
   status?: string;
   sortOrder?: number;
   effectiveAt?: string;
   expiredAt?: string;
   description?: string;
 }
+
+export type MiniProgramAdDetailView = MiniProgramAdView;
 
 export interface MiniProgramAdSlotAdsView {
   id?: string;
@@ -68,3 +75,5 @@ export interface MiniProgramAdPageAdsResponse {
   page?: MiniProgramAdPageView;
   slots?: MiniProgramAdSlotAdsView[];
 }
+
+export type MiniProgramAdSlotMapResponse = Record<string, MiniProgramAdView[] | undefined>;

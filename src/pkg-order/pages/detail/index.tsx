@@ -10,6 +10,7 @@ import type { CSSProperties } from 'react';
 import { navigateToMiniRoute } from '@/core/utils/navigation';
 import { resolveErrorMessage } from '@/core/utils/error-message';
 import { requestWechatPayment, showWechatConfirm, showWechatToast } from '@/core/utils/wechat-actions';
+import { centToYuan, parseNumberLike } from '@/core/utils/money';
 import { syncBffPaymentStatusSilently } from '@/core/services/bff-api';
 import {
   confirmReceiveBffOrder,
@@ -78,12 +79,6 @@ function convertTicketQrCanvasToImage(canvasId: string) {
       fail: reject,
     });
   });
-}
-
-// 从详情金额文案里还原支付金额，只用于继续支付的零元单判断。
-function resolveDetailPayAmount(detailData: OrderDetailData) {
-  const amount = Number(detailData.paidAmountText.replace(/[^\d.]/g, ''));
-  return Number.isFinite(amount) ? amount : 0;
 }
 
 // 判断票务凭证页是否需要继续静默刷新，覆盖异步出票和停留券码页被外部核销的场景。
@@ -350,9 +345,9 @@ const DetailPage = observer(function DetailPage() {
     if (detailData.primaryActionType === 'pay') {
       const payment = await payBffOrder(detailData.id, 'WECHAT');
       const paymentParams = payment.prepay?.paymentParams || payment.prepay?.payParams;
-      const payAmount = resolveDetailPayAmount(detailData);
+      const payableAmountCent = parseNumberLike(payment.order?.payableAmountCent);
       if (!paymentParams) {
-        if ((payment.order?.payableAmountCent ?? Math.round(payAmount * 100)) <= 0) {
+        if (typeof payableAmountCent === 'number' && payableAmountCent <= 0) {
           await syncBffPaymentStatusSilently(payment.prepay?.payNo);
           await loadDetailData({ showErrorToast: false, orderId: detailData.id });
           await showWechatToast('订单已更新', 'success');
@@ -362,9 +357,13 @@ const DetailPage = observer(function DetailPage() {
         await showWechatToast('支付参数缺失，请稍后再试');
         return;
       }
+      if (typeof payableAmountCent !== 'number' || payableAmountCent < 0) {
+        await showWechatToast('支付金额缺失，请稍后再试');
+        return;
+      }
       const paymentStatus = await requestWechatPayment({
         title: '继续支付',
-        amount: payAmount,
+        amount: centToYuan(payableAmountCent),
         paymentParams: paymentParams as unknown as Parameters<typeof Taro.requestPayment>[0],
       });
 

@@ -716,10 +716,7 @@ export function confirmBffOrder(data: BffOrderUnifiedRequest) {
   return request<BffOrderConfirmResponse, BffOrderUnifiedRequest>({
     url: '/api/bff/orders/confirm',
     method: 'POST',
-    data: {
-      ...data,
-      freightAmountCent: data.freightAmountCent ?? 0,
-    },
+    data,
   });
 }
 
@@ -728,10 +725,7 @@ export function createBffOrder(data: BffOrderUnifiedRequest) {
   return request<BffOrderCreateResponse, BffOrderUnifiedRequest>({
     url: '/api/bff/orders',
     method: 'POST',
-    data: {
-      ...data,
-      freightAmountCent: data.freightAmountCent ?? 0,
-    },
+    data,
   });
 }
 

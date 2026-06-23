@@ -111,6 +111,7 @@ const RoomDetailPage = observer(function RoomDetailPage() {
     const displayImages = galleryImages.length > 0 ? galleryImages : [{ id: 'empty', src: '' }];
     const primaryRatePlan = roomDetailData.product.ratePlans.find((ratePlan) => ratePlan.stock > 0)
       ?? roomDetailData.product.ratePlans[0];
+    const primaryRatePlanPriceText = typeof primaryRatePlan.price === 'number' ? `¥${primaryRatePlan.price}` : '待确认';
 
     return (
       <View className="_pg">
@@ -122,7 +123,7 @@ const RoomDetailPage = observer(function RoomDetailPage() {
             <FixedSubmitBar
               className="_pg-submit"
               label={<Text className="_pg-submit_label">起价</Text>}
-              amountText={<Text className="_pg-submit_amount">¥{primaryRatePlan.price}</Text>}
+              amountText={<Text className="_pg-submit_amount">{primaryRatePlanPriceText}</Text>}
               buttonText="立即预订"
               disabled={primaryRatePlan.stock <= 0}
               onSubmit={() => {
@@ -186,7 +187,7 @@ const RoomDetailPage = observer(function RoomDetailPage() {
                     <Text className="_pg-rate_rule">{ratePlan.cancelRule}</Text>
                   </View>
                   <View className="_pg-rate_aside">
-                    <Text className="_pg-rate_price">¥{ratePlan.price}</Text>
+                    {typeof ratePlan.price === 'number' ? <Text className="_pg-rate_price">¥{ratePlan.price}</Text> : null}
                     <View
                       className={`_pg-rate_button ${ratePlan.stock <= 0 ? '_pg-rate_button--disabled' : ''}`}
                       onClick={() => handleBooking(ratePlan)}

@@ -71,6 +71,7 @@ export interface OrderCheckoutData {
   discountText: string;
   amountFields: OrderDetailFieldData[];
   totalAmount: number;
+  amountReady?: boolean;
   discountAmount: number;
 }
 

@@ -322,7 +322,6 @@ export function buildTicketUnifiedOrderRequest(
     sceneType: 'TICKET',
     channel: 'MINI_PROGRAM',
     paymentChannel: 'WECHAT',
-    freightAmountCent: 0,
     selectedCouponNos,
     contactName: payload.contact.name,
     contactPhone: payload.contact.mobile,

@@ -471,7 +471,7 @@ const HotelIndexPage = observer(function HotelIndexPage() {
                     <Text className="_pg-product-card_title">{product.title}</Text>
                     <Text className="_pg-product-card_meta">{product.subtitle}</Text>
                     <View className="_pg-product-card_footer">
-                      <Text className="_pg-product-card_price">¥{product.price}</Text>
+                      {typeof product.price === 'number' ? <Text className="_pg-product-card_price">¥{product.price}</Text> : null}
                       <View
                         className="_pg-product-card_button"
                         onClick={(event) => {

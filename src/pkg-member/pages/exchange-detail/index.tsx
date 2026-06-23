@@ -59,7 +59,8 @@ const MemberExchangeDetailPage = observer(function MemberExchangeDetailPage() {
   });
   const product = detailData?.product;
   const stock = product?.stock ?? 0;
-  const totalKCoins = (product?.kCoinPrice ?? 0) * quantity;
+  const unitKCoins = product?.kCoinPrice ?? 0;
+  const memberKCoins = detailData?.memberKCoins ?? 0;
   const exchangeDisabled = !product || stock <= 0;
 
   useShareAppMessage(() => ({
@@ -76,7 +77,7 @@ const MemberExchangeDetailPage = observer(function MemberExchangeDetailPage() {
       return;
     }
 
-    if (totalKCoins > (detailData?.memberKCoins ?? 0)) {
+    if (unitKCoins > memberKCoins) {
       void showWechatToast('K币余额不足');
       return;
     }
@@ -96,7 +97,7 @@ const MemberExchangeDetailPage = observer(function MemberExchangeDetailPage() {
       return;
     }
 
-    if (totalKCoins > (detailData?.memberKCoins ?? 0)) {
+    if (unitKCoins > memberKCoins) {
       await showWechatToast('K币余额不足');
       return;
     }
@@ -206,7 +207,7 @@ const MemberExchangeDetailPage = observer(function MemberExchangeDetailPage() {
                     <Text className="_pg-confirm_stock">库存:{product.stock}</Text>
                     <View className="_pg-confirm_price-row">
                       <View className="_pg-confirm_price">
-                        <Text className="_pg-confirm_price-current">{totalKCoins}K币</Text>
+                        <Text className="_pg-confirm_price-current">{unitKCoins}K币/件</Text>
                         <Text className="_pg-confirm_price-origin">{product.originalKCoinPrice}</Text>
                       </View>
                       <QuantityStepper
