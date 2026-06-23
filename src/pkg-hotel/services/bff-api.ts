@@ -40,7 +40,7 @@ interface BffHotelProfileView {
   introText?: string;
   introRichText?: string;
   phoneNumber?: string;
-  galleryImages?: Array<Record<string, unknown>>;
+  galleryImages?: Array<Record<string, unknown>> | null;
   checkInTimeText?: string;
   checkOutTimeText?: string;
   bookingWindowDays?: number;
@@ -55,7 +55,7 @@ interface BffHotelRoomView {
   titleTemplate?: string;
   subtitleTemplate?: string;
   imageUrl?: string;
-  galleryImages?: Array<Record<string, unknown>>;
+  galleryImages?: Array<Record<string, unknown>> | null;
   floorText?: string;
   areaText?: string;
   bedText?: string;
@@ -66,10 +66,10 @@ interface BffHotelRoomView {
   maxChildCount?: number;
   capacityText?: string;
   includeText?: string;
-  facilityTags?: string[];
-  filterKeys?: string[];
+  facilityTags?: string[] | null;
+  filterKeys?: string[] | null;
   sortOrder?: number;
-  ratePlans?: Array<Record<string, unknown>>;
+  ratePlans?: Array<Record<string, unknown>> | null;
   displayPrice?: number | string;
   displayPriceCent?: number | string;
   minPrice?: number | string;
@@ -98,7 +98,7 @@ interface BffHotelInventoryDayView {
 
 interface BffHotelDetailResponse {
   profile?: BffHotelProfileView;
-  rooms?: BffHotelRoomView[];
+  rooms?: BffHotelRoomView[] | null;
 }
 
 interface FetchHotelHomeParams {
@@ -137,8 +137,13 @@ function appendQuery(url: string, params: Record<string, string | number | undef
   return query ? `${url}?${query}` : url;
 }
 
-function normalizePageList<TItem>(result: BackendPageResult<TItem>) {
-  return result.list || result.records || result.items || [];
+function normalizePageList<TItem>(result: BackendPageResult<TItem> | TItem[] | null | undefined) {
+  if (!result) return [];
+  if (Array.isArray(result)) return result;
+  if (Array.isArray(result.list)) return result.list;
+  if (Array.isArray(result.records)) return result.records;
+  if (Array.isArray(result.items)) return result.items;
+  return [];
 }
 
 function text(value: unknown, defaultValue = '') {
@@ -149,12 +154,22 @@ function number(value: unknown, defaultValue = 0) {
   return parseNumberLike(value) ?? defaultValue;
 }
 
+function toRecordArray(value: unknown): Array<Record<string, unknown>> {
+  return Array.isArray(value)
+    ? value.filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object')
+    : [];
+}
+
+function toStringArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.map(String).filter(Boolean) : [];
+}
+
 function readImageSrc(item: Record<string, unknown>) {
   return text(item.src) || text(item.url) || text(item.imageUrl) || text(item.thumbUrl);
 }
 
-function mapGalleryImages(images?: Array<Record<string, unknown>>): HotelGalleryImage[] {
-  return (images || [])
+function mapGalleryImages(images?: Array<Record<string, unknown>> | null): HotelGalleryImage[] {
+  return toRecordArray(images)
     .map((item, index) => ({
       id: text(item.id) || text(item.uid) || `image-${index + 1}`,
       src: readImageSrc(item),
@@ -203,7 +218,8 @@ function resolveBackendDisplayPrice(source?: Record<string, unknown>) {
     source?.displayPriceCent
       ?? source?.salePriceCent
       ?? source?.minPriceCent
-      ?? source?.priceCent,
+      ?? source?.priceCent
+      ?? source?.basePrice,
   );
   if (typeof centAmount === 'number' && centAmount >= 0) return centToYuan(centAmount);
 
@@ -219,7 +235,7 @@ function resolveBackendDisplayPrice(source?: Record<string, unknown>) {
 }
 
 function groupInventory(records: BffHotelInventoryDayView[]) {
-  return records.reduce<InventoryLookup>((result, item) => {
+  return (Array.isArray(records) ? records : []).reduce<InventoryLookup>((result, item) => {
     const roomTypeId = text(item.roomTypeId);
     const ratePlanId = text(item.ratePlanId);
     if (!roomTypeId || !ratePlanId) return result;
@@ -240,8 +256,13 @@ function resolveRatePlanInventory(roomTypeId: string, ratePlanId: string, lookup
   const stock = nights.length
     ? Math.min(...nights.map((item) => number(item.availableStock)))
     : 0;
+  const prices = nights
+    .map((item) => parseNumberLike(item.price))
+    .filter((price): price is number => typeof price === 'number' && price >= 0);
+
   return {
     stock: restricted ? 0 : stock,
+    price: prices.length > 0 ? centToYuan(Math.min(...prices)) : undefined,
   };
 }
 
@@ -257,8 +278,8 @@ function mapRatePlan(room: BffHotelRoomView, plan: Record<string, unknown>, look
     bedText: text(plan.bedText) || text(room.bedText),
     cancelRule: text(plan.cancelRule),
     policyText: text(plan.policyText),
-    filterKeys: Array.isArray(plan.filterKeys) ? plan.filterKeys.map(String) : [],
-    price: resolveBackendDisplayPrice(plan) ?? resolveBackendDisplayPrice(room as unknown as Record<string, unknown>),
+    filterKeys: toStringArray(plan.filterKeys),
+    price: inventory.price ?? resolveBackendDisplayPrice(plan) ?? resolveBackendDisplayPrice(room as unknown as Record<string, unknown>),
     stock: inventory.stock,
   };
 }
@@ -267,10 +288,11 @@ function mapRoom(room: BffHotelRoomView, stayRange: HotelStayRange, lookup: Inve
   const nights = calculateHotelNights(stayRange);
   const roomTypeId = text(room.roomTypeId);
   const galleryImages = mapGalleryImages(room.galleryImages);
-  const ratePlans = (room.ratePlans || []).map((plan) => mapRatePlan(room, plan, lookup));
+  const ratePlans = toRecordArray(room.ratePlans).map((plan) => mapRatePlan(room, plan, lookup));
   const displayRatePlan = ratePlans.find((plan) => plan.stock > 0) || ratePlans[0];
-  const facilityTags = Array.isArray(room.facilityTags) ? room.facilityTags.map(String) : [];
-  const filterKeys = Array.isArray(room.filterKeys) ? room.filterKeys.map(String) : [];
+  const facilityTags = toStringArray(room.facilityTags);
+  const filterKeys = toStringArray(room.filterKeys);
+  const ratePlanFilterKeys = ratePlans.flatMap((plan) => plan.filterKeys);
   const tagsText = [
     text(room.floorText),
     text(room.areaText),
@@ -293,7 +315,7 @@ function mapRoom(room: BffHotelRoomView, stayRange: HotelStayRange, lookup: Inve
     cancelRule: text(displayRatePlan?.cancelRule),
     includeText: text(room.includeText) || facilityTags.join('、'),
     tagsText,
-    filterKeys: Array.from(new Set([...filterKeys, ...ratePlans.flatMap((plan) => plan.filterKeys)])),
+    filterKeys: Array.from(new Set(filterKeys.concat(ratePlanFilterKeys))),
     price: displayRatePlan?.price,
     stock: displayRatePlan?.stock || 0,
     ratePlans,
@@ -301,7 +323,7 @@ function mapRoom(room: BffHotelRoomView, stayRange: HotelStayRange, lookup: Inve
 }
 
 function mapFilterOptions(products: HotelProductCardData[]): HotelFilterOption[] {
-  const options = products.flatMap((product) => product.filterKeys);
+  const options = (Array.isArray(products) ? products : []).flatMap((product) => product.filterKeys || []);
   return Array.from(new Set(options)).map((key) => ({
     key,
     label: FILTER_LABELS[key] || key,
@@ -360,7 +382,7 @@ export async function fetchHotelHomeFromBff({
       fetchBffHotelInventory(hotelId, stayRange),
     ]);
     const lookup = groupInventory(inventory);
-    const products = rooms
+    const products = (Array.isArray(rooms) ? rooms : [])
       .map((room) => mapRoom(room, stayRange, lookup))
       .filter((product) => !filterKey || product.filterKeys.includes(filterKey));
     return mapProfile(profile, products);
@@ -393,8 +415,9 @@ export async function fetchRoomDetailFromBff({
     fetchBffHotelDetail(hotelId),
     fetchBffHotelInventory(hotelId, stayRange),
   ]);
-  const profile = detail.profile;
-  const room = detail.rooms?.find((item) => item.roomTypeId === productId);
+  const profile = detail?.profile;
+  const rooms = Array.isArray(detail?.rooms) ? detail.rooms : [];
+  const room = rooms.find((item) => item.roomTypeId === productId);
   if (!profile || !room) {
     throw new Error('房型信息不存在');
   }

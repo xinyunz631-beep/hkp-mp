@@ -1,12 +1,15 @@
 import { MINI_STORAGE_KEYS } from '@/core/constants/storage';
 import type { HkpAddressSummary } from '@/core/types/hkp';
 import { getCache, setCache } from '@/core/utils/cache';
+import { formatCurrency, parseNumberLike } from '@/core/utils/money';
 
 export type MallShippingMode = 'express' | 'none' | 'pickupOnly' | 'unsupported';
 
 export interface MallShippingRule {
   mode: MallShippingMode;
   freightAmount?: number;
+  freeShippingThreshold?: number;
+  templateId?: string;
   supportedRegionKeywords?: string[];
   unsupportedRegionKeywords?: string[];
   reasonText?: string;
@@ -150,6 +153,57 @@ export function isMallCheckoutAddressRequired(draft: MallCheckoutDraft) {
   return draft.products.some((product) => product.shippingRule?.mode === 'express');
 }
 
+// 归一化商城运费金额，接口和草稿内统一按元单位保存。
+function normalizeMallFreightAmount(value: unknown) {
+  const amount = parseNumberLike(value);
+  return typeof amount === 'number' && amount > 0 ? amount : 0;
+}
+
+// 计算商城确认单运费，同一配送模板只收一次，满足包邮门槛时免运费。
+function resolveMallCheckoutFreightAmount(draft: MallCheckoutDraft) {
+  const freightGroups = new Map<string, {
+    freightAmount: number;
+    productAmount: number;
+    freeShippingThreshold?: number;
+  }>();
+  let fallbackIndex = 0;
+
+  draft.products.forEach((product) => {
+    const rule = product.shippingRule;
+    if (rule?.mode !== 'express') return;
+
+    const freightAmount = normalizeMallFreightAmount(rule.freightAmount);
+    if (freightAmount <= 0) return;
+
+    const groupKey = rule.templateId || `line:${fallbackIndex}`;
+    fallbackIndex += 1;
+    const currentGroup = freightGroups.get(groupKey) ?? {
+      freightAmount: 0,
+      productAmount: 0,
+      freeShippingThreshold: rule.freeShippingThreshold,
+    };
+
+    currentGroup.freightAmount = Math.max(currentGroup.freightAmount, freightAmount);
+    currentGroup.productAmount += Math.max(0, Number(product.unitPrice) || 0) * Math.max(1, Number(product.quantity) || 1);
+    if (typeof currentGroup.freeShippingThreshold !== 'number') {
+      currentGroup.freeShippingThreshold = rule.freeShippingThreshold;
+    }
+    freightGroups.set(groupKey, currentGroup);
+  });
+
+  return Array.from(freightGroups.values()).reduce((sum, group) => {
+    if (
+      typeof group.freeShippingThreshold === 'number'
+      && group.freeShippingThreshold > 0
+      && group.productAmount >= group.freeShippingThreshold
+    ) {
+      return sum;
+    }
+
+    return sum + group.freightAmount;
+  }, 0);
+}
+
 function resolveNoLogisticsShippingText(draft: MallCheckoutDraft) {
   const rule = draft.products.find((product) => product.shippingRule?.mode === 'none')?.shippingRule;
   return rule?.reasonText || '无需物流';
@@ -202,13 +256,16 @@ export function validateMallCheckoutDelivery(
 
   const uniqueErrors = Array.from(new Set(errors));
   const canSubmit = uniqueErrors.length === 0;
+  const freightAmount = canSubmit ? resolveMallCheckoutFreightAmount(draft) : 0;
 
   return {
     canSubmit,
-    freightAmount: 0,
+    freightAmount,
     shippingText: canSubmit
       ? requiresAddress
-        ? '第三方配送'
+        ? freightAmount > 0
+          ? `第三方配送 ${formatCurrency(freightAmount)}`
+          : '第三方配送 包邮'
         : resolveNoLogisticsShippingText(draft)
       : uniqueErrors[0],
     errors: uniqueErrors,

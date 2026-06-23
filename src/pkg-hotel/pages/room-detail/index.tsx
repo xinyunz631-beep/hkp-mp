@@ -109,9 +109,10 @@ const RoomDetailPage = observer(function RoomDetailPage() {
 
     const galleryImages = roomDetailData.product.galleryImages.filter((item) => item.src);
     const displayImages = galleryImages.length > 0 ? galleryImages : [{ id: 'empty', src: '' }];
-    const primaryRatePlan = roomDetailData.product.ratePlans.find((ratePlan) => ratePlan.stock > 0)
-      ?? roomDetailData.product.ratePlans[0];
-    const primaryRatePlanPriceText = typeof primaryRatePlan.price === 'number' ? `¥${primaryRatePlan.price}` : '待确认';
+    const ratePlans = Array.isArray(roomDetailData.product.ratePlans) ? roomDetailData.product.ratePlans : [];
+    const primaryRatePlan = ratePlans.find((ratePlan) => ratePlan.stock > 0) ?? ratePlans[0];
+    const primaryRatePlanPriceText = primaryRatePlan && typeof primaryRatePlan.price === 'number' ? `¥${primaryRatePlan.price}` : '待确认';
+    const bookingDisabled = !primaryRatePlan || primaryRatePlan.stock <= 0;
 
     return (
       <View className="_pg">
@@ -125,9 +126,9 @@ const RoomDetailPage = observer(function RoomDetailPage() {
               label={<Text className="_pg-submit_label">起价</Text>}
               amountText={<Text className="_pg-submit_amount">{primaryRatePlanPriceText}</Text>}
               buttonText="立即预订"
-              disabled={primaryRatePlan.stock <= 0}
+              disabled={bookingDisabled}
               onSubmit={() => {
-                void handleBooking(primaryRatePlan);
+                if (primaryRatePlan) void handleBooking(primaryRatePlan);
               }}
             />
           )}

@@ -126,8 +126,9 @@ export function updateHotelOrderDraft(draftId: string, patch: Partial<HotelOrder
 
 export function createHotelOrderDraft(payload: CreateHotelOrderDraftPayload) {
   const now = createHotelDraftTime();
-  const ratePlan = payload.product.ratePlans.find((item) => item.id === payload.ratePlanId)
-    ?? payload.product.ratePlans[0];
+  const ratePlans = Array.isArray(payload.product.ratePlans) ? payload.product.ratePlans : [];
+  const ratePlan = ratePlans.find((item) => item.id === payload.ratePlanId)
+    ?? ratePlans[0];
   if (!ratePlan) return undefined;
   const occupancy = normalizeHotelOccupancy(payload.occupancy);
   const draft: HotelOrderDraft = {

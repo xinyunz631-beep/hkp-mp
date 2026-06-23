@@ -213,12 +213,14 @@ export function createDefaultHotelOccupancy(): HotelOccupancy {
 export function normalizeHotelOccupancy(occupancy?: HotelOccupancy): HotelOccupancy {
   const defaultOccupancy = createDefaultHotelOccupancy();
   const roomCount = Math.min(Math.max(occupancy?.roomCount || defaultOccupancy.roomCount, 1), DEFAULT_MAX_ROOMS);
+  const sourceRooms = Array.isArray(occupancy?.rooms) ? occupancy.rooms : defaultOccupancy.rooms;
   const rooms = Array.from({ length: roomCount }, (_, index) => {
-    const currentRoom = occupancy?.rooms[index] ?? defaultOccupancy.rooms[0];
+    const currentRoom = sourceRooms[index] ?? defaultOccupancy.rooms[0];
+    const childAges = Array.isArray(currentRoom?.childAges) ? currentRoom.childAges : [];
     return {
       id: `room-${index + 1}`,
       adults: Math.min(Math.max(currentRoom?.adults || 2, 1), 4),
-      childAges: (currentRoom?.childAges ?? []).slice(0, 3),
+      childAges: childAges.slice(0, 3),
     };
   });
 

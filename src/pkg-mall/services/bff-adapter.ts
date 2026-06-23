@@ -97,6 +97,8 @@ function normalizeShippingRule(rule?: BffMallShippingRule): MallShippingRule {
   return {
     mode: 'express',
     freightAmount: centToYuan(rule?.freightAmount),
+    freeShippingThreshold: centToYuan(rule?.freeShippingThreshold),
+    templateId: firstText(rule?.deliveryTemplateId),
     supportedRegionKeywords: rule?.supportedRegionKeywords,
     unsupportedRegionKeywords: rule?.unsupportedRegionKeywords,
     reasonText: firstMallText(rule?.reasonText) || undefined,

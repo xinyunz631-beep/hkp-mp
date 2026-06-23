@@ -95,6 +95,7 @@ function buildReadonlyCheckoutData(
     coupons: [],
     discountText: '',
     amountFields: [],
+    freightAmount: deliveryCheck.freightAmount,
     totalAmount: 0,
     amountReady: false,
     discountAmount: 0,
@@ -119,6 +120,7 @@ export async function fetchCheckoutData(options: FetchCheckoutDataOptions = {}) 
     draft,
     address,
     selectedCouponId,
+    freightAmount: deliveryCheck.freightAmount,
   }));
   const amounts = normalizeCheckoutAmounts(confirmation, {}, {
     sceneLabel: '商城确认单',
@@ -150,7 +152,10 @@ export async function fetchCheckoutData(options: FetchCheckoutDataOptions = {}) 
     amounts.hasOriginalAmount
       ? { label: '商品金额', value: formatCurrency(amounts.originalAmount) }
       : undefined,
-    buildDeliveryAmountField(requiresAddress, amounts.hasFreightAmount ? amounts.freightAmount : undefined),
+    buildDeliveryAmountField(
+      requiresAddress,
+      amounts.hasFreightAmount ? amounts.freightAmount : deliveryCheck.freightAmount,
+    ),
   ].filter((item): item is { label: string; value: string } => Boolean(item));
 
   return {
@@ -163,6 +168,7 @@ export async function fetchCheckoutData(options: FetchCheckoutDataOptions = {}) 
       ? `已优惠 ${formatCurrency(amounts.discountAmount)}`
       : '',
     amountFields,
+    freightAmount: amounts.hasFreightAmount ? amounts.freightAmount : deliveryCheck.freightAmount,
     totalAmount: amounts.payableAmount,
     amountReady: true,
     discountAmount: amounts.hasDiscountAmount ? amounts.discountAmount : 0,
@@ -178,6 +184,7 @@ export async function submitOrderCheckoutOrder(data: OrderCheckoutData): Promise
     draft,
     address: data.address,
     selectedCouponId: data.selectedCouponId,
+    freightAmount: data.freightAmount,
   }), {
     sceneLabel: '商城订单',
   });

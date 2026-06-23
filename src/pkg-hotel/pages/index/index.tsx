@@ -148,6 +148,7 @@ const HotelIndexPage = observer(function HotelIndexPage() {
   const occupancyLabel = summarizeStayOccupancy(occupancy);
   const todayKey = formatHotelDateKey(new Date());
   const dateEndKey = addHotelDays(todayKey, pageData?.bookingWindowDays ?? 90);
+  const normalizedGuestDraft = normalizeHotelOccupancy(guestDraft);
 
   function resolveCalendarRange(nextValue: string | string[]) {
     const dates = Array.isArray(nextValue) ? nextValue : nextValue ? [nextValue] : [];
@@ -250,13 +251,14 @@ const HotelIndexPage = observer(function HotelIndexPage() {
   }
 
   function openGuestPopup() {
-    setGuestDraft(occupancy);
+    setGuestDraft(normalizeHotelOccupancy(occupancy));
     setGuestPopupVisible(true);
   }
 
   function updateGuestDraftRoomCount(nextRoomCount: number) {
     setGuestDraft((current) => {
-      const rooms = Array.from({ length: nextRoomCount }, (_, index) => current.rooms[index] ?? {
+      const normalizedCurrent = normalizeHotelOccupancy(current);
+      const rooms = Array.from({ length: nextRoomCount }, (_, index) => normalizedCurrent.rooms[index] ?? {
         id: `room-${index + 1}`,
         adults: 2,
         childAges: [],
@@ -271,7 +273,8 @@ const HotelIndexPage = observer(function HotelIndexPage() {
 
   function updateGuestDraftRoom(index: number, patch: Partial<{ adults: number; childCount: number; childAge: number; childIndex: number }>) {
     setGuestDraft((current) => {
-      const rooms = current.rooms.map((room, roomIndex) => {
+      const normalizedCurrent = normalizeHotelOccupancy(current);
+      const rooms = normalizedCurrent.rooms.map((room, roomIndex) => {
         if (roomIndex !== index) return room;
 
         if (typeof patch.childCount === 'number') {
@@ -300,7 +303,7 @@ const HotelIndexPage = observer(function HotelIndexPage() {
       });
 
       return normalizeHotelOccupancy({
-        roomCount: current.roomCount,
+        roomCount: normalizedCurrent.roomCount,
         rooms,
       });
     });
@@ -309,7 +312,7 @@ const HotelIndexPage = observer(function HotelIndexPage() {
   async function handleGuestConfirm() {
     setGuestPopupVisible(false);
     await pageRuntime.withLoading(() => refreshHotelData({
-      nextOccupancy: guestDraft,
+      nextOccupancy: normalizedGuestDraft,
     }));
   }
 
@@ -334,6 +337,14 @@ const HotelIndexPage = observer(function HotelIndexPage() {
   }
 
   async function handleProductBooking(product: HotelProductCardData) {
+    const ratePlans = Array.isArray(product.ratePlans) ? product.ratePlans : [];
+    const selectedRatePlan = ratePlans.find((ratePlan) => ratePlan.stock > 0) ?? ratePlans[0];
+
+    if (!selectedRatePlan) {
+      void showWechatToast('当前产品暂不可预订');
+      return;
+    }
+
     const draft = createHotelOrderDraft({
       hotelId: activeHotel?.id ?? '',
       hotelName: activeHotel?.heroTitle ?? '',
@@ -341,7 +352,7 @@ const HotelIndexPage = observer(function HotelIndexPage() {
       hotelPhone: activeHotel?.phoneNumber ?? '',
       productId: product.id,
       product,
-      ratePlanId: product.ratePlans[0]?.id,
+      ratePlanId: selectedRatePlan.id,
       stayRange,
       occupancy,
       checkInTimeText: activeHotel?.checkInTimeText ?? '',
@@ -552,13 +563,13 @@ const HotelIndexPage = observer(function HotelIndexPage() {
               <View className="_pg-guest-popup_row">
                 <Text className="_pg-guest-popup_label">房间数</Text>
                 <QuantityStepper
-                  value={guestDraft.roomCount}
+                  value={normalizedGuestDraft.roomCount}
                   min={1}
                   max={pageData.maxRooms}
                   onChange={updateGuestDraftRoomCount}
                 />
               </View>
-              {guestDraft.rooms.map((room, roomIndex) => (
+              {normalizedGuestDraft.rooms.map((room, roomIndex) => (
                 <View className="_pg-guest-room" key={room.id}>
                   <Text className="_pg-guest-room_title">房间{roomIndex + 1}</Text>
                   <View className="_pg-guest-popup_row">

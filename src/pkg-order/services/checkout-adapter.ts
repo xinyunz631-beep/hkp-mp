@@ -5,6 +5,7 @@ import {
   setMallCheckoutSelectedAddressId,
   type MallCheckoutDraft,
 } from '@/core/services/mall-checkout-draft';
+import { parseNumberLike } from '@/core/utils/money';
 import { sanitizeMallRuntimeText, sanitizeMallRuntimeUrl } from '@/core/utils/mall-runtime';
 import { fetchAddressData, formatOrderAddress } from './address';
 
@@ -17,6 +18,7 @@ export interface MallCheckoutRequestContext {
   draft: MallCheckoutDraft;
   address?: Awaited<ReturnType<typeof resolveMallCheckoutAddress>>;
   selectedCouponId?: string | null;
+  freightAmount?: number;
 }
 
 // 解析商城确认单地址，实物订单优先使用路由地址，其次使用草稿缓存和默认地址。
@@ -34,16 +36,26 @@ export function persistMallCheckoutAddress(draftId: string, address?: Awaited<Re
   if (address?.id) setMallCheckoutSelectedAddressId(draftId, address.id);
 }
 
-// 生成商城统一订单请求，前端只提交商品、地址和券号；金额、运费由 BFF 统一计算。
+// 将商城草稿内的元单位运费转成统一订单接口需要的分单位。
+function toAmountCent(amount: unknown) {
+  const normalizedAmount = parseNumberLike(amount);
+  return typeof normalizedAmount === 'number' && normalizedAmount > 0
+    ? Math.round(normalizedAmount * 100)
+    : 0;
+}
+
+// 生成商城统一订单请求，前端提交商品、地址、券号和配送模板运费，商品金额由 BFF 统一计算。
 export function buildMallCheckoutOrderRequest({
   draft,
   address,
   selectedCouponId,
+  freightAmount,
 }: MallCheckoutRequestContext): BffOrderUnifiedRequest {
   return {
     sceneType: 'MALL',
     channel: 'MINI_PROGRAM',
     paymentChannel: 'WECHAT',
+    freightAmountCent: toAmountCent(freightAmount),
     selectedCouponNos: buildSelectedCouponNos(selectedCouponId),
     contactName: address?.name,
     contactPhone: address?.mobile,
