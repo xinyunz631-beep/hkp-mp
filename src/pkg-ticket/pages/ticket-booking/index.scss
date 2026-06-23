@@ -514,17 +514,20 @@
     height: 48px;
   }
 
-  &_list {
-    display: flex;
-    flex-direction: column;
-    gap: 18px;
+  &_content {
     margin-top: 24px;
   }
 
-  &_item {
+  &_rich-text {
+    color: #4b5563;
+    font-size: 28px;
+    line-height: 1.65;
+  }
+
+  &_empty {
     display: block;
     color: #4b5563;
-    font-size: 26px;
+    font-size: 28px;
     line-height: 1.55;
   }
 }

@@ -22,6 +22,7 @@ import {
   showWechatConfirm,
   showWechatToast,
 } from '@/core/utils/wechat-actions';
+import { TicketRichText } from '@/pkg-ticket/components/TicketRichText';
 import { TicketSubmitFooter } from '@/pkg-ticket/components/TicketSubmitFooter';
 import { createTicketOrderDraft } from '@/pkg-ticket/services/order-draft';
 import {
@@ -156,10 +157,6 @@ function createInitialQuantities(products: TicketProduct[]) {
     result[product.id] = product.defaultQuantity ?? 0;
     return result;
   }, {});
-}
-
-function compactVisibleTexts(items: Array<string | undefined>) {
-  return Array.from(new Set(items.map((item) => item?.trim()).filter((item): item is string => Boolean(item))));
 }
 
 function TicketBookingHero({ imageCount, imageSrcs, onPreview }: TicketBookingHeroProps) {
@@ -374,17 +371,10 @@ const TicketBookingPage = observer(function TicketBookingPage() {
   const selectedRuleProduct = selectedRuleProductId
     ? products.find((product) => product.id === selectedRuleProductId)
     : undefined;
-  const selectedRuleTexts = selectedRuleProduct?.ruleTexts ?? [];
   const rulesPopupTitle = selectedRuleProduct ? selectedRuleProduct.title : '预定须知';
-  const rulesPopupItems = bookingData ? compactVisibleTexts(
-    selectedRuleTexts.length
-      ? selectedRuleTexts
-      : [
-          bookingData.parkInfo.notice,
-          ...bookingData.parkInfo.rules,
-          ...bookingData.parkInfo.warmTips,
-        ],
-  ) : [];
+  const rulesPopupRichTexts = selectedRuleProduct
+    ? selectedRuleProduct.ruleRichTexts
+    : bookingData?.parkInfo.ruleRichTexts ?? [];
   useShareAppMessage(() => ({
     title: shareTitle,
     path: MINI_PACKAGE_ROUTES.ticketBooking,
@@ -697,10 +687,18 @@ const TicketBookingPage = observer(function TicketBookingPage() {
                     <AppIcon name="close" size={16} color="#8b909a" />
                   </View>
                 </View>
-                <View className="_pg-rules-popup_list">
-                  {rulesPopupItems.map((rule) => (
-                    <Text className="_pg-rules-popup_item" key={rule}>{rule}</Text>
-                  ))}
+                <View className="_pg-rules-popup_content">
+                  {rulesPopupRichTexts.length ? (
+                    rulesPopupRichTexts.map((ruleRichText, index) => (
+                      <TicketRichText
+                        className="_pg-rules-popup_rich-text"
+                        key={`${index}-${ruleRichText.length}`}
+                        nodes={ruleRichText}
+                      />
+                    ))
+                  ) : (
+                    <Text className="_pg-rules-popup_empty">暂无须知内容</Text>
+                  )}
                 </View>
               </AppPopup>
             </>

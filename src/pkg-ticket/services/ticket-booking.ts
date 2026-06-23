@@ -40,6 +40,7 @@ export interface TicketBookingParkInfo {
   bookingTips: string[];
   warmTips: string[];
   rules: string[];
+  ruleRichTexts: string[];
   mapLocation: TicketBookingMapLocation;
 }
 
@@ -70,6 +71,7 @@ export interface TicketProduct {
   certificateRequired?: boolean;
   verificationMethod?: string;
   ruleTexts: string[];
+  ruleRichTexts: string[];
 }
 
 export interface TicketPackageProduct {
@@ -173,6 +175,7 @@ const ticketBookingData: TicketBookingData = {
       '园区营业时间可能因天气、活动或设备维护调整，请以当日公告为准。',
       '优惠券以提交订单时可用状态为准，不可与线下活动重复叠加。',
     ],
+    ruleRichTexts: [],
     mapLocation: {
       ...HKP_PARK_LOCATION,
     },
@@ -387,6 +390,10 @@ function compactRules(rules: Array<string | undefined>) {
   return Array.from(new Set(rules.map((rule) => rule?.trim()).filter((rule): rule is string => Boolean(rule))));
 }
 
+function compactRichTextSegments(rules: Array<string | undefined>) {
+  return rules.filter((rule): rule is string => typeof rule === 'string' && Boolean(rule.trim()));
+}
+
 function resolveVerificationMethodText(method?: string) {
   if (method === 'idCard') return '入园时请携带购票证件核验。';
   if (method === 'memberCode') return '入园时可出示会员码核验。';
@@ -395,14 +402,26 @@ function resolveVerificationMethodText(method?: string) {
   return undefined;
 }
 
-function buildProductRuleTexts(item: BffTicketProduct, sku: BffTicketSkuRule, stockText: string) {
-  return compactRules([
+function buildProductRuleFragments(item: BffTicketProduct, sku: BffTicketSkuRule, stockText: string) {
+  return [
     item.notice,
     sku.qualificationRule,
     sku.refundRule || item.refundRule,
     resolveVerificationMethodText(sku.verificationMethod),
     item.entryAddress ? `入园地点：${item.entryAddress}` : undefined,
     stockText ? `当前日期：${stockText}` : undefined,
+  ];
+}
+
+function buildProductRuleTexts(item: BffTicketProduct, sku: BffTicketSkuRule, stockText: string) {
+  return compactRules(buildProductRuleFragments(item, sku, stockText));
+}
+
+function buildProductRuleRichTexts(item: BffTicketProduct, sku: BffTicketSkuRule) {
+  return compactRichTextSegments([
+    item.notice,
+    sku.qualificationRule,
+    sku.refundRule || item.refundRule,
   ]);
 }
 
@@ -454,6 +473,7 @@ function normalizeTicketProduct(
     certificateRequired: sku.certificateRequired,
     verificationMethod: sku.verificationMethod,
     ruleTexts: buildProductRuleTexts(item, sku, stockText),
+    ruleRichTexts: buildProductRuleRichTexts(item, sku),
   };
 }
 
@@ -468,12 +488,14 @@ function resolveDateAvailabilityText(products: TicketProduct[]) {
 function resolveParkInfoFromProducts(fallback: TicketBookingParkInfo, ticketProducts: BffTicketProduct[]) {
   const firstConfiguredProduct = ticketProducts.find((product) => product.entryAddress || product.servicePhone || product.notice || product.refundRule);
   const noticeRules = compactRules(ticketProducts.flatMap((product) => [product.notice, product.refundRule]));
+  const ruleRichTexts = compactRichTextSegments(ticketProducts.flatMap((product) => [product.notice, product.refundRule]));
 
   return {
     ...fallback,
     hotline: firstConfiguredProduct?.servicePhone || fallback.hotline,
     address: firstConfiguredProduct?.entryAddress || fallback.address,
     rules: noticeRules.length ? noticeRules : fallback.rules,
+    ruleRichTexts,
   };
 }
 
