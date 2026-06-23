@@ -5,6 +5,7 @@ import {
   type BffTicketVoucher,
   type BffOrderUnifiedRequest,
 } from '@/core/services/bff-order-api';
+import { pruneCheckoutDrafts, removeCheckoutDraftById } from '@/core/services/checkout-draft-lifecycle';
 import { submitAndPayBffOrder, type CheckoutSubmitResult } from '@/core/services/checkout-flow';
 import { getCache, setCache } from '@/core/utils/cache';
 import { buildTicketCheckoutOrderRequest } from './checkout-adapter';
@@ -97,16 +98,20 @@ export interface TicketOrderSubmitResult extends CheckoutSubmitResult {
 // 读取全部本地门票订单草稿，异常时返回空列表。
 function listTicketOrderDrafts() {
   const cachedDrafts = getCache<unknown>(MINI_STORAGE_KEYS.ticketOrderDrafts);
+  let drafts: TicketOrderDraft[] = [];
 
   if (Array.isArray(cachedDrafts)) {
-    return cachedDrafts.filter((draft): draft is TicketOrderDraft => Boolean(draft?.id));
+    drafts = cachedDrafts.filter((draft): draft is TicketOrderDraft => Boolean(draft?.id));
+  } else if (cachedDrafts && typeof cachedDrafts === 'object' && 'id' in cachedDrafts) {
+    drafts = [cachedDrafts as TicketOrderDraft];
   }
 
-  if (cachedDrafts && typeof cachedDrafts === 'object' && 'id' in cachedDrafts) {
-    return [cachedDrafts as TicketOrderDraft];
+  const availableDrafts = pruneCheckoutDrafts(drafts);
+  if (availableDrafts.length !== drafts.length) {
+    saveTicketOrderDrafts(availableDrafts);
   }
 
-  return [];
+  return availableDrafts;
 }
 
 // 保存门票订单草稿列表，统一隔离本地缓存 key。
@@ -448,6 +453,18 @@ export function getTicketOrderDraft(draftId?: string) {
   return listTicketOrderDrafts().find((draft) => draft.id === draftId);
 }
 
+// 清理已过期门票草稿，只处理门票 storage，不影响酒店和商城草稿。
+export function pruneTicketOrderDrafts() {
+  const drafts = listTicketOrderDrafts();
+  saveTicketOrderDrafts(drafts);
+  return drafts;
+}
+
+// 删除指定门票订单草稿，订单创建成功后只清当前门票 draftId。
+export function removeTicketOrderDraft(draftId?: string) {
+  saveTicketOrderDrafts(removeCheckoutDraftById(listTicketOrderDrafts(), draftId));
+}
+
 // 更新门票订单草稿，确认订单页改日期、优惠券或联系人后写回。
 export function updateTicketOrderDraft(draftId: string, patch: Partial<TicketOrderDraft>) {
   const drafts = listTicketOrderDrafts();
@@ -479,6 +496,7 @@ export async function submitTicketOrderDraft(draftId: string, payload: SubmitTic
 
   const submitResult = await submitAndPayBffOrder(buildTicketCheckoutOrderRequest(nextDraft, payload), {
     sceneLabel: '门票订单',
+    onOrderCreated: () => removeTicketOrderDraft(draftId),
     validateCreatedOrder: (order) => {
       if (String(order.orderStatus || '').toUpperCase() === 'CLOSED') {
         throw new Error('门票出票失败，请稍后重试或联系工作人员');

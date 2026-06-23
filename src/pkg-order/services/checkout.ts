@@ -10,6 +10,7 @@ import {
 import {
   getMallCheckoutDraft,
   isMallCheckoutAddressRequired,
+  removeMallCheckoutDraft,
   updateMallCheckoutDraft,
   validateMallCheckoutDelivery,
   type MallCheckoutDraft,
@@ -22,6 +23,7 @@ import {
   persistMallCheckoutAddress,
   resolveMallCheckoutAddress,
 } from './checkout-adapter';
+import { deleteMallCartItems, fetchMallCartSummary } from '@/pkg-mall/services/cart';
 
 export type { OrderCheckoutData } from './model';
 
@@ -100,6 +102,29 @@ function buildReadonlyCheckoutData(
     amountReady: false,
     discountAmount: 0,
   };
+}
+
+// 删除商城订单来源的购物车项，失败不影响已创建订单继续支付或查看。
+async function removeMallCheckoutSourceCartItems(draft: MallCheckoutDraft) {
+  const cartItemIds = Array.from(new Set(
+    draft.products
+      .map((product) => product.sourceCartItemId)
+      .filter((itemId): itemId is string => Boolean(itemId)),
+  ));
+  if (cartItemIds.length === 0) return;
+
+  try {
+    await deleteMallCartItems(cartItemIds);
+  } catch {
+    // 购物车清理失败不能影响订单创建结果；局部删除成功时主动刷新汇总，避免角标旧值滞留。
+    await fetchMallCartSummary().catch(() => undefined);
+  }
+}
+
+// 商城订单创建成功后只清当前商城草稿、当前地址选择和该草稿来源购物车项。
+async function cleanupMallCheckoutAfterOrderCreated(draft: MallCheckoutDraft) {
+  removeMallCheckoutDraft(draft.id);
+  await removeMallCheckoutSourceCartItems(draft);
 }
 
 // 获取商城确认单真实数据，金额和用券事实以统一订单确认接口为准。
@@ -187,5 +212,6 @@ export async function submitOrderCheckoutOrder(data: OrderCheckoutData): Promise
     freightAmount: data.freightAmount,
   }), {
     sceneLabel: '商城订单',
+    onOrderCreated: () => cleanupMallCheckoutAfterOrderCreated(draft),
   });
 }

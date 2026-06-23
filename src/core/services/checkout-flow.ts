@@ -65,6 +65,7 @@ export interface SubmitAndPayBffOrderOptions {
   paymentChannel?: BffOrderPaymentChannel;
   isOrderComplete?: (order: BffOrder) => boolean;
   validateCreatedOrder?: (order: BffOrder) => void;
+  onOrderCreated?: (result: CheckoutSubmitResult) => Promise<void> | void;
 }
 
 function normalizeCent(value: unknown, fallback = 0) {
@@ -227,6 +228,15 @@ export function toCheckoutCouponSummary(coupon: BffAvailableCouponView, fallback
   };
 }
 
+// 订单创建成功后执行业务清理，清理失败不影响已创建订单继续支付或查看。
+async function notifyOrderCreated(options: SubmitAndPayBffOrderOptions, result: CheckoutSubmitResult) {
+  try {
+    await options.onOrderCreated?.(result);
+  } catch {
+    // 草稿或购物车清理失败不能让已创建订单进入失败态。
+  }
+}
+
 // 读取必须由后端返回的应付金额，缺失时阻断提交和支付。
 export function assertValidPayableAmountCent(value: unknown, sceneLabel: string) {
   const amount = parseNumberLike(value);
@@ -252,17 +262,26 @@ export async function submitAndPayBffOrder(
   options.validateCreatedOrder?.(order);
   const createPayableAmountCent = assertValidPayableAmountCent(order.payableAmountCent, options.sceneLabel);
   const orderStatus = order.orderStatus;
+  const createdResult = {
+    orderNo,
+    orderStatus,
+    payableAmount: centToYuan(createPayableAmountCent),
+    payableAmountCent: createPayableAmountCent,
+    order,
+  };
+  await notifyOrderCreated(options, createdResult);
+
   if (createPayableAmountCent === 0 || options.isOrderComplete?.(order)) {
-    return {
-      orderNo,
-      orderStatus,
-      payableAmount: centToYuan(createPayableAmountCent),
-      payableAmountCent: createPayableAmountCent,
-      order,
-    };
+    return createdResult;
   }
 
-  const payment = await payBffOrder(orderNo, options.paymentChannel || 'WECHAT');
+  let payment: BffOrderPaymentResponse;
+  try {
+    payment = await payBffOrder(orderNo, options.paymentChannel || 'WECHAT');
+  } catch {
+    // 订单已创建时预支付失败不能把用户留在失效确认单；页面会引导到订单详情继续待支付。
+    return createdResult;
+  }
   const payableAmountCent = assertValidPayableAmountCent(payment.order?.payableAmountCent ?? createPayableAmountCent, options.sceneLabel);
 
   return {

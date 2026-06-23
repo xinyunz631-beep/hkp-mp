@@ -10,6 +10,7 @@ import {
 import { centToYuan, parseNumberLike } from '@/core/utils/money';
 import {
   ensureHotelOrderDraft,
+  removeHotelOrderDraft,
   updateHotelOrderDraft,
   type SubmitHotelOrderDraftPayload,
 } from './order-draft';
@@ -177,5 +178,6 @@ export async function submitHotelCheckoutOrder(draftId: string, payload: SubmitH
 
   return submitAndPayBffOrder(buildHotelCheckoutOrderRequest(nextDraft, payload), {
     sceneLabel: '酒店订单',
+    onOrderCreated: () => removeHotelOrderDraft(draftId),
   });
 }

@@ -18,6 +18,20 @@ function isValidMainlandMobile(value: string) {
   return /^1\d{10}$/.test(value.trim());
 }
 
+// 将酒店确认单金额转为分单位比较，避免浮点格式差异误判为改价。
+function toHotelAmountCent(value?: number) {
+  return Math.round((Number(value) || 0) * 100);
+}
+
+// 判断酒店提交前确认结果是否发生支付关键字段变化。
+function hasHotelCheckoutChanged(currentData: HotelCheckoutData, nextData: HotelCheckoutData) {
+  return toHotelAmountCent(currentData.totalAmount) !== toHotelAmountCent(nextData.totalAmount)
+    || toHotelAmountCent(currentData.discountAmount) !== toHotelAmountCent(nextData.discountAmount)
+    || toHotelAmountCent(currentData.productAmount) !== toHotelAmountCent(nextData.productAmount)
+    || currentData.selectedCouponId !== nextData.selectedCouponId
+    || currentData.roomCount !== nextData.roomCount;
+}
+
 const CheckoutPage = observer(function CheckoutPage() {
   const [guestNames, setGuestNames] = useState<Record<string, string>>({});
   const [contactName, setContactName] = useState('');
@@ -40,6 +54,18 @@ const CheckoutPage = observer(function CheckoutPage() {
     readSelectedCouponId: (data) => data.selectedCouponId,
     readCouponNoticeText: (data) => data.couponNoticeText,
     readPayableAmount: (data) => data.totalAmount,
+    revalidateBeforeSubmit: async (data, payload) => {
+      const nextData = await fetchCheckoutData({
+        draftId: data.draftId,
+        roomCount: payload.roomCount,
+        selectedCouponId: payload.selectedCouponId,
+      });
+      return {
+        data: nextData,
+        changed: hasHotelCheckoutChanged(data, nextData),
+        message: '酒店房态、价格或优惠已更新，请确认后重新提交',
+      };
+    },
     submit: (data, payload) => submitHotelCheckoutOrder(data.draftId, payload),
     buildSuccessRoute: (result) => `${MINI_PACKAGE_ROUTES.orderDetail}?orderId=${encodeURIComponent(result.orderNo)}`,
     submitErrorText: '酒店订单提交暂不可用，请稍后再试',

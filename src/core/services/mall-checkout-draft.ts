@@ -1,5 +1,6 @@
 import { MINI_STORAGE_KEYS } from '@/core/constants/storage';
 import type { HkpAddressSummary } from '@/core/types/hkp';
+import { pruneCheckoutDrafts, removeCheckoutDraftById } from './checkout-draft-lifecycle';
 import { getCache, setCache } from '@/core/utils/cache';
 import { formatCurrency, parseNumberLike } from '@/core/utils/money';
 
@@ -28,6 +29,7 @@ export interface MallCheckoutDraftProduct {
   canRefund?: boolean;
   canAfterSale?: boolean;
   shippingRule?: MallShippingRule;
+  sourceCartItemId?: string;
 }
 
 export interface MallCheckoutDraft {
@@ -63,8 +65,30 @@ function normalizeDrafts(data: unknown): MallCheckoutDraft[] {
   return data.filter((draft): draft is MallCheckoutDraft => Boolean(draft?.id && Array.isArray(draft.products)));
 }
 
+// 删除指定商城草稿关联的地址选择，只处理商城地址选择 map 的对应 draftId。
+function removeMallCheckoutSelectedAddressIds(draftIds: string[]) {
+  if (draftIds.length === 0) return;
+  const currentMap = getCache<Record<string, string>>(MINI_STORAGE_KEYS.mallCheckoutAddressSelections) ?? {};
+  const nextMap = { ...currentMap };
+  draftIds.forEach((draftId) => {
+    delete nextMap[draftId];
+  });
+  setCache(MINI_STORAGE_KEYS.mallCheckoutAddressSelections, nextMap);
+}
+
 function listMallCheckoutDrafts() {
-  return normalizeDrafts(getCache<unknown>(MINI_STORAGE_KEYS.mallCheckoutDrafts));
+  const drafts = normalizeDrafts(getCache<unknown>(MINI_STORAGE_KEYS.mallCheckoutDrafts));
+  const availableDrafts = pruneCheckoutDrafts(drafts);
+
+  if (availableDrafts.length !== drafts.length) {
+    const availableIds = new Set(availableDrafts.map((draft) => draft.id));
+    saveMallCheckoutDrafts(availableDrafts);
+    removeMallCheckoutSelectedAddressIds(drafts
+      .map((draft) => draft.id)
+      .filter((draftId) => !availableIds.has(draftId)));
+  }
+
+  return availableDrafts;
 }
 
 function saveMallCheckoutDrafts(drafts: MallCheckoutDraft[]) {
@@ -117,6 +141,19 @@ export function createMallCheckoutDraft(payload: CreateMallCheckoutDraftPayload)
 export function getMallCheckoutDraft(draftId?: string) {
   if (!draftId) return undefined;
   return listMallCheckoutDrafts().find((draft) => draft.id === draftId);
+}
+
+// 清理已过期商城草稿，只处理商城 storage 和对应地址选择。
+export function pruneMallCheckoutDrafts() {
+  const drafts = listMallCheckoutDrafts();
+  saveMallCheckoutDrafts(drafts);
+  return drafts;
+}
+
+// 删除指定商城订单草稿，同时只删除该 draftId 的地址选择。
+export function removeMallCheckoutDraft(draftId?: string) {
+  saveMallCheckoutDrafts(removeCheckoutDraftById(listMallCheckoutDrafts(), draftId));
+  if (draftId) removeMallCheckoutSelectedAddressIds([draftId]);
 }
 
 // 更新商城结算草稿，确认单选券、清券和地址返回后都以这里保持本地状态一致。

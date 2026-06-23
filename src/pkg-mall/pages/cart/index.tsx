@@ -155,6 +155,7 @@ const CartPage = observer(function CartPage() {
         canRefund: item.canRefund ?? true,
         canAfterSale: item.canAfterSale ?? true,
         shippingRule: item.shippingRule ?? { mode: 'unsupported', reasonText: '当前商品暂不可配送，请返回商品页重新选择' },
+        sourceCartItemId: item.id,
       })),
     });
 

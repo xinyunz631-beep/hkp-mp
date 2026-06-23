@@ -1,4 +1,5 @@
 import { MINI_STORAGE_KEYS } from '@/core/constants/storage';
+import { pruneCheckoutDrafts, removeCheckoutDraftById } from '@/core/services/checkout-draft-lifecycle';
 import { getCache, setCache } from '@/core/utils/cache';
 import {
   normalizeHotelOccupancy,
@@ -64,16 +65,20 @@ export interface SubmitHotelOrderDraftPayload {
 
 function listHotelOrderDrafts() {
   const cachedDrafts = getCache<unknown>(MINI_STORAGE_KEYS.hotelOrderDrafts);
+  let drafts: HotelOrderDraft[] = [];
 
   if (Array.isArray(cachedDrafts)) {
-    return cachedDrafts.filter((draft): draft is HotelOrderDraft => Boolean(draft?.id));
+    drafts = cachedDrafts.filter((draft): draft is HotelOrderDraft => Boolean(draft?.id));
+  } else if (cachedDrafts && typeof cachedDrafts === 'object' && 'id' in cachedDrafts) {
+    drafts = [cachedDrafts as HotelOrderDraft];
   }
 
-  if (cachedDrafts && typeof cachedDrafts === 'object' && 'id' in cachedDrafts) {
-    return [cachedDrafts as HotelOrderDraft];
+  const availableDrafts = pruneCheckoutDrafts(drafts);
+  if (availableDrafts.length !== drafts.length) {
+    saveHotelOrderDrafts(availableDrafts);
   }
 
-  return [];
+  return availableDrafts;
 }
 
 function saveHotelOrderDrafts(drafts: HotelOrderDraft[]) {
@@ -107,6 +112,18 @@ function createHotelGuests(roomCount: number, seedGuests: HotelOrderDraftGuest[]
 export function getHotelOrderDraft(draftId?: string) {
   if (!draftId) return undefined;
   return listHotelOrderDrafts().find((draft) => draft.id === draftId);
+}
+
+// 清理已过期酒店草稿，只处理酒店 storage，不影响票务和商城草稿。
+export function pruneHotelOrderDrafts() {
+  const drafts = listHotelOrderDrafts();
+  saveHotelOrderDrafts(drafts);
+  return drafts;
+}
+
+// 删除指定酒店订单草稿，订单创建成功后只清当前酒店 draftId。
+export function removeHotelOrderDraft(draftId?: string) {
+  saveHotelOrderDrafts(removeCheckoutDraftById(listHotelOrderDrafts(), draftId));
 }
 
 export function updateHotelOrderDraft(draftId: string, patch: Partial<HotelOrderDraft>) {

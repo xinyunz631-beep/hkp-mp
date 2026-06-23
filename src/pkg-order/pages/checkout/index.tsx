@@ -23,6 +23,22 @@ function resolveCheckoutRouteParams() {
   };
 }
 
+// 将商城确认单金额转为分单位比较，避免浮点格式差异误判为改价。
+function toMallAmountCent(value?: number) {
+  return Math.round((Number(value) || 0) * 100);
+}
+
+// 判断商城提交前确认结果是否发生支付、配送或可提交状态变化。
+function hasMallCheckoutChanged(currentData: OrderCheckoutData, nextData: OrderCheckoutData) {
+  return toMallAmountCent(currentData.totalAmount) !== toMallAmountCent(nextData.totalAmount)
+    || toMallAmountCent(currentData.discountAmount) !== toMallAmountCent(nextData.discountAmount)
+    || toMallAmountCent(currentData.freightAmount) !== toMallAmountCent(nextData.freightAmount)
+    || currentData.selectedCouponId !== nextData.selectedCouponId
+    || currentData.canSubmit !== nextData.canSubmit
+    || currentData.shippingText !== nextData.shippingText
+    || (currentData.deliveryErrors ?? []).join('|') !== (nextData.deliveryErrors ?? []).join('|');
+}
+
 const CheckoutPage = observer(function CheckoutPage() {
   const checkoutController = useCheckoutController<OrderCheckoutData, undefined>({
     load: (params) => fetchCheckoutData({
@@ -34,6 +50,20 @@ const CheckoutPage = observer(function CheckoutPage() {
     readSelectedCouponId: (data) => data.selectedCouponId,
     readCouponNoticeText: (data) => data.couponNoticeText,
     readPayableAmount: (data) => data.totalAmount,
+    revalidateBeforeSubmit: async (data) => {
+      const nextData = await fetchCheckoutData({
+        draftId: data.draftId,
+        addressId: data.address?.id,
+        selectedCouponId: data.selectedCouponId,
+      });
+      return {
+        data: nextData,
+        changed: hasMallCheckoutChanged(data, nextData),
+        message: nextData.canSubmit === false
+          ? nextData.deliveryErrors?.[0] || '当前商品暂不可提交'
+          : '商城商品、配送或优惠已更新，请确认后重新提交',
+      };
+    },
     submit: (data) => submitOrderCheckoutOrder(data),
     buildSuccessRoute: (result) => `${MINI_PACKAGE_ROUTES.orderDetail}?orderId=${encodeURIComponent(result.orderNo)}`,
     submitErrorText: '商城订单提交暂不可用，请稍后再试',

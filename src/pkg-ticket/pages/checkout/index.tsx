@@ -12,7 +12,7 @@ import { useCheckoutController } from '@/core/runtime/use-checkout-controller';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import { isBffTicketOrderIssued } from '@/core/services/bff-order-api';
 import { resolveErrorMessage } from '@/core/utils/error-message';
-import { navigateBackInPageStack, navigateToMiniRoute } from '@/core/utils/navigation';
+import { navigateToMiniRoute } from '@/core/utils/navigation';
 import { showWechatConfirm, showWechatToast } from '@/core/utils/wechat-actions';
 import { TicketSubmitFooter } from '@/pkg-ticket/components/TicketSubmitFooter';
 import { fetchCheckoutData, type TicketCheckoutPageData } from '@/pkg-ticket/services/checkout';
@@ -90,6 +90,20 @@ function getTravelerTabTitle(traveler: TicketOrderTraveler, index: number) {
   return traveler.category === 'annualCard' ? `持卡人${index + 1}` : `游客${index + 1}`;
 }
 
+// 将确认单金额转为分单位比较，避免浮点格式差异误判为改价。
+function toTicketAmountCent(value?: number) {
+  return Math.round((Number(value) || 0) * 100);
+}
+
+// 判断门票提交前确认结果是否发生支付关键字段变化。
+function hasTicketCheckoutChanged(currentData: TicketCheckoutPageData, nextData: TicketCheckoutPageData) {
+  return toTicketAmountCent(currentData.payableAmount) !== toTicketAmountCent(nextData.payableAmount)
+    || toTicketAmountCent(currentData.discountAmount) !== toTicketAmountCent(nextData.discountAmount)
+    || toTicketAmountCent(currentData.ticketItem.price) !== toTicketAmountCent(nextData.ticketItem.price)
+    || currentData.draft?.selectedCouponId !== nextData.draft?.selectedCouponId
+    || currentData.draftMissing !== nextData.draftMissing;
+}
+
 const CheckoutPage = observer(function CheckoutPage() {
   const [draftId, setDraftId] = useState('');
   const [addonQuantity, setAddonQuantity] = useState(1);
@@ -114,6 +128,14 @@ const CheckoutPage = observer(function CheckoutPage() {
     readSelectedCouponId: (data) => data.draft?.selectedCouponId,
     readCouponNoticeText: (data) => data.couponNoticeText,
     readPayableAmount: (data) => data.payableAmount,
+    revalidateBeforeSubmit: async (data, payload) => {
+      const nextData = await fetchCheckoutData(data.draft?.id || draftId, payload.selectedCouponId);
+      return {
+        data: nextData,
+        changed: hasTicketCheckoutChanged(data, nextData),
+        message: '门票库存、价格或优惠已更新，请确认后重新提交',
+      };
+    },
     submit: (data, payload) => submitTicketOrderDraft(data.draft?.id || draftId, payload),
     buildSuccessRoute: (result) => `${MINI_PACKAGE_ROUTES.orderDetail}?orderId=${encodeURIComponent(result.orderNo)}`,
     isOrderComplete: (result) => isBffTicketOrderIssued(result.orderStatus, result.order?.ticketVouchers),
@@ -258,19 +280,6 @@ const CheckoutPage = observer(function CheckoutPage() {
     if (draftId) updateTicketOrderDraft(draftId, { addonQuantity: value });
   }
 
-  async function handleReselectDate() {
-    const confirmed = await showWechatConfirm({
-      title: '重新选择游玩日期',
-      content: '游玩日期会影响可订门票、价格、库存和入园人信息，需要返回门票预定页重新选择。',
-      confirmText: '返回重选',
-      cancelText: '继续结算',
-    });
-
-    if (confirmed && !navigateBackInPageStack()) {
-      navigateToMiniRoute(MINI_PACKAGE_ROUTES.ticketBooking);
-    }
-  }
-
   async function validateTravelers(nextTravelers: TicketOrderTraveler[]) {
     const idCardMap = new Map<string, string>();
 
@@ -392,13 +401,12 @@ const CheckoutPage = observer(function CheckoutPage() {
     const totalTicketQuantity = selectedProducts.reduce((total, product) => total + product.quantity, 0)
       || checkoutData.ticketItem.quantity;
     const activeTraveler = travelerForms.find((traveler) => traveler.id === activeTravelerId) ?? travelerForms[0];
-    const activeTravelerIndex = Math.max(0, travelerForms.findIndex((traveler) => traveler.id === activeTraveler?.id));
     const hasAddonItem = checkoutData.addonItem.quantity > 0 || addonQuantity > 0;
 
     return (
       <View className="_pg">
         <PageShell
-          title={checkoutData.parkName}
+          title="订单确认"
           className="_pg-shell"
           reserveTabBarSpace={false}
           footer={checkoutData.draftMissing ? undefined : (
@@ -426,87 +434,89 @@ const CheckoutPage = observer(function CheckoutPage() {
           ) : (
           <View className="_pg-content">
             <View className="_pg-card">
-              <View className="_pg-item">
-                <View className="_pg-item_header">
-                  <Text className="_pg-item_title">1. 门票信息</Text>
-                  <Text className="_pg-item_quantity">共{totalTicketQuantity}张</Text>
+              <View className="_pg-section">
+                <View className="_pg-section_header">
+                  <View className="_pg-section_title-wrap">
+                    <Text className="_pg-section_title">门票信息</Text>
+                  </View>
+                  <Text className="_pg-section_count">共{totalTicketQuantity}张</Text>
                 </View>
-                <View className="_pg-item_row _pg-item_row--link" onClick={() => { void handleReselectDate(); }}>
-                  <Text className="_pg-item_label">游玩日期</Text>
-                  <View className="_pg-item_value">
+
+                <View className="_pg-ticket-date">
+                  <View className="_pg-ticket-date_label">
+                    <AppIcon name="calendar" className="_pg-ticket-date_icon" size={14} color="#94a3b8" />
+                    <Text>游玩日期</Text>
+                  </View>
+                  <View className="_pg-ticket-date_value">
                     <Text>{selectedDate}</Text>
-                    <AppIcon name="arrowRight" className="_pg-item_chevron" size={16} color="#c0c5cf" />
                   </View>
                 </View>
-                <View className="_pg-item_notice">
-                  <AppIcon name="code" size={14} color="#d94a88" />
-                  <Text>支付成功后生成订单入园码，也可凭购票证件核验入园。</Text>
+
+                <View className="_pg-entry-tip">
+                  <AppIcon name="code" className="_pg-entry-tip_icon" size={14} color="#94a3b8" />
+                  <Text>支付成功后生成订单入园码，也可凭购票证件核验入园</Text>
                 </View>
+
                 <View className="_pg-product-list">
                   {selectedProducts.map((product) => (
                     <View className="_pg-product" key={product.id}>
+                      <AppIcon name="ticket" className="_pg-product_icon" size={15} color="#e45c98" />
                       <View className="_pg-product_main">
                         <Text className="_pg-product_title">{product.title}</Text>
-                        <Text className="_pg-product_note">{product.noticeText}</Text>
                       </View>
-                      <View className="_pg-product_side">
-                        <Text className="_pg-product_count">x{product.quantity}</Text>
-                      </View>
+                      <Text className="_pg-product_count">x{product.quantity}</Text>
                     </View>
                   ))}
                 </View>
+
+                {hasAddonItem ? (
+                  <View className="_pg-addon">
+                    <View className="_pg-addon_summary">
+                      <AppIcon name="gift" className="_pg-addon_icon" size={15} color="#e45c98" />
+                      <View className="_pg-addon_main">
+                        <Text className="_pg-addon_title">{checkoutData.addonItem.productTitle || checkoutData.addonItem.merchantTitle}</Text>
+                        {checkoutData.addonItem.noteText ? <Text className="_pg-addon_note">{checkoutData.addonItem.noteText}</Text> : null}
+                      </View>
+                      <Text className="_pg-addon_count">x{addonQuantity}</Text>
+                    </View>
+                    <View className="_pg-addon_stepper">
+                      <Text className="_pg-addon_stepper-label">套餐数量</Text>
+                      <QuantityStepper value={addonQuantity} min={0} onChange={handleAddonQuantityChange} />
+                    </View>
+                  </View>
+                ) : null}
               </View>
             </View>
 
-            {hasAddonItem ? (
-              <>
-                <View className="_pg-card">
-                  <View className="_pg-item">
-                    <View className="_pg-item_header">
-                      <Text className="_pg-item_title">2. {checkoutData.addonItem.merchantTitle}</Text>
-                      <Text className="_pg-item_quantity">x{addonQuantity}</Text>
-                    </View>
-                    <Text className="_pg-item_subtitle">{checkoutData.addonItem.productTitle}</Text>
-                    <Text className="_pg-item_note">{checkoutData.addonItem.noteText}</Text>
-                  </View>
-                </View>
-
-                <View className="_pg-card _pg-card--compact">
-                  <View className="_pg-stepper-row">
-                    <Text className="_pg-stepper-row_label">套餐购买数量</Text>
-                    <QuantityStepper value={addonQuantity} min={0} onChange={handleAddonQuantityChange} />
-                  </View>
-                </View>
-              </>
-            ) : null}
-
             <View className="_pg-card">
-              <View className="_pg-form">
+              <View className="_pg-form _pg-form--contact">
                 <View className="_pg-form_heading">
                   <Text className="_pg-form_title">联系人信息</Text>
                   <Text className="_pg-form_desc">用于接收出票和订单通知</Text>
                 </View>
 
-                <View className="_pg-field">
-                  <Text className="_pg-field_label">姓名</Text>
-                  <Input
-                    className="_pg-field_input"
-                    value={contactForm.name}
-                    placeholder="请输入联系人姓名"
-                    onInput={(event) => updateContactField('name', event.detail.value)}
-                  />
-                </View>
+                <View className="_pg-field-shell">
+                  <View className="_pg-field">
+                    <Text className="_pg-field_label">姓名</Text>
+                    <Input
+                      className="_pg-field_input"
+                      value={contactForm.name}
+                      placeholder="请输入联系人姓名"
+                      onInput={(event) => updateContactField('name', event.detail.value)}
+                    />
+                  </View>
 
-                <View className="_pg-field">
-                  <Text className="_pg-field_label">手机</Text>
-                  <Input
-                    className="_pg-field_input"
-                    value={contactForm.mobile}
-                    placeholder={checkoutData.contact.mobilePlaceholder}
-                    type="number"
-                    maxlength={11}
-                    onInput={(event) => updateContactField('mobile', event.detail.value)}
-                  />
+                  <View className="_pg-field">
+                    <Text className="_pg-field_label">手机</Text>
+                    <Input
+                      className="_pg-field_input"
+                      value={contactForm.mobile}
+                      placeholder={checkoutData.contact.mobilePlaceholder}
+                      type="number"
+                      maxlength={11}
+                      onInput={(event) => updateContactField('mobile', event.detail.value)}
+                    />
+                  </View>
                 </View>
 
                 <Text className="_pg-form_hint">{checkoutData.contact.helperText}</Text>
@@ -516,16 +526,15 @@ const CheckoutPage = observer(function CheckoutPage() {
 
             {travelerCount > 0 ? (
             <View className="_pg-card">
-              <View className="_pg-form">
-                <View className="_pg-form_heading">
-                  <Text className="_pg-form_title">出游人信息</Text>
-                  <Text className="_pg-form_desc">请补充 {travelerCount} 位出游人信息</Text>
+              <View className="_pg-form _pg-form--traveler">
+                <View className="_pg-form_heading _pg-form_heading--traveler">
+                  <View className="_pg-form_title-row">
+                    <Text className="_pg-form_title">出游人信息</Text>
+                    <Text className="_pg-form_desc">请补充 {travelerCount} 位出游人信息</Text>
+                  </View>
                   <Text className="_pg-form_progress">{completedTravelerCount}/{travelerCount} 已完善</Text>
                 </View>
-                <View className="_pg-form_notice">
-                  <AppIcon name="check" size={10} color="#d94a88" />
-                  <Text>请按票种要求补充出游人信息，儿童票、优待票和年卡资格以园区现场核验为准。</Text>
-                </View>
+                <Text className="_pg-form_notice-text">请按票种要求补充出游人信息，儿童票、优待票和年卡资格以园区现场核验为准。</Text>
 
                 <ScrollView className="_pg-traveler-tabs" scrollX enhanced showScrollbar={false}>
                   <View className="_pg-traveler-tabs_inner">
@@ -539,11 +548,11 @@ const CheckoutPage = observer(function CheckoutPage() {
                           key={traveler.id}
                           onClick={() => setActiveTravelerId(traveler.id)}
                         >
+                          <Text className="_pg-traveler-tabs_status">
+                            {travelerCompleted ? '已完善' : '待填'}
+                          </Text>
                           <Text className="_pg-traveler-tabs_title">{getTravelerTabTitle(traveler, index)}</Text>
                           <Text className="_pg-traveler-tabs_role">{traveler.roleText}</Text>
-                          <Text className={travelerCompleted ? '_pg-traveler-tabs_status _pg-traveler-tabs_status--done' : '_pg-traveler-tabs_status'}>
-                            {travelerCompleted ? '已填' : '待填'}
-                          </Text>
                         </View>
                       );
                     })}
@@ -558,82 +567,75 @@ const CheckoutPage = observer(function CheckoutPage() {
                   const travelerMobileError = submitAttempted
                     && traveler.mobileRequired
                     && !isValidMainlandMobile(traveler.mobile);
-                  const travelerCompleted = isTravelerComplete(traveler);
                   const canSyncContact = traveler.nameRequired || traveler.mobileRequired;
 
                   return (
                     <View className="_pg-traveler" key={traveler.id}>
                       <View className="_pg-traveler_header">
                         <Text className="_pg-traveler_title">
-                          {getTravelerTabTitle(traveler, activeTravelerIndex)} · {traveler.title}
+                          {traveler.title}
                         </Text>
-                        <View className="_pg-traveler_meta">
-                          <Text className="_pg-traveler_badge">{traveler.roleText}</Text>
-                          <Text className={travelerCompleted ? '_pg-traveler_status _pg-traveler_status--done' : '_pg-traveler_status'}>
-                            {travelerCompleted ? '已完善' : '待完善'}
-                          </Text>
-                        </View>
-                      </View>
-                      <View className="_pg-traveler_intro">
-                        <Text className="_pg-traveler_desc">{traveler.requirementText}</Text>
                         {canSyncContact ? (
                           <Text className="_pg-traveler_action" onClick={() => { void handleSyncContactToTraveler(traveler.id); }}>
                             同联系人
                           </Text>
                         ) : null}
                       </View>
+                      <Text className="_pg-traveler_desc">{traveler.requirementText}</Text>
                       {traveler.qualificationText ? (
                         <View className="_pg-traveler_tip">
-                          <AppIcon name="ask" size={14} color="#d0851f" />
+                          <AppIcon name="ask" className="_pg-traveler_tip-icon" size={14} color="#d0851f" />
                           <Text>{traveler.qualificationText}</Text>
                         </View>
                       ) : null}
 
-                      {traveler.nameRequired ? (
-                        <View className="_pg-field">
-                          <Text className="_pg-field_label">姓名</Text>
-                          <Input
-                            className="_pg-field_input"
-                            value={traveler.name}
-                            placeholder="请输入实际入园人姓名"
-                            onInput={(event) => updateTravelerField(traveler.id, 'name', event.detail.value)}
-                          />
-                        </View>
-                      ) : null}
-
-                      {traveler.certificateRequired ? (
-                        <>
+                      <View className="_pg-field-shell">
+                        {traveler.nameRequired ? (
                           <View className="_pg-field">
-                            <Text className="_pg-field_label">身份证</Text>
+                            <Text className="_pg-field_label">姓名</Text>
                             <Input
                               className="_pg-field_input"
-                              value={traveler.idCard}
-                              placeholder={checkoutData.contact.idCardPlaceholder}
-                              type="idcard"
-                              maxlength={18}
-                              onInput={(event) => updateTravelerField(traveler.id, 'idCard', event.detail.value)}
+                              value={traveler.name}
+                              placeholder="请输入实际入园人姓名"
+                              onInput={(event) => updateTravelerField(traveler.id, 'name', event.detail.value)}
                             />
                           </View>
-                          {travelerIdCardError ? <Text className="_pg-form_error">请填写正确身份证号</Text> : null}
-                        </>
-                      ) : null}
+                        ) : null}
 
-                      {traveler.mobileRequired ? (
-                        <>
-                          <View className="_pg-field">
-                            <Text className="_pg-field_label">手机</Text>
-                            <Input
-                              className="_pg-field_input"
-                              value={traveler.mobile}
-                              placeholder="用于接收年卡激活通知"
-                              type="number"
-                              maxlength={11}
-                              onInput={(event) => updateTravelerField(traveler.id, 'mobile', event.detail.value)}
-                            />
-                          </View>
-                          {travelerMobileError ? <Text className="_pg-form_error">请填写正确手机号</Text> : null}
-                        </>
-                      ) : null}
+                        {traveler.certificateRequired ? (
+                          <>
+                            <View className="_pg-field">
+                              <Text className="_pg-field_label">身份证</Text>
+                              <Input
+                                className="_pg-field_input"
+                                value={traveler.idCard}
+                                placeholder={checkoutData.contact.idCardPlaceholder}
+                                type="idcard"
+                                maxlength={18}
+                                onInput={(event) => updateTravelerField(traveler.id, 'idCard', event.detail.value)}
+                              />
+                            </View>
+                            {travelerIdCardError ? <Text className="_pg-form_error">请填写正确身份证号</Text> : null}
+                          </>
+                        ) : null}
+
+                        {traveler.mobileRequired ? (
+                          <>
+                            <View className="_pg-field">
+                              <Text className="_pg-field_label">手机</Text>
+                              <Input
+                                className="_pg-field_input"
+                                value={traveler.mobile}
+                                placeholder="用于接收年卡激活通知"
+                                type="number"
+                                maxlength={11}
+                                onInput={(event) => updateTravelerField(traveler.id, 'mobile', event.detail.value)}
+                              />
+                            </View>
+                            {travelerMobileError ? <Text className="_pg-form_error">请填写正确手机号</Text> : null}
+                          </>
+                        ) : null}
+                      </View>
                     </View>
                   );
                 })() : null}
@@ -642,25 +644,22 @@ const CheckoutPage = observer(function CheckoutPage() {
             ) : null}
 
             {hasCoupons ? (
-              <>
-                <View className="_pg-card _pg-card--compact">
-                  <View className="_pg-line-row">
-                    <Text className="_pg-line-row_label">折扣信息</Text>
-                    <Text className="_pg-line-row_value">{discountAmount > 0 ? `已优惠 ¥${discountAmount.toFixed(2)}` : '暂无优惠'}</Text>
+              <View className="_pg-card _pg-card--compact">
+                <View className="_pg-line-row _pg-line-row--link" onClick={() => setCouponPopupVisible(true)}>
+                  <Text className="_pg-line-row_label">优惠券</Text>
+                  <View className="_pg-line-row_coupon">
+                    <Text className="_pg-line-row_coupon-tag">{couponText}</Text>
+                    <AppIcon name="arrowRight" className="_pg-line-row_chevron" size={16} color="#c0c5cf" />
                   </View>
                 </View>
-
-                <View className="_pg-card _pg-card--compact">
-                  <View className="_pg-line-row _pg-line-row--link" onClick={() => setCouponPopupVisible(true)}>
-                    <Text className="_pg-line-row_label">优惠券</Text>
-                    <View className="_pg-line-row_coupon">
-                      <Text className="_pg-line-row_coupon-tag">{couponText}</Text>
-                      <AppIcon name="arrowRight" className="_pg-line-row_chevron" size={16} color="#c0c5cf" />
-                    </View>
-                  </View>
-                </View>
-              </>
+                {discountAmount > 0 ? <Text className="_pg-line-row_extra">已优惠 ¥{discountAmount.toFixed(2)}</Text> : null}
+              </View>
             ) : null}
+
+            <View className="_pg-check-tip">
+              <AppIcon name="check" className="_pg-check-tip_icon" size={14} color="#e45c98" />
+              <Text>请确认所填信息准确无误，提交后部分信息不可更改。如有疑问请联系客服。</Text>
+            </View>
 
             <View className="_pg-card _pg-card--compact">
               <View className="_pg-amount-summary">
