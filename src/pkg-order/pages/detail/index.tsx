@@ -368,11 +368,10 @@ const DetailPage = observer(function DetailPage() {
       });
 
       if (paymentStatus !== 'success') {
-        await showWechatToast('支付未完成');
         return;
       }
 
-      await syncBffPaymentStatusSilently(payment.prepay?.payNo);
+      await syncBffPaymentStatusSilently(payment.prepay?.payNo ?? payment.order?.payNo);
       const nextData = await fetchDetailData(detailData.id);
       applyDetailData(nextData);
       await showWechatToast('支付成功', 'success');

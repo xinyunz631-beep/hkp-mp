@@ -1,8 +1,10 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import Taro from '@tarojs/taro';
 import { syncBffPaymentStatusSilently } from '@/core/services/bff-api';
+import { payBffOrder } from '@/core/services/bff-order-api';
 import type { CheckoutSubmitResult } from '@/core/services/checkout-flow';
 import { resolveErrorMessage } from '@/core/utils/error-message';
+import { centToYuan, parseNumberLike } from '@/core/utils/money';
 import { navigateToMiniRoute } from '@/core/utils/navigation';
 import { requestWechatPayment, showWechatToast } from '@/core/utils/wechat-actions';
 
@@ -32,7 +34,8 @@ export interface CheckoutControllerAdapter<
   readPayableAmount: (data: TData) => number;
   revalidateBeforeSubmit?: (data: TData, payload: TSubmitPayload) => Promise<CheckoutRevalidateResult<TData>>;
   submit: (data: TData, payload: TSubmitPayload) => Promise<CheckoutSubmitResult | undefined>;
-  onOrderCreated?: (data: TData, result: CheckoutSubmitResult) => Promise<void> | void;
+  onPaymentPrepared?: (data: TData, payload: TSubmitPayload, result: CheckoutSubmitResult) => Promise<void> | void;
+  onCheckoutCompleted?: (data: TData, result: CheckoutSubmitResult) => Promise<void> | void;
   buildSuccessRoute: (result: CheckoutSubmitResult) => string;
   isOrderComplete?: (result: CheckoutSubmitResult) => boolean;
   submitErrorText: string;
@@ -49,14 +52,37 @@ function runCheckoutTask<TResult>(
   return options?.withLoading ? options.withLoading(task) : task();
 }
 
-// 已创建订单但未完成支付时，统一引导到订单详情继续待支付流程。
-function navigateToCreatedOrder<TData, TSubmitPayload, TLoadParams extends CheckoutLoadParams>(
+async function completeCheckout<TData, TSubmitPayload, TLoadParams extends CheckoutLoadParams>(
   adapter: CheckoutControllerAdapter<TData, TSubmitPayload, TLoadParams>,
+  data: TData,
   result: CheckoutSubmitResult,
 ) {
-  navigateToMiniRoute(adapter.buildSuccessRoute(result), {
-    loginMode: 'none',
-  });
+  try {
+    await result.completeCheckout?.();
+    await adapter.onCheckoutCompleted?.(data, result);
+  } catch {
+    // 支付已完成时，清理草稿或购物车失败不能阻断用户查看订单。
+  }
+}
+
+function readPaymentParams(result: CheckoutSubmitResult) {
+  return result.payment?.prepay?.paymentParams || result.payment?.prepay?.payParams;
+}
+
+function mergePaymentResult(result: CheckoutSubmitResult, payment: Awaited<ReturnType<typeof payBffOrder>>): CheckoutSubmitResult {
+  const payableAmountCent = parseNumberLike(payment.order?.payableAmountCent ?? result.payableAmountCent);
+  const nextPayableAmountCent = typeof payableAmountCent === 'number' && payableAmountCent >= 0
+    ? payableAmountCent
+    : result.payableAmountCent;
+
+  return {
+    ...result,
+    orderStatus: payment.order?.orderStatus ?? result.orderStatus,
+    payableAmount: centToYuan(nextPayableAmountCent),
+    payableAmountCent: nextPayableAmountCent,
+    order: payment.order ?? result.order,
+    payment,
+  };
 }
 
 // 统一结算页加载、选券重算和真实微信支付流程；业务字段仍由各业态 adapter/page 独立维护。
@@ -68,6 +94,8 @@ export function useCheckoutController<
   const [data, setData] = useState<TData>();
   const [selectedCouponId, setSelectedCouponId] = useState<string>();
   const [couponPopupVisible, setCouponPopupVisible] = useState(false);
+  const [createdOrderResult, setCreatedOrderResult] = useState<CheckoutSubmitResult>();
+  const submitLockRef = useRef(false);
 
   const applyLoadedData = useCallback((nextData: TData) => {
     setData(nextData);
@@ -106,14 +134,20 @@ export function useCheckoutController<
     payload: TSubmitPayload,
     options?: CheckoutRunOptions,
   ) => {
+    if (submitLockRef.current) return undefined;
+    submitLockRef.current = true;
+
+    try {
     if (!data) {
       await showWechatToast(adapter.emptySubmitText || '订单信息已失效，请重新选择');
       return undefined;
     }
 
     let submitData: TData = data;
+    const shouldRefreshExistingPayment = Boolean(createdOrderResult);
+    let result: CheckoutSubmitResult | undefined = createdOrderResult;
     const revalidateBeforeSubmit = adapter.revalidateBeforeSubmit;
-    if (revalidateBeforeSubmit) {
+    if (!result && revalidateBeforeSubmit) {
       try {
         const revalidateResult = await runCheckoutTask(() => revalidateBeforeSubmit(submitData, payload), options);
         submitData = revalidateResult.data;
@@ -129,12 +163,13 @@ export function useCheckoutController<
       }
     }
 
-    let result: CheckoutSubmitResult | undefined;
-    try {
-      result = await runCheckoutTask(() => adapter.submit(submitData, payload), options);
-    } catch (error) {
-      await showWechatToast(resolveErrorMessage(error, adapter.submitErrorText));
-      return undefined;
+    if (!result) {
+      try {
+        result = await runCheckoutTask(() => adapter.submit(submitData, payload), options);
+      } catch (error) {
+        await showWechatToast(resolveErrorMessage(error, adapter.submitErrorText));
+        return undefined;
+      }
     }
 
     if (!result) {
@@ -142,13 +177,11 @@ export function useCheckoutController<
       return undefined;
     }
 
-    try {
-      await adapter.onOrderCreated?.(submitData, result);
-    } catch {
-      // 业务侧成功回调不能影响已创建订单的后续支付和跳转。
-    }
+    setCreatedOrderResult(result);
 
     if (adapter.isOrderComplete?.(result)) {
+      await completeCheckout(adapter, submitData, result);
+      setCreatedOrderResult(undefined);
       await showWechatToast(adapter.completeSuccessText || '下单成功', 'success');
       navigateToMiniRoute(adapter.buildSuccessRoute(result), {
         loginMode: 'none',
@@ -157,6 +190,8 @@ export function useCheckoutController<
     }
 
     if (result.payableAmount <= 0) {
+      await completeCheckout(adapter, submitData, result);
+      setCreatedOrderResult(undefined);
       await showWechatToast(adapter.zeroPaySuccessText || '下单成功', 'success');
       navigateToMiniRoute(adapter.buildSuccessRoute(result), {
         loginMode: 'none',
@@ -164,10 +199,22 @@ export function useCheckoutController<
       return result;
     }
 
-    const paymentParams = result.payment?.prepay?.paymentParams || result.payment?.prepay?.payParams;
+    if (shouldRefreshExistingPayment || !readPaymentParams(result)) {
+      const currentResult = result;
+      try {
+        const payment = await runCheckoutTask(() => payBffOrder(currentResult.orderNo, 'WECHAT'), options);
+        result = mergePaymentResult(currentResult, payment);
+        setCreatedOrderResult(result);
+        await adapter.onPaymentPrepared?.(submitData, payload, result);
+      } catch (error) {
+        await showWechatToast(resolveErrorMessage(error, '支付参数暂不可用，请稍后重试'));
+        return result;
+      }
+    }
+
+    const paymentParams = readPaymentParams(result);
     if (!paymentParams) {
-      await showWechatToast('支付参数缺失，订单已创建，可稍后继续支付');
-      navigateToCreatedOrder(adapter, result);
+      await showWechatToast('支付参数缺失，请稍后重试');
       return result;
     }
 
@@ -176,17 +223,21 @@ export function useCheckoutController<
       paymentParams: paymentParams as unknown as Parameters<typeof Taro.requestPayment>[0],
     });
     if (paymentStatus !== 'success') {
-      navigateToCreatedOrder(adapter, result);
       return result;
     }
 
-    await syncBffPaymentStatusSilently(result.payment?.prepay?.payNo);
+    await syncBffPaymentStatusSilently(result.payment?.prepay?.payNo ?? result.order?.payNo);
+    await completeCheckout(adapter, submitData, result);
+    setCreatedOrderResult(undefined);
     await showWechatToast(adapter.paymentSuccessText || '支付成功', 'success');
     navigateToMiniRoute(adapter.buildSuccessRoute(result), {
       loginMode: 'none',
     });
     return result;
-  }, [adapter, data]);
+    } finally {
+      submitLockRef.current = false;
+    }
+  }, [adapter, createdOrderResult, data]);
 
   return {
     data,

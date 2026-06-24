@@ -1,13 +1,22 @@
 import { MINI_STORAGE_KEYS } from '@/core/constants/storage';
 import {
   isBffTicketOrderIssued,
-  type BffOrderPaymentResponse,
   type BffTicketVoucher,
   type BffOrderUnifiedRequest,
 } from '@/core/services/bff-order-api';
 import { pruneCheckoutDrafts, removeCheckoutDraftById } from '@/core/services/checkout-draft-lifecycle';
-import { submitAndPayBffOrder, type CheckoutSubmitResult } from '@/core/services/checkout-flow';
+import {
+  buildCheckoutPendingOrder,
+  canReuseCheckoutPendingOrder,
+  createCheckoutRequestFingerprint,
+  restoreCheckoutPendingResult,
+  submitAndPayBffOrder,
+  type CheckoutPendingOrder,
+  type CheckoutSubmitResult,
+  type SubmitAndPayBffOrderOptions,
+} from '@/core/services/checkout-flow';
 import { getCache, setCache } from '@/core/utils/cache';
+import { sanitizeMallRuntimeUrl } from '@/core/utils/mall-runtime';
 import { buildTicketCheckoutOrderRequest } from './checkout-adapter';
 import type { TicketCoupon } from './ticket-booking';
 
@@ -17,6 +26,7 @@ export interface TicketOrderDraftProduct {
   skuId?: string;
   skuName?: string;
   title: string;
+  imageSrc?: string;
   category: 'ticket' | 'annualCard' | 'fastPass';
   price: number;
   unitPriceCent?: number;
@@ -69,6 +79,7 @@ export interface TicketOrderDraft {
   addonQuantity: number;
   contact: TicketOrderContact;
   travelers: TicketOrderTraveler[];
+  pendingOrder?: CheckoutPendingOrder;
   createdAt: string;
   updatedAt: string;
 }
@@ -346,6 +357,7 @@ export function buildTicketUnifiedOrderRequest(
         visitDate: payload.selectedDate,
         productCode: product.productCode || product.id,
         productTitle: product.title,
+        imageUrl: sanitizeMallRuntimeUrl(product.imageSrc, { allowMockImage: true }),
         skuId: resolveTicketSkuId(product),
         skuName: product.skuName || '',
         travelers: JSON.stringify(payload.travelers.filter((traveler) => traveler.productId === product.id)),
@@ -494,16 +506,31 @@ export async function submitTicketOrderDraft(draftId: string, payload: SubmitTic
     travelers: payload.travelers,
   }) || draft;
 
-  const submitResult = await submitAndPayBffOrder(buildTicketCheckoutOrderRequest(nextDraft, payload), {
+  const request = buildTicketCheckoutOrderRequest(nextDraft, payload);
+  const requestFingerprint = createCheckoutRequestFingerprint(request);
+  const submitOptions: SubmitAndPayBffOrderOptions = {
     sceneLabel: '门票订单',
-    onOrderCreated: () => removeTicketOrderDraft(draftId),
+    onCheckoutCompleted: () => removeTicketOrderDraft(draftId),
     validateCreatedOrder: (order) => {
       if (String(order.orderStatus || '').toUpperCase() === 'CLOSED') {
         throw new Error('门票出票失败，请稍后重试或联系工作人员');
       }
     },
     isOrderComplete: (order) => isBffTicketOrderIssued(order.orderStatus, order.ticketVouchers),
-  });
+  };
+  const reusablePendingOrder = canReuseCheckoutPendingOrder(nextDraft.pendingOrder, requestFingerprint);
+
+  if (!reusablePendingOrder && nextDraft.pendingOrder) {
+    updateTicketOrderDraft(draftId, { pendingOrder: undefined });
+  }
+
+  const submitResult = reusablePendingOrder
+    ? restoreCheckoutPendingResult(nextDraft.pendingOrder!, submitOptions)
+    : await submitAndPayBffOrder(request, submitOptions);
+  const pendingOrder = buildCheckoutPendingOrder(submitResult, requestFingerprint);
+  if (!reusablePendingOrder && pendingOrder) {
+    updateTicketOrderDraft(draftId, { pendingOrder });
+  }
 
   return {
     id: submitResult.orderNo,
@@ -514,5 +541,22 @@ export async function submitTicketOrderDraft(draftId: string, payload: SubmitTic
     order: submitResult.order,
     ticketVouchers: submitResult.order?.ticketVouchers,
     payment: submitResult.payment,
+    completeCheckout: submitResult.completeCheckout,
   };
+}
+
+// 支付预下单成功后回写同一门票草稿的待支付快照，支付失败后继续使用同一订单号。
+export function persistTicketCheckoutPendingOrder(
+  draftId: string,
+  payload: SubmitTicketOrderDraftPayload,
+  result: CheckoutSubmitResult,
+) {
+  const draft = getTicketOrderDraft(draftId);
+  if (!draft) return;
+
+  const request = buildTicketCheckoutOrderRequest(draft, payload);
+  const pendingOrder = buildCheckoutPendingOrder(result, createCheckoutRequestFingerprint(request));
+  if (pendingOrder) {
+    updateTicketOrderDraft(draftId, { pendingOrder });
+  }
 }

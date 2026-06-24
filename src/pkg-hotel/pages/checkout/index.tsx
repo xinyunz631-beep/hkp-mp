@@ -11,7 +11,12 @@ import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { useCheckoutController } from '@/core/runtime/use-checkout-controller';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import { showWechatToast } from '@/core/utils/wechat-actions';
-import { fetchCheckoutData, submitHotelCheckoutOrder, type HotelCheckoutData } from '@/pkg-hotel/services/checkout';
+import {
+  fetchCheckoutData,
+  persistHotelCheckoutPendingOrder,
+  submitHotelCheckoutOrder,
+  type HotelCheckoutData,
+} from '@/pkg-hotel/services/checkout';
 import { updateHotelOrderDraft } from '@/pkg-hotel/services/order-draft';
 import './index.scss';
 
@@ -69,6 +74,7 @@ const CheckoutPage = observer(function CheckoutPage() {
       };
     },
     submit: (data, payload) => submitHotelCheckoutOrder(data.draftId, payload),
+    onPaymentPrepared: (data, payload, result) => persistHotelCheckoutPendingOrder(data.draftId, payload, result),
     buildSuccessRoute: (result) => `${MINI_PACKAGE_ROUTES.orderDetail}?orderId=${encodeURIComponent(result.orderNo)}`,
     submitErrorText: '酒店订单提交暂不可用，请稍后再试',
     emptySubmitText: '订单信息已失效，请重新选择',

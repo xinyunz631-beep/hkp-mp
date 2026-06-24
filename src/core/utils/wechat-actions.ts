@@ -54,6 +54,7 @@ interface ScanCodeResult {
 
 type AppPaymentStatus = 'success' | 'pending' | 'failed';
 type WechatPaymentParams = Parameters<typeof Taro.requestPayment>[0];
+type WechatPaymentSignType = NonNullable<WechatPaymentParams['signType']>;
 
 interface AppPaymentOptions {
   title?: string;
@@ -61,6 +62,8 @@ interface AppPaymentOptions {
   paymentParams?: WechatPaymentParams;
   allowPending?: boolean;
 }
+
+const WECHAT_PAYMENT_SIGN_TYPES = new Set<string>(['MD5', 'HMAC-SHA256', 'RSA']);
 
 function getWechatFailMessage(error: unknown) {
   return resolveErrorMessage(error, '');
@@ -77,6 +80,47 @@ function resolveWechatPaymentFailMessage(error: unknown) {
   }
 
   return resolveErrorMessage(error, '支付未完成');
+}
+
+function buildWechatPaymentDebugParams(paymentParams: WechatPaymentParams) {
+  const params = paymentParams as unknown as Record<string, unknown>;
+
+  return {
+    keys: Object.keys(params),
+    timeStamp: params.timeStamp,
+    signType: params.signType,
+    package: params.package,
+    hasNonceStr: Boolean(params.nonceStr),
+    hasPaySign: Boolean(params.paySign),
+  };
+}
+
+function readWechatPaymentString(params: Record<string, unknown>, key: string) {
+  const value = params[key];
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+// 按微信官方 requestPayment 参数白名单归一化，避免把后端诊断字段 appId 透传给原生 API。
+function normalizeWechatPaymentParams(paymentParams: WechatPaymentParams | undefined) {
+  if (!paymentParams) return undefined;
+  const params = paymentParams as unknown as Record<string, unknown>;
+  const timeStamp = readWechatPaymentString(params, 'timeStamp');
+  const nonceStr = readWechatPaymentString(params, 'nonceStr');
+  const packageValue = readWechatPaymentString(params, 'package');
+  const paySign = readWechatPaymentString(params, 'paySign');
+  const signType = readWechatPaymentString(params, 'signType').toUpperCase();
+
+  if (!timeStamp || !nonceStr || !packageValue || !paySign) return undefined;
+  if (!packageValue.startsWith('prepay_id=')) return undefined;
+  if (signType && !WECHAT_PAYMENT_SIGN_TYPES.has(signType)) return undefined;
+
+  return {
+    timeStamp,
+    nonceStr,
+    package: packageValue,
+    paySign,
+    ...(signType ? { signType: signType as WechatPaymentSignType } : {}),
+  } as WechatPaymentParams;
 }
 
 // 展示微信小程序原生轻提示，页面只传业务文案。
@@ -136,12 +180,18 @@ export async function requestWechatPayment({
   paymentParams,
   allowPending = false,
 }: AppPaymentOptions): Promise<AppPaymentStatus> {
-  if (paymentParams) {
+  const normalizedPaymentParams = normalizeWechatPaymentParams(paymentParams);
+  if (normalizedPaymentParams) {
     try {
-      await Taro.requestPayment(paymentParams);
+      await Taro.requestPayment(normalizedPaymentParams);
       return 'success';
     } catch (error) {
       const errMsg = getWechatFailMessage(error);
+      console.error('[hkitty-pay] requestPayment failed', {
+        errMsg,
+        error,
+        paymentParams: buildWechatPaymentDebugParams(normalizedPaymentParams),
+      });
       if (allowPending && /cancel/i.test(errMsg)) return 'pending';
 
       await showWechatToast(resolveWechatPaymentFailMessage(error));
@@ -149,6 +199,11 @@ export async function requestWechatPayment({
     }
   }
 
+  if (paymentParams) {
+    console.error('[hkitty-pay] invalid paymentParams', {
+      paymentParams: buildWechatPaymentDebugParams(paymentParams),
+    });
+  }
   await showWechatToast('支付参数暂不可用，请稍后再试');
   return allowPending ? 'pending' : 'failed';
 }

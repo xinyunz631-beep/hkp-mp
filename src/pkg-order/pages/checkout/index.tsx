@@ -13,7 +13,12 @@ import { useCheckoutController } from '@/core/runtime/use-checkout-controller';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import { navigateToMiniRoute } from '@/core/utils/navigation';
 import { previewWechatImages, showWechatToast } from '@/core/utils/wechat-actions';
-import { fetchCheckoutData, submitOrderCheckoutOrder, type OrderCheckoutData } from '@/pkg-order/services/checkout';
+import {
+  fetchCheckoutData,
+  persistMallCheckoutPendingOrder,
+  submitOrderCheckoutOrder,
+  type OrderCheckoutData,
+} from '@/pkg-order/services/checkout';
 import './index.scss';
 
 function resolveCheckoutRouteParams() {
@@ -72,6 +77,7 @@ const CheckoutPage = observer(function CheckoutPage() {
       };
     },
     submit: (data, remark) => submitOrderCheckoutOrder(data, remark),
+    onPaymentPrepared: (data, remark, result) => persistMallCheckoutPendingOrder(data, result, remark),
     buildSuccessRoute: (result) => `${MINI_PACKAGE_ROUTES.orderDetail}?orderId=${encodeURIComponent(result.orderNo)}`,
     submitErrorText: '商城订单提交暂不可用，请稍后再试',
     emptySubmitText: '订单信息已失效，请重新选择商品',

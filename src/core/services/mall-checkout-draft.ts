@@ -1,4 +1,5 @@
 import { MINI_STORAGE_KEYS } from '@/core/constants/storage';
+import type { CheckoutPendingOrder } from '@/core/services/checkout-flow';
 import type { HkpAddressSummary } from '@/core/types/hkp';
 import { pruneCheckoutDrafts, removeCheckoutDraftById } from './checkout-draft-lifecycle';
 import { getCache, setCache } from '@/core/utils/cache';
@@ -36,6 +37,7 @@ export interface MallCheckoutDraft {
   id: string;
   products: MallCheckoutDraftProduct[];
   selectedCouponId?: string;
+  pendingOrder?: CheckoutPendingOrder;
   createdAt: string;
   updatedAt: string;
 }

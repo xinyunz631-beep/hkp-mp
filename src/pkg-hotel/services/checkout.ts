@@ -1,8 +1,12 @@
 import { confirmBffOrder, type BffOrderConfirmResponse, type BffOrderItem } from '@/core/services/bff-order-api';
 import { fetchBffCouponAvailable, getBffAvailableCouponList } from '@/core/services/bff-coupon-api';
 import {
+  buildCheckoutPendingOrder,
+  canReuseCheckoutPendingOrder,
+  createCheckoutRequestFingerprint,
   isCheckoutCouponSummary,
   normalizeCheckoutAmounts,
+  restoreCheckoutPendingResult,
   resolveCheckoutCouponState,
   submitAndPayBffOrder,
   toCheckoutCouponSummary,
@@ -212,8 +216,42 @@ export async function submitHotelCheckoutOrder(draftId: string, payload: SubmitH
     selectedCouponId: payload.selectedCouponId ?? undefined,
   }) || draft;
 
-  return submitAndPayBffOrder(buildHotelCheckoutOrderRequest(nextDraft, payload), {
+  const request = buildHotelCheckoutOrderRequest(nextDraft, payload);
+  const requestFingerprint = createCheckoutRequestFingerprint(request);
+  const submitOptions = {
     sceneLabel: '酒店订单',
-    onOrderCreated: () => removeHotelOrderDraft(draftId),
-  });
+    onCheckoutCompleted: () => removeHotelOrderDraft(draftId),
+  };
+
+  if (canReuseCheckoutPendingOrder(nextDraft.pendingOrder, requestFingerprint)) {
+    return restoreCheckoutPendingResult(nextDraft.pendingOrder!, submitOptions);
+  }
+
+  if (nextDraft.pendingOrder) {
+    updateHotelOrderDraft(draftId, { pendingOrder: undefined });
+  }
+
+  const result = await submitAndPayBffOrder(request, submitOptions);
+  const pendingOrder = buildCheckoutPendingOrder(result, requestFingerprint);
+  if (pendingOrder) {
+    updateHotelOrderDraft(draftId, { pendingOrder });
+  }
+
+  return result;
+}
+
+// 支付预下单成功后回写同一酒店草稿的待支付快照，支付失败重进页面仍继续同一订单。
+export function persistHotelCheckoutPendingOrder(
+  draftId: string,
+  payload: SubmitHotelOrderDraftPayload,
+  result: CheckoutSubmitResult,
+) {
+  const draft = ensureHotelOrderDraft({ draftId });
+  if (!draft) return;
+
+  const request = buildHotelCheckoutOrderRequest(draft, payload);
+  const pendingOrder = buildCheckoutPendingOrder(result, createCheckoutRequestFingerprint(request));
+  if (pendingOrder) {
+    updateHotelOrderDraft(draftId, { pendingOrder });
+  }
 }

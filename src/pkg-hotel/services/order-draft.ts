@@ -1,4 +1,5 @@
 import { MINI_STORAGE_KEYS } from '@/core/constants/storage';
+import type { CheckoutPendingOrder } from '@/core/services/checkout-flow';
 import { pruneCheckoutDrafts, removeCheckoutDraftById } from '@/core/services/checkout-draft-lifecycle';
 import { getCache, setCache } from '@/core/utils/cache';
 import {
@@ -33,6 +34,7 @@ export interface HotelOrderDraft {
   guests: HotelOrderDraftGuest[];
   contact: HotelOrderDraftContact;
   selectedCouponId?: string;
+  pendingOrder?: CheckoutPendingOrder;
   invoiceText: string;
   checkInTimeText: string;
   checkOutTimeText: string;

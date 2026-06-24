@@ -1,8 +1,12 @@
 import { confirmBffOrder, type BffOrderConfirmResponse } from '@/core/services/bff-order-api';
 import { fetchBffCouponAvailable } from '@/core/services/bff-coupon-api';
 import {
+  buildCheckoutPendingOrder,
+  canReuseCheckoutPendingOrder,
+  createCheckoutRequestFingerprint,
   isCheckoutCouponSummary,
   normalizeCheckoutAmounts,
+  restoreCheckoutPendingResult,
   resolveCheckoutCouponState,
   submitAndPayBffOrder,
   toCheckoutCouponSummary,
@@ -303,14 +307,50 @@ export async function submitOrderCheckoutOrder(data: OrderCheckoutData, remark?:
   const draft = getMallCheckoutDraft(data.draftId);
   if (!draft) return undefined;
 
-  return submitAndPayBffOrder(buildMallCheckoutOrderRequest({
+  const request = buildMallCheckoutOrderRequest({
     draft,
     address: data.address,
     selectedCouponId: data.selectedCouponId,
     freightAmount: data.freightAmount,
     remark,
-  }), {
-    sceneLabel: '商城订单',
-    onOrderCreated: () => cleanupMallCheckoutAfterOrderCreated(draft),
   });
+  const requestFingerprint = createCheckoutRequestFingerprint(request);
+  const submitOptions = {
+    sceneLabel: '商城订单',
+    onCheckoutCompleted: () => cleanupMallCheckoutAfterOrderCreated(draft),
+  };
+
+  if (canReuseCheckoutPendingOrder(draft.pendingOrder, requestFingerprint)) {
+    return restoreCheckoutPendingResult(draft.pendingOrder!, submitOptions);
+  }
+
+  if (draft.pendingOrder) {
+    updateMallCheckoutDraft(draft.id, { pendingOrder: undefined });
+  }
+
+  const result = await submitAndPayBffOrder(request, submitOptions);
+  const pendingOrder = buildCheckoutPendingOrder(result, requestFingerprint);
+  if (pendingOrder) {
+    updateMallCheckoutDraft(draft.id, { pendingOrder });
+  }
+
+  return result;
+}
+
+// 支付预下单成功后回写同一商城草稿的待支付快照，便于失败后继续支付同一订单。
+export function persistMallCheckoutPendingOrder(data: OrderCheckoutData, result: CheckoutSubmitResult, remark?: string) {
+  const draft = getMallCheckoutDraft(data.draftId);
+  if (!draft) return;
+
+  const request = buildMallCheckoutOrderRequest({
+    draft,
+    address: data.address,
+    selectedCouponId: data.selectedCouponId,
+    freightAmount: data.freightAmount,
+    remark,
+  });
+  const pendingOrder = buildCheckoutPendingOrder(result, createCheckoutRequestFingerprint(request));
+  if (pendingOrder) {
+    updateMallCheckoutDraft(draft.id, { pendingOrder });
+  }
 }

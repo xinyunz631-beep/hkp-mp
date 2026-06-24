@@ -18,6 +18,7 @@ import { showWechatConfirm, showWechatToast } from '@/core/utils/wechat-actions'
 import { TicketSubmitFooter } from '@/pkg-ticket/components/TicketSubmitFooter';
 import { fetchCheckoutData, type TicketCheckoutPageData } from '@/pkg-ticket/services/checkout';
 import {
+  persistTicketCheckoutPendingOrder,
   submitTicketOrderDraft,
   updateTicketOrderDraft,
   type TicketOrderTraveler,
@@ -139,6 +140,7 @@ const CheckoutPage = observer(function CheckoutPage() {
       };
     },
     submit: (data, payload) => submitTicketOrderDraft(data.draft?.id || draftId, payload),
+    onPaymentPrepared: (data, payload, result) => persistTicketCheckoutPendingOrder(data.draft?.id || draftId, payload, result),
     buildSuccessRoute: (result) => `${MINI_PACKAGE_ROUTES.orderDetail}?orderId=${encodeURIComponent(result.orderNo)}`,
     isOrderComplete: (result) => isBffTicketOrderIssued(result.orderStatus, result.order?.ticketVouchers),
     submitErrorText: '门票订单提交暂不可用，请稍后再试',

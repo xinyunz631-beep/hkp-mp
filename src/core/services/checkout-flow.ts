@@ -1,6 +1,5 @@
 import {
   createBffOrder,
-  payBffOrder,
   type BffOrder,
   type BffOrderConfirmResponse,
   type BffOrderPaymentChannel,
@@ -67,6 +66,17 @@ export interface CheckoutSubmitResult {
   payableAmountCent: number;
   order?: BffOrder;
   payment?: BffOrderPaymentResponse;
+  completeCheckout?: () => Promise<void> | void;
+}
+
+export interface CheckoutPendingOrder {
+  orderNo: string;
+  orderStatus?: string;
+  payableAmountCent: number;
+  payNo?: string;
+  payExpireAt?: string;
+  requestFingerprint: string;
+  updatedAt: string;
 }
 
 export interface SubmitAndPayBffOrderOptions {
@@ -74,7 +84,7 @@ export interface SubmitAndPayBffOrderOptions {
   paymentChannel?: BffOrderPaymentChannel;
   isOrderComplete?: (order: BffOrder) => boolean;
   validateCreatedOrder?: (order: BffOrder) => void;
-  onOrderCreated?: (result: CheckoutSubmitResult) => Promise<void> | void;
+  onCheckoutCompleted?: (result: CheckoutSubmitResult) => Promise<void> | void;
 }
 
 function normalizeCent(value: unknown, fallback = 0) {
@@ -108,6 +118,29 @@ function normalizeOptionalCent(value: unknown, fallback?: unknown) {
 function normalizeCouponNos(couponNos?: unknown) {
   if (!Array.isArray(couponNos)) return [];
   return couponNos.map((couponNo) => String(couponNo || '').trim()).filter(Boolean);
+}
+
+function stableStringify(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => stableStringify(item)).join(',')}]`;
+  }
+
+  if (value && typeof value === 'object') {
+    const record = value as Record<string, unknown>;
+    return `{${Object.keys(record)
+      .filter((key) => typeof record[key] !== 'undefined')
+      .sort()
+      .map((key) => `${JSON.stringify(key)}:${stableStringify(record[key])}`)
+      .join(',')}}`;
+  }
+
+  return JSON.stringify(value);
+}
+
+function isExpiredAt(value?: string) {
+  if (!value) return false;
+  const time = Date.parse(value);
+  return Number.isFinite(time) && time <= Date.now();
 }
 
 function formatYuan(amountCent: unknown = 0) {
@@ -305,13 +338,79 @@ export function toCheckoutCouponSummary(coupon: BffAvailableCouponView): HkpCoup
   };
 }
 
-// 订单创建成功后执行业务清理，清理失败不影响已创建订单继续支付或查看。
-async function notifyOrderCreated(options: SubmitAndPayBffOrderOptions, result: CheckoutSubmitResult) {
-  try {
-    await options.onOrderCreated?.(result);
-  } catch {
-    // 草稿或购物车清理失败不能让已创建订单进入失败态。
-  }
+// 支付链路终态成功后执行业务清理，清理失败不影响已创建订单继续查看。
+function attachCheckoutCompletion(
+  result: Omit<CheckoutSubmitResult, 'completeCheckout'>,
+  options: SubmitAndPayBffOrderOptions,
+): CheckoutSubmitResult {
+  const nextResult: CheckoutSubmitResult = { ...result };
+  nextResult.completeCheckout = async () => {
+    try {
+      await options.onCheckoutCompleted?.(nextResult);
+    } catch {
+      // 草稿或购物车清理失败不能影响已完成订单继续查看。
+    }
+  };
+
+  return nextResult;
+}
+
+// 生成统一订单请求指纹，用于判断支付失败后本地待支付订单是否仍对应当前确认单。
+export function createCheckoutRequestFingerprint(request: BffOrderUnifiedRequest) {
+  return stableStringify(request);
+}
+
+// 将已创建但未支付完成的订单保存为草稿内待支付快照，后续重进结算页复用同一订单号。
+export function buildCheckoutPendingOrder(
+  result: CheckoutSubmitResult,
+  requestFingerprint: string,
+): CheckoutPendingOrder | undefined {
+  const payableAmountCent = assertValidPayableAmountCent(result.payableAmountCent, '订单');
+  if (!result.orderNo || payableAmountCent <= 0) return undefined;
+
+  return {
+    orderNo: result.orderNo,
+    orderStatus: result.order?.orderStatus ?? result.orderStatus,
+    payableAmountCent,
+    payNo: result.payment?.prepay?.payNo ?? result.order?.payNo,
+    payExpireAt: result.order?.payExpireAt ?? result.payment?.order?.payExpireAt,
+    requestFingerprint,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+// 判断本地待支付订单是否还能复用；请求内容变了或支付过期时必须重新走后端确认和建单。
+export function canReuseCheckoutPendingOrder(
+  pendingOrder: CheckoutPendingOrder | undefined,
+  requestFingerprint: string,
+) {
+  return Boolean(
+    pendingOrder?.orderNo
+      && pendingOrder.requestFingerprint === requestFingerprint
+      && !isExpiredAt(pendingOrder.payExpireAt),
+  );
+}
+
+// 从草稿内待支付快照恢复提交结果，页面 controller 会继续重新向 BFF 拉取最新预支付参数。
+export function restoreCheckoutPendingResult(
+  pendingOrder: CheckoutPendingOrder,
+  options: SubmitAndPayBffOrderOptions,
+): CheckoutSubmitResult {
+  const payableAmountCent = assertValidPayableAmountCent(pendingOrder.payableAmountCent, options.sceneLabel);
+
+  return attachCheckoutCompletion({
+    orderNo: pendingOrder.orderNo,
+    orderStatus: pendingOrder.orderStatus,
+    payableAmount: centToYuan(payableAmountCent),
+    payableAmountCent,
+    order: {
+      orderNo: pendingOrder.orderNo,
+      orderStatus: pendingOrder.orderStatus,
+      payableAmountCent,
+      payNo: pendingOrder.payNo,
+      payExpireAt: pendingOrder.payExpireAt,
+    },
+  }, options);
 }
 
 // 读取必须由后端返回的应付金额，缺失时阻断提交和支付。
@@ -324,7 +423,7 @@ export function assertValidPayableAmountCent(value: unknown, sceneLabel: string)
   return amount;
 }
 
-// 创建统一订单并申请预支付，微信支付能力由页面 controller 统一唤起。
+// 创建统一订单，微信预支付和原生支付调起由页面 controller 统一处理。
 export async function submitAndPayBffOrder(
   request: BffOrderUnifiedRequest,
   options: SubmitAndPayBffOrderOptions,
@@ -339,34 +438,17 @@ export async function submitAndPayBffOrder(
   options.validateCreatedOrder?.(order);
   const createPayableAmountCent = assertValidPayableAmountCent(order.payableAmountCent, options.sceneLabel);
   const orderStatus = order.orderStatus;
-  const createdResult = {
+  const createdResult = attachCheckoutCompletion({
     orderNo,
     orderStatus,
     payableAmount: centToYuan(createPayableAmountCent),
     payableAmountCent: createPayableAmountCent,
     order,
-  };
-  await notifyOrderCreated(options, createdResult);
+  }, options);
 
   if (createPayableAmountCent === 0 || options.isOrderComplete?.(order)) {
     return createdResult;
   }
 
-  let payment: BffOrderPaymentResponse;
-  try {
-    payment = await payBffOrder(orderNo, options.paymentChannel || 'WECHAT');
-  } catch {
-    // 订单已创建时预支付失败不能把用户留在失效确认单；页面会引导到订单详情继续待支付。
-    return createdResult;
-  }
-  const payableAmountCent = assertValidPayableAmountCent(payment.order?.payableAmountCent ?? createPayableAmountCent, options.sceneLabel);
-
-  return {
-    orderNo,
-    orderStatus: payment.order?.orderStatus ?? orderStatus,
-    payableAmount: centToYuan(payableAmountCent),
-    payableAmountCent,
-    order: payment.order ?? order,
-    payment,
-  };
+  return createdResult;
 }
