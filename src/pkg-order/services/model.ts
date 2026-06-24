@@ -79,7 +79,7 @@ export interface OrderCheckoutData {
   coupons: HkpCouponSummary[];
   discountText: string;
   discountDetails: OrderCheckoutDiscountDetailData[];
-  amountFields: OrderDetailFieldData[];
+  productAmount?: number;
   freightAmount: number;
   totalAmount: number;
   amountReady?: boolean;

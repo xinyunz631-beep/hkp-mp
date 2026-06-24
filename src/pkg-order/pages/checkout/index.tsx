@@ -36,6 +36,7 @@ function toMallAmountCent(value?: number) {
 function hasMallCheckoutChanged(currentData: OrderCheckoutData, nextData: OrderCheckoutData) {
   return toMallAmountCent(currentData.totalAmount) !== toMallAmountCent(nextData.totalAmount)
     || toMallAmountCent(currentData.discountAmount) !== toMallAmountCent(nextData.discountAmount)
+    || toMallAmountCent(currentData.productAmount) !== toMallAmountCent(nextData.productAmount)
     || toMallAmountCent(currentData.freightAmount) !== toMallAmountCent(nextData.freightAmount)
     || currentData.selectedCouponId !== nextData.selectedCouponId
     || currentData.canSubmit !== nextData.canSubmit
@@ -137,6 +138,11 @@ const CheckoutPage = observer(function CheckoutPage() {
     const merchantDisplayName = merchantName || '未提供';
     const hasCouponDiscount = checkoutData.discountAmount > 0;
     const hasDiscountDetails = checkoutData.discountDetails.length > 0;
+    const productCount = checkoutData.products.reduce((total, item) => total + item.quantity, 0);
+    const productAmount = checkoutData.productAmount;
+    const summaryProductAmount = checkoutData.amountReady !== false && typeof productAmount === 'number'
+      ? productAmount
+      : undefined;
     const deliveryErrors = checkoutData.deliveryErrors ?? [];
     const deliveryUnavailable = checkoutData.canSubmit === false;
     const requiresAddress = checkoutData.requiresAddress;
@@ -284,20 +290,6 @@ const CheckoutPage = observer(function CheckoutPage() {
               </View>
             ) : null}
 
-            {hasCouponDiscount && hasDiscountDetails ? (
-              <View className="_pg-card _pg-card--compact">
-                <View className="_pg-line-row _pg-line-row--link" onClick={() => void handleDiscountPress()}>
-                  <Text className="_pg-line-row_label">折扣信息</Text>
-                  <View className="_pg-line-row_value-wrap">
-                    <Text className="_pg-line-row_value">
-                      {checkoutData.discountText === '无可用' ? `已优惠 ¥${checkoutData.discountAmount.toFixed(2)}` : checkoutData.discountText}
-                    </Text>
-                    <AppIcon name="arrowRight" className="_pg-line-row_chevron" size={16} color="#c0c5cf" />
-                  </View>
-                </View>
-              </View>
-            ) : null}
-
             <View className="_pg-card _pg-card--compact">
               <View className="_pg-line-row">
                 <Text className="_pg-line-row_label">支付方式</Text>
@@ -322,14 +314,48 @@ const CheckoutPage = observer(function CheckoutPage() {
               />
             </View>
 
-            {checkoutData.amountFields.length > 0 ? (
-              <View className="_pg-card">
-                {checkoutData.amountFields.map((item) => (
-                  <View className="_pg-line-row" key={item.label}>
-                    <Text className="_pg-line-row_label">{item.label}</Text>
-                    <Text className="_pg-line-row_value _pg-line-row_value--amount">{item.value}</Text>
+            {typeof summaryProductAmount === 'number' ? (
+              <View className="_pg-card _pg-card--compact">
+                <View className="_pg-amount-summary">
+                  <View className="_pg-amount-summary_header">
+                    <Text className="_pg-amount-summary_title">共 {productCount} 件</Text>
+                    <Text className="_pg-amount-summary_dot">·</Text>
+                    <Text className="_pg-amount-summary_subtitle">小计 ¥{summaryProductAmount.toFixed(2)}</Text>
                   </View>
-                ))}
+                  <View className="_pg-amount-summary_row">
+                    <Text className="_pg-amount-summary_label">商品金额</Text>
+                    <Text className="_pg-amount-summary_value">¥{summaryProductAmount.toFixed(2)}</Text>
+                  </View>
+                  {requiresAddress ? (
+                    <View className="_pg-amount-summary_row">
+                      <Text className="_pg-amount-summary_label">运费</Text>
+                      <Text className="_pg-amount-summary_value">¥{checkoutData.freightAmount.toFixed(2)}</Text>
+                    </View>
+                  ) : null}
+                  {checkoutData.discountAmount > 0 ? (
+                    <>
+                      <View className="_pg-amount-summary_row">
+                        <Text className="_pg-amount-summary_label">优惠金额</Text>
+                        <Text className="_pg-amount-summary_value _pg-amount-summary_value--discount">
+                          - ¥{checkoutData.discountAmount.toFixed(2)}
+                        </Text>
+                      </View>
+                      {checkoutData.discountDetails.map((item) => (
+                        <View className="_pg-amount-summary_row _pg-amount-summary_row--sub" key={item.id}>
+                          <View className="_pg-amount-summary_sub-main">
+                            <Text className="_pg-amount-summary_bullet">·</Text>
+                            <Text className="_pg-amount-summary_sub-label">{item.title}</Text>
+                          </View>
+                          <Text className="_pg-amount-summary_sub-value">{item.amountText}</Text>
+                        </View>
+                      ))}
+                    </>
+                  ) : null}
+                  <View className="_pg-amount-summary_row _pg-amount-summary_row--total">
+                    <Text className="_pg-amount-summary_label">实付款</Text>
+                    <Text className="_pg-amount-summary_total">¥{checkoutData.totalAmount.toFixed(2)}</Text>
+                  </View>
+                </View>
               </View>
             ) : null}
           </View>

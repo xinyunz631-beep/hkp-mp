@@ -76,15 +76,17 @@ function readPromotionRecordString(record: Record<string, unknown>, keys: string
   return typeof value === 'string' ? value.trim() : '';
 }
 
-// 将门票确认单后端优惠拆分转成弹层明细，只展示后端返回了名称和金额的明细。
-function buildTicketDiscountDetails(confirmation: BffOrderConfirmResponse): TicketCheckoutDiscountDetail[] {
+function readTicketAppliedDiscounts(confirmation: BffOrderConfirmResponse) {
   const appliedDiscounts = Array.isArray(confirmation.promotionQuote?.appliedDiscounts)
     ? confirmation.promotionQuote.appliedDiscounts
     : [];
-  return appliedDiscounts
-    .map((item, index): TicketCheckoutDiscountDetail | undefined => {
-      if (!item || typeof item !== 'object') return undefined;
-      const record = item as Record<string, unknown>;
+  return appliedDiscounts.filter((item): item is Record<string, unknown> => Boolean(item && typeof item === 'object'));
+}
+
+// 将门票确认单后端优惠拆分转成弹层明细，只展示后端返回了名称和金额的明细。
+function buildTicketDiscountDetails(confirmation: BffOrderConfirmResponse): TicketCheckoutDiscountDetail[] {
+  return readTicketAppliedDiscounts(confirmation)
+    .map((record, index): TicketCheckoutDiscountDetail | undefined => {
       const discountAmountCent = parseNumberLike(record.discountAmountCent);
       if (typeof discountAmountCent !== 'number' || discountAmountCent <= 0) return undefined;
       const title = readPromotionRecordString(record, ['discountName']);

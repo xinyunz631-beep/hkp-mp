@@ -121,6 +121,7 @@ const CheckoutPage = observer(function CheckoutPage() {
       : '暂无可用优惠券';
   const hasCouponDiscount = Boolean(checkoutData && checkoutData.discountAmount > 0);
   const hasDiscountDetails = Boolean(checkoutData?.discountDetails.length);
+  const summarySubtotalAmount = productAmount;
 
   async function refreshHotelCheckout(nextRoomCount = roomCount, nextCouponId: string | null | undefined = selectedCouponId) {
     if (!checkoutData) return false;
@@ -330,6 +331,45 @@ const CheckoutPage = observer(function CheckoutPage() {
                 <Text className="_pg-line-row_value">{checkoutData.invoiceText}</Text>
               </View>
             </View>
+
+            {typeof summarySubtotalAmount === 'number' ? (
+              <View className="_pg-card _pg-card--compact">
+                <View className="_pg-amount-summary">
+                  <View className="_pg-amount-summary_header">
+                    <Text className="_pg-amount-summary_title">共 {roomCount} 间</Text>
+                    <Text className="_pg-amount-summary_dot">·</Text>
+                    <Text className="_pg-amount-summary_subtitle">小计 ¥{summarySubtotalAmount.toFixed(2)}</Text>
+                  </View>
+                  <View className="_pg-amount-summary_row">
+                    <Text className="_pg-amount-summary_label">房费金额</Text>
+                    <Text className="_pg-amount-summary_value">¥{summarySubtotalAmount.toFixed(2)}</Text>
+                  </View>
+                  {checkoutData.discountAmount > 0 ? (
+                    <>
+                      <View className="_pg-amount-summary_row">
+                        <Text className="_pg-amount-summary_label">优惠金额</Text>
+                        <Text className="_pg-amount-summary_value _pg-amount-summary_value--discount">
+                          - ¥{checkoutData.discountAmount.toFixed(2)}
+                        </Text>
+                      </View>
+                      {checkoutData.discountDetails.map((item) => (
+                        <View className="_pg-amount-summary_row _pg-amount-summary_row--sub" key={item.id}>
+                          <View className="_pg-amount-summary_sub-main">
+                            <Text className="_pg-amount-summary_bullet">·</Text>
+                            <Text className="_pg-amount-summary_sub-label">{item.title}</Text>
+                          </View>
+                          <Text className="_pg-amount-summary_sub-value">{item.amountText}</Text>
+                        </View>
+                      ))}
+                    </>
+                  ) : null}
+                  <View className="_pg-amount-summary_row _pg-amount-summary_row--total">
+                    <Text className="_pg-amount-summary_label">实付款</Text>
+                    <Text className="_pg-amount-summary_total">¥{totalAmount.toFixed(2)}</Text>
+                  </View>
+                </View>
+              </View>
+            ) : null}
           </View>
           <PageShare>
             {hasCoupons ? (

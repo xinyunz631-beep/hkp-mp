@@ -44,19 +44,6 @@ function resolveSelectedCouponId(options: FetchCheckoutDataOptions, draft: MallC
   return draft.selectedCouponId;
 }
 
-function buildDeliveryAmountField(requiresAddress: boolean, freightAmount?: number) {
-  if (!requiresAddress) {
-    return { label: '交付', value: '无需物流' };
-  }
-
-  if (typeof freightAmount !== 'number') return undefined;
-
-  return {
-    label: '运费',
-    value: freightAmount > 0 ? formatCurrency(freightAmount) : '¥0.00',
-  };
-}
-
 // 从后端原始记录中读取可展示文案，避免把空字段和未清洗文本透出到页面。
 function readRecordString(record: Record<string, unknown>, keys: string[]) {
   const value = keys.map((key) => record[key]).find((item) => typeof item === 'string' && item.trim());
@@ -211,7 +198,7 @@ function buildReadonlyCheckoutData(
     coupons: [],
     discountText: '',
     discountDetails: [],
-    amountFields: [],
+    productAmount: undefined,
     freightAmount: deliveryCheck.freightAmount,
     totalAmount: 0,
     amountReady: false,
@@ -292,16 +279,6 @@ export async function fetchCheckoutData(options: FetchCheckoutDataOptions = {}) 
       ? '请选择优惠券'
       : '';
 
-  const amountFields = [
-    amounts.hasOriginalAmount
-      ? { label: '商品金额', value: formatCurrency(amounts.originalAmount) }
-      : undefined,
-    buildDeliveryAmountField(
-      requiresAddress,
-      amounts.hasFreightAmount ? amounts.freightAmount : deliveryCheck.freightAmount,
-    ),
-  ].filter((item): item is { label: string; value: string } => Boolean(item));
-
   return {
     ...readonlyData,
     couponText,
@@ -313,7 +290,7 @@ export async function fetchCheckoutData(options: FetchCheckoutDataOptions = {}) 
       ? `已优惠 ${formatCurrency(amounts.discountAmount)}`
       : '',
     discountDetails: buildPromotionDiscountDetails(confirmation),
-    amountFields,
+    productAmount: amounts.hasOriginalAmount ? amounts.originalAmount : undefined,
     freightAmount: amounts.hasFreightAmount ? amounts.freightAmount : deliveryCheck.freightAmount,
     totalAmount: amounts.payableAmount,
     amountReady: true,

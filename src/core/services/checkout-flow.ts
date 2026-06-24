@@ -5,6 +5,8 @@ import {
   type BffOrderConfirmResponse,
   type BffOrderPaymentChannel,
   type BffOrderPaymentResponse,
+  type BffPromotionCouponView,
+  type BffPromotionDiscountLine,
   type BffOrderRejectedCoupon,
   type BffOrderUnifiedRequest,
 } from '@/core/services/bff-order-api';
@@ -103,8 +105,9 @@ function normalizeOptionalCent(value: unknown, fallback?: unknown) {
   };
 }
 
-function normalizeCouponNos(couponNos?: string[]) {
-  return (couponNos ?? []).map((couponNo) => String(couponNo || '').trim()).filter(Boolean);
+function normalizeCouponNos(couponNos?: unknown) {
+  if (!Array.isArray(couponNos)) return [];
+  return couponNos.map((couponNo) => String(couponNo || '').trim()).filter(Boolean);
 }
 
 function formatYuan(amountCent: unknown = 0) {
@@ -169,26 +172,73 @@ export function buildSelectedCouponNos(selectedCouponId?: string | null) {
   return selectedCouponId ? [selectedCouponId] : [];
 }
 
+function isOrderWithCouponFacts(
+  confirmation: BffOrderConfirmResponse | BffOrder | undefined,
+): confirmation is BffOrder {
+  return Boolean(confirmation && (
+    'appliedCouponNos' in confirmation
+    || 'selectedCouponNos' in confirmation
+    || 'rejectedCoupons' in confirmation
+  ));
+}
+
+function couponNoOf(record: BffPromotionDiscountLine | BffPromotionCouponView | undefined) {
+  return typeof record?.couponNo === 'string' ? record.couponNo.trim() : '';
+}
+
+function promotionQuoteOf(confirmation: BffOrderConfirmResponse | BffOrder | undefined) {
+  if (!confirmation || !('promotionQuote' in confirmation)) return undefined;
+  return confirmation.promotionQuote;
+}
+
+function resolveAppliedCouponNos(confirmation: BffOrderConfirmResponse | BffOrder | undefined) {
+  if (isOrderWithCouponFacts(confirmation)) {
+    const orderAppliedCouponNos = normalizeCouponNos(confirmation.appliedCouponNos);
+    if (orderAppliedCouponNos.length > 0) return orderAppliedCouponNos;
+  }
+
+  const appliedDiscounts = promotionQuoteOf(confirmation)?.appliedDiscounts;
+  if (!Array.isArray(appliedDiscounts)) return [];
+
+  return normalizeCouponNos(appliedDiscounts.map((discount) => couponNoOf(discount)));
+}
+
+function resolveSelectedCouponNos(confirmation: BffOrderConfirmResponse | BffOrder | undefined) {
+  if (isOrderWithCouponFacts(confirmation)) {
+    const orderSelectedCouponNos = normalizeCouponNos(confirmation.selectedCouponNos);
+    if (orderSelectedCouponNos.length > 0) return orderSelectedCouponNos;
+  }
+
+  const availableCoupons = promotionQuoteOf(confirmation)?.availableCoupons;
+  if (!Array.isArray(availableCoupons)) return [];
+
+  return normalizeCouponNos(
+    availableCoupons
+      .filter((coupon) => coupon?.selected === true)
+      .map((coupon) => couponNoOf(coupon)),
+  );
+}
+
+function resolveRejectedCoupons(confirmation: BffOrderConfirmResponse | BffOrder | undefined) {
+  if (!isOrderWithCouponFacts(confirmation) || !Array.isArray(confirmation.rejectedCoupons)) return [];
+  return confirmation.rejectedCoupons;
+}
+
 // 从后端确认结果提取真实用券事实，前端不再用本地门槛推断券是否生效。
 export function resolveCheckoutCouponState(
   confirmation: BffOrderConfirmResponse | BffOrder | undefined,
   requestedCouponId?: string | null,
 ): CheckoutCouponState {
   const normalizedRequestedCouponId = requestedCouponId || undefined;
-  const appliedCouponNos = normalizeCouponNos(confirmation?.appliedCouponNos);
-  const selectedCouponNos = normalizeCouponNos(confirmation?.selectedCouponNos);
-  const rejectedCoupons = confirmation?.rejectedCoupons ?? [];
+  const appliedCouponNos = resolveAppliedCouponNos(confirmation);
+  const selectedCouponNos = resolveSelectedCouponNos(confirmation);
+  const rejectedCoupons = resolveRejectedCoupons(confirmation);
   const rejectedCouponNos = normalizeCouponNos(rejectedCoupons.map((coupon) => coupon.couponNo || ''));
-  const discountAmountCent = normalizeCent(confirmation?.discountAmountCent);
   let selectedCouponId: string | undefined = appliedCouponNos[0];
 
   if (!selectedCouponId && normalizedRequestedCouponId) {
     if (rejectedCouponNos.includes(normalizedRequestedCouponId)) {
       selectedCouponId = undefined;
-    } else if (Array.isArray(confirmation?.appliedCouponNos)) {
-      selectedCouponId = undefined;
-    } else if (selectedCouponNos.includes(normalizedRequestedCouponId) && discountAmountCent > 0) {
-      selectedCouponId = normalizedRequestedCouponId;
     }
   }
 
@@ -196,11 +246,9 @@ export function resolveCheckoutCouponState(
     ? rejectedCoupons.find((coupon) => coupon.couponNo === normalizedRequestedCouponId)
     : undefined;
   const warningText = confirmation && 'warnings' in confirmation ? confirmation.warnings?.find(Boolean) : undefined;
+  const noticeText = rejectedCoupon?.unavailableReason || rejectedCoupon?.reason || warningText;
   const couponNoticeText = normalizedRequestedCouponId && normalizedRequestedCouponId !== selectedCouponId
-    ? rejectedCoupon?.unavailableReason
-      || rejectedCoupon?.reason
-      || warningText
-      || '该优惠券暂不可用，已重新计算订单金额'
+    ? noticeText
     : undefined;
 
   return {
