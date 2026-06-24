@@ -249,13 +249,54 @@ export interface BffOrderSubmitResponse {
   prepay?: BffOrderPrepay;
 }
 
+export interface BffPromotionDiscountLine {
+  discountCode?: string;
+  discountName?: string;
+  discountType?: string;
+  couponNo?: string;
+  discountAmountCent?: number;
+  affectedLineNos?: string[];
+  [key: string]: unknown;
+}
+
+export interface BffPromotionCouponView {
+  couponNo?: string;
+  templateNo?: string;
+  couponName?: string;
+  sceneType?: string;
+  thresholdAmountCent?: number;
+  discountAmountCent?: number;
+  status?: string;
+  selected?: boolean;
+  reason?: string;
+  available?: boolean;
+  unavailableReason?: string;
+  discountAmount?: number;
+  priority?: number;
+  mutexGroup?: string;
+  [key: string]: unknown;
+}
+
+export interface BffPromotionQuoteResponse {
+  sceneType?: BffOrderSceneType;
+  quoteSnapshotNo?: string;
+  originalAmountCent?: number;
+  freightAmountCent?: number;
+  discountAmountCent?: number;
+  freightDiscountCent?: number;
+  payableAmountCent?: number;
+  appliedDiscounts?: BffPromotionDiscountLine[];
+  itemAllocations?: Record<string, unknown>[];
+  availableCoupons?: BffPromotionCouponView[];
+  mutualExclusionMessages?: string[];
+  quotedAt?: string;
+  [key: string]: unknown;
+}
+
 export interface BffOrderConfirmResponse {
   sceneType?: BffOrderSceneType;
   channel?: string;
   paymentChannel?: BffOrderPaymentChannel;
-  selectedCouponNos?: string[];
-  appliedCouponNos?: string[];
-  rejectedCoupons?: BffOrderRejectedCoupon[];
   items?: BffOrderItem[];
   originalAmountCent?: number;
   freightAmountCent?: number;
@@ -263,7 +304,7 @@ export interface BffOrderConfirmResponse {
   freightDiscountCent?: number;
   payableAmountCent?: number;
   quoteSnapshotNo?: string;
-  promotionQuote?: Record<string, unknown>;
+  promotionQuote?: BffPromotionQuoteResponse;
   context?: Record<string, string>;
   warnings?: string[];
   confirmedAt?: string;

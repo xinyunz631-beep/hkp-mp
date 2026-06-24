@@ -361,6 +361,10 @@ const CheckoutPage = observer(function CheckoutPage() {
       || checkoutData.ticketItem.quantity;
     const activeTraveler = travelerForms.find((traveler) => traveler.id === activeTravelerId) ?? travelerForms[0];
     const hasAddonItem = checkoutData.addonItem.quantity > 0 || addonQuantity > 0;
+    const summaryItemCount = totalTicketQuantity + (hasAddonItem ? addonQuantity : 0);
+    const summarySubtotalAmount = typeof ticketAmount === 'number'
+      ? ticketAmount + (hasAddonItem && addonAmount > 0 ? addonAmount : 0)
+      : undefined;
 
     return (
       <View className="_pg">
@@ -561,6 +565,13 @@ const CheckoutPage = observer(function CheckoutPage() {
             </View>
             ) : null}
 
+            {travelerCount > 0 ? (
+              <View className="_pg-check-tip">
+                <AppIcon name="check" className="_pg-check-tip_icon" size={14} color="#e45c98" />
+                <Text>请确认所填信息准确无误，提交后部分信息不可更改。如有疑问请联系客服。</Text>
+              </View>
+            ) : null}
+
             <View className="_pg-card _pg-card--compact">
               <View
                 className={`_pg-line-row ${hasCoupons ? '_pg-line-row--link' : '_pg-line-row--disabled'}`}
@@ -572,19 +583,22 @@ const CheckoutPage = observer(function CheckoutPage() {
                     {hasCoupons ? <AppIcon name="arrowRight" className="_pg-line-row_chevron" size={16} color="#c0c5cf" /> : null}
                   </View>
                 </View>
-                {discountAmount > 0 ? <Text className="_pg-line-row_extra">已优惠 ¥{discountAmount.toFixed(2)}</Text> : null}
               </View>
-
-            <View className="_pg-check-tip">
-              <AppIcon name="check" className="_pg-check-tip_icon" size={14} color="#e45c98" />
-              <Text>请确认所填信息准确无误，提交后部分信息不可更改。如有疑问请联系客服。</Text>
-            </View>
 
             <View className="_pg-card _pg-card--compact">
               <View className="_pg-amount-summary">
+                <View className="_pg-amount-summary_header">
+                  <Text className="_pg-amount-summary_title">共 {summaryItemCount} 件</Text>
+                  {typeof summarySubtotalAmount === 'number' ? (
+                    <>
+                      <Text className="_pg-amount-summary_dot">·</Text>
+                      <Text className="_pg-amount-summary_subtitle">小计 ¥{summarySubtotalAmount.toFixed(2)}</Text>
+                    </>
+                  ) : null}
+                </View>
                 {typeof ticketAmount === 'number' ? (
                   <View className="_pg-amount-summary_row">
-                    <Text className="_pg-amount-summary_label">票品金额</Text>
+                    <Text className="_pg-amount-summary_label">门票金额</Text>
                     <Text className="_pg-amount-summary_value">¥{ticketAmount.toFixed(2)}</Text>
                   </View>
                 ) : null}
@@ -595,12 +609,23 @@ const CheckoutPage = observer(function CheckoutPage() {
                   </View>
                 ) : null}
                 {discountAmount > 0 ? (
-                  <View className="_pg-amount-summary_row">
-                    <Text className="_pg-amount-summary_label">优惠金额</Text>
-                    <Text className="_pg-amount-summary_value _pg-amount-summary_value--discount">
-                      - ¥{discountAmount.toFixed(2)}
-                    </Text>
-                  </View>
+                  <>
+                    <View className="_pg-amount-summary_row">
+                      <Text className="_pg-amount-summary_label">优惠金额</Text>
+                      <Text className="_pg-amount-summary_value _pg-amount-summary_value--discount">
+                        - ¥{discountAmount.toFixed(2)}
+                      </Text>
+                    </View>
+                    {checkoutData.discountDetails.map((item) => (
+                      <View className="_pg-amount-summary_row _pg-amount-summary_row--sub" key={item.id}>
+                        <View className="_pg-amount-summary_sub-main">
+                          <Text className="_pg-amount-summary_bullet">·</Text>
+                          <Text className="_pg-amount-summary_sub-label">{item.title}</Text>
+                        </View>
+                        <Text className="_pg-amount-summary_sub-value">{item.amountText}</Text>
+                      </View>
+                    ))}
+                  </>
                 ) : null}
                 <View className="_pg-amount-summary_row _pg-amount-summary_row--total">
                   <Text className="_pg-amount-summary_label">实付款</Text>

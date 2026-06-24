@@ -148,6 +148,9 @@ export async function fetchCheckoutData(params: FetchHotelCheckoutParams = {}) {
     updateHotelOrderDraft(draft.id, { selectedCouponId: confirmedCouponId });
   }
 
+  const productAmount = resolveHotelProductAmount(confirmation, draft)
+    ?? (amounts.hasOriginalAmount ? amounts.originalAmount : undefined);
+
   const checkoutData: HotelCheckoutData = {
     draftId: draft.id,
     hotelId: draft.hotelId,
@@ -167,7 +170,7 @@ export async function fetchCheckoutData(params: FetchHotelCheckoutParams = {}) {
     occupancy: draft.occupancy,
     roomCount,
     maxRoomCount: Math.min(3, Math.max(draft.ratePlan.stock, 1)),
-    productAmount: resolveHotelProductAmount(confirmation, draft),
+    productAmount,
     totalAmount: amounts.payableAmount,
     discountAmount: amounts.hasDiscountAmount ? amounts.discountAmount : 0,
     guestFields: resolveGuestFields(roomCount, draft.guests),
