@@ -1,11 +1,12 @@
-import { confirmBffOrder } from '@/core/services/bff-order-api';
+import { confirmBffOrder, type BffOrderConfirmResponse } from '@/core/services/bff-order-api';
 import { fetchBffCouponAvailable } from '@/core/services/bff-coupon-api';
 import {
+  isCheckoutCouponSummary,
   normalizeCheckoutAmounts,
   resolveCheckoutCouponState,
   toCheckoutCouponSummary,
 } from '@/core/services/checkout-flow';
-import { quoteBffTickets } from './ticket-api';
+import { centToYuan, formatCurrency, parseNumberLike } from '@/core/utils/money';
 import type { HkpDateOption } from '@/core/types/hkp';
 import {
   createTicketOrderTravelers,
@@ -51,8 +52,15 @@ export interface TicketCheckoutData {
   couponText: string;
   couponNoticeText?: string;
   discountAmount: number;
+  discountDetails: TicketCheckoutDiscountDetail[];
   payableAmount: number;
   payButtonText: string;
+}
+
+export interface TicketCheckoutDiscountDetail {
+  id: string;
+  title: string;
+  amountText: string;
 }
 
 export interface TicketCheckoutPageData extends TicketCheckoutData {
@@ -60,6 +68,35 @@ export interface TicketCheckoutPageData extends TicketCheckoutData {
   draftMissing: boolean;
   dates: HkpDateOption[];
   travelers: TicketOrderTraveler[];
+}
+
+// 从促销原始记录读取可展示文案，避免确认单暴露技术枚举。
+function readPromotionRecordString(record: Record<string, unknown>, keys: string[]) {
+  const value = keys.map((key) => record[key]).find((item) => typeof item === 'string' && item.trim());
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+// 将门票确认单后端优惠拆分转成弹层明细，只展示后端返回了名称和金额的明细。
+function buildTicketDiscountDetails(confirmation: BffOrderConfirmResponse): TicketCheckoutDiscountDetail[] {
+  const appliedDiscounts = Array.isArray(confirmation.promotionQuote?.appliedDiscounts)
+    ? confirmation.promotionQuote.appliedDiscounts
+    : [];
+  return appliedDiscounts
+    .map((item, index): TicketCheckoutDiscountDetail | undefined => {
+      if (!item || typeof item !== 'object') return undefined;
+      const record = item as Record<string, unknown>;
+      const discountAmountCent = parseNumberLike(record.discountAmountCent);
+      if (typeof discountAmountCent !== 'number' || discountAmountCent <= 0) return undefined;
+      const title = readPromotionRecordString(record, ['discountName']);
+      if (!title) return undefined;
+
+      return {
+        id: readPromotionRecordString(record, ['couponNo', 'discountCode']) || `ticket-discount-${index + 1}`,
+        title,
+        amountText: `- ${formatCurrency(centToYuan(discountAmountCent))}`,
+      };
+    })
+    .filter((item): item is TicketCheckoutDiscountDetail => Boolean(item));
 }
 
 // 生成当前确认单可展示的票务日期，真实可售性由后端确认接口校验。
@@ -110,6 +147,7 @@ export async function fetchCheckoutData(draftId?: string, selectedCouponId?: str
       couponText: '',
       couponNoticeText: '',
       discountAmount: 0,
+      discountDetails: [],
       payableAmount: 0,
       payButtonText: '提交订单',
       draft,
@@ -131,28 +169,8 @@ export async function fetchCheckoutData(draftId?: string, selectedCouponId?: str
     contact: draft.contact,
     travelers,
   });
-  const [ticketQuote, confirmation] = await Promise.all([
-    quoteBffTickets({
-      visitDate: draft.selectedDate,
-      channel: 'miniProgram',
-      context: {
-        parkName: draft.parkName,
-      },
-      items: draft.products.map((product) => ({
-        productCode: product.productCode || product.id,
-        skuId: product.skuId || `${product.productCode || product.id}_standard`,
-        visitDate: draft.selectedDate,
-        quantity: product.quantity,
-        attributes: {
-          productTitle: product.title,
-        },
-      })),
-    }),
-    confirmBffOrder(orderRequest),
-  ]);
-  const amounts = normalizeCheckoutAmounts(confirmation, {
-    originalAmountCent: ticketQuote.originalAmountCent,
-  }, {
+  const confirmation = await confirmBffOrder(orderRequest);
+  const amounts = normalizeCheckoutAmounts(confirmation, {}, {
     sceneLabel: '门票确认单',
     requirePayableAmount: true,
   });
@@ -165,11 +183,14 @@ export async function fetchCheckoutData(draftId?: string, selectedCouponId?: str
   });
   const totalQuantity = draft.products.reduce((total, product) => total + product.quantity, 0);
   const coupons = (availableCouponsResponse.coupons ?? [])
-    .map((coupon) => toCheckoutCouponSummary(coupon, '门票优惠券')) as TicketCoupon[];
+    .map((coupon) => toCheckoutCouponSummary(coupon))
+    .filter(isCheckoutCouponSummary) as TicketCoupon[];
   const couponState = resolveCheckoutCouponState(confirmation, resolvedSelectedCouponId);
+  const selectedCoupon = coupons.find((coupon) => coupon.id === couponState.selectedCouponId && coupon.status === 'available');
+  const confirmedCouponId = selectedCoupon?.id;
   const nextDraft = {
     ...draft,
-    selectedCouponId: couponState.selectedCouponId,
+    selectedCouponId: confirmedCouponId,
     coupons,
   };
 
@@ -202,6 +223,7 @@ export async function fetchCheckoutData(draftId?: string, selectedCouponId?: str
     couponText: coupons.length > 0 ? '请选择优惠券' : '',
     couponNoticeText: couponState.couponNoticeText,
     discountAmount: amounts.hasDiscountAmount ? amounts.discountAmount : 0,
+    discountDetails: buildTicketDiscountDetails(confirmation),
     payableAmount: amounts.payableAmount,
     payButtonText: '提交订单',
     draft: nextDraft,

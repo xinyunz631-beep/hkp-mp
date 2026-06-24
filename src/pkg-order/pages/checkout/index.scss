@@ -293,6 +293,12 @@
     font-size: 26px;
     line-height: 44px;
     text-align: center;
+
+    &--disabled {
+      border-color: #d6dae2;
+      color: #9ca3af;
+      background: #f8f9fc;
+    }
   }
 
   &_chevron {
@@ -334,7 +340,9 @@
 
   &_textarea {
     width: 100%;
-    min-height: 132px;
+    height: 72px;
+    min-height: 72px;
+    max-height: 96px;
     padding: 0;
     box-sizing: border-box;
     color: #23262f;
@@ -348,15 +356,14 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 18px;
-  padding: 22px 24px;
-  border-radius: 22px;
-  background: #fff2f7;
+  min-height: 72px;
+  padding: 24px 0 26px;
+  border-bottom: 1px solid #edf0f4;
 
   &_label {
-    color: #6b7280;
-    font-size: 26px;
-    line-height: 1.4;
+    color: #23262f;
+    font-size: 28px;
+    line-height: 1.45;
   }
 
   &_amount {
@@ -370,7 +377,6 @@
 ._pg-discount-list {
   display: flex;
   flex-direction: column;
-  gap: 16px;
 }
 
 ._pg-discount-item {
@@ -378,9 +384,12 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 20px;
-  padding: 22px 24px;
-  border-radius: 22px;
-  background: #f8f9fc;
+  padding: 28px 0;
+  border-bottom: 1px solid #f1f3f6;
+
+  &:last-child {
+    border-bottom: 0;
+  }
 
   &_main {
     min-width: 0;
@@ -389,9 +398,9 @@
 
   &_title {
     display: block;
-    color: #23262f;
-    font-size: 28px;
-    line-height: 1.45;
+    color: #6b7280;
+    font-size: 26px;
+    line-height: 1.4;
   }
 
   &_detail {
@@ -419,11 +428,14 @@
 
 ._pg-submit_amount {
   color: #d94a88;
-  font-size: 56px;
-  font-weight: 500;
+  font-size: 38px;
+  font-weight: 400;
 }
 
 ._pg-submit_extra {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   color: #8b909a;
   font-size: 26px;
   line-height: 1.4;

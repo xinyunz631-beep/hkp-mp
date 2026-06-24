@@ -233,7 +233,10 @@ export async function deleteMallCartItem(itemId: string) {
 
 // 批量同步购物车勾选态，供全选交互使用。
 export async function updateMallCartCheckedItems(items: MallCartItem[], checked: boolean) {
-  await Promise.all(items.map((item) => updateBffMallCartItem(item.id, { checked })));
+  // 后端购物车按整份用户 cart state 读写；并发 PATCH 会互相覆盖，批量操作必须串行落库。
+  for (const item of items) {
+    await updateBffMallCartItem(item.id, { checked });
+  }
   const data = toMallCartData(await fetchBffMallCart());
   emitMallCartCountChange(data);
   return data;
@@ -241,7 +244,10 @@ export async function updateMallCartCheckedItems(items: MallCartItem[], checked:
 
 // 批量删除后端购物车项，返回最新购物车。
 export async function deleteMallCartItems(itemIds: string[]) {
-  await Promise.all(itemIds.map((itemId) => deleteBffMallCartItem(itemId)));
+  // 删除同样串行执行，避免多个 DELETE 基于同一份旧 cart state 保存，导致已删项被后写请求带回。
+  for (const itemId of itemIds) {
+    await deleteBffMallCartItem(itemId);
+  }
   const data = toMallCartData(await fetchBffMallCart());
   emitMallCartCountChange(data);
   return data;

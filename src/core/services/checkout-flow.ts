@@ -207,24 +207,43 @@ export function resolveCheckoutCouponState(
   };
 }
 
-// 将 BFF 可用券统一转成项目券卡片 DTO，优先使用分字段，兼容历史 discountAmount 字段。
-export function toCheckoutCouponSummary(coupon: BffAvailableCouponView, fallbackTitle: string): HkpCouponSummary {
-  const thresholdAmount = centToYuan(coupon.thresholdAmountCent);
+// 过滤无效券 DTO，避免结算页展示缺少后端关键字段的优惠券。
+export function isCheckoutCouponSummary(coupon: HkpCouponSummary | undefined): coupon is HkpCouponSummary {
+  return Boolean(coupon);
+}
+
+// 将 BFF 可用券统一转成项目券卡片 DTO，只展示后端返回了关键展示字段的券。
+export function toCheckoutCouponSummary(coupon: BffAvailableCouponView): HkpCouponSummary | undefined {
+  const couponNo = typeof coupon.couponNo === 'string' ? coupon.couponNo.trim() : '';
+  const couponName = typeof coupon.couponName === 'string' ? coupon.couponName.trim() : '';
   const discountAmountCent = parseNumberLike(coupon.discountAmountCent) ?? parseNumberLike(coupon.discountAmount);
-  const discountAmount = centToYuan(discountAmountCent);
-  const validDate = coupon.validEndAt ? coupon.validEndAt.slice(0, 10) : '';
+  const hasDiscountAmount = typeof discountAmountCent === 'number' && discountAmountCent > 0;
+  const percentText = formatDiscountPercent(coupon.discountPercent);
+  const amountText = hasDiscountAmount ? `¥${formatYuan(discountAmountCent)}` : percentText;
+  const thresholdAmountCent = parseNumberLike(coupon.thresholdAmountCent);
+  const hasThresholdAmount = typeof thresholdAmountCent === 'number' && thresholdAmountCent >= 0;
+  const thresholdAmount = hasThresholdAmount ? centToYuan(thresholdAmountCent) : undefined;
+  const validDate = typeof coupon.validEndAt === 'string' && coupon.validEndAt.trim()
+    ? coupon.validEndAt.slice(0, 10)
+    : '';
   const available = coupon.available !== false && coupon.status === 'AVAILABLE';
 
+  if (!couponNo || !couponName || !amountText) return undefined;
+
   return {
-    id: coupon.couponNo,
-    title: coupon.couponName || coupon.couponNo || fallbackTitle,
-    amountText: discountAmount > 0 ? `¥${formatYuan(discountAmountCent)}` : (formatDiscountPercent(coupon.discountPercent) || '优惠券'),
-    thresholdText: thresholdAmount > 0 ? `满¥${thresholdAmount.toFixed(2)}可用` : '无门槛',
-    validityText: validDate ? `有效期至 ${validDate}` : '按券规则生效',
+    id: couponNo,
+    title: couponName,
+    amountText,
+    thresholdText: hasThresholdAmount
+      ? thresholdAmount && thresholdAmount > 0
+        ? `满¥${thresholdAmount.toFixed(2)}可用`
+        : '无门槛'
+      : '',
+    validityText: validDate ? `有效期至 ${validDate}` : '',
     status: available ? 'available' : 'disabled',
-    tag: available ? (coupon.reason || '可用') : (coupon.unavailableReason || coupon.reason || '暂不可用'),
-    minimumAmount: thresholdAmount,
-    discountAmount,
+    tag: available ? coupon.reason : (coupon.unavailableReason || coupon.reason),
+    minimumAmount: thresholdAmount ?? 0,
+    discountAmount: hasDiscountAmount ? centToYuan(discountAmountCent) : 0,
   };
 }
 

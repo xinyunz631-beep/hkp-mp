@@ -57,7 +57,7 @@ const CartPage = observer(function CartPage() {
 
   async function handleCartMutation(task: () => Promise<MallCartData>, fallbackMessage = '购物车更新失败') {
     try {
-      const nextData = await task();
+      const nextData = await pageRuntime.withLoading(task);
       applyCartData(nextData);
       return nextData;
     } catch (error) {
@@ -278,33 +278,35 @@ const CartPage = observer(function CartPage() {
             />
           )}
 
-          <View className="_pg-recommend">
-            <View className="_pg-recommend_header">
-              <Text className="_pg-recommend_line">—</Text>
-              <Text className="_pg-recommend_title">猜你喜欢</Text>
-              <Text className="_pg-recommend_line">—</Text>
-            </View>
-            <View className="_pg-recommend_grid">
-              {recommendProducts.map((product) => (
-                <View
-                  className="_pg-recommend_item"
-                  key={product.id}
-                  onClick={() => {
-                    Taro.navigateTo({
-                      url: `${MINI_PACKAGE_ROUTES.mallProductDetail}?productId=${product.id}`,
-                    });
-                  }}
-                >
-                  <AppImage className="_pg-recommend_image" src={product.image.src} mode="aspectFit" emptyState="error" />
-                  <Text className="_pg-recommend_name">{product.title}</Text>
-                  <View className="_pg-recommend_footer">
-                    <Text className="_pg-recommend_price">{formatCurrency(product.price)}</Text>
-                    <Text className="_pg-recommend_sales">{product.salesText}</Text>
+          {recommendProducts.length > 0 ? (
+            <View className="_pg-recommend">
+              <View className="_pg-recommend_header">
+                <Text className="_pg-recommend_line">—</Text>
+                <Text className="_pg-recommend_title">猜你喜欢</Text>
+                <Text className="_pg-recommend_line">—</Text>
+              </View>
+              <View className="_pg-recommend_grid">
+                {recommendProducts.map((product) => (
+                  <View
+                    className="_pg-recommend_item"
+                    key={product.id}
+                    onClick={() => {
+                      Taro.navigateTo({
+                        url: `${MINI_PACKAGE_ROUTES.mallProductDetail}?productId=${product.id}`,
+                      });
+                    }}
+                  >
+                    <AppImage className="_pg-recommend_image" src={product.image.src} mode="aspectFit" emptyState="error" />
+                    <Text className="_pg-recommend_name">{product.title}</Text>
+                    <View className="_pg-recommend_footer">
+                      <Text className="_pg-recommend_price">{formatCurrency(product.price)}</Text>
+                      <Text className="_pg-recommend_sales">{product.salesText}</Text>
+                    </View>
                   </View>
-                </View>
-              ))}
+                ))}
+              </View>
             </View>
-          </View>
+          ) : null}
         </View>
       </PageShell>
     </View>

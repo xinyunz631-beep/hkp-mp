@@ -12,7 +12,7 @@ import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { useCheckoutController } from '@/core/runtime/use-checkout-controller';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import { navigateToMiniRoute } from '@/core/utils/navigation';
-import { previewWechatImages, showWechatConfirm, showWechatToast } from '@/core/utils/wechat-actions';
+import { previewWechatImages, showWechatToast } from '@/core/utils/wechat-actions';
 import { fetchCheckoutData, submitOrderCheckoutOrder, type OrderCheckoutData } from '@/pkg-order/services/checkout';
 import './index.scss';
 
@@ -85,19 +85,8 @@ const CheckoutPage = observer(function CheckoutPage() {
   const selectedCouponId = checkoutController.selectedCouponId;
   const couponPopupVisible = checkoutController.couponPopupVisible;
 
-  async function handleDiscountPress() {
-    if (!checkoutData) return;
-
-    if (checkoutData.discountDetails.length === 0) {
-      await showWechatConfirm({
-        title: '折扣信息',
-        content: `当前订单已优惠 ¥${checkoutData.discountAmount.toFixed(2)}，最终以支付结果为准。`,
-        confirmText: '知道了',
-        cancelText: '关闭',
-      });
-      return;
-    }
-
+  function handleDiscountPress() {
+    if (!checkoutData?.discountDetails.length) return;
     setDiscountPopupVisible(true);
   }
 
@@ -138,12 +127,16 @@ const CheckoutPage = observer(function CheckoutPage() {
     const couponOptions = checkoutData.coupons ?? [];
     const selectedCoupon = couponOptions.find((coupon) => coupon.id === selectedCouponId);
     const hasCoupons = couponOptions.length > 0;
+    const shouldShowCouponRow = checkoutData.amountReady !== false;
     const couponText = selectedCoupon
       ? `${selectedCoupon.amountText} ${selectedCoupon.thresholdText}`
-      : '请选择优惠券';
+      : hasCoupons
+        ? '请选择优惠券'
+        : '暂无可用优惠券';
     const merchantName = checkoutData.merchantName?.trim() || '';
     const merchantDisplayName = merchantName || '未提供';
     const hasCouponDiscount = checkoutData.discountAmount > 0;
+    const hasDiscountDetails = checkoutData.discountDetails.length > 0;
     const deliveryErrors = checkoutData.deliveryErrors ?? [];
     const deliveryUnavailable = checkoutData.canSubmit === false;
     const requiresAddress = checkoutData.requiresAddress;
@@ -165,7 +158,12 @@ const CheckoutPage = observer(function CheckoutPage() {
               className="_pg-submit"
               label={<Text className="_pg-submit_label">金额:</Text>}
               amountText={<Text className="_pg-submit_amount">{checkoutData.amountReady ? `¥${checkoutData.totalAmount.toFixed(2)}` : '待确认'}</Text>}
-              extra={hasCouponDiscount ? <Text className="_pg-submit_extra">已优惠: ¥{checkoutData.discountAmount.toFixed(2)}</Text> : undefined}
+              extra={hasCouponDiscount ? (
+                <View className="_pg-submit_extra" onClick={hasDiscountDetails ? handleDiscountPress : undefined}>
+                  <Text>已优惠: ¥{checkoutData.discountAmount.toFixed(2)}</Text>
+                  {hasDiscountDetails ? <AppIcon name="arrowRight" size={12} color="#8b909a" /> : null}
+                </View>
+              ) : undefined}
               buttonText="去支付"
               disabled={deliveryUnavailable}
               onSubmit={() => void handleSubmit()}
@@ -226,13 +224,6 @@ const CheckoutPage = observer(function CheckoutPage() {
               </View>
             ) : null}
 
-            <View className="_pg-card _pg-card--compact">
-              <View className="_pg-line-row">
-                <Text className="_pg-line-row_label">支付方法</Text>
-                <Text className="_pg-line-row_value">{checkoutData.paymentMethodText}</Text>
-              </View>
-            </View>
-
             <View className="_pg-card _pg-card--products">
               <View className="_pg-products-header">
                 <View className="_pg-products-header_title">
@@ -278,19 +269,22 @@ const CheckoutPage = observer(function CheckoutPage() {
               </View>
             </View>
 
-            {hasCoupons ? (
+            {shouldShowCouponRow ? (
               <View className="_pg-card _pg-card--compact">
-                <View className="_pg-line-row _pg-line-row--link" onClick={checkoutController.openCouponPopup}>
+                <View
+                  className={classNames('_pg-line-row', hasCoupons ? '_pg-line-row--link' : '_pg-line-row--disabled')}
+                  onClick={hasCoupons ? checkoutController.openCouponPopup : undefined}
+                >
                   <Text className="_pg-line-row_label">优惠券</Text>
                   <View className="_pg-line-row_value-wrap">
-                    <Text className="_pg-line-row_coupon">{couponText}</Text>
-                    <AppIcon name="arrowRight" className="_pg-line-row_chevron" size={16} color="#c0c5cf" />
+                    <Text className={classNames('_pg-line-row_coupon', !hasCoupons && '_pg-line-row_coupon--disabled')}>{couponText}</Text>
+                    {hasCoupons ? <AppIcon name="arrowRight" className="_pg-line-row_chevron" size={16} color="#c0c5cf" /> : null}
                   </View>
                 </View>
               </View>
             ) : null}
 
-            {hasCouponDiscount ? (
+            {hasCouponDiscount && hasDiscountDetails ? (
               <View className="_pg-card _pg-card--compact">
                 <View className="_pg-line-row _pg-line-row--link" onClick={() => void handleDiscountPress()}>
                   <Text className="_pg-line-row_label">折扣信息</Text>
@@ -304,6 +298,13 @@ const CheckoutPage = observer(function CheckoutPage() {
               </View>
             ) : null}
 
+            <View className="_pg-card _pg-card--compact">
+              <View className="_pg-line-row">
+                <Text className="_pg-line-row_label">支付方式</Text>
+                <Text className="_pg-line-row_value">{checkoutData.paymentMethodText}</Text>
+              </View>
+            </View>
+
             <View className="_pg-card _pg-remark-card">
               <View className="_pg-remark_header">
                 <Text className="_pg-remark_title">订单备注</Text>
@@ -314,6 +315,7 @@ const CheckoutPage = observer(function CheckoutPage() {
                 value={orderRemark}
                 maxlength={ORDER_REMARK_MAX_LENGTH}
                 placeholder="选填，可填写配送或商品备注"
+                placeholderClass="hkp-placeholder"
                 onInput={(event) => {
                   setOrderRemark(event.detail.value.slice(0, ORDER_REMARK_MAX_LENGTH));
                 }}
@@ -359,7 +361,7 @@ const CheckoutPage = observer(function CheckoutPage() {
               />
             ) : null}
             <AppBottomSheet
-              visible={discountPopupVisible}
+              visible={discountPopupVisible && hasDiscountDetails}
               title="优惠明细"
               className="_pg-discount-sheet"
               bodyMinHeight={260}

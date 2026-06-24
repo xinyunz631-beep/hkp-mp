@@ -72,8 +72,11 @@ taro-button-core {
     }
 }
 
-.placeholder,.input-placeholder {
-    color: #BFBFBF;
+.placeholder,
+.input-placeholder,
+.textarea-placeholder,
+.hkp-placeholder {
+    color: #c7ccd4;
 }
 
 image {

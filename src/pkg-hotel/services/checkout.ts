@@ -1,13 +1,14 @@
 import { confirmBffOrder, type BffOrderConfirmResponse, type BffOrderItem } from '@/core/services/bff-order-api';
 import { fetchBffCouponAvailable } from '@/core/services/bff-coupon-api';
 import {
+  isCheckoutCouponSummary,
   normalizeCheckoutAmounts,
   resolveCheckoutCouponState,
   submitAndPayBffOrder,
   toCheckoutCouponSummary,
   type CheckoutSubmitResult,
 } from '@/core/services/checkout-flow';
-import { centToYuan, parseNumberLike } from '@/core/utils/money';
+import { centToYuan, formatCurrency, parseNumberLike } from '@/core/utils/money';
 import {
   ensureHotelOrderDraft,
   removeHotelOrderDraft,
@@ -19,6 +20,7 @@ import {
   formatHotelStayDateText,
   type HotelCheckoutCouponData,
   type HotelCheckoutData,
+  type HotelCheckoutDiscountDetailData,
   type HotelOccupancy,
   type HotelStayRange,
 } from './model';
@@ -77,6 +79,35 @@ function resolveHotelProductAmount(
   return undefined;
 }
 
+// 从促销原始记录读取可展示文案，避免把技术字段直接露出到确认单。
+function readPromotionRecordString(record: Record<string, unknown>, keys: string[]) {
+  const value = keys.map((key) => record[key]).find((item) => typeof item === 'string' && item.trim());
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+// 将酒店确认单后端优惠拆分转成弹层明细，只展示后端返回了名称和金额的明细。
+function buildHotelDiscountDetails(confirmation: BffOrderConfirmResponse): HotelCheckoutDiscountDetailData[] {
+  const appliedDiscounts = Array.isArray(confirmation.promotionQuote?.appliedDiscounts)
+    ? confirmation.promotionQuote.appliedDiscounts
+    : [];
+  return appliedDiscounts
+    .map((item, index): HotelCheckoutDiscountDetailData | undefined => {
+      if (!item || typeof item !== 'object') return undefined;
+      const record = item as Record<string, unknown>;
+      const discountAmountCent = parseNumberLike(record.discountAmountCent);
+      if (typeof discountAmountCent !== 'number' || discountAmountCent <= 0) return undefined;
+      const title = readPromotionRecordString(record, ['discountName']);
+      if (!title) return undefined;
+
+      return {
+        id: readPromotionRecordString(record, ['couponNo', 'discountCode']) || `hotel-discount-${index + 1}`,
+        title,
+        amountText: `- ${formatCurrency(centToYuan(discountAmountCent))}`,
+      };
+    })
+    .filter((item): item is HotelCheckoutDiscountDetailData => Boolean(item));
+}
+
 // 获取酒店确认订单真实数据，价格和优惠以统一订单确认接口为准。
 export async function fetchCheckoutData(params: FetchHotelCheckoutParams = {}) {
   const draft = ensureHotelOrderDraft({
@@ -108,9 +139,10 @@ export async function fetchCheckoutData(params: FetchHotelCheckoutParams = {}) {
   });
   const couponState = resolveCheckoutCouponState(confirmation, selectedCouponId);
   const coupons = (availableCouponsResponse.coupons ?? [])
-    .map((coupon) => toCheckoutCouponSummary(coupon, '酒店优惠券')) as HotelCheckoutCouponData[];
-  const selectedCoupon = coupons.find((coupon) => coupon.id === couponState.selectedCouponId);
-  const confirmedCouponId = selectedCoupon?.id || couponState.selectedCouponId;
+    .map((coupon) => toCheckoutCouponSummary(coupon))
+    .filter(isCheckoutCouponSummary) as HotelCheckoutCouponData[];
+  const selectedCoupon = coupons.find((coupon) => coupon.id === couponState.selectedCouponId && coupon.status === 'available');
+  const confirmedCouponId = selectedCoupon?.id;
 
   if (Object.prototype.hasOwnProperty.call(params, 'selectedCouponId')) {
     updateHotelOrderDraft(draft.id, { selectedCouponId: confirmedCouponId });
@@ -148,6 +180,7 @@ export async function fetchCheckoutData(params: FetchHotelCheckoutParams = {}) {
     couponNoticeText: couponState.couponNoticeText,
     coupons,
     discountText: amounts.hasDiscountAmount && amounts.discountAmount > 0 ? `已优惠 ¥${amounts.discountAmount.toFixed(2)}` : '',
+    discountDetails: buildHotelDiscountDetails(confirmation),
     invoiceText: draft.invoiceText,
     cancelRule: draft.ratePlan.cancelRule,
     checkInTimeText: draft.checkInTimeText,

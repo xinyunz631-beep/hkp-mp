@@ -135,6 +135,12 @@ export interface HotelCheckoutCouponData {
   discountAmount: number;
 }
 
+export interface HotelCheckoutDiscountDetailData {
+  id: string;
+  title: string;
+  amountText: string;
+}
+
 export interface HotelCheckoutData {
   draftId: string;
   hotelId: string;
@@ -167,6 +173,7 @@ export interface HotelCheckoutData {
   couponNoticeText?: string;
   coupons: HotelCheckoutCouponData[];
   discountText: string;
+  discountDetails: HotelCheckoutDiscountDetailData[];
   invoiceText: string;
   cancelRule: string;
   checkInTimeText: string;

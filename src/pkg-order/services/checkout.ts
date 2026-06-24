@@ -1,6 +1,7 @@
 import { confirmBffOrder, type BffOrderConfirmResponse } from '@/core/services/bff-order-api';
 import { fetchBffCouponAvailable } from '@/core/services/bff-coupon-api';
 import {
+  isCheckoutCouponSummary,
   normalizeCheckoutAmounts,
   resolveCheckoutCouponState,
   submitAndPayBffOrder,
@@ -73,21 +74,19 @@ function readRecordToken(record: Record<string, unknown>, keys: string[]) {
 }
 
 // 将促销服务的 appliedDiscounts 原文转成结算页可展示的优惠明细。
-function buildPromotionDiscountDetails(
-  confirmation: BffOrderConfirmResponse,
-  discountAmount: number,
-): OrderCheckoutDiscountDetailData[] {
+function buildPromotionDiscountDetails(confirmation: BffOrderConfirmResponse): OrderCheckoutDiscountDetailData[] {
   const appliedDiscounts = Array.isArray(confirmation.promotionQuote?.appliedDiscounts)
     ? confirmation.promotionQuote.appliedDiscounts
     : [];
-  const details = appliedDiscounts
+  return appliedDiscounts
     .map((item, index): OrderCheckoutDiscountDetailData | undefined => {
       if (!item || typeof item !== 'object') return undefined;
       const record = item as Record<string, unknown>;
       const discountAmountCent = parseNumberLike(record.discountAmountCent);
       if (typeof discountAmountCent !== 'number' || discountAmountCent <= 0) return undefined;
 
-      const title = readRecordString(record, ['discountName', 'couponNo', 'discountCode']) || '订单优惠';
+      const title = readRecordString(record, ['discountName']);
+      if (!title) return undefined;
 
       return {
         id: readRecordString(record, ['couponNo', 'discountCode']) || `discount-${index + 1}`,
@@ -96,14 +95,6 @@ function buildPromotionDiscountDetails(
       };
     })
     .filter((item): item is OrderCheckoutDiscountDetailData => Boolean(item));
-
-  if (details.length > 0 || discountAmount <= 0) return details;
-
-  return [{
-    id: 'order-discount-summary',
-    title: '订单优惠',
-    amountText: `- ${formatCurrency(discountAmount)}`,
-  }];
 }
 
 interface PromotionItemAllocation {
@@ -169,7 +160,7 @@ function buildCheckoutProducts(
 
 // 将确认单拒绝券事实合并到券列表，避免可用券接口与最终试算结果短暂不一致时仍显示已选。
 function applyConfirmedCouponFacts(
-  coupons: ReturnType<typeof toCheckoutCouponSummary>[],
+  coupons: NonNullable<ReturnType<typeof toCheckoutCouponSummary>>[],
   couponState: ReturnType<typeof resolveCheckoutCouponState>,
 ) {
   const rejectedCouponMap = new Map(couponState.rejectedCoupons.map((coupon) => [
@@ -283,7 +274,9 @@ export async function fetchCheckoutData(options: FetchCheckoutDataOptions = {}) 
   });
   const couponState = resolveCheckoutCouponState(confirmation, selectedCouponId);
   const coupons = applyConfirmedCouponFacts(
-    (availableCouponsResponse.coupons ?? []).map((coupon) => toCheckoutCouponSummary(coupon, '商城优惠券')),
+    (availableCouponsResponse.coupons ?? [])
+      .map((coupon) => toCheckoutCouponSummary(coupon))
+      .filter(isCheckoutCouponSummary),
     couponState,
   );
   const selectedCoupon = coupons.find((coupon) => coupon.id === couponState.selectedCouponId && coupon.status === 'available');
@@ -319,7 +312,7 @@ export async function fetchCheckoutData(options: FetchCheckoutDataOptions = {}) 
     discountText: amounts.hasDiscountAmount && amounts.discountAmount > 0
       ? `已优惠 ${formatCurrency(amounts.discountAmount)}`
       : '',
-    discountDetails: buildPromotionDiscountDetails(confirmation, amounts.discountAmount),
+    discountDetails: buildPromotionDiscountDetails(confirmation),
     amountFields,
     freightAmount: amounts.hasFreightAmount ? amounts.freightAmount : deliveryCheck.freightAmount,
     totalAmount: amounts.payableAmount,

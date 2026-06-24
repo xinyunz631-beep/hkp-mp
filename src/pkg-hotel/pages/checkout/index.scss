@@ -187,6 +187,27 @@
     line-height: 1.45;
     text-align: right;
   }
+
+  &_coupon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 190px;
+    min-height: 46px;
+    padding: 0 18px;
+    border: 1Px solid #d94a88;
+    border-radius: 12px;
+    box-sizing: border-box;
+    color: #d94a88;
+    font-size: 26px;
+    line-height: 44px;
+
+    &--disabled {
+      border-color: #d6dae2;
+      color: #9ca3af;
+      background: #f8f9fc;
+    }
+  }
 }
 
 ._pg-submit_label {
@@ -197,12 +218,71 @@
 
 ._pg-submit_amount {
   color: #d94a88;
-  font-size: 40px;
-  font-weight: 500;
+  font-size: 38px;
+  font-weight: 400;
 }
 
 ._pg-submit_extra {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   color: #8b909a;
   font-size: 26px;
   line-height: 1.4;
+}
+
+._pg-discount-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 72px;
+  padding: 24px 0 26px;
+  border-bottom: 1px solid #edf0f4;
+
+  &_label {
+    color: #23262f;
+    font-size: 28px;
+    line-height: 1.45;
+  }
+
+  &_amount {
+    color: #d94a88;
+    font-size: 34px;
+    font-weight: 500;
+    line-height: 1.2;
+  }
+}
+
+._pg-discount-list {
+  display: flex;
+  flex-direction: column;
+}
+
+._pg-discount-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 28px 0;
+  border-bottom: 1px solid #f1f3f6;
+
+  &:last-child {
+    border-bottom: 0;
+  }
+
+  &_title {
+    min-width: 0;
+    flex: 1;
+    color: #6b7280;
+    font-size: 26px;
+    line-height: 1.4;
+  }
+
+  &_amount {
+    flex: none;
+    color: #d94a88;
+    font-size: 28px;
+    font-weight: 500;
+    line-height: 1.45;
+  }
 }

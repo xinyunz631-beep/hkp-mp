@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import Taro from '@tarojs/taro';
 import { Input, ScrollView, Text, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
+import { AppBottomSheet } from '@/core/components/AppBottomSheet';
 import { AppIcon } from '@/core/components/AppIcon';
 import { BaseEmpty } from '@/core/components/BaseEmpty';
 import { CouponSelectionPopup, QuantityStepper } from '@/core/components/commerce';
@@ -110,6 +111,7 @@ const CheckoutPage = observer(function CheckoutPage() {
   const [selectedDate, setSelectedDate] = useState('');
   const [couponPopupVisible, setCouponPopupVisible] = useState(false);
   const [submitAttempted, setSubmitAttempted] = useState(false);
+  const [discountPopupVisible, setDiscountPopupVisible] = useState(false);
   const [travelerForms, setTravelerForms] = useState<TicketOrderTraveler[]>([]);
   const [activeTravelerId, setActiveTravelerId] = useState('');
   const [contactForm, setContactForm] = useState<ContactFormState>({
@@ -188,10 +190,13 @@ const CheckoutPage = observer(function CheckoutPage() {
 
     return checkoutData.draft?.coupons ?? [];
   }, [checkoutData]);
+  const hasCoupons = couponOptions.length > 0;
   const couponText = selectedCoupon
     ? `${selectedCoupon.amountText} ${selectedCoupon.thresholdText}`
-    : '请选择优惠券';
-  const hasCoupons = couponOptions.length > 0;
+    : hasCoupons
+      ? '请选择优惠券'
+      : '暂无可用优惠券';
+  const hasDiscountDetails = Boolean(checkoutData?.discountDetails.length);
 
   async function refreshCheckoutByCoupon(nextCouponId?: string | null) {
     if (!draftId) return false;
@@ -290,6 +295,11 @@ const CheckoutPage = observer(function CheckoutPage() {
     });
   }
 
+  function handleDiscountPress() {
+    if (!checkoutData?.discountDetails.length) return;
+    setDiscountPopupVisible(true);
+  }
+
   async function handleSubmit() {
     setSubmitAttempted(true);
     const authed = await pageRuntime.ensureLogin('登录后可提交门票订单');
@@ -364,6 +374,7 @@ const CheckoutPage = observer(function CheckoutPage() {
               amount={payAmount}
               buttonText={checkoutData.payButtonText}
               discountText={discountAmount > 0 ? `已优惠: ¥${discountAmount.toFixed(2)}` : undefined}
+              onDiscountClick={hasDiscountDetails ? handleDiscountPress : undefined}
               onSubmit={handleSubmit}
             />
           )}
@@ -550,18 +561,19 @@ const CheckoutPage = observer(function CheckoutPage() {
             </View>
             ) : null}
 
-            {hasCoupons ? (
-              <View className="_pg-card _pg-card--compact">
-                <View className="_pg-line-row _pg-line-row--link" onClick={() => setCouponPopupVisible(true)}>
+            <View className="_pg-card _pg-card--compact">
+              <View
+                className={`_pg-line-row ${hasCoupons ? '_pg-line-row--link' : '_pg-line-row--disabled'}`}
+                onClick={hasCoupons ? () => setCouponPopupVisible(true) : undefined}
+              >
                   <Text className="_pg-line-row_label">优惠券</Text>
                   <View className="_pg-line-row_coupon">
-                    <Text className="_pg-line-row_coupon-tag">{couponText}</Text>
-                    <AppIcon name="arrowRight" className="_pg-line-row_chevron" size={16} color="#c0c5cf" />
+                    <Text className={`_pg-line-row_coupon-tag ${hasCoupons ? '' : '_pg-line-row_coupon-tag--disabled'}`}>{couponText}</Text>
+                    {hasCoupons ? <AppIcon name="arrowRight" className="_pg-line-row_chevron" size={16} color="#c0c5cf" /> : null}
                   </View>
                 </View>
                 {discountAmount > 0 ? <Text className="_pg-line-row_extra">已优惠 ¥{discountAmount.toFixed(2)}</Text> : null}
               </View>
-            ) : null}
 
             <View className="_pg-check-tip">
               <AppIcon name="check" className="_pg-check-tip_icon" size={14} color="#e45c98" />
@@ -615,6 +627,28 @@ const CheckoutPage = observer(function CheckoutPage() {
                     }}
                   />
                 ) : null}
+                <AppBottomSheet
+                  visible={discountPopupVisible && hasDiscountDetails}
+                  title="优惠明细"
+                  className="_pg-discount-sheet"
+                  bodyMinHeight={260}
+                  bodyMaxHeight="50vh"
+                  showFooter={false}
+                  onClose={() => setDiscountPopupVisible(false)}
+                >
+                  <View className="_pg-discount-summary">
+                    <Text className="_pg-discount-summary_label">本单已优惠</Text>
+                    <Text className="_pg-discount-summary_amount">¥{discountAmount.toFixed(2)}</Text>
+                  </View>
+                  <View className="_pg-discount-list">
+                    {checkoutData.discountDetails.map((item) => (
+                      <View className="_pg-discount-item" key={item.id}>
+                        <Text className="_pg-discount-item_title">{item.title}</Text>
+                        <Text className="_pg-discount-item_amount">{item.amountText}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </AppBottomSheet>
               </>
             ) : null}
           </PageShare>
