@@ -1,5 +1,5 @@
 import { confirmBffOrder, type BffOrderConfirmResponse, type BffOrderItem } from '@/core/services/bff-order-api';
-import { fetchBffCouponAvailable } from '@/core/services/bff-coupon-api';
+import { fetchBffCouponAvailable, getBffAvailableCouponList } from '@/core/services/bff-coupon-api';
 import {
   isCheckoutCouponSummary,
   normalizeCheckoutAmounts,
@@ -138,7 +138,7 @@ export async function fetchCheckoutData(params: FetchHotelCheckoutParams = {}) {
     checkOutDate: draft.stayRange.checkOut,
   });
   const couponState = resolveCheckoutCouponState(confirmation, selectedCouponId);
-  const coupons = (availableCouponsResponse.coupons ?? [])
+  const coupons = getBffAvailableCouponList(availableCouponsResponse)
     .map((coupon) => toCheckoutCouponSummary(coupon))
     .filter(isCheckoutCouponSummary) as HotelCheckoutCouponData[];
   const selectedCoupon = coupons.find((coupon) => coupon.id === couponState.selectedCouponId && coupon.status === 'available');

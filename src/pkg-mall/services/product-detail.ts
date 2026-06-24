@@ -1,4 +1,4 @@
-import { fetchBffCouponAvailable } from '@/core/services/bff-coupon-api';
+import { fetchBffCouponAvailable, getBffAvailableCouponList } from '@/core/services/bff-coupon-api';
 import { fetchBffMallProduct, fetchBffMallReviews } from '@/core/services/bff-mall-api';
 import {
   isMallAvailableCouponPreview,
@@ -26,9 +26,10 @@ export async function fetchProductDetailData(productId?: string) {
     itemIds: [productId],
     skuIds: (product.skus ?? []).map((sku) => sku.skuId || sku.skuCode || '').filter(Boolean),
   }).catch(() => undefined);
-  const coupons = (couponResponse?.coupons ?? [])
+  const coupons = getBffAvailableCouponList(couponResponse)
     .filter(isMallAvailableCouponPreview)
-    .map(toMallCouponSummary);
+    .map(toMallCouponSummary)
+    .filter((coupon): coupon is NonNullable<ReturnType<typeof toMallCouponSummary>> => Boolean(coupon));
   const recommendProductIds = Array.from(new Set(
     (product.recommendProductIds ?? [])
       .map((id) => normalizeString(id))

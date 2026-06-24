@@ -1,7 +1,12 @@
 import { fetchBffCrmP1Exchanges, type BffCrmP1ConfigItem } from '@/core/services/bff-crm-api';
 import {
   claimBffCoupon,
+  exchangeBffCoupon,
   fetchBffMemberCouponPackages,
+  getBffCouponAmountCent,
+  getBffCouponPackageList,
+  getBffCouponThresholdCent,
+  getBffCouponTitle,
   type BffCouponPackageView,
   type BffCouponTemplateView,
   type BffMemberCouponPackageView,
@@ -9,7 +14,7 @@ import {
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { centToYuan, parseNumberLike } from '@/core/utils/money';
 
-export type MemberCouponCenterTabKey = 'recommend' | 'kcoin';
+export type MemberCouponCenterTabKey = 'recommend' | 'exchangeCode' | 'kcoin';
 export type MemberCouponCenterSource = 'package' | 'kcoin';
 
 export interface MemberCouponCenterTab {
@@ -44,6 +49,7 @@ export interface MemberCouponCenterData {
 const couponCenterBaseData: Omit<MemberCouponCenterData, 'coupons'> = {
   tabs: [
     { key: 'recommend', title: '好券推荐' },
+    { key: 'exchangeCode', title: '兑换码' },
     { key: 'kcoin', title: 'K币兑换' },
   ],
   emptyTitle: '暂无可领取/可兑换的优惠券',
@@ -90,13 +96,13 @@ function formatDiscountPercent(discountPercent?: number | string) {
 }
 
 function resolveTemplateAmountText(template?: BffCouponTemplateView) {
-  const discountAmountCent = parseNumberLike(template?.discountAmountCent);
+  const discountAmountCent = getBffCouponAmountCent(template ?? {});
   if (typeof discountAmountCent === 'number' && discountAmountCent > 0) return formatYuan(discountAmountCent);
-  return formatDiscountPercent(template?.discountPercent) || '券';
+  return formatDiscountPercent(template?.discountPercent ?? template?.discountRate) || '券';
 }
 
 function resolveTemplateThresholdText(template?: BffCouponTemplateView) {
-  const thresholdAmountCent = parseNumberLike(template?.thresholdAmountCent);
+  const thresholdAmountCent = getBffCouponThresholdCent(template ?? {});
   if (typeof thresholdAmountCent === 'number' && thresholdAmountCent > 0) {
     return `满¥${formatYuan(thresholdAmountCent)}可用`;
   }
@@ -118,18 +124,21 @@ function isClaimableCouponPackage(
   return Array.isArray((couponPackage as BffCouponPackageView).coupons);
 }
 
-function toPackageCoupon(couponPackage: BffCouponPackageView): MemberCouponCenterCoupon {
+function toPackageCoupon(couponPackage: BffCouponPackageView): MemberCouponCenterCoupon | undefined {
   const firstCoupon = couponPackage.coupons?.[0];
   const templateNo = firstCoupon?.templateNo;
   const activityId = couponPackage.activityId;
   const claimable = couponPackage.claimable !== false && Boolean(templateNo || activityId);
   const disabledReason = couponPackage.reason || (templateNo || activityId ? undefined : '当前优惠券暂不可领取');
+  const title = getBffCouponTitle(firstCoupon ?? {}, couponPackage.packageName);
+
+  if (!couponPackage.packageNo || !title) return undefined;
 
   return {
     id: couponPackage.packageNo,
     tabKey: 'recommend',
     source: 'package',
-    title: firstCoupon?.templateName || couponPackage.packageName,
+    title,
     amountText: resolveTemplateAmountText(firstCoupon),
     thresholdText: resolveTemplateThresholdText(firstCoupon),
     validityText: resolveTemplateValidityText(firstCoupon),
@@ -170,8 +179,10 @@ export async function fetchMemberCouponCenterData() {
     fetchBffCrmP1Exchanges(),
   ]);
   const claimablePackages = packagesResponse.claimablePackages
-    ?? (packagesResponse.packages ?? []).filter(isClaimableCouponPackage);
-  const packageCoupons = claimablePackages.map(toPackageCoupon);
+    ?? getBffCouponPackageList(packagesResponse).filter(isClaimableCouponPackage);
+  const packageCoupons = claimablePackages
+    .map(toPackageCoupon)
+    .filter((coupon): coupon is MemberCouponCenterCoupon => Boolean(coupon));
   const kcoinCoupons = crmExchanges.map(toKcoinCoupon).filter((coupon): coupon is MemberCouponCenterCoupon => Boolean(coupon));
 
   return {
@@ -187,4 +198,14 @@ export async function claimMemberCoupon(coupon: MemberCouponCenterCoupon) {
   }
 
   return claimBffCoupon(coupon.activityId ? { activityId: coupon.activityId } : { templateNo: coupon.templateNo });
+}
+
+// 提交真实优惠券兑换码，兑换成功后由调用方刷新我的券资产。
+export async function exchangeMemberCouponCode(exchangeCode: string) {
+  const normalizedCode = exchangeCode.trim();
+  if (!normalizedCode) {
+    throw new Error('请输入兑换码');
+  }
+
+  return exchangeBffCoupon(normalizedCode);
 }

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Text, View } from '@tarojs/components';
+import { Input, Text, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
 import { PageHeader, PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
@@ -9,6 +9,7 @@ import { navigateToMiniRoute } from '@/core/utils/navigation';
 import { showWechatToast } from '@/core/utils/wechat-actions';
 import {
   claimMemberCoupon,
+  exchangeMemberCouponCode,
   fetchMemberCouponCenterData,
   type MemberCouponCenterCoupon,
   type MemberCouponCenterData,
@@ -33,11 +34,20 @@ function resolveCouponDetailRoute(couponNo: string) {
 const MemberCouponCenterPage = observer(function MemberCouponCenterPage() {
   const [pageData, setPageData] = useState<MemberCouponCenterData>();
   const [activeTabKey, setActiveTabKey] = useState<MemberCouponCenterTabKey>(DEFAULT_TAB_KEY);
+  const [exchangeCode, setExchangeCode] = useState('');
+
+  // 读取领券中心真实数据，初始化时对齐后端返回的第一个 tab。
+  async function loadPageData(options: { resetTab?: boolean } = {}) {
+    const nextData = await fetchMemberCouponCenterData();
+    setPageData(nextData);
+    if (options.resetTab) {
+      setActiveTabKey(nextData.tabs[0]?.key ?? DEFAULT_TAB_KEY);
+    }
+  }
+
   const pageRuntime = usePageRuntime({
     initPage: async () => {
-      const nextData = await fetchMemberCouponCenterData();
-      setPageData(nextData);
-      setActiveTabKey(nextData.tabs[0]?.key ?? DEFAULT_TAB_KEY);
+      await loadPageData({ resetTab: true });
     },
     loginRequired: true,
     loginReason: '登录后可进入领券中心',
@@ -51,6 +61,23 @@ const MemberCouponCenterPage = observer(function MemberCouponCenterPage() {
   // 切换领券中心顶部 tab，顶部切换固定在 PageHeader 内。
   function handleTabPress(tabKey: MemberCouponCenterTabKey) {
     setActiveTabKey(tabKey);
+  }
+
+  // 把领取/兑换返回的券资产写入会话快照，保证详情页能立即承接。
+  function cacheClaimResponseCoupons(response: Awaited<ReturnType<typeof claimMemberCoupon>>) {
+    const claimedCoupons = response.coupons?.length
+      ? response.coupons
+      : (response.coupon ? [response.coupon] : []);
+    if (claimedCoupons.length > 0) {
+      claimedCoupons.forEach((claimedCoupon) => cacheClaimedMemberCoupon(claimedCoupon));
+    } else {
+      invalidateMemberCouponSnapshot();
+    }
+  }
+
+  // 读取领取/兑换返回的第一张券号，成功后跳到券详情核对真实资产。
+  function resolveFirstCouponNo(response: Awaited<ReturnType<typeof claimMemberCoupon>>) {
+    return response.coupons?.[0]?.couponNo || response.coupon?.couponNo || response.couponNos?.[0];
   }
 
   async function handleCouponPress(coupon: MemberCouponCenterCoupon) {
@@ -67,25 +94,43 @@ const MemberCouponCenterPage = observer(function MemberCouponCenterPage() {
     try {
       const response = await pageRuntime.withLoading(async () => {
         const claimResponse = await claimMemberCoupon(coupon);
-        const claimedCoupons = claimResponse.coupons?.length
-          ? claimResponse.coupons
-          : (claimResponse.coupon ? [claimResponse.coupon] : []);
-        if (claimedCoupons.length > 0) {
-          claimedCoupons.forEach((claimedCoupon) => cacheClaimedMemberCoupon(claimedCoupon));
-        } else {
-          invalidateMemberCouponSnapshot();
-        }
-        const nextData = await fetchMemberCouponCenterData();
-        setPageData(nextData);
+        cacheClaimResponseCoupons(claimResponse);
+        await loadPageData();
         return claimResponse;
       });
       await showWechatToast('领取成功', 'success');
-      const firstCouponNo = response.coupons?.[0]?.couponNo || response.coupon?.couponNo || response.couponNos?.[0];
+      const firstCouponNo = resolveFirstCouponNo(response);
       if (firstCouponNo) {
         navigateToMiniRoute(resolveCouponDetailRoute(firstCouponNo));
       }
     } catch (error) {
       await showWechatToast(resolveErrorMessage(error, '领取失败，请稍后再试'));
+    }
+  }
+
+  // 提交优惠券兑换码，兑换结果以后端写入的会员券资产为准。
+  async function handleExchangeSubmit() {
+    const normalizedCode = exchangeCode.trim();
+    if (!normalizedCode) {
+      await showWechatToast('请输入兑换码');
+      return;
+    }
+
+    try {
+      const response = await pageRuntime.withLoading(async () => {
+        const exchangeResponse = await exchangeMemberCouponCode(normalizedCode);
+        cacheClaimResponseCoupons(exchangeResponse);
+        await loadPageData();
+        return exchangeResponse;
+      });
+      setExchangeCode('');
+      await showWechatToast('兑换成功', 'success');
+      const firstCouponNo = resolveFirstCouponNo(response);
+      if (firstCouponNo) {
+        navigateToMiniRoute(resolveCouponDetailRoute(firstCouponNo));
+      }
+    } catch (error) {
+      await showWechatToast(resolveErrorMessage(error, '兑换失败，请稍后再试'));
     }
   }
 
@@ -115,7 +160,23 @@ const MemberCouponCenterPage = observer(function MemberCouponCenterPage() {
           </PageHeader>
 
           <View className="_pg-content">
-            {visibleCoupons.length > 0 ? (
+            {activeTabKey === 'exchangeCode' ? (
+              <View className="_pg-exchange">
+                <Text className="_pg-exchange_title">输入兑换码</Text>
+                <View className="_pg-exchange_field">
+                  <Input
+                    className="_pg-exchange_input"
+                    value={exchangeCode}
+                    placeholder="请输入优惠券兑换码"
+                    maxlength={32}
+                    onInput={(event) => setExchangeCode(event.detail.value)}
+                  />
+                </View>
+                <View className="_pg-exchange_button" onClick={() => void handleExchangeSubmit()}>
+                  <Text>立即兑换</Text>
+                </View>
+              </View>
+            ) : visibleCoupons.length > 0 ? (
               <View className="_pg-list">
                 {visibleCoupons.map((coupon) => (
                   <View className="_pg-coupon-card" key={coupon.id} onClick={() => void handleCouponPress(coupon)}>

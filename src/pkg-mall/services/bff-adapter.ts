@@ -1,5 +1,12 @@
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
-import type { BffAvailableCouponView } from '@/core/services/bff-coupon-api';
+import {
+  getBffCouponAmountCent,
+  getBffCouponReason,
+  getBffCouponThresholdCent,
+  getBffCouponTitle,
+  isBffCouponAvailable,
+  type BffAvailableCouponView,
+} from '@/core/services/bff-coupon-api';
 import type { MallShippingRule } from '@/core/services/mall-checkout-draft';
 import type { HkpCouponSummary, HkpProductSummary, HkpSkuGroup } from '@/core/types/hkp';
 import { centToYuan, parseNumberLike } from '@/core/utils/money';
@@ -196,28 +203,35 @@ export function toMallPromoCard(recommendation: BffMallRecommendation, index: nu
 }
 
 function couponDiscountCent(coupon: BffAvailableCouponView) {
-  return parseNumberLike(coupon.discountAmount) ?? parseNumberLike(coupon.discountAmountCent) ?? 0;
+  return getBffCouponAmountCent(coupon);
 }
 
 export function isMallAvailableCouponPreview(coupon: BffAvailableCouponView) {
-  return coupon.available !== false && coupon.status === 'AVAILABLE';
+  return isBffCouponAvailable(coupon);
 }
 
-export function toMallCouponSummary(coupon: BffAvailableCouponView): HkpCouponSummary {
-  const thresholdAmount = centToYuan(coupon.thresholdAmountCent);
+export function toMallCouponSummary(coupon: BffAvailableCouponView): HkpCouponSummary | undefined {
+  const couponNo = typeof coupon.couponNo === 'string' ? coupon.couponNo.trim() : '';
+  const title = getBffCouponTitle(coupon);
+  const thresholdAmount = centToYuan(getBffCouponThresholdCent(coupon));
   const discountAmountCent = couponDiscountCent(coupon);
   const discountAmount = centToYuan(discountAmountCent);
   const validDate = coupon.validEndAt ? coupon.validEndAt.slice(0, 10) : '';
   const available = isMallAvailableCouponPreview(coupon);
+  const amountText = discountAmount > 0
+    ? `¥${formatYuan(discountAmountCent)}`
+    : formatDiscountPercent(coupon.discountPercent ?? coupon.discountRate);
+
+  if (!couponNo || !title || !amountText) return undefined;
 
   return {
-    id: coupon.couponNo,
-    title: coupon.couponName || coupon.couponNo || '优惠券',
-    amountText: discountAmount > 0 ? `¥${formatYuan(discountAmountCent)}` : (formatDiscountPercent(coupon.discountPercent) || '优惠券'),
+    id: couponNo,
+    title,
+    amountText,
     thresholdText: thresholdAmount > 0 ? `满¥${thresholdAmount.toFixed(2)}可用` : '无门槛',
     validityText: validDate ? `有效期至 ${validDate}` : '按券规则生效',
     status: available ? 'available' : 'disabled',
-    tag: available ? (coupon.reason || '可用') : (coupon.unavailableReason || coupon.reason || '暂不可用'),
+    tag: getBffCouponReason(coupon),
     minimumAmount: thresholdAmount,
     discountAmount,
   };

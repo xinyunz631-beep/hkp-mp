@@ -8,7 +8,14 @@ import {
   type BffOrderRejectedCoupon,
   type BffOrderUnifiedRequest,
 } from '@/core/services/bff-order-api';
-import type { BffAvailableCouponView } from '@/core/services/bff-coupon-api';
+import {
+  getBffCouponAmountCent,
+  getBffCouponReason,
+  getBffCouponThresholdCent,
+  getBffCouponTitle,
+  isBffCouponAvailable,
+  type BffAvailableCouponView,
+} from '@/core/services/bff-coupon-api';
 import type { HkpCouponSummary } from '@/core/types/hkp';
 import { centToYuan, parseNumberLike } from '@/core/utils/money';
 
@@ -215,18 +222,21 @@ export function isCheckoutCouponSummary(coupon: HkpCouponSummary | undefined): c
 // 将 BFF 可用券统一转成项目券卡片 DTO，只展示后端返回了关键展示字段的券。
 export function toCheckoutCouponSummary(coupon: BffAvailableCouponView): HkpCouponSummary | undefined {
   const couponNo = typeof coupon.couponNo === 'string' ? coupon.couponNo.trim() : '';
-  const couponName = typeof coupon.couponName === 'string' ? coupon.couponName.trim() : '';
-  const discountAmountCent = parseNumberLike(coupon.discountAmountCent) ?? parseNumberLike(coupon.discountAmount);
+  const couponName = getBffCouponTitle(coupon);
+  const discountAmountCent = getBffCouponAmountCent(coupon);
   const hasDiscountAmount = typeof discountAmountCent === 'number' && discountAmountCent > 0;
-  const percentText = formatDiscountPercent(coupon.discountPercent);
+  const percentText = formatDiscountPercent(coupon.discountPercent ?? coupon.discountRate);
   const amountText = hasDiscountAmount ? `¥${formatYuan(discountAmountCent)}` : percentText;
-  const thresholdAmountCent = parseNumberLike(coupon.thresholdAmountCent);
-  const hasThresholdAmount = typeof thresholdAmountCent === 'number' && thresholdAmountCent >= 0;
+  const thresholdAmountCent = getBffCouponThresholdCent(coupon);
+  const hasThresholdAmount = [
+    coupon.thresholdAmountCent,
+    coupon.thresholdAmount,
+  ].some((value) => typeof parseNumberLike(value) === 'number');
   const thresholdAmount = hasThresholdAmount ? centToYuan(thresholdAmountCent) : undefined;
   const validDate = typeof coupon.validEndAt === 'string' && coupon.validEndAt.trim()
     ? coupon.validEndAt.slice(0, 10)
     : '';
-  const available = coupon.available !== false && coupon.status === 'AVAILABLE';
+  const available = isBffCouponAvailable(coupon);
 
   if (!couponNo || !couponName || !amountText) return undefined;
 
@@ -241,7 +251,7 @@ export function toCheckoutCouponSummary(coupon: BffAvailableCouponView): HkpCoup
       : '',
     validityText: validDate ? `有效期至 ${validDate}` : '',
     status: available ? 'available' : 'disabled',
-    tag: available ? coupon.reason : (coupon.unavailableReason || coupon.reason),
+    tag: getBffCouponReason(coupon),
     minimumAmount: thresholdAmount ?? 0,
     discountAmount: hasDiscountAmount ? centToYuan(discountAmountCent) : 0,
   };

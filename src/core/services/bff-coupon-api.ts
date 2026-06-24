@@ -1,4 +1,5 @@
 import { request } from '@/core/request';
+import { parseNumberLike } from '@/core/utils/money';
 
 export type BffCouponSceneType = 'TICKET' | 'MALL' | 'HOTEL' | 'DINING' | 'ALL' | string;
 export type BffCouponStatus =
@@ -15,12 +16,19 @@ export type BffCouponStatus =
 export interface BffCouponAssetView {
   couponNo: string;
   templateNo: string;
+  templateId?: string;
   couponName: string;
+  title?: string;
+  description?: string;
   sceneType: BffCouponSceneType;
   couponType?: string;
   thresholdAmountCent?: number;
+  thresholdAmount?: number;
   discountAmountCent?: number;
+  discountAmount?: number;
+  amount?: number;
   discountPercent?: number;
+  discountRate?: number;
   maxDiscountCent?: number;
   status: BffCouponStatus;
   reason?: string;
@@ -31,6 +39,10 @@ export interface BffCouponAssetView {
   usedAt?: string;
   source?: string;
   sourceName?: string;
+  applicableSceneTypes?: BffCouponSceneType[];
+  applicableObjectIds?: string[];
+  useType?: string;
+  buttonText?: string;
   packageNo?: string;
   lockedOrderNo?: string;
   usedOrderNo?: string;
@@ -58,12 +70,18 @@ export interface FetchBffMemberCouponsParams {
 
 export interface BffCouponTemplateView {
   templateNo: string;
+  templateId?: string;
   templateName: string;
+  title?: string;
   sceneType: BffCouponSceneType;
   couponType?: string;
   thresholdAmountCent?: number;
+  thresholdAmount?: number;
   discountAmountCent?: number;
+  discountAmount?: number;
+  amount?: number;
   discountPercent?: number;
+  discountRate?: number;
   maxDiscountCent?: number;
   issueStartAt?: string;
   issueEndAt?: string;
@@ -80,11 +98,17 @@ export interface BffCouponTemplateView {
 
 export interface BffCouponPackageView {
   packageNo: string;
+  packageId?: string;
   packageName: string;
+  packageStatus?: string;
   sceneType: BffCouponSceneType;
+  source?: string;
   coupons?: BffCouponTemplateView[];
+  couponNos?: string[];
   claimable?: boolean;
   reason?: string;
+  validStartAt?: string;
+  validEndAt?: string;
   activityId?: string;
   activityName?: string;
 }
@@ -113,7 +137,13 @@ export interface BffMemberCouponPackageView {
 export interface BffCouponPackagesResponse {
   sceneType?: BffCouponSceneType;
   packages?: Array<BffMemberCouponPackageView | BffCouponPackageView>;
+  list?: Array<BffMemberCouponPackageView | BffCouponPackageView>;
   claimablePackages?: BffCouponPackageView[];
+  total?: number;
+  page?: number;
+  size?: number;
+  pageSize?: number;
+  hasMore?: boolean;
 }
 
 export interface BffClaimCouponRequest {
@@ -131,14 +161,22 @@ export interface BffClaimCouponResponse {
   failCount?: number;
 }
 
+export interface BffCouponExchangeRequest {
+  exchangeCode: string;
+}
+
 export interface BffAvailableCouponView {
   couponNo: string;
   templateNo: string;
+  templateId?: string;
   couponName: string;
+  title?: string;
   sceneType: BffCouponSceneType;
   thresholdAmountCent?: number;
+  thresholdAmount?: number;
   discountAmountCent?: number;
   discountPercent?: number;
+  discountRate?: number;
   maxDiscountCent?: number;
   status: BffCouponStatus;
   selected?: boolean;
@@ -147,6 +185,7 @@ export interface BffAvailableCouponView {
   unavailableReason?: string;
   validEndAt?: string;
   discountAmount?: number;
+  amount?: number;
   priority?: number;
   mutexGroup?: string;
 }
@@ -154,6 +193,7 @@ export interface BffAvailableCouponView {
 export interface BffAvailableCouponsResponse {
   sceneType?: BffCouponSceneType;
   coupons?: BffAvailableCouponView[];
+  list?: BffAvailableCouponView[];
 }
 
 export interface FetchBffAvailableCouponsParams {
@@ -246,14 +286,92 @@ function appendQuery(url: string, params: Record<string, string | number | strin
   const query = Object.entries(params)
     .filter(([, value]) => typeof value !== 'undefined' && value !== '')
     .flatMap(([key, value]) => {
-      const values = Array.isArray(value) ? value : [value];
-      return values
-        .filter((item): item is string | number => typeof item !== 'undefined' && item !== '')
-        .map((item) => `${encodeURIComponent(key)}=${encodeURIComponent(String(item))}`);
+      const queryValue = Array.isArray(value)
+        ? value.filter((item) => typeof item !== 'undefined' && item !== '').join(',')
+        : value;
+      return queryValue === '' ? [] : [`${encodeURIComponent(key)}=${encodeURIComponent(String(queryValue))}`];
     })
     .join('&');
 
   return query ? `${url}?${query}` : url;
+}
+
+// 归一化后端券状态，兼容 promotion 早期小写状态和当前大写枚举。
+export function normalizeBffCouponStatus(status?: BffCouponStatus) {
+  return String(status || '').trim().toUpperCase();
+}
+
+// 判断券是否可用，优先尊重后端 available 布尔值，其次兼容大小写状态。
+export function isBffCouponAvailable(coupon: { available?: boolean; status?: BffCouponStatus }) {
+  if (typeof coupon.available === 'boolean') return coupon.available;
+  return normalizeBffCouponStatus(coupon.status) === 'AVAILABLE';
+}
+
+// 读取券标题，兼容 couponName、title、templateName 三类后端字段。
+export function getBffCouponTitle(
+  coupon: { couponName?: string; title?: string; templateName?: string },
+  fallback = '',
+) {
+  return [coupon.couponName, coupon.title, coupon.templateName, fallback]
+    .map((value) => (typeof value === 'string' ? value.trim() : ''))
+    .find(Boolean) || '';
+}
+
+// 读取券优惠金额，统一输出分；兼容 discountAmountCent、discountAmount 和 amount。
+export function getBffCouponAmountCent(coupon: {
+  discountAmountCent?: unknown;
+  discountAmount?: unknown;
+  amount?: unknown;
+}) {
+  return [
+    coupon.discountAmountCent,
+    coupon.discountAmount,
+    coupon.amount,
+  ].reduce<number | undefined>((matchedAmount, value) => {
+    if (typeof matchedAmount === 'number') return matchedAmount;
+    const amount = parseNumberLike(value);
+    return typeof amount === 'number' ? amount : undefined;
+  }, undefined) ?? 0;
+}
+
+// 读取券门槛金额，统一输出分；兼容 thresholdAmountCent 和 thresholdAmount。
+export function getBffCouponThresholdCent(coupon: {
+  thresholdAmountCent?: unknown;
+  thresholdAmount?: unknown;
+}) {
+  return [
+    coupon.thresholdAmountCent,
+    coupon.thresholdAmount,
+  ].reduce<number | undefined>((matchedAmount, value) => {
+    if (typeof matchedAmount === 'number') return matchedAmount;
+    const amount = parseNumberLike(value);
+    return typeof amount === 'number' ? amount : undefined;
+  }, undefined) ?? 0;
+}
+
+// 读取不可用原因，兼容 reason 和 unavailableReason。
+export function getBffCouponReason(coupon: {
+  reason?: string;
+  unavailableReason?: string;
+}) {
+  return [coupon.unavailableReason, coupon.reason]
+    .map((value) => (typeof value === 'string' ? value.trim() : ''))
+    .find(Boolean) || '';
+}
+
+// 读取会员券列表，兼容分页 list 和早期 coupons。
+export function getBffMemberCouponList(response?: BffMemberCouponsResponse) {
+  return response?.list ?? response?.coupons ?? [];
+}
+
+// 读取券包列表，兼容分页 list 和早期 packages。
+export function getBffCouponPackageList(response?: BffCouponPackagesResponse) {
+  return response?.list ?? response?.packages ?? [];
+}
+
+// 读取结算可用券列表，兼容分页 list 和早期 coupons。
+export function getBffAvailableCouponList(response?: BffAvailableCouponsResponse) {
+  return response?.list ?? response?.coupons ?? [];
 }
 
 // 查询当前会员名下 promotion 同源券资产，前端不传任何会员身份字段。
@@ -285,6 +403,16 @@ export function claimBffCoupon(data: BffClaimCouponRequest) {
     url: '/api/bff/promotion/coupons/claim',
     method: 'POST',
     data,
+    sign: true,
+  });
+}
+
+// 按后端真实兑换码兑券，兑换结果仍以我的券资产回源为准。
+export function exchangeBffCoupon(exchangeCode: string) {
+  return request<BffClaimCouponResponse, BffCouponExchangeRequest>({
+    url: '/api/bff/promotion/coupons/exchange',
+    method: 'POST',
+    data: { exchangeCode },
     sign: true,
   });
 }

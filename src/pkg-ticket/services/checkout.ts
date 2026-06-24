@@ -1,5 +1,5 @@
 import { confirmBffOrder, type BffOrderConfirmResponse } from '@/core/services/bff-order-api';
-import { fetchBffCouponAvailable } from '@/core/services/bff-coupon-api';
+import { fetchBffCouponAvailable, getBffAvailableCouponList } from '@/core/services/bff-coupon-api';
 import {
   isCheckoutCouponSummary,
   normalizeCheckoutAmounts,
@@ -182,7 +182,7 @@ export async function fetchCheckoutData(draftId?: string, selectedCouponId?: str
     visitDate: draft.selectedDate,
   });
   const totalQuantity = draft.products.reduce((total, product) => total + product.quantity, 0);
-  const coupons = (availableCouponsResponse.coupons ?? [])
+  const coupons = getBffAvailableCouponList(availableCouponsResponse)
     .map((coupon) => toCheckoutCouponSummary(coupon))
     .filter(isCheckoutCouponSummary) as TicketCoupon[];
   const couponState = resolveCheckoutCouponState(confirmation, resolvedSelectedCouponId);
