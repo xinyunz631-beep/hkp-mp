@@ -26,10 +26,10 @@
 ._pg-tip {
   padding: 22px 24px;
   border-radius: 20px;
-  color: #9d174d;
+  color: $color-text-secondary;
   font-size: 24px;
   line-height: 1.6;
-  background: #fdf2f8;
+  background: $color-primary-light;
 }
 
 ._pg-types {
@@ -70,10 +70,10 @@
   &_tag {
     padding: 6px 14px;
     border-radius: 999px;
-    color: #db2777;
+    color: $color-primary;
     font-size: 20px;
     line-height: 1;
-    background: #fdf2f8;
+    background: $color-primary-light;
   }
 
   &_desc {
@@ -87,7 +87,7 @@
   &_amount {
     display: block;
     margin-top: 16px;
-    color: #db2777;
+    color: $color-primary;
     font-size: 24px;
     font-weight: 500;
     line-height: 1.4;

@@ -19,10 +19,6 @@ function resolveCouponDetailRoute(couponNo: string) {
   return `${MINI_PACKAGE_ROUTES.memberCouponDetail}?id=${encodeURIComponent(couponNo)}`;
 }
 
-function resolveAftersaleListRoute(orderId: string) {
-  return `${MINI_PACKAGE_ROUTES.orderAftersaleList}?orderId=${encodeURIComponent(orderId)}`;
-}
-
 const AftersaleProgressPage = observer(function AftersaleProgressPage() {
   const [pageData, setPageData] = useState<OrderAftersaleProgressData>();
   const pageRuntime = usePageRuntime({
@@ -67,6 +63,12 @@ const AftersaleProgressPage = observer(function AftersaleProgressPage() {
 
   return pageRuntime.renderPage(() => {
     if (!pageData) return null;
+    const hasAftersaleInfo = Boolean(
+      pageData.serviceNo
+        || pageData.typeText
+        || pageData.refundAmountText
+        || pageData.reasonText,
+    );
 
     return (
       <View className="_pg">
@@ -81,12 +83,6 @@ const AftersaleProgressPage = observer(function AftersaleProgressPage() {
                 onClick={() => navigateToMiniRoute(resolveOrderDetailRoute(pageData.order.id))}
               >
                 查看订单
-              </View>
-              <View
-                className="_pg-footer_button"
-                onClick={() => navigateToMiniRoute(resolveAftersaleListRoute(pageData.order.id))}
-              >
-                {pageData.primaryButtonText}
               </View>
             </View>
           )}
@@ -112,27 +108,37 @@ const AftersaleProgressPage = observer(function AftersaleProgressPage() {
               </View>
             ) : null}
 
-            <View className="_pg-card">
-              <Text className="_pg-card_title">售后信息</Text>
-              <View className="_pg-meta">
-                <View className="_pg-meta_row">
-                  <Text className="_pg-meta_label">售后单号</Text>
-                  <Text className="_pg-meta_value">{pageData.serviceNo}</Text>
-                </View>
-                <View className="_pg-meta_row">
-                  <Text className="_pg-meta_label">售后类型</Text>
-                  <Text className="_pg-meta_value">{pageData.typeText}</Text>
-                </View>
-                <View className="_pg-meta_row">
-                  <Text className="_pg-meta_label">退款金额</Text>
-                  <Text className="_pg-meta_value _pg-meta_value--accent">{pageData.refundAmountText}</Text>
-                </View>
-                <View className="_pg-meta_row">
-                  <Text className="_pg-meta_label">申请原因</Text>
-                  <Text className="_pg-meta_value">{pageData.reasonText}</Text>
+            {hasAftersaleInfo ? (
+              <View className="_pg-card">
+                <Text className="_pg-card_title">售后信息</Text>
+                <View className="_pg-meta">
+                  {pageData.serviceNo ? (
+                    <View className="_pg-meta_row">
+                      <Text className="_pg-meta_label">售后单号</Text>
+                      <Text className="_pg-meta_value">{pageData.serviceNo}</Text>
+                    </View>
+                  ) : null}
+                  {pageData.typeText ? (
+                    <View className="_pg-meta_row">
+                      <Text className="_pg-meta_label">售后类型</Text>
+                      <Text className="_pg-meta_value">{pageData.typeText}</Text>
+                    </View>
+                  ) : null}
+                  {pageData.refundAmountText ? (
+                    <View className="_pg-meta_row">
+                      <Text className="_pg-meta_label">退款金额</Text>
+                      <Text className="_pg-meta_value _pg-meta_value--accent">{pageData.refundAmountText}</Text>
+                    </View>
+                  ) : null}
+                  {pageData.reasonText ? (
+                    <View className="_pg-meta_row">
+                      <Text className="_pg-meta_label">申请原因</Text>
+                      <Text className="_pg-meta_value">{pageData.reasonText}</Text>
+                    </View>
+                  ) : null}
                 </View>
               </View>
-            </View>
+            ) : null}
 
             <View className="_pg-card">
               <Text className="_pg-card_title">处理进度</Text>
@@ -155,17 +161,19 @@ const AftersaleProgressPage = observer(function AftersaleProgressPage() {
               </View>
             </View>
 
-            <View className="_pg-card">
-              <Text className="_pg-card_title">补充信息</Text>
-              <View className="_pg-meta">
-                {pageData.fields.map((field) => (
-                  <View className="_pg-meta_row" key={field.label}>
-                    <Text className="_pg-meta_label">{field.label}</Text>
-                    <Text className="_pg-meta_value">{field.value}</Text>
-                  </View>
-                ))}
+            {pageData.fields.length ? (
+              <View className="_pg-card">
+                <Text className="_pg-card_title">补充信息</Text>
+                <View className="_pg-meta">
+                  {pageData.fields.map((field) => (
+                    <View className="_pg-meta_row" key={field.label}>
+                      <Text className="_pg-meta_label">{field.label}</Text>
+                      <Text className="_pg-meta_value">{field.value}</Text>
+                    </View>
+                  ))}
+                </View>
               </View>
-            </View>
+            ) : null}
           </View>
         </PageShell>
       </View>

@@ -115,9 +115,9 @@ function buildCheckoutDates(selectedDate: string): HkpDateOption[] {
 // 根据草稿和统一订单确认结果生成门票确认单页面数据。
 export async function fetchCheckoutData(draftId?: string, selectedCouponId?: string | null) {
   const draft = getTicketOrderDraft(draftId);
-  const travelers = draft?.travelers?.length
+  const travelers = (draft?.travelers?.length
     ? draft.travelers
-    : createTicketOrderTravelers(draft?.products ?? [], draft?.contact);
+    : createTicketOrderTravelers(draft?.products ?? [], draft?.contact)).slice(0, 1);
 
   if (!draft) {
     return {

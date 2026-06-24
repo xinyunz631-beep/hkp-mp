@@ -63,6 +63,7 @@ const AftersaleApplyPage = observer(function AftersaleApplyPage() {
 
   return pageRuntime.renderPage(() => {
     if (!pageData) return null;
+    const hasContactInfo = Boolean(pageData.contactName || pageData.contactMobile || pageData.serviceTipText);
 
     return (
       <View className="_pg">
@@ -121,20 +122,28 @@ const AftersaleApplyPage = observer(function AftersaleApplyPage() {
               </View>
             </View>
 
-            <View className="_pg-card">
-              <Text className="_pg-card_title">联系信息</Text>
-              <View className="_pg-contact">
-                <View className="_pg-contact_row">
-                  <Text className="_pg-contact_label">联系人</Text>
-                  <Text className="_pg-contact_value">{pageData.contactName || '未提供'}</Text>
-                </View>
-                <View className="_pg-contact_row">
-                  <Text className="_pg-contact_label">联系电话</Text>
-                  <Text className="_pg-contact_value">{pageData.contactMobile || '未提供'}</Text>
-                </View>
+            {hasContactInfo ? (
+              <View className="_pg-card">
+                <Text className="_pg-card_title">联系信息</Text>
+                {(pageData.contactName || pageData.contactMobile) ? (
+                  <View className="_pg-contact">
+                    {pageData.contactName ? (
+                      <View className="_pg-contact_row">
+                        <Text className="_pg-contact_label">联系人</Text>
+                        <Text className="_pg-contact_value">{pageData.contactName}</Text>
+                      </View>
+                    ) : null}
+                    {pageData.contactMobile ? (
+                      <View className="_pg-contact_row">
+                        <Text className="_pg-contact_label">联系电话</Text>
+                        <Text className="_pg-contact_value">{pageData.contactMobile}</Text>
+                      </View>
+                    ) : null}
+                  </View>
+                ) : null}
+                {pageData.serviceTipText ? <Text className="_pg-card_hint">{pageData.serviceTipText}</Text> : null}
               </View>
-              <Text className="_pg-card_hint">{pageData.serviceTipText}</Text>
-            </View>
+            ) : null}
           </View>
         </PageShell>
       </View>

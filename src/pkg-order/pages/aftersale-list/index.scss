@@ -20,7 +20,9 @@
 }
 
 ._pg-tabs {
-  margin-bottom: 20px;
+  padding: 18px 24px 12px;
+  border-bottom: 1px solid $color-border;
+  background: #ffffff;
 }
 
 ._pg-facts {
@@ -86,14 +88,14 @@
     display: inline-flex;
     max-width: 100%;
     padding: 12px 18px;
-    border: 1Px solid #f3b1cb;
+    border: 1Px solid $color-primary-light-pressed;
     border-radius: 999px;
-    background: #fff1f7;
+    background: $color-primary-light;
     box-sizing: border-box;
   }
 
   &_chip-text {
-    color: #d94a88;
+    color: $color-primary;
     font-size: 24px;
     line-height: 1.5;
     word-break: break-all;
@@ -111,6 +113,18 @@
 
 ._pg-records {
   padding-bottom: 16px;
+}
+
+._pg-load-more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 88px;
+  padding: 8px 24px 24px;
+  box-sizing: border-box;
+  color: #9ca3af;
+  font-size: 24px;
+  line-height: 1.4;
 }
 
 ._pg-record {
@@ -136,7 +150,7 @@
   }
 
   &_status {
-    color: #db2777;
+    color: $color-primary;
     font-size: 24px;
     font-weight: 500;
     line-height: 1.4;
@@ -181,7 +195,7 @@
   &_amount {
     display: block;
     margin-top: 12px;
-    color: #db2777;
+    color: $color-primary;
     font-size: 24px;
     font-weight: 500;
     line-height: 1.4;
@@ -227,12 +241,12 @@
     align-items: center;
     justify-content: center;
     padding: 14px 28px;
-    border: 2px solid #f9a8d4;
+    border: 2px solid $color-primary-light-pressed;
     border-radius: 999px;
-    color: #db2777;
+    color: $color-primary;
     font-size: 24px;
     line-height: 1;
-    background: #fff1f7;
+    background: $color-primary-light;
 
     & + & {
       margin-left: 16px;

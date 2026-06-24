@@ -536,6 +536,7 @@ const TicketBookingPage = observer(function TicketBookingPage() {
         skuId: product.skuId,
         skuName: product.skuName,
         title: product.title,
+        imageSrc: product.imageSrc,
         category: product.category,
         price: product.price,
         unitPriceCent: product.unitPriceCent,

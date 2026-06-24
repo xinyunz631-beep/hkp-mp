@@ -400,6 +400,8 @@ export interface BffCreateOrderReviewResponse {
 
 export interface BffOrderSummaryImageAsset {
   src?: string;
+  url?: string;
+  imageUrl?: string;
   alt?: string;
 }
 
@@ -408,9 +410,13 @@ export interface BffOrderSummaryProduct {
   title?: string;
   subtitle?: string;
   image?: BffOrderSummaryImageAsset;
+  imageUrl?: string;
+  imageSrc?: string;
+  mainImageUrl?: string;
   skuText?: string;
   price?: number;
   quantity?: number;
+  attributes?: Record<string, string | undefined>;
 }
 
 export interface BffOrderSummary {

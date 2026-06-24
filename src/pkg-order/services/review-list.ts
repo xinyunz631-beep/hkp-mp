@@ -1,6 +1,7 @@
 import { fetchBffMallReviews, type BffMallReviewItem } from '@/core/services/bff-mall-api';
 import { sanitizeMallRuntimeText, sanitizeMallRuntimeUrl, sanitizeMallRuntimeTextList } from '@/core/utils/mall-runtime';
 import type { OrderReviewItemData, OrderReviewListData } from './model';
+import { formatOrderDateTime } from './time';
 
 export type { OrderReviewListData } from './model';
 
@@ -16,11 +17,6 @@ function normalizeString(value?: string) {
   return typeof value === 'string' ? value.trim() : '';
 }
 
-function formatReviewTime(value?: string) {
-  const normalized = normalizeString(value);
-  return normalized ? normalized.slice(0, 16).replace('T', ' ') : '';
-}
-
 // 统一把后端评价映射成页面消费结构，避免页面层散落字段兜底。
 function toOrderReviewItem(
   review: BffMallReviewItem,
@@ -32,7 +28,7 @@ function toOrderReviewItem(
     avatarSrc: sanitizeMallRuntimeUrl(review.avatarUrl),
     rating: Number(review.rating) > 0 ? Number(review.rating) : undefined,
     tags: sanitizeMallRuntimeTextList(review.tags),
-    timeText: formatReviewTime(review.createdAt),
+    timeText: formatOrderDateTime(review.createdAt),
     content: sanitizeMallRuntimeText(review.content),
     imageSrcs: (review.imageUrls || []).map((url) => sanitizeMallRuntimeUrl(url)).filter(Boolean),
   };

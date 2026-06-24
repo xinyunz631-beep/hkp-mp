@@ -11,6 +11,7 @@ import {
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { formatCentCurrency } from '@/core/utils/money';
 import { sanitizeMallRuntimeText } from '@/core/utils/mall-runtime';
+import { formatOrderDateTime } from './time';
 import type {
   OrderDetailData,
   OrderDetailFieldData,
@@ -33,8 +34,7 @@ function normalizeString(value?: string) {
 }
 
 function formatDateTime(value?: string) {
-  if (!value) return '-';
-  return value.replace('T', ' ').slice(0, 16);
+  return formatOrderDateTime(value, '-');
 }
 
 function hasMallLogisticsContext(order: BffOrder) {

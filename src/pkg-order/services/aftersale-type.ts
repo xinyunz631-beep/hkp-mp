@@ -12,12 +12,14 @@ export async function fetchAftersaleTypeData(orderId?: string): Promise<OrderAft
   return {
     order: toOrderSummary(data.order),
     tipText: normalizeText(data.tipText),
-    types: (data.types || []).map((item, index) => ({
-      key: normalizeText(item.key) || `aftersale-type-${index}`,
-      title: normalizeText(item.title),
-      desc: normalizeText(item.desc),
-      amountText: normalizeText(item.amountText),
-      tagText: normalizeText(item.tagText) || undefined,
-    })),
+    types: (data.types || [])
+      .map((item) => ({
+        key: normalizeText(item.key),
+        title: normalizeText(item.title),
+        desc: normalizeText(item.desc),
+        amountText: normalizeText(item.amountText),
+        tagText: normalizeText(item.tagText) || undefined,
+      }))
+      .filter((item) => item.key && item.title),
   };
 }

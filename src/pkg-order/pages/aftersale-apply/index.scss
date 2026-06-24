@@ -54,7 +54,7 @@
   margin-top: 24px;
   padding: 20px 24px;
   border-radius: 20px;
-  background: #fdf2f8;
+  background: $color-primary-light;
 
   &_label {
     color: #1f2937;
@@ -63,7 +63,7 @@
   }
 
   &_value {
-    color: #db2777;
+    color: $color-primary;
     font-size: 24px;
     font-weight: 500;
   }
@@ -85,9 +85,9 @@
     background: #f9fafb;
 
     &--active {
-      border-color: #f472b6;
-      color: #db2777;
-      background: #fdf2f8;
+      border-color: $color-primary-light-pressed;
+      color: $color-primary;
+      background: $color-primary-light;
     }
   }
 }
@@ -211,6 +211,7 @@
     color: #ffffff;
     font-size: 28px;
     font-weight: 500;
-    background: linear-gradient(135deg, #f9a8d4 0%, #db2777 100%);
+    background: $color-primary;
+    box-shadow: 0 8px 20px $color-primary-alpha-soft;
   }
 }

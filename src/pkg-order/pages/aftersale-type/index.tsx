@@ -40,9 +40,11 @@ const AftersaleTypePage = observer(function AftersaleTypePage() {
           <View className="_pg-content">
             <OrderCard order={pageData.order} className="_pg-order-card" />
 
-            <View className="_pg-tip">
-              <Text>{pageData.tipText}</Text>
-            </View>
+            {pageData.tipText ? (
+              <View className="_pg-tip">
+                <Text>{pageData.tipText}</Text>
+              </View>
+            ) : null}
 
             <View className="_pg-types">
               {pageData.types.map((type) => (

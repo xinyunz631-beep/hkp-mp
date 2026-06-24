@@ -1,5 +1,6 @@
 import type { BffOrderUnifiedRequest } from '@/core/services/bff-order-api';
 import { buildSelectedCouponNos } from '@/core/services/checkout-flow';
+import { sanitizeMallRuntimeUrl } from '@/core/utils/mall-runtime';
 import {
   ensureHotelOrderDraft,
   type SubmitHotelOrderDraftPayload,
@@ -48,6 +49,7 @@ export function buildHotelCheckoutOrderRequest(
           ratePlanId: draft.ratePlan.id,
           checkInDate: draft.stayRange.checkIn,
           checkOutDate: draft.stayRange.checkOut,
+          imageUrl: sanitizeMallRuntimeUrl(draft.product.imageSrc, { allowMockImage: true }),
         },
       },
     ],

@@ -185,6 +185,7 @@ export function useCheckoutController<
       await showWechatToast(adapter.completeSuccessText || '下单成功', 'success');
       navigateToMiniRoute(adapter.buildSuccessRoute(result), {
         loginMode: 'none',
+        method: 'redirectTo',
       });
       return result;
     }
@@ -195,6 +196,7 @@ export function useCheckoutController<
       await showWechatToast(adapter.zeroPaySuccessText || '下单成功', 'success');
       navigateToMiniRoute(adapter.buildSuccessRoute(result), {
         loginMode: 'none',
+        method: 'redirectTo',
       });
       return result;
     }
@@ -232,6 +234,7 @@ export function useCheckoutController<
     await showWechatToast(adapter.paymentSuccessText || '支付成功', 'success');
     navigateToMiniRoute(adapter.buildSuccessRoute(result), {
       loginMode: 'none',
+      method: 'redirectTo',
     });
     return result;
     } finally {

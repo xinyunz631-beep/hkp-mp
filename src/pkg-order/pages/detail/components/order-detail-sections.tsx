@@ -4,16 +4,12 @@ import type {
   OrderDetailSceneViewProps,
   OrderSceneVariant,
 } from './order-detail-scene-types';
+import { formatOrderClockTime } from '@/pkg-order/services/time';
 
 // 解析支付截止时间，后端没有稳定时间时保留产品默认文案。
 function formatPayExpireAt(payExpireAt?: string) {
-  if (!payExpireAt) return '30分钟内';
-
-  const expireDate = new Date(payExpireAt);
-  if (Number.isNaN(expireDate.getTime())) return '30分钟内';
-
-  const pad = (value: number) => `${value}`.padStart(2, '0');
-  return `${pad(expireDate.getHours())}:${pad(expireDate.getMinutes())}前`;
+  const clockText = formatOrderClockTime(payExpireAt);
+  return clockText ? `${clockText}前` : '30分钟内';
 }
 
 // 根据主动作切换金额标题，避免待支付订单误显示实付。

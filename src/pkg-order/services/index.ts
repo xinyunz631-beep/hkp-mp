@@ -8,6 +8,7 @@ import {
 import { fetchBffMallMyReviews, type BffMallMemberReviewsData } from '@/core/services/bff-mall-api';
 import { formatCentCurrency } from '@/core/utils/money';
 import { sanitizeMallRuntimeText, sanitizeMallRuntimeUrl } from '@/core/utils/mall-runtime';
+import { formatOrderDateTime } from './time';
 import type {
   OrderHomeActionData,
   OrderHomeData,
@@ -50,11 +51,6 @@ function normalizeString(value?: string) {
 function normalizeCount(value: unknown) {
   const numberValue = typeof value === 'number' ? value : Number(value);
   return Number.isFinite(numberValue) ? Math.max(0, Math.floor(numberValue)) : undefined;
-}
-
-function formatDate(value?: string) {
-  if (!value) return '';
-  return value.slice(0, 10);
 }
 
 function normalizeStatus(value?: string) {
@@ -248,7 +244,7 @@ function mapOrderSection(order: BffOrder, reviewedMallItems: Set<string>, review
   return {
     id: order.orderNo,
     tabKey: resolveTabKey(order, reviewedMallItems, reviewLookupReady),
-    dateText: formatDate(order.createdAt) || '-',
+    dateText: formatOrderDateTime(order.createdAt, '-'),
     statusText: resolveStatusText(order),
     totalText: `合计:${formatCent(order.payableAmountCent)}`,
     items: [mapOrderItem(order, reviewedMallItems, reviewLookupReady)],

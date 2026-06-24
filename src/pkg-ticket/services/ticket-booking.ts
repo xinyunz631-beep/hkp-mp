@@ -8,11 +8,13 @@ import {
   fetchBffTicketCalendarBatch,
   fetchBffTicketProducts,
   type BffTicketInventoryDay,
+  type BffTicketImageAsset,
   type BffTicketProduct,
   type BffTicketProductCalendar,
   type BffTicketSkuRule,
 } from './ticket-api';
 import type { HkpCouponSummary, HkpDateOption } from '@/core/types/hkp';
+import { sanitizeMallRuntimeUrl } from '@/core/utils/mall-runtime';
 
 export interface TicketBookingMapLocation {
   latitude: number;
@@ -51,6 +53,7 @@ export interface TicketProduct {
   skuName: string;
   category: 'ticket' | 'annualCard' | 'fastPass';
   title: string;
+  imageSrc: string;
   description: string;
   priceLabel: string;
   price: number;
@@ -394,6 +397,14 @@ function compactRichTextSegments(rules: Array<string | undefined>) {
   return rules.filter((rule): rule is string => typeof rule === 'string' && Boolean(rule.trim()));
 }
 
+function resolveTicketProductImage(images?: BffTicketImageAsset[]) {
+  const sortedImages = (images || [])
+    .filter((image) => Boolean(image?.url))
+    .sort((left, right) => (left.sortOrder ?? 0) - (right.sortOrder ?? 0));
+
+  return sanitizeMallRuntimeUrl(sortedImages[0]?.url, { allowMockImage: true });
+}
+
 function resolveVerificationMethodText(method?: string) {
   if (method === 'idCard') return '入园时请携带购票证件核验。';
   if (method === 'memberCode') return '入园时可出示会员码核验。';
@@ -452,6 +463,7 @@ function normalizeTicketProduct(
     skuName,
     category: resolveProductCategory(item),
     title: skuName === '标准票' ? item.title : `${item.title} ${skuName}`,
+    imageSrc: resolveTicketProductImage(item.coverImages),
     description: item.subtitle || sku.audience || item.availableDateSummary || '官方直营票种',
     priceLabel: '网购价',
     price: resolvePrice(unitPriceCent),

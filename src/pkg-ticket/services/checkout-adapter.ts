@@ -1,5 +1,6 @@
 import type { BffOrderUnifiedRequest } from '@/core/services/bff-order-api';
 import { buildSelectedCouponNos } from '@/core/services/checkout-flow';
+import { sanitizeMallRuntimeUrl } from '@/core/utils/mall-runtime';
 import type {
   SubmitTicketOrderDraftPayload,
   TicketOrderDraft,
@@ -45,6 +46,7 @@ export function buildTicketCheckoutOrderRequest(
         visitDate: payload.selectedDate,
         productCode: product.productCode || product.id,
         productTitle: product.title,
+        imageUrl: sanitizeMallRuntimeUrl(product.imageSrc, { allowMockImage: true }),
         skuId: resolveTicketSkuId(product),
         skuName: product.skuName || '',
         travelers: JSON.stringify(payload.travelers.filter((traveler) => traveler.productId === product.id)),

@@ -3,6 +3,7 @@ import {
   fetchBffOrderDetail,
 } from '@/core/services/bff-order-api';
 import {
+  mergeOrderSummaryWithDetail,
   normalizeText,
   toAftersaleField,
   toAftersaleProgressStep,
@@ -38,9 +39,11 @@ export async function fetchAftersaleProgressData(
   if (progressResult.status !== 'fulfilled') throw progressResult.reason;
 
   const data = progressResult.value;
+  const orderSummary = toOrderSummary(data.order);
+  const orderDetail = orderDetailResult.status === 'fulfilled' ? orderDetailResult.value : undefined;
 
   return {
-    order: toOrderSummary(data.order),
+    order: mergeOrderSummaryWithDetail(orderSummary, orderDetail),
     serviceNo: normalizeText(data.serviceNo),
     typeText: normalizeText(data.typeText),
     statusText: normalizeText(data.statusText),
@@ -50,8 +53,8 @@ export async function fetchAftersaleProgressData(
     couponFields: orderDetailResult.status === 'fulfilled'
       ? mapOrderCouponFields(orderDetailResult.value)
       : [],
-    fields: (data.fields || []).map(toAftersaleField),
-    progress: (data.progress || []).map(toAftersaleProgressStep),
+    fields: (data.fields || []).map(toAftersaleField).filter((field) => field.label && field.value),
+    progress: (data.progress || []).map(toAftersaleProgressStep).filter((step) => step.id && step.title),
     primaryButtonText: normalizeText(data.primaryButtonText),
     unavailableReason: normalizeText(data.unavailableReason) || undefined,
   };

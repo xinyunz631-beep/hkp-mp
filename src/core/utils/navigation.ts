@@ -37,11 +37,13 @@ const LOGIN_OPTIONAL_ROUTE_REASONS: Partial<Record<MiniRoute, string>> = {
 };
 
 type NavigateLoginMode = 'required' | 'optional' | 'none';
+type NavigateMethod = 'navigateTo' | 'redirectTo' | 'reLaunch';
 
 interface NavigateToMiniRouteOptions {
   loginReason?: string;
   loginMode?: NavigateLoginMode;
   forceLogin?: boolean;
+  method?: NavigateMethod;
 }
 
 // 归一化微信页面栈里的 route，避免前导斜杠差异影响判断。
@@ -81,8 +83,11 @@ function resolveMiniRouteLoginMode(url: string, options: NavigateToMiniRouteOpti
   return 'none';
 }
 
-function navigateToMiniRouteDirectly(url: string) {
-  Taro.navigateTo({ url });
+function navigateToMiniRouteDirectly(url: string, method: NavigateMethod = 'navigateTo') {
+  if (method === 'redirectTo') return Taro.redirectTo({ url });
+  if (method === 'reLaunch') return Taro.reLaunch({ url });
+
+  return Taro.navigateTo({ url });
 }
 
 // 项目内跳转分包页时优先使用本方法，受保护路由会先登录拦截，交易确认路由允许暂不登录继续。
@@ -96,7 +101,7 @@ export function navigateToMiniRoute(url: string, options: NavigateToMiniRouteOpt
     requireLogin({
       reason: loginReason,
       onSuccess: () => {
-        navigateToMiniRouteDirectly(url);
+        navigateToMiniRouteDirectly(url, options.method);
       },
     }).catch(() => undefined);
     return false;
@@ -105,13 +110,13 @@ export function navigateToMiniRoute(url: string, options: NavigateToMiniRouteOpt
   if (loginMode === 'optional') {
     promptLogin(loginReason).then((result) => {
       if (result === 'success' || result === 'cancel') {
-        navigateToMiniRouteDirectly(url);
+        navigateToMiniRouteDirectly(url, options.method);
       }
     }).catch(() => undefined);
     return false;
   }
 
-  navigateToMiniRouteDirectly(url);
+  navigateToMiniRouteDirectly(url, options.method);
   return true;
 }
 

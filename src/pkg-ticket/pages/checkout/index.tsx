@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import Taro from '@tarojs/taro';
-import { Input, ScrollView, Text, View } from '@tarojs/components';
+import { Input, Text, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
 import { AppBottomSheet } from '@/core/components/AppBottomSheet';
 import { AppIcon } from '@/core/components/AppIcon';
@@ -12,6 +12,7 @@ import { PageShare, PageShell } from '@/core/components/PageShell';
 import { useCheckoutController } from '@/core/runtime/use-checkout-controller';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import { isBffTicketOrderIssued } from '@/core/services/bff-order-api';
+import { rootStore } from '@/core/store';
 import { resolveErrorMessage } from '@/core/utils/error-message';
 import { navigateToMiniRoute } from '@/core/utils/navigation';
 import { showWechatConfirm, showWechatToast } from '@/core/utils/wechat-actions';
@@ -74,22 +75,64 @@ function resolveAgeFromIdCard(idCard: string, travelDate: string) {
   return age;
 }
 
+// 判断是否为优惠票出游人，用于提交前资格二次确认。
 function isDiscountTraveler(traveler: TicketOrderTraveler) {
   return traveler.role === 'senior';
 }
 
+// 判断是否为儿童类出游人，用于提交前年龄资格提醒。
 function isChildTraveler(traveler: TicketOrderTraveler) {
   return traveler.role === 'child' || traveler.role === 'annualChild';
 }
 
-function isTravelerComplete(traveler: TicketOrderTraveler) {
-  return (!traveler.nameRequired || Boolean(traveler.name.trim()))
-    && (!traveler.certificateRequired || isValidMainlandIdCard(traveler.idCard))
-    && (!traveler.mobileRequired || isValidMainlandMobile(traveler.mobile));
+// 读取会员信息作为第一位出游人的默认值，昵称缺失时用微信默认昵称兜底。
+function resolveMemberContactSeed(): ContactFormState {
+  const memberInfo = rootStore.memberInfo;
+
+  return {
+    name: memberInfo?.nickname?.trim() || '微信用户',
+    mobile: normalizeMobileInput(memberInfo?.mobile || ''),
+    idCard: '',
+  };
 }
 
-function getTravelerTabTitle(traveler: TicketOrderTraveler, index: number) {
-  return traveler.category === 'annualCard' ? `持卡人${index + 1}` : `游客${index + 1}`;
+// 合并草稿联系人和会员默认值，避免新确认单空白联系人影响提交。
+function mergeContactWithMemberSeed(contact: ContactFormState): ContactFormState {
+  const memberContact = resolveMemberContactSeed();
+
+  return {
+    name: contact.name.trim() || memberContact.name,
+    mobile: normalizeMobileInput(contact.mobile || memberContact.mobile),
+    idCard: normalizeIdCardInput(contact.idCard),
+  };
+}
+
+// 归一化现网 A 方案的一组出游人表单，所有门票复用同一组实名信息。
+function normalizeSingleTravelerForm(
+  travelers: TicketOrderTraveler[],
+  contact: ContactFormState,
+) {
+  const traveler = travelers[0];
+  if (!traveler) return [];
+
+  return [{
+    ...traveler,
+    name: traveler.name.trim() || contact.name,
+    mobile: normalizeMobileInput(traveler.mobile || contact.mobile),
+    idCard: normalizeIdCardInput(traveler.idCard || contact.idCard),
+  }];
+}
+
+// 根据一组游客信息回推订单联系人，现网 A 方案不单独展示联系人板块。
+function resolveContactFromTravelers(
+  travelers: TicketOrderTraveler[],
+  fallbackContact: ContactFormState,
+) {
+  return {
+    name: travelers.find((traveler) => Boolean(traveler.name))?.name || fallbackContact.name.trim(),
+    mobile: travelers.find((traveler) => Boolean(traveler.mobile))?.mobile || normalizeMobileInput(fallbackContact.mobile),
+    idCard: travelers.find((traveler) => Boolean(traveler.idCard))?.idCard || normalizeIdCardInput(fallbackContact.idCard),
+  };
 }
 
 // 将确认单金额转为分单位比较，避免浮点格式差异误判为改价。
@@ -114,7 +157,6 @@ const CheckoutPage = observer(function CheckoutPage() {
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [discountPopupVisible, setDiscountPopupVisible] = useState(false);
   const [travelerForms, setTravelerForms] = useState<TicketOrderTraveler[]>([]);
-  const [activeTravelerId, setActiveTravelerId] = useState('');
   const [contactForm, setContactForm] = useState<ContactFormState>({
     name: '',
     mobile: '',
@@ -151,17 +193,40 @@ const CheckoutPage = observer(function CheckoutPage() {
     initPage: async () => {
       const nextDraftId = Taro.getCurrentInstance().router?.params?.draftId || '';
       const nextData = await checkoutController.load({ draftId: nextDraftId });
-      setDraftId(nextDraftId);
-      setAddonQuantity(nextData.addonItem.quantity);
-      setSelectedDate(nextData.ticketItem.travelDate);
-      setTravelerForms(nextData.travelers);
-      setActiveTravelerId(nextData.travelers[0]?.id || '');
-      setSubmitAttempted(false);
-      setContactForm({
+      const nextContact = mergeContactWithMemberSeed({
         name: nextData.contact.name,
         mobile: nextData.contact.mobile,
         idCard: nextData.contact.idCard,
       });
+      const nextTravelers = normalizeSingleTravelerForm(nextData.travelers, nextContact);
+      const normalizedData: TicketCheckoutPageData = {
+        ...nextData,
+        contact: {
+          ...nextData.contact,
+          ...nextContact,
+        },
+        draft: nextData.draft
+          ? {
+            ...nextData.draft,
+            contact: nextContact,
+            travelers: nextTravelers,
+          }
+          : nextData.draft,
+        travelers: nextTravelers,
+      };
+      setDraftId(nextDraftId);
+      setAddonQuantity(nextData.addonItem.quantity);
+      setSelectedDate(nextData.ticketItem.travelDate);
+      setTravelerForms(nextTravelers);
+      setSubmitAttempted(false);
+      setContactForm(nextContact);
+      checkoutController.setData(normalizedData);
+      if (nextDraftId && !nextData.draftMissing) {
+        updateTicketOrderDraft(nextDraftId, {
+          contact: nextContact,
+          travelers: nextTravelers,
+        });
+      }
     },
     loginRequired: true,
     loginReason: '登录后可提交门票订单',
@@ -237,9 +302,16 @@ const CheckoutPage = observer(function CheckoutPage() {
     const nextTravelers = travelerForms.map((traveler) => (
       traveler.id === travelerId ? { ...traveler, [field]: nextValue } : traveler
     ));
+    const nextContact = resolveContactFromTravelers(nextTravelers, contactForm);
 
     setTravelerForms(nextTravelers);
-    if (draftId) updateTicketOrderDraft(draftId, { travelers: nextTravelers });
+    setContactForm(nextContact);
+    if (draftId) {
+      updateTicketOrderDraft(draftId, {
+        contact: nextContact,
+        travelers: nextTravelers,
+      });
+    }
   }
 
   function handleAddonQuantityChange(value: number) {
@@ -318,11 +390,12 @@ const CheckoutPage = observer(function CheckoutPage() {
       mobile: normalizeMobileInput(traveler.mobile),
       idCard: normalizeIdCardInput(traveler.idCard),
     }));
-    const nextContact = {
-      name: nextTravelers.find((traveler) => Boolean(traveler.name))?.name || contactForm.name.trim(),
-      mobile: nextTravelers.find((traveler) => Boolean(traveler.mobile))?.mobile || normalizeMobileInput(contactForm.mobile),
-      idCard: nextTravelers.find((traveler) => Boolean(traveler.idCard))?.idCard || normalizeIdCardInput(contactForm.idCard),
-    };
+    const nextContact = resolveContactFromTravelers(nextTravelers, contactForm);
+
+    if (!isValidMainlandMobile(nextContact.mobile)) {
+      await showWechatToast('请填写正确联系手机');
+      return;
+    }
 
     if (!await validateTravelers(nextTravelers)) return;
 
@@ -336,7 +409,7 @@ const CheckoutPage = observer(function CheckoutPage() {
     const confirmed = await showWechatConfirm({
       title: '确认订单',
       content: nextTravelers.length
-        ? `已核对 ${nextTravelers.length} 位实名出游人，本次应付 ¥${payAmount.toFixed(2)}，提交后将生成入园凭证。`
+        ? `已核对出游人信息，本次应付 ¥${payAmount.toFixed(2)}，提交后将生成入园凭证。`
         : `已核对订单信息，本次应付 ¥${payAmount.toFixed(2)}，提交后将生成入园凭证。`,
       confirmText: '确认提交',
     });
@@ -356,12 +429,10 @@ const CheckoutPage = observer(function CheckoutPage() {
   return pageRuntime.renderPage(() => {
     if (!checkoutData) return null;
 
-    const travelerCount = travelerForms.length;
-    const completedTravelerCount = travelerForms.filter(isTravelerComplete).length;
     const selectedProducts = checkoutData.draft?.products ?? [];
     const totalTicketQuantity = selectedProducts.reduce((total, product) => total + product.quantity, 0)
       || checkoutData.ticketItem.quantity;
-    const activeTraveler = travelerForms.find((traveler) => traveler.id === activeTravelerId) ?? travelerForms[0];
+    const activeTraveler = travelerForms[0];
     const hasAddonItem = checkoutData.addonItem.quantity > 0 || addonQuantity > 0;
     const summaryItemCount = totalTicketQuantity + (hasAddonItem ? addonQuantity : 0);
     const summarySubtotalAmount = typeof ticketAmount === 'number'
@@ -418,11 +489,6 @@ const CheckoutPage = observer(function CheckoutPage() {
                   </View>
                 </View>
 
-                <View className="_pg-entry-tip">
-                  <AppIcon name="code" className="_pg-entry-tip_icon" size={14} color="#94a3b8" />
-                  <Text>支付成功后生成订单入园码，也可凭购票证件核验入园</Text>
-                </View>
-
                 <View className="_pg-product-list">
                   {selectedProducts.map((product) => (
                     <View className="_pg-product" key={product.id}>
@@ -454,40 +520,14 @@ const CheckoutPage = observer(function CheckoutPage() {
               </View>
             </View>
 
-            {travelerCount > 0 ? (
+            {travelerForms.length > 0 ? (
             <View className="_pg-card">
               <View className="_pg-form _pg-form--traveler">
                 <View className="_pg-form_heading _pg-form_heading--traveler">
                   <View className="_pg-form_title-row">
                     <Text className="_pg-form_title">出游人信息</Text>
-                    <Text className="_pg-form_desc">请补充 {travelerCount} 位出游人信息</Text>
                   </View>
-                  <Text className="_pg-form_progress">{completedTravelerCount}/{travelerCount} 已完善</Text>
                 </View>
-                <Text className="_pg-form_notice-text">请按票种要求补充出游人信息，儿童票、优待票和年卡资格以园区现场核验为准。</Text>
-
-                <ScrollView className="_pg-traveler-tabs" scrollX enhanced showScrollbar={false}>
-                  <View className="_pg-traveler-tabs_inner">
-                    {travelerForms.map((traveler, index) => {
-                      const active = traveler.id === activeTraveler?.id;
-                      const travelerCompleted = isTravelerComplete(traveler);
-
-                      return (
-                        <View
-                          className={`_pg-traveler-tabs_item ${active ? '_pg-traveler-tabs_item--active' : ''}`}
-                          key={traveler.id}
-                          onClick={() => setActiveTravelerId(traveler.id)}
-                        >
-                          <Text className="_pg-traveler-tabs_status">
-                            {travelerCompleted ? '已完善' : '待填'}
-                          </Text>
-                          <Text className="_pg-traveler-tabs_title">{getTravelerTabTitle(traveler, index)}</Text>
-                          <Text className="_pg-traveler-tabs_role">{traveler.roleText}</Text>
-                        </View>
-                      );
-                    })}
-                  </View>
-                </ScrollView>
 
                 {activeTraveler ? (() => {
                   const traveler = activeTraveler;
@@ -500,18 +540,10 @@ const CheckoutPage = observer(function CheckoutPage() {
 
                   return (
                     <View className="_pg-traveler" key={traveler.id}>
-                      <View className="_pg-traveler_header">
-                        <Text className="_pg-traveler_title">
-                          {traveler.title}
-                        </Text>
+                      <View className="_pg-entry-tip">
+                        <AppIcon name="code" className="_pg-entry-tip_icon" size={14} color="#94a3b8" />
+                        <Text>支付成功后生成订单入园码，也可凭购票证件核验入园</Text>
                       </View>
-                      <Text className="_pg-traveler_desc">{traveler.requirementText}</Text>
-                      {traveler.qualificationText ? (
-                        <View className="_pg-traveler_tip">
-                          <AppIcon name="ask" className="_pg-traveler_tip-icon" size={14} color="#d0851f" />
-                          <Text>{traveler.qualificationText}</Text>
-                        </View>
-                      ) : null}
 
                       <View className="_pg-field-shell">
                         {traveler.nameRequired ? (
@@ -567,10 +599,10 @@ const CheckoutPage = observer(function CheckoutPage() {
             </View>
             ) : null}
 
-            {travelerCount > 0 ? (
+            {travelerForms.length > 0 ? (
               <View className="_pg-check-tip">
                 <AppIcon name="check" className="_pg-check-tip_icon" size={14} color="#e45c98" />
-                <Text>请确认所填信息准确无误，提交后部分信息不可更改。如有疑问请联系客服。</Text>
+                <Text>请确认所填信息准确无误，提交后信息不可更改。如有疑问请联系客服。</Text>
               </View>
             ) : null}
 
