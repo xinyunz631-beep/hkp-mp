@@ -1,7 +1,9 @@
 import Taro from '@tarojs/taro';
-import { Text, View } from '@tarojs/components';
+import { Text, Textarea, View } from '@tarojs/components';
 import classNames from 'classnames';
 import { observer } from 'mobx-react';
+import { useState } from 'react';
+import { AppBottomSheet } from '@/core/components/AppBottomSheet';
 import { AppIcon } from '@/core/components/AppIcon';
 import { AppImage } from '@/core/components/AppImage';
 import { CouponSelectionPopup, FixedSubmitBar } from '@/core/components/commerce';
@@ -23,6 +25,8 @@ function resolveCheckoutRouteParams() {
   };
 }
 
+const ORDER_REMARK_MAX_LENGTH = 120;
+
 // 将商城确认单金额转为分单位比较，避免浮点格式差异误判为改价。
 function toMallAmountCent(value?: number) {
   return Math.round((Number(value) || 0) * 100);
@@ -40,7 +44,9 @@ function hasMallCheckoutChanged(currentData: OrderCheckoutData, nextData: OrderC
 }
 
 const CheckoutPage = observer(function CheckoutPage() {
-  const checkoutController = useCheckoutController<OrderCheckoutData, undefined>({
+  const [orderRemark, setOrderRemark] = useState('');
+  const [discountPopupVisible, setDiscountPopupVisible] = useState(false);
+  const checkoutController = useCheckoutController<OrderCheckoutData, string | undefined>({
     load: (params) => fetchCheckoutData({
       ...resolveCheckoutRouteParams(),
       ...(Object.prototype.hasOwnProperty.call(params, 'selectedCouponId') ? { selectedCouponId: params.selectedCouponId } : {}),
@@ -64,7 +70,7 @@ const CheckoutPage = observer(function CheckoutPage() {
           : '商城商品、配送或优惠已更新，请确认后重新提交',
       };
     },
-    submit: (data) => submitOrderCheckoutOrder(data),
+    submit: (data, remark) => submitOrderCheckoutOrder(data, remark),
     buildSuccessRoute: (result) => `${MINI_PACKAGE_ROUTES.orderDetail}?orderId=${encodeURIComponent(result.orderNo)}`,
     submitErrorText: '商城订单提交暂不可用，请稍后再试',
     emptySubmitText: '订单信息已失效，请重新选择商品',
@@ -82,12 +88,17 @@ const CheckoutPage = observer(function CheckoutPage() {
   async function handleDiscountPress() {
     if (!checkoutData) return;
 
-    await showWechatConfirm({
-      title: '折扣信息',
-      content: `当前订单已优惠 ¥${checkoutData.discountAmount.toFixed(2)}，最终以支付结果为准。`,
-      confirmText: '知道了',
-      cancelText: '关闭',
-    });
+    if (checkoutData.discountDetails.length === 0) {
+      await showWechatConfirm({
+        title: '折扣信息',
+        content: `当前订单已优惠 ¥${checkoutData.discountAmount.toFixed(2)}，最终以支付结果为准。`,
+        confirmText: '知道了',
+        cancelText: '关闭',
+      });
+      return;
+    }
+
+    setDiscountPopupVisible(true);
   }
 
   async function handleSubmit() {
@@ -98,7 +109,7 @@ const CheckoutPage = observer(function CheckoutPage() {
       return;
     }
 
-    await checkoutController.submitAndPay(undefined, {
+    await checkoutController.submitAndPay(orderRemark.trim() || undefined, {
       withLoading: pageRuntime.withLoading,
     });
   }
@@ -246,7 +257,12 @@ const CheckoutPage = observer(function CheckoutPage() {
                     <Text className="_pg-product_title">{item.title}</Text>
                     {item.specText ? <Text className="_pg-product_spec">{item.specText}</Text> : null}
                     {item.giftText ? <Text className="_pg-product_gift">{item.giftText}</Text> : null}
-                    <Text className="_pg-product_price">{item.priceText}</Text>
+                    <View className="_pg-product_price-row">
+                      <Text className="_pg-product_price">{item.paidPriceText || item.priceText}</Text>
+                      {item.originalPriceText ? (
+                        <Text className="_pg-product_original-price">{item.originalPriceText}</Text>
+                      ) : null}
+                    </View>
                   </View>
                   <Text className="_pg-product_quantity">x{item.quantity}</Text>
                 </View>
@@ -288,6 +304,22 @@ const CheckoutPage = observer(function CheckoutPage() {
               </View>
             ) : null}
 
+            <View className="_pg-card _pg-remark-card">
+              <View className="_pg-remark_header">
+                <Text className="_pg-remark_title">订单备注</Text>
+                <Text className="_pg-remark_count">{orderRemark.length}/{ORDER_REMARK_MAX_LENGTH}</Text>
+              </View>
+              <Textarea
+                className="_pg-remark_textarea"
+                value={orderRemark}
+                maxlength={ORDER_REMARK_MAX_LENGTH}
+                placeholder="选填，可填写配送或商品备注"
+                onInput={(event) => {
+                  setOrderRemark(event.detail.value.slice(0, ORDER_REMARK_MAX_LENGTH));
+                }}
+              />
+            </View>
+
             {checkoutData.amountFields.length > 0 ? (
               <View className="_pg-card">
                 {checkoutData.amountFields.map((item) => (
@@ -313,7 +345,7 @@ const CheckoutPage = observer(function CheckoutPage() {
                     draftId: checkoutData.draftId,
                     addressId: checkoutData.address?.id,
                   });
-                  return Boolean(refreshed);
+                  return refreshed ? refreshed.selectedCouponId ?? null : false;
                 }}
                 onSelect={async (coupon) => {
                   const refreshed = await checkoutController.refreshByCoupon(coupon.id, {
@@ -322,10 +354,35 @@ const CheckoutPage = observer(function CheckoutPage() {
                     draftId: checkoutData.draftId,
                     addressId: checkoutData.address?.id,
                   });
-                  return Boolean(refreshed);
+                  return refreshed ? refreshed.selectedCouponId ?? null : false;
                 }}
               />
             ) : null}
+            <AppBottomSheet
+              visible={discountPopupVisible}
+              title="优惠明细"
+              className="_pg-discount-sheet"
+              bodyMinHeight={260}
+              bodyMaxHeight="50vh"
+              showFooter={false}
+              onClose={() => setDiscountPopupVisible(false)}
+            >
+              <View className="_pg-discount-summary">
+                <Text className="_pg-discount-summary_label">本单已优惠</Text>
+                <Text className="_pg-discount-summary_amount">¥{checkoutData.discountAmount.toFixed(2)}</Text>
+              </View>
+              <View className="_pg-discount-list">
+                {checkoutData.discountDetails.map((item) => (
+                  <View className="_pg-discount-item" key={item.id}>
+                    <View className="_pg-discount-item_main">
+                      <Text className="_pg-discount-item_title">{item.title}</Text>
+                      {item.detailText ? <Text className="_pg-discount-item_detail">{item.detailText}</Text> : null}
+                    </View>
+                    <Text className="_pg-discount-item_amount">{item.amountText}</Text>
+                  </View>
+                ))}
+              </View>
+            </AppBottomSheet>
           </PageShare>
         </PageShell>
       </View>

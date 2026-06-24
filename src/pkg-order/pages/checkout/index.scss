@@ -232,13 +232,27 @@
     line-height: 1.45;
   }
 
+  &_price-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 14px;
+  }
+
   &_price {
     display: block;
-    margin-top: 14px;
     color: #d94a88;
     font-size: 28px;
     font-weight: 500;
     line-height: 1.45;
+  }
+
+  &_original-price {
+    display: block;
+    color: #9ca3af;
+    font-size: 24px;
+    line-height: 1.45;
+    text-decoration: line-through;
   }
 
   &_quantity {
@@ -295,6 +309,105 @@
     color: #d97706;
     font-size: 26px;
     text-align: right;
+  }
+}
+
+._pg-remark {
+  &_header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 18px;
+  }
+
+  &_title {
+    color: #23262f;
+    font-size: 30px;
+    line-height: 1.45;
+  }
+
+  &_count {
+    color: #9ca3af;
+    font-size: 24px;
+    line-height: 1.4;
+  }
+
+  &_textarea {
+    width: 100%;
+    min-height: 132px;
+    padding: 0;
+    box-sizing: border-box;
+    color: #23262f;
+    font-size: 26px;
+    line-height: 1.5;
+    background: transparent;
+  }
+}
+
+._pg-discount-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+  padding: 22px 24px;
+  border-radius: 22px;
+  background: #fff2f7;
+
+  &_label {
+    color: #6b7280;
+    font-size: 26px;
+    line-height: 1.4;
+  }
+
+  &_amount {
+    color: #d94a88;
+    font-size: 34px;
+    font-weight: 500;
+    line-height: 1.2;
+  }
+}
+
+._pg-discount-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+._pg-discount-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 22px 24px;
+  border-radius: 22px;
+  background: #f8f9fc;
+
+  &_main {
+    min-width: 0;
+    flex: 1;
+  }
+
+  &_title {
+    display: block;
+    color: #23262f;
+    font-size: 28px;
+    line-height: 1.45;
+  }
+
+  &_detail {
+    display: block;
+    margin-top: 8px;
+    color: #9ca3af;
+    font-size: 24px;
+    line-height: 1.4;
+  }
+
+  &_amount {
+    flex: none;
+    color: #d94a88;
+    font-size: 28px;
+    font-weight: 500;
+    line-height: 1.45;
   }
 }
 

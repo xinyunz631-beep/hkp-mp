@@ -19,6 +19,7 @@ export interface MallCheckoutRequestContext {
   address?: Awaited<ReturnType<typeof resolveMallCheckoutAddress>>;
   selectedCouponId?: string | null;
   freightAmount?: number;
+  remark?: string;
 }
 
 // 解析商城确认单地址，实物订单优先使用路由地址，其次使用草稿缓存和默认地址。
@@ -50,6 +51,7 @@ export function buildMallCheckoutOrderRequest({
   address,
   selectedCouponId,
   freightAmount,
+  remark,
 }: MallCheckoutRequestContext): BffOrderUnifiedRequest {
   return {
     sceneType: 'MALL',
@@ -65,6 +67,7 @@ export function buildMallCheckoutOrderRequest({
         addressText: formatOrderAddress(address),
       }
       : undefined,
+    remark,
     items: draft.products.map((item, index) => ({
       lineNo: String(index + 1),
       itemId: item.productId,

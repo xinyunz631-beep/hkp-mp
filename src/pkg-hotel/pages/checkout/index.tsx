@@ -137,7 +137,7 @@ const CheckoutPage = observer(function CheckoutPage() {
         selectedCouponId: nextData.selectedCouponId,
       });
       setRoomCount(nextData.roomCount);
-      return true;
+      return nextData;
   }
 
   function handleRoomCountChange(nextRoomCount: number) {
@@ -323,10 +323,10 @@ const CheckoutPage = observer(function CheckoutPage() {
                 selectedCouponId={selectedCouponId}
                 onClose={checkoutController.closeCouponPopup}
                 onClear={() => {
-                  return refreshHotelCheckout(roomCount, null);
+                  return refreshHotelCheckout(roomCount, null).then((nextData) => (nextData ? nextData.selectedCouponId ?? null : false));
                 }}
                 onSelect={(coupon) => {
-                  return refreshHotelCheckout(roomCount, coupon.id);
+                  return refreshHotelCheckout(roomCount, coupon.id).then((nextData) => (nextData ? nextData.selectedCouponId ?? null : false));
                 }}
               />
             ) : null}

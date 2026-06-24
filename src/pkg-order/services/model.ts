@@ -48,10 +48,19 @@ export interface OrderCheckoutProductData {
   specText: string;
   quantity: number;
   priceText: string;
+  paidPriceText?: string;
+  originalPriceText?: string;
   imageSrc: string;
   giftText?: string;
   canRefund?: boolean;
   canAfterSale?: boolean;
+}
+
+export interface OrderCheckoutDiscountDetailData {
+  id: string;
+  title: string;
+  amountText: string;
+  detailText?: string;
 }
 
 export interface OrderCheckoutData {
@@ -69,6 +78,7 @@ export interface OrderCheckoutData {
   selectedCouponId?: string;
   coupons: HkpCouponSummary[];
   discountText: string;
+  discountDetails: OrderCheckoutDiscountDetailData[];
   amountFields: OrderDetailFieldData[];
   freightAmount: number;
   totalAmount: number;

@@ -8,6 +8,7 @@ import { AppIcon } from '@/core/components/AppIcon';
 import { AppImage } from '@/core/components/AppImage';
 import { AppPopup } from '@/core/components/AppPopup';
 import { formatCurrency } from '@/core/utils/money';
+import { showWechatToast } from '@/core/utils/wechat-actions';
 import type {
   HkpAddressSummary,
   HkpCouponSummary,
@@ -130,8 +131,8 @@ interface CouponSelectionPopupProps {
   coupons: HkpCouponSummary[];
   selectedCouponId?: string;
   onClose: () => void;
-  onClear?: () => boolean | void | Promise<boolean | void>;
-  onSelect: (coupon: HkpCouponSummary) => boolean | void | Promise<boolean | void>;
+  onClear?: () => boolean | string | null | void | Promise<boolean | string | null | void>;
+  onSelect: (coupon: HkpCouponSummary) => boolean | string | null | void | Promise<boolean | string | null | void>;
 }
 
 function isDateUnit(value: unknown): value is string | number {
@@ -590,6 +591,7 @@ export function CouponSelectionPopup({
   const [draftCouponId, setDraftCouponId] = useState<string | undefined>(selectedCouponId);
   const [couponUpdating, setCouponUpdating] = useState(false);
   const draftCoupon = coupons.find((coupon) => coupon.id === draftCouponId && coupon.status === 'available');
+  const activeCouponId = draftCoupon?.id;
   const selectedCount = draftCoupon ? 1 : 0;
   const selectedDiscount = draftCoupon?.discountAmount ?? 0;
   const selectedDiscountText = selectedDiscount > 0
@@ -597,12 +599,19 @@ export function CouponSelectionPopup({
     : (draftCoupon ? '优惠以订单确认为准' : '优惠 0.00元');
 
   useEffect(() => {
-    if (visible) setDraftCouponId(selectedCouponId);
-  }, [selectedCouponId, visible]);
+    if (!visible) return;
+    const selectedCoupon = coupons.find((coupon) => coupon.id === selectedCouponId && coupon.status === 'available');
+    setDraftCouponId(selectedCoupon?.id);
+  }, [coupons, selectedCouponId, visible]);
 
   // 选择/取消券时立即走确认单刷新，由后端返回真实优惠金额和可用状态。
   async function handleCouponPress(coupon: HkpCouponSummary) {
-    if (coupon.status !== 'available' || couponUpdating) return;
+    if (couponUpdating) return;
+
+    if (coupon.status !== 'available') {
+      await showWechatToast(coupon.tag || '该优惠券暂不可用');
+      return;
+    }
 
     const previousCouponId = draftCouponId;
     const nextCouponId = draftCouponId === coupon.id ? undefined : coupon.id;
@@ -611,7 +620,13 @@ export function CouponSelectionPopup({
 
     try {
       const result = nextCouponId ? await onSelect(coupon) : await onClear?.();
-      if (result === false) setDraftCouponId(previousCouponId);
+      if (result === false) {
+        setDraftCouponId(previousCouponId);
+      } else if (typeof result === 'string') {
+        setDraftCouponId(result);
+      } else if (result === null) {
+        setDraftCouponId(undefined);
+      }
     } catch {
       setDraftCouponId(previousCouponId);
     } finally {
@@ -657,7 +672,7 @@ export function CouponSelectionPopup({
           <View
             className={classNames(
               'hkp-coupon-popup__item',
-              draftCouponId === coupon.id && 'hkp-coupon-popup__item--active',
+              activeCouponId === coupon.id && 'hkp-coupon-popup__item--active',
               coupon.status !== 'available' && 'hkp-coupon-popup__item--disabled',
               couponUpdating && 'hkp-coupon-popup__item--updating',
             )}
@@ -673,7 +688,7 @@ export function CouponSelectionPopup({
               }}
             >
               <Checkbox
-                checked={draftCouponId === coupon.id}
+                checked={activeCouponId === coupon.id}
                 disabled={couponUpdating || coupon.status !== 'available'}
               />
             </View>

@@ -208,7 +208,7 @@ const CheckoutPage = observer(function CheckoutPage() {
       const nextData = await pageRuntime.withLoading(() => fetchCheckoutData(draftId, nextCouponId));
       checkoutController.setData(nextData);
       if (nextData.couponNoticeText) await showWechatToast(nextData.couponNoticeText);
-      return true;
+      return nextData;
     } catch (error) {
       updateTicketOrderDraft(draftId, {
         selectedCouponId: previousCouponId,
@@ -219,21 +219,6 @@ const CheckoutPage = observer(function CheckoutPage() {
       await showWechatToast(resolveErrorMessage(error, '优惠券暂不可用，请稍后再试'));
       return false;
     }
-  }
-
-  function updateContactField(field: keyof ContactFormState, value: string) {
-    const nextValue = field === 'mobile'
-      ? normalizeMobileInput(value)
-      : field === 'idCard'
-        ? normalizeIdCardInput(value)
-        : value;
-    const nextContact = {
-      ...contactForm,
-      [field]: nextValue,
-    };
-
-    setContactForm(nextContact);
-    if (draftId) updateTicketOrderDraft(draftId, { contact: nextContact });
   }
 
   function updateTravelerField(travelerId: string, field: TravelerField, value: string) {
@@ -248,31 +233,6 @@ const CheckoutPage = observer(function CheckoutPage() {
 
     setTravelerForms(nextTravelers);
     if (draftId) updateTicketOrderDraft(draftId, { travelers: nextTravelers });
-  }
-
-  async function handleSyncContactToTraveler(travelerId: string) {
-    const nextContactName = contactForm.name.trim();
-    const nextContactMobile = normalizeMobileInput(contactForm.mobile);
-    const targetTraveler = travelerForms.find((traveler) => traveler.id === travelerId);
-
-    if (!nextContactName && !nextContactMobile) {
-      await showWechatToast('请先填写联系人信息');
-      return;
-    }
-
-    const nextTravelers = travelerForms.map((traveler) => (
-      traveler.id === travelerId
-        ? {
-          ...traveler,
-          name: traveler.nameRequired ? nextContactName || traveler.name : traveler.name,
-          mobile: traveler.mobileRequired ? nextContactMobile || traveler.mobile : traveler.mobile,
-        }
-        : traveler
-    ));
-
-    setTravelerForms(nextTravelers);
-    if (draftId) updateTicketOrderDraft(draftId, { travelers: nextTravelers });
-    await showWechatToast(targetTraveler?.certificateRequired ? '已同步联系人，请补充证件号' : '已同步联系人');
   }
 
   function handleAddonQuantityChange(value: number) {
@@ -340,27 +300,17 @@ const CheckoutPage = observer(function CheckoutPage() {
       return;
     }
 
-    const nextContact = {
-      name: contactForm.name.trim(),
-      mobile: normalizeMobileInput(contactForm.mobile),
-      idCard: normalizeIdCardInput(travelerForms[0]?.idCard || contactForm.idCard),
-    };
     const nextTravelers = travelerForms.map((traveler) => ({
       ...traveler,
       name: traveler.name.trim(),
       mobile: normalizeMobileInput(traveler.mobile),
       idCard: normalizeIdCardInput(traveler.idCard),
     }));
-
-    if (!nextContact.name) {
-      await showWechatToast('请填写联系人姓名');
-      return;
-    }
-
-    if (!isValidMainlandMobile(nextContact.mobile)) {
-      await showWechatToast('请填写正确手机号');
-      return;
-    }
+    const nextContact = {
+      name: nextTravelers.find((traveler) => Boolean(traveler.name))?.name || contactForm.name.trim(),
+      mobile: nextTravelers.find((traveler) => Boolean(traveler.mobile))?.mobile || normalizeMobileInput(contactForm.mobile),
+      idCard: nextTravelers.find((traveler) => Boolean(traveler.idCard))?.idCard || normalizeIdCardInput(contactForm.idCard),
+    };
 
     if (!await validateTravelers(nextTravelers)) return;
 
@@ -375,7 +325,7 @@ const CheckoutPage = observer(function CheckoutPage() {
       title: '确认订单',
       content: nextTravelers.length
         ? `已核对 ${nextTravelers.length} 位实名出游人，本次应付 ¥${payAmount.toFixed(2)}，提交后将生成入园凭证。`
-        : `已核对订单联系人，本次应付 ¥${payAmount.toFixed(2)}，提交后将生成入园凭证。`,
+        : `已核对订单信息，本次应付 ¥${payAmount.toFixed(2)}，提交后将生成入园凭证。`,
       confirmText: '确认提交',
     });
     if (!confirmed) return;
@@ -394,7 +344,6 @@ const CheckoutPage = observer(function CheckoutPage() {
   return pageRuntime.renderPage(() => {
     if (!checkoutData) return null;
 
-    const mobileError = submitAttempted && Boolean(contactForm.mobile) && !isValidMainlandMobile(contactForm.mobile);
     const travelerCount = travelerForms.length;
     const completedTravelerCount = travelerForms.filter(isTravelerComplete).length;
     const selectedProducts = checkoutData.draft?.products ?? [];
@@ -488,42 +437,6 @@ const CheckoutPage = observer(function CheckoutPage() {
               </View>
             </View>
 
-            <View className="_pg-card">
-              <View className="_pg-form _pg-form--contact">
-                <View className="_pg-form_heading">
-                  <Text className="_pg-form_title">联系人信息</Text>
-                  <Text className="_pg-form_desc">用于接收出票和订单通知</Text>
-                </View>
-
-                <View className="_pg-field-shell">
-                  <View className="_pg-field">
-                    <Text className="_pg-field_label">姓名</Text>
-                    <Input
-                      className="_pg-field_input"
-                      value={contactForm.name}
-                      placeholder="请输入联系人姓名"
-                      onInput={(event) => updateContactField('name', event.detail.value)}
-                    />
-                  </View>
-
-                  <View className="_pg-field">
-                    <Text className="_pg-field_label">手机</Text>
-                    <Input
-                      className="_pg-field_input"
-                      value={contactForm.mobile}
-                      placeholder={checkoutData.contact.mobilePlaceholder}
-                      type="number"
-                      maxlength={11}
-                      onInput={(event) => updateContactField('mobile', event.detail.value)}
-                    />
-                  </View>
-                </View>
-
-                <Text className="_pg-form_hint">{checkoutData.contact.helperText}</Text>
-                {mobileError ? <Text className="_pg-form_error">请填写正确手机号</Text> : null}
-              </View>
-            </View>
-
             {travelerCount > 0 ? (
             <View className="_pg-card">
               <View className="_pg-form _pg-form--traveler">
@@ -567,7 +480,6 @@ const CheckoutPage = observer(function CheckoutPage() {
                   const travelerMobileError = submitAttempted
                     && traveler.mobileRequired
                     && !isValidMainlandMobile(traveler.mobile);
-                  const canSyncContact = traveler.nameRequired || traveler.mobileRequired;
 
                   return (
                     <View className="_pg-traveler" key={traveler.id}>
@@ -575,11 +487,6 @@ const CheckoutPage = observer(function CheckoutPage() {
                         <Text className="_pg-traveler_title">
                           {traveler.title}
                         </Text>
-                        {canSyncContact ? (
-                          <Text className="_pg-traveler_action" onClick={() => { void handleSyncContactToTraveler(traveler.id); }}>
-                            同联系人
-                          </Text>
-                        ) : null}
                       </View>
                       <Text className="_pg-traveler_desc">{traveler.requirementText}</Text>
                       {traveler.qualificationText ? (
@@ -701,10 +608,10 @@ const CheckoutPage = observer(function CheckoutPage() {
                     selectedCouponId={selectedCouponId}
                     onClose={() => setCouponPopupVisible(false)}
                     onClear={() => {
-                      return refreshCheckoutByCoupon(null);
+                      return refreshCheckoutByCoupon(null).then((nextData) => (nextData ? nextData.draft?.selectedCouponId ?? null : false));
                     }}
                     onSelect={(coupon) => {
-                      return refreshCheckoutByCoupon(coupon.id);
+                      return refreshCheckoutByCoupon(coupon.id).then((nextData) => (nextData ? nextData.draft?.selectedCouponId ?? null : false));
                     }}
                   />
                 ) : null}
