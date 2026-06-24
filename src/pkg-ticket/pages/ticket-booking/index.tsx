@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Taro, { useShareAppMessage } from '@tarojs/taro';
 import { ScrollView, Text, View } from '@tarojs/components';
 import type { ScrollViewProps } from '@tarojs/components';
@@ -348,7 +348,8 @@ const TicketBookingPage = observer(function TicketBookingPage() {
   const [activeSectionKey, setActiveSectionKey] = useState<TicketBookingSectionKey>('ticket');
   const [sectionOffsets, setSectionOffsets] = useState<TicketSectionOffsets>({});
   const [stickyPanelHeight, setStickyPanelHeight] = useState(0);
-  const [scrollTop, setScrollTop] = useState(0);
+  const [scrollTop, setScrollTop] = useState<number>();
+  const scrollTopResetTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const pageRuntime = usePageRuntime({
     initPage: async () => {
       await loadBookingData(selectedDate || undefined);
@@ -389,7 +390,32 @@ const TicketBookingPage = observer(function TicketBookingPage() {
     setActiveSectionKey(nextActiveSectionKey);
     setSectionOffsets({});
     setStickyPanelHeight(0);
-    setScrollTop((currentScrollTop) => (Math.abs(currentScrollTop) < 1 ? 0.5 : 0));
+  }
+
+  useEffect(() => () => {
+    if (scrollTopResetTimerRef.current) {
+      clearTimeout(scrollTopResetTimerRef.current);
+    }
+  }, []);
+
+  function scrollBookingTo(nextScrollTop: number) {
+    if (scrollTopResetTimerRef.current) {
+      clearTimeout(scrollTopResetTimerRef.current);
+    }
+
+    setScrollTop((currentScrollTop) => (
+      typeof currentScrollTop === 'number' && Math.abs(currentScrollTop - nextScrollTop) < 1
+        ? nextScrollTop + 0.5
+        : nextScrollTop
+    ));
+    scrollTopResetTimerRef.current = setTimeout(() => {
+      setScrollTop(undefined);
+      scrollTopResetTimerRef.current = undefined;
+    }, 360);
+  }
+
+  function resetBookingScrollTop() {
+    scrollBookingTo(0);
   }
 
   function measureSections() {
@@ -468,9 +494,7 @@ const TicketBookingPage = observer(function TicketBookingPage() {
     const nextScrollTop = Math.max(0, targetTop - stickyPanelHeight - 8);
 
     setActiveSectionKey(key);
-    setScrollTop((currentScrollTop) => (
-      Math.abs(currentScrollTop - nextScrollTop) < 1 ? nextScrollTop + 0.5 : nextScrollTop
-    ));
+    scrollBookingTo(nextScrollTop);
   }
 
   function renderBookingSection(section: TicketBookingSection) {
@@ -589,8 +613,7 @@ const TicketBookingPage = observer(function TicketBookingPage() {
           />
         )}
         scrollViewProps={{
-          scrollTop,
-          scrollWithAnimation: true,
+          ...(typeof scrollTop === 'number' ? { scrollTop, scrollWithAnimation: true } : {}),
           onScroll: handlePageScroll,
         }}
       >
@@ -670,6 +693,7 @@ const TicketBookingPage = observer(function TicketBookingPage() {
                   setDatePopupVisible(false);
                   if (nextDate) {
                     await pageRuntime.withLoading(() => loadBookingData(nextDate));
+                    resetBookingScrollTop();
                   }
                 }}
               />

@@ -165,6 +165,19 @@
     line-height: 1.5;
   }
 
+  &_value-wrap {
+    display: flex;
+    flex: 1;
+    align-items: flex-start;
+    min-width: 0;
+  }
+
+  &_copy {
+    flex: none;
+    margin-left: 12px;
+    padding-top: 4px;
+  }
+
   &_content {
     flex: 1;
   }
@@ -290,6 +303,19 @@
 
   &_value {
     flex: 1;
+  }
+
+  &_value-wrap {
+    display: flex;
+    flex: 1;
+    align-items: flex-start;
+    min-width: 0;
+  }
+
+  &_copy {
+    flex: none;
+    margin-left: 12px;
+    padding-top: 4px;
   }
 }
 

@@ -252,7 +252,7 @@ export function PageShell({
     return {
       ...scrollViewProps,
       refresherEnabled,
-      refresherTriggered: scrollViewProps?.refresherTriggered ?? (refresherTriggered || Boolean(runtimeRefresh?.refreshing)),
+      refresherTriggered: scrollViewProps?.refresherTriggered ?? refresherTriggered,
       onRefresherRefresh: refresherEnabled ? handleRefresherRefresh : scrollViewProps?.onRefresherRefresh,
     };
   }, [handleRefresherRefresh, refresherTriggered, runtimeRefresh, scrollView, scrollViewProps]);

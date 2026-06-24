@@ -94,6 +94,7 @@ export interface OrderAddressData {
 export interface OrderDetailFieldData {
   label: string;
   value: string;
+  copyValue?: string;
 }
 
 export interface OrderDetailCouponLinkData {
@@ -113,15 +114,35 @@ export interface OrderDetailSceneActionData {
 }
 
 export interface OrderTicketInstanceData {
+  id: string;
+  groupId?: string;
   ticketNo: string;
+  copyValue?: string;
   qrCodePayload: string;
   qrImageSrc?: string;
   productName: string;
   skuName: string;
+  statusKey: string;
   statusText: string;
   visitDate: string;
   validTimeText: string;
   useTimesText: string;
+  usedNum?: number;
+  totalNum?: number;
+  entryFields?: OrderDetailFieldData[];
+  usageInstructionHtml?: string;
+  fields: OrderDetailFieldData[];
+}
+
+export interface OrderTicketGroupData {
+  id: string;
+  title: string;
+  subtitle?: string;
+  quantityText?: string;
+  statusText?: string;
+  entryFields: OrderDetailFieldData[];
+  usageInstructionHtml?: string;
+  vouchers: OrderTicketInstanceData[];
 }
 
 export interface OrderDetailData {
@@ -140,6 +161,7 @@ export interface OrderDetailData {
   quantityText: string;
   productFields: OrderDetailFieldData[];
   ticketInstances: OrderTicketInstanceData[];
+  ticketGroups: OrderTicketGroupData[];
   fulfillmentFields: OrderDetailFieldData[];
   couponFields: OrderDetailCouponFieldData[];
   contactFields: OrderDetailFieldData[];

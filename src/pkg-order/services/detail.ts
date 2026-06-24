@@ -2,6 +2,7 @@ import {
   fetchBffOrderDetail,
   getBffTicketVoucherText,
   type BffOrder,
+  type BffOrderItem,
   type BffTicketVoucher,
 } from '@/core/services/bff-order-api';
 import {
@@ -9,12 +10,13 @@ import {
   type BffMallMemberReviewsData,
 } from '@/core/services/bff-mall-api';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
-import { formatCentCurrency } from '@/core/utils/money';
+import { formatCentCurrency, parseNumberLike } from '@/core/utils/money';
 import { sanitizeMallRuntimeText } from '@/core/utils/mall-runtime';
 import { formatOrderDateTime } from './time';
 import type {
   OrderDetailData,
   OrderDetailFieldData,
+  OrderTicketGroupData,
   OrderTicketInstanceData,
 } from './model';
 import { mapOrderCouponFields } from './coupon-facts';
@@ -29,8 +31,20 @@ function formatCent(value?: number | string) {
   return formatCentCurrency(value);
 }
 
+// 判断可选金额行是否确实有金额，0 元优惠/运费不进入订单详情展示。
+function hasPositiveCentAmount(value?: number | string) {
+  const amount = parseNumberLike(value);
+  return typeof amount === 'number' && amount > 0;
+}
+
 function normalizeString(value?: string) {
   return typeof value === 'string' ? value.trim() : '';
+}
+
+function normalizeUnknownText(value: unknown) {
+  if (typeof value === 'string') return value.trim();
+  if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+  return '';
 }
 
 function formatDateTime(value?: string) {
@@ -111,6 +125,31 @@ function resolvePrimaryAction(order: BffOrder): OrderDetailData['primaryActionTy
 function resolvePaymentFact(order: BffOrder, key: string) {
   return normalizeString(order[key as keyof BffOrder] as string | undefined)
     || normalizeString(order.context?.[key]);
+}
+
+function resolvePaymentChannelText(channel?: string) {
+  const normalizedChannel = String(channel || '').toUpperCase();
+  if (normalizedChannel === 'WECHAT') return '微信支付';
+  if (normalizedChannel === 'ALIPAY') return '支付宝';
+  return channel || '';
+}
+
+function resolveOrderChannelText(channel?: string) {
+  const normalizedChannel = String(channel || '').toUpperCase();
+  if (['MINI_PROGRAM', 'MINIPROGRAM', 'WECHAT_MINI_PROGRAM', 'WEAPP'].includes(normalizedChannel)) {
+    return '微信小程序';
+  }
+  return channel || '';
+}
+
+function resolvePaymentStatusText(status?: string) {
+  const normalizedStatus = String(status || '').toUpperCase();
+  if (['PAID', 'SUCCESS', 'COMPLETED'].includes(normalizedStatus)) return '已支付';
+  if (['PENDING', 'PENDING_PAYMENT', 'UNPAID'].includes(normalizedStatus)) return '待支付';
+  if (normalizedStatus === 'PAYING') return '支付中';
+  if (['FAILED', 'FAIL'].includes(normalizedStatus)) return '支付失败';
+  if (normalizedStatus === 'REFUNDED') return '已退款';
+  return status || '';
 }
 
 function resolveRefundButtonText(primaryActionType: OrderDetailData['primaryActionType']) {
@@ -216,6 +255,124 @@ function resolveOrderText(order: BffOrder, keyCandidates: string[]) {
   return '';
 }
 
+function resolveRecordText(record: Record<string, unknown> | undefined, keyCandidates: string[]) {
+  if (!record) return '';
+
+  for (const key of keyCandidates) {
+    const value = normalizeUnknownText(record[key]);
+    if (value) return value;
+  }
+
+  return '';
+}
+
+function resolveItemText(item: BffOrderItem | undefined, keyCandidates: string[]) {
+  if (!item) return '';
+  const itemRecord = item as Record<string, unknown>;
+
+  for (const key of keyCandidates) {
+    const attributeValue = normalizeString(item.attributes?.[key]);
+    if (attributeValue) return attributeValue;
+
+    const itemValue = normalizeUnknownText(itemRecord[key]);
+    if (itemValue) return itemValue;
+  }
+
+  return '';
+}
+
+function resolveOrderItemText(order: BffOrder, item: BffOrderItem | undefined, keyCandidates: string[]) {
+  const itemValue = resolveItemText(item, keyCandidates);
+  if (itemValue) return itemValue;
+
+  for (const key of keyCandidates) {
+    const contextValue = normalizeString(order.context?.[key]);
+    if (contextValue) return contextValue;
+  }
+
+  return '';
+}
+
+function resolveVoucherText(voucher: BffTicketVoucher, keyCandidates: string[]) {
+  for (const key of keyCandidates) {
+    const value = getBffTicketVoucherText(voucher, key)
+      || normalizeUnknownText(voucher.rawFields?.[key])
+      || normalizeUnknownText(voucher[key]);
+    if (value) return value;
+  }
+
+  return '';
+}
+
+function pushAssociationValue(values: Set<string>, value: unknown) {
+  const text = normalizeUnknownText(value);
+  if (text) values.add(text);
+}
+
+function resolveItemAssociationValues(item: BffOrderItem) {
+  const values = new Set<string>();
+  const keys = [
+    'lineNo',
+    'orderLineNo',
+    'orderItemLineNo',
+    'itemLineNo',
+    'itemId',
+    'productId',
+    'productCode',
+    'ticketProductCode',
+    'skuId',
+    'skuCode',
+    'goodsCode',
+    'zhiyoubaoGoodsCode',
+  ];
+
+  keys.forEach((key) => {
+    pushAssociationValue(values, item[key as keyof BffOrderItem]);
+    pushAssociationValue(values, item.attributes?.[key]);
+  });
+
+  return values;
+}
+
+function resolveVoucherAssociationValues(voucher: BffTicketVoucher) {
+  const values = new Set<string>();
+  const keys = [
+    'lineNo',
+    'orderLineNo',
+    'orderItemLineNo',
+    'itemLineNo',
+    'itemId',
+    'productId',
+    'productCode',
+    'ticketProductCode',
+    'skuId',
+    'skuCode',
+    'goodsCode',
+    'zhiyoubaoGoodsCode',
+    'subOrderCode',
+  ];
+
+  keys.forEach((key) => {
+    pushAssociationValue(values, voucher[key]);
+    pushAssociationValue(values, voucher.rawFields?.[key]);
+  });
+
+  return values;
+}
+
+function hasAssociationOverlap(leftValues: Set<string>, rightValues: Set<string>) {
+  for (const left of leftValues) {
+    for (const right of rightValues) {
+      if (left === right) return true;
+      if (left.length >= 4 && right.length >= 4 && (left.includes(right) || right.includes(left))) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
 function compactFields<T extends { value: string }>(fields: T[]) {
   return fields.filter((field) => Boolean(field.value && field.value !== '-'));
 }
@@ -269,8 +426,6 @@ function resolveSceneProductFields(order: BffOrder, title: string, merchantName:
     return compactFields([
       { label: '项目名称', value: title },
       { label: '票种', value: resolveOrderText(order, ['ticketTypeName', 'skuName', 'specName']) },
-      { label: '商品编码', value: firstItem?.itemId || '-' },
-      { label: '票种编码', value: firstItem?.skuId || '-' },
     ]);
   }
 
@@ -366,27 +521,275 @@ function resolveSceneActions(order: BffOrder, reviewedMallItems?: Set<string>): 
   return actions;
 }
 
+const TICKET_VISIT_DATE_KEYS = [
+  'visitDate',
+  'visitDateText',
+  'travelDate',
+  'travelDateText',
+  'useDate',
+  'useDateText',
+  'playDate',
+  'date',
+  'dateText',
+];
+const TICKET_ENTRY_TIME_KEYS = [
+  'entryTime',
+  'entryTimeText',
+  'entryTimeRange',
+  'admissionTime',
+  'admissionTimeText',
+  'admissionTimeRange',
+  'admissionHours',
+  'openTime',
+  'openTimeText',
+  'businessHours',
+  'businessTime',
+  'validTime',
+  'validTimeText',
+  'validPeriod',
+  'availableTime',
+  'useTime',
+  'useTimeText',
+  'serviceTime',
+  'ticketEntryTime',
+];
+const TICKET_ENTRY_ADDRESS_KEYS = [
+  'entryAddress',
+  'entryAddressText',
+  'admissionAddress',
+  'admissionAddressText',
+  'entryPlace',
+  'gateAddress',
+  'entranceAddress',
+  'parkAddress',
+  'venueAddress',
+  'scenicAddress',
+  'scenicSpotAddress',
+];
+const TICKET_DETAIL_TEXT_KEYS = [
+  'detailText',
+  'usageDetail',
+  'useDetail',
+  'description',
+  'descriptionText',
+  'instruction',
+  'instructionText',
+  'useInstructionText',
+  'usageInstructionText',
+  'usageRule',
+  'useRule',
+  'ruleText',
+  'noticeText',
+  'ticketNotice',
+];
+const TICKET_USAGE_HTML_KEYS = [
+  'usageInstructionHtml',
+  'useInstructionHtml',
+  'instructionHtml',
+  'instructionsHtml',
+  'usageNoticeHtml',
+  'usageRuleHtml',
+  'useRuleHtml',
+  'ruleHtml',
+  'rulesHtml',
+  'detailHtml',
+  'detailRichText',
+  'richTextHtml',
+  'richText',
+  'noticeHtml',
+  'ticketNoticeHtml',
+  'notice',
+  'usageNotice',
+  'ticketNotice',
+  'refundRule',
+  'qualificationRule',
+  'useInstruction',
+  'usageInstruction',
+  'instructions',
+];
+const TICKET_CERTIFICATE_KEYS = [
+  'certificateNo',
+  'idCard',
+  'idCardNo',
+  'identityNo',
+  'identityCardNo',
+  'certNo',
+  'certificateNumber',
+  'travelerIdCard',
+  'holderIdCard',
+  'travelerIds',
+];
+
+function resolveTicketGroupId(item: BffOrderItem, index: number) {
+  return item.lineNo || item.itemId || item.skuId || `ticket-item-${index}`;
+}
+
+function resolveTicketItemTitle(order: BffOrder, item: BffOrderItem | undefined, index: number) {
+  return sanitizeMallRuntimeText(
+    resolveItemText(item, ['itemName', 'title', 'productName', 'ticketName', 'skuName', 'specName'])
+      || item?.itemName
+      || (index === 0 ? resolveTitle(order) : '')
+      || item?.itemId
+      || item?.lineNo,
+  );
+}
+
+function resolveTicketItemSubtitle(item: BffOrderItem | undefined) {
+  return sanitizeMallRuntimeText(resolveItemText(item, ['skuName', 'specName', 'subtitle', 'audience', 'ticketTypeName']));
+}
+
+function resolveTicketEntryFields(order: BffOrder, item?: BffOrderItem): OrderDetailFieldData[] {
+  return compactFields([
+    { label: '使用日期', value: resolveOrderItemText(order, item, TICKET_VISIT_DATE_KEYS) },
+    { label: '入园时间', value: resolveOrderItemText(order, item, TICKET_ENTRY_TIME_KEYS) },
+    { label: '入园地址', value: resolveOrderItemText(order, item, TICKET_ENTRY_ADDRESS_KEYS) },
+    { label: '详情', value: resolveOrderItemText(order, item, TICKET_DETAIL_TEXT_KEYS) },
+  ]);
+}
+
+function resolveTicketVoucherEntryFields(order: BffOrder, voucher: BffTicketVoucher): OrderDetailFieldData[] {
+  return compactFields([
+    { label: '使用日期', value: resolveVoucherText(voucher, TICKET_VISIT_DATE_KEYS) || order.context?.visitDate || '' },
+    { label: '入园时间', value: resolveVoucherText(voucher, TICKET_ENTRY_TIME_KEYS) },
+    { label: '入园地址', value: resolveVoucherText(voucher, TICKET_ENTRY_ADDRESS_KEYS) },
+    { label: '详情', value: resolveVoucherText(voucher, TICKET_DETAIL_TEXT_KEYS) },
+  ]);
+}
+
+function resolveTicketUsageInstructionHtml(order: BffOrder, item?: BffOrderItem) {
+  const itemHtml = resolveItemText(item, TICKET_USAGE_HTML_KEYS);
+  if (itemHtml) return itemHtml;
+
+  if ((order.items || []).length <= 1) {
+    return resolveRecordText(order.context, TICKET_USAGE_HTML_KEYS);
+  }
+
+  return '';
+}
+
+function resolveTicketVoucherUsageInstructionHtml(voucher: BffTicketVoucher) {
+  return resolveVoucherText(voucher, TICKET_USAGE_HTML_KEYS);
+}
+
+function mergeTicketEntryFields(...fieldLists: Array<OrderDetailFieldData[] | undefined>) {
+  const fieldMap = new Map<string, OrderDetailFieldData>();
+
+  fieldLists.forEach((fields) => {
+    fields?.forEach((field) => {
+      if (!fieldMap.has(field.label) && field.value) {
+        fieldMap.set(field.label, field);
+      }
+    });
+  });
+
+  return Array.from(fieldMap.values());
+}
+
+function resolveTicketFieldValue(fields: OrderDetailFieldData[] | undefined, label: string) {
+  return fields?.find((field) => field.label === label)?.value || '';
+}
+
+function resolveTicketGroupEntryFields(
+  order: BffOrder,
+  item: BffOrderItem | undefined,
+  vouchers: OrderTicketInstanceData[],
+) {
+  return mergeTicketEntryFields(
+    resolveTicketEntryFields(order, item),
+    ...vouchers.map((ticket) => ticket.entryFields),
+  );
+}
+
+function resolveTicketGroupUsageInstructionHtml(
+  order: BffOrder,
+  item: BffOrderItem | undefined,
+  vouchers: OrderTicketInstanceData[],
+) {
+  return resolveTicketUsageInstructionHtml(order, item)
+    || vouchers.find((ticket) => ticket.usageInstructionHtml)?.usageInstructionHtml
+    || '';
+}
+
+function resolveTicketCertificateNo(order: BffOrder) {
+  return resolveOrderText(order, TICKET_CERTIFICATE_KEYS)
+    || resolveItemText(order.items?.[0], TICKET_CERTIFICATE_KEYS);
+}
+
+function resolveContactFields(order: BffOrder, addressText: string): OrderDetailFieldData[] {
+  const normalizedSceneType = String(order.sceneType || '').toUpperCase();
+  if (normalizedSceneType === 'TICKET') {
+    return compactFields([
+      { label: '联系人', value: order.contactName || '' },
+      { label: '手机号', value: order.contactPhone || '' },
+      { label: '身份证', value: resolveTicketCertificateNo(order) },
+    ]);
+  }
+
+  return compactFields([
+    { label: '联系人', value: order.contactName || '' },
+    { label: '手机号', value: order.contactPhone || '' },
+    { label: '收货地址', value: addressText || '' },
+  ]);
+}
+
+function resolveTicketVoucherGroupId(order: BffOrder, voucher: BffTicketVoucher, ticketItems: BffOrderItem[]) {
+  if (!ticketItems.length) return undefined;
+  if (ticketItems.length === 1) return resolveTicketGroupId(ticketItems[0], 0);
+
+  const voucherValues = resolveVoucherAssociationValues(voucher);
+  const matchedIndex = ticketItems.findIndex((item) => hasAssociationOverlap(
+    voucherValues,
+    resolveItemAssociationValues(item),
+  ));
+
+  return matchedIndex >= 0 ? resolveTicketGroupId(ticketItems[matchedIndex], matchedIndex) : undefined;
+}
+
 function mapTicketInstances(order: BffOrder): OrderTicketInstanceData[] {
+  const ticketItems = order.items || [];
   const voucherInstances = (order.ticketVouchers || [])
     .filter(isDisplayableTicketVoucher)
-    .map((voucher) => mapTicketVoucher(order, voucher))
+    .map((voucher, index) => mapTicketVoucher(order, voucher, index, resolveTicketVoucherGroupId(order, voucher, ticketItems)))
     .filter((ticket): ticket is OrderTicketInstanceData => Boolean(ticket));
   if (voucherInstances.length) return voucherInstances;
 
-  return (order.ticketInstances || []).map((ticket) => ({
-    ticketNo: ticket.ticketNo || '',
-    qrCodePayload: ticket.qrCodePayload || ticket.ticketNo || '',
-    productName: ticket.productName || resolveTitle(order),
-    skuName: ticket.skuName || '',
-    statusText: resolveTicketStatusText(ticket.status),
-    visitDate: ticket.visitDate || order.context?.visitDate || '',
-    validTimeText: ticket.validStartAt && ticket.validEndAt
-      ? `${formatDateTime(ticket.validStartAt)} - ${formatDateTime(ticket.validEndAt)}`
-      : '',
-    useTimesText: typeof ticket.remainingUseTimes === 'number'
+  return (order.ticketInstances || []).map((ticket, index) => {
+    const groupId = ticketItems.length === 1 ? resolveTicketGroupId(ticketItems[0], 0) : undefined;
+    const ticketNo = ticket.ticketNo || '';
+    const qrCodePayload = ticket.qrCodePayload || ticketNo;
+    const statusKey = String(ticket.status || '').toUpperCase();
+    const useTimesText = typeof ticket.remainingUseTimes === 'number'
       ? `剩余 ${ticket.remainingUseTimes} 次`
-      : '',
-  })).filter((ticket) => ticket.ticketNo || ticket.qrCodePayload);
+      : '';
+    const validTimeText = ticket.validStartAt && ticket.validEndAt
+      ? `${formatDateTime(ticket.validStartAt)} - ${formatDateTime(ticket.validEndAt)}`
+      : '';
+
+    return {
+      id: ticketNo || qrCodePayload || `ticket-instance-${index}`,
+      groupId,
+      ticketNo,
+      copyValue: ticketNo || qrCodePayload,
+      qrCodePayload,
+      productName: ticket.productName || resolveTitle(order),
+      skuName: ticket.skuName || '',
+      statusKey,
+      statusText: resolveTicketStatusText(ticket.status),
+      visitDate: ticket.visitDate || order.context?.visitDate || '',
+      validTimeText,
+      useTimesText,
+      usedNum: ticket.usedTimes,
+      entryFields: compactFields([
+        { label: '使用日期', value: ticket.visitDate || order.context?.visitDate || '' },
+        { label: '入园时间', value: validTimeText },
+      ]),
+      fields: compactFields([
+        { label: '票码', value: ticketNo, copyValue: ticketNo },
+        { label: '次数', value: useTimesText },
+        { label: '有效期', value: validTimeText },
+      ]),
+    };
+  }).filter((ticket) => ticket.ticketNo || ticket.qrCodePayload);
 }
 
 function getTicketVoucherNumber(voucher: BffTicketVoucher, key: string) {
@@ -430,7 +833,12 @@ function isDisplayableTicketVoucher(voucher?: BffTicketVoucher) {
   );
 }
 
-function mapTicketVoucher(order: BffOrder, voucher: BffTicketVoucher): OrderTicketInstanceData | undefined {
+function mapTicketVoucher(
+  order: BffOrder,
+  voucher: BffTicketVoucher,
+  index: number,
+  groupId?: string,
+): OrderTicketInstanceData | undefined {
   const ticketNo = getBffTicketVoucherText(voucher, 'ticketCode') || getBffTicketVoucherText(voucher, 'voucherCode');
   const qrImageSrc = getBffTicketVoucherText(voucher, 'qrImage')
     || getBffTicketVoucherText(voucher, 'codeImage')
@@ -441,26 +849,98 @@ function mapTicketVoucher(order: BffOrder, voucher: BffTicketVoucher): OrderTick
     || getBffTicketVoucherText(voucher, 'qrCodeUrl');
   const totalNum = getTicketVoucherNumber(voucher, 'totalNum');
   const usedNum = getTicketVoucherNumber(voucher, 'usedNum');
+  const statusKey = String(
+    getBffTicketVoucherText(voucher, 'ticketStatus')
+      || getBffTicketVoucherText(voucher, 'status')
+      || getBffTicketVoucherText(voucher, 'useStatus')
+      || '',
+  ).toUpperCase();
+  const useTimesText = typeof totalNum === 'number'
+    ? `共 ${totalNum} 次${typeof usedNum === 'number' ? `，已用 ${usedNum} 次` : ''}`
+    : '';
+  const entryFields = resolveTicketVoucherEntryFields(order, voucher);
+  const usageInstructionHtml = resolveTicketVoucherUsageInstructionHtml(voucher);
 
   if (!ticketNo && !qrCodePayload && !qrImageSrc) return undefined;
 
   return {
+    id: ticketNo || qrCodePayload || qrImageSrc || `ticket-voucher-${index}`,
+    groupId,
     ticketNo,
+    copyValue: ticketNo || qrCodePayload,
     qrCodePayload,
     qrImageSrc,
-    productName: resolveTitle(order),
-    skuName: order.items?.[0]?.skuId || '',
+    productName: resolveVoucherText(voucher, ['productName', 'ticketName', 'itemName', 'skuName']),
+    skuName: resolveVoucherText(voucher, ['skuName', 'specName', 'ticketTypeName']),
+    statusKey,
     statusText: resolveTicketVoucherStatusText(voucher),
-    visitDate: order.context?.visitDate || '',
-    validTimeText: '',
-    useTimesText: typeof totalNum === 'number'
-      ? `共 ${totalNum} 次${typeof usedNum === 'number' ? `，已用 ${usedNum} 次` : ''}`
-      : '',
+    visitDate: resolveTicketFieldValue(entryFields, '使用日期'),
+    validTimeText: resolveTicketFieldValue(entryFields, '入园时间'),
+    useTimesText,
+    usedNum,
+    totalNum,
+    entryFields,
+    usageInstructionHtml,
+    fields: compactFields([
+      { label: '票码', value: ticketNo, copyValue: ticketNo },
+      { label: '次数', value: useTimesText },
+    ]),
   };
 }
 
+function mapTicketGroups(order: BffOrder, ticketInstances: OrderTicketInstanceData[]): OrderTicketGroupData[] {
+  const ticketItems = order.items || [];
+  const groups: OrderTicketGroupData[] = ticketItems.map((item, index) => {
+    const id = resolveTicketGroupId(item, index);
+    const vouchers = ticketInstances.filter((ticket) => ticket.groupId === id);
+    const entryFields = resolveTicketGroupEntryFields(order, item, vouchers);
+    const usageInstructionHtml = resolveTicketGroupUsageInstructionHtml(order, item, vouchers);
+
+    return {
+      id,
+      title: resolveTicketItemTitle(order, item, index),
+      subtitle: resolveTicketItemSubtitle(item),
+      quantityText: item.quantity ? `x${item.quantity}` : '',
+      entryFields,
+      usageInstructionHtml,
+      vouchers,
+    };
+  }).filter((group) => group.title || group.vouchers.length || group.usageInstructionHtml);
+
+  const groupedVoucherIds = new Set(groups.flatMap((group) => group.vouchers.map((ticket) => ticket.id)));
+  const ungroupedVouchers = ticketInstances.filter((ticket) => !groupedVoucherIds.has(ticket.id));
+
+  ungroupedVouchers.forEach((ticket, index) => {
+    groups.push({
+      id: `ticket-voucher-group-${ticket.id || index}`,
+      title: ticket.productName || '入园凭证',
+      subtitle: ticket.skuName,
+      quantityText: 'x1',
+      statusText: ticket.statusText,
+      entryFields: ticket.entryFields || compactFields([
+        { label: '使用日期', value: ticket.visitDate },
+        { label: '入园时间', value: ticket.validTimeText },
+      ]),
+      usageInstructionHtml: ticket.usageInstructionHtml,
+      vouchers: [ticket],
+    });
+  });
+
+  if (!groups.length && ticketInstances.length) {
+    return [{
+      id: 'ticket-vouchers',
+      title: resolveTitle(order),
+      quantityText: resolveQuantityText(order),
+      entryFields: resolveTicketEntryFields(order, undefined),
+      usageInstructionHtml: resolveTicketUsageInstructionHtml(order, undefined),
+      vouchers: ticketInstances,
+    }];
+  }
+
+  return groups;
+}
+
 function mapOrderToDetail(order: BffOrder, reviewedMallItems?: Set<string>): OrderDetailData {
-  const firstItem = order.items?.[0];
   const context = order.context || {};
   const primaryActionType = resolvePrimaryAction(order);
   const title = resolveTitle(order);
@@ -471,6 +951,17 @@ function mapOrderToDetail(order: BffOrder, reviewedMallItems?: Set<string>): Ord
   const trackingNumber = resolveLogisticsField(context, ['trackingNumber', 'waybillNo', 'logisticsNo', 'deliveryNo']);
   const logisticsStatusText = resolveLogisticsField(context, ['logisticsStatusText', 'deliveryStatusText', 'shipmentStatusText']);
   const aftersaleEntryRoute = resolveAftersaleEntryRoute(order);
+  const ticketInstances = mapTicketInstances(order);
+  const normalizedSceneType = String(order.sceneType || '').toUpperCase();
+  const paymentStatusText = resolvePaymentStatusText(resolvePaymentFact(order, 'paymentStatus'));
+  const paymentChannelText = resolvePaymentChannelText(order.paymentChannel);
+  const orderChannelText = resolveOrderChannelText(order.channel);
+  const amountFields = compactFields([
+    { label: '商品金额', value: formatCent(order.originalAmountCent) },
+    hasPositiveCentAmount(order.discountAmountCent) ? { label: '优惠金额', value: `- ${formatCent(order.discountAmountCent)}` } : { label: '优惠金额', value: '' },
+    normalizedSceneType !== 'TICKET' && hasPositiveCentAmount(order.freightAmountCent) ? { label: '运费', value: formatCent(order.freightAmountCent) } : { label: '运费', value: '' },
+    { label: '实付款', value: formatCent(order.payableAmountCent) },
+  ]);
 
   return {
     id: order.orderNo,
@@ -487,31 +978,20 @@ function mapOrderToDetail(order: BffOrder, reviewedMallItems?: Set<string>): Ord
     title,
     quantityText: resolveQuantityText(order),
     productFields: resolveSceneProductFields(order, title, merchantName, mallSpecText),
-    ticketInstances: mapTicketInstances(order),
+    ticketInstances,
+    ticketGroups: mapTicketGroups(order, ticketInstances),
     fulfillmentFields: resolveSceneFulfillmentFields(order, deliveryCompany, trackingNumber, logisticsStatusText),
     couponFields: mapOrderCouponFields(order),
-    contactFields: compactFields([
-      { label: '联系人', value: order.contactName || '' },
-      { label: '手机号', value: order.contactPhone || '' },
-      { label: '收货地址', value: addressText || '' },
-    ]),
+    contactFields: resolveContactFields(order, addressText),
     sceneActions: resolveSceneActions(order, reviewedMallItems),
-    amountFields: [
-      { label: '商品金额', value: formatCent(order.originalAmountCent) },
-      { label: '优惠金额', value: `- ${formatCent(order.discountAmountCent)}` },
-      { label: '运费', value: formatCent(order.freightAmountCent) },
-      { label: '实付款', value: formatCent(order.payableAmountCent) },
-    ],
+    amountFields,
     orderFields: compactFields([
-      { label: '订单编号', value: order.orderNo },
+      { label: '订单编号', value: order.orderNo, copyValue: order.orderNo },
       { label: '下单时间', value: formatDateTime(order.createdAt) },
-      { label: '更新时间', value: formatDateTime(order.updatedAt) },
-      { label: '支付流水', value: resolvePaymentFact(order, 'payNo') },
-      { label: '支付状态', value: resolvePaymentFact(order, 'paymentStatus') },
+      { label: '支付状态', value: paymentStatusText },
       { label: '支付时间', value: formatDateTime(resolvePaymentFact(order, 'paidAt')) },
-      { label: '支付截止', value: formatDateTime(order.payExpireAt || resolvePaymentFact(order, 'payExpireAt')) },
-      { label: '支付方式', value: order.paymentChannel || '' },
-      { label: '渠道', value: order.channel || '' },
+      { label: '支付方式', value: paymentChannelText },
+      { label: '渠道', value: orderChannelText },
     ]),
     refundButtonText: resolveRefundButtonText(primaryActionType),
     aftersaleEntryRoute,

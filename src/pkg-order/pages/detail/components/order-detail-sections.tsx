@@ -1,10 +1,12 @@
 import { Text, View } from '@tarojs/components';
+import { AppIcon } from '@/core/components/AppIcon';
 import type { OrderDetailData } from '@/pkg-order/services/detail';
 import type {
   OrderDetailSceneViewProps,
   OrderSceneVariant,
 } from './order-detail-scene-types';
 import { formatOrderClockTime } from '@/pkg-order/services/time';
+import { copyWechatText } from '@/core/utils/wechat-actions';
 
 // 解析支付截止时间，后端没有稳定时间时保留产品默认文案。
 function formatPayExpireAt(payExpireAt?: string) {
@@ -51,7 +53,19 @@ function FieldRows({ fields }: { fields: OrderDetailData['productFields'] }) {
       {fields.map((item) => (
         <View className="_pg-line-row" key={item.label}>
           <Text className="_pg-line-row_label">{item.label}</Text>
-          <Text className="_pg-line-row_value">{item.value}</Text>
+          <View className="_pg-line-row_value-wrap">
+            <Text className="_pg-line-row_value">{item.value}</Text>
+            {item.copyValue ? (
+              <View
+                className="_pg-line-row_copy"
+                onClick={() => {
+                  void copyWechatText(item.copyValue || '', '已复制');
+                }}
+              >
+                <AppIcon name="copy" size={14} color="#98a2b3" />
+              </View>
+            ) : null}
+          </View>
         </View>
       ))}
     </>
@@ -175,8 +189,20 @@ function OrderMetaCard({ detailData, onPrimaryAction, onViewAftersale }: {
     <View className="_pg-card _pg-card--last _pg-order-meta-card">
       {detailData.orderFields.map((item) => (
         <View className="_pg-order-meta" key={item.label}>
-          <Text className="_pg-order-meta_label">{item.label}：</Text>
-          <Text className="_pg-order-meta_value">{item.value}</Text>
+          <Text className="_pg-order-meta_label">{item.label}</Text>
+          <View className="_pg-order-meta_value-wrap">
+            <Text className="_pg-order-meta_value">{item.value}</Text>
+            {item.copyValue ? (
+              <View
+                className="_pg-order-meta_copy"
+                onClick={() => {
+                  void copyWechatText(item.copyValue || '', '已复制');
+                }}
+              >
+                <AppIcon name="copy" size={14} color="#98a2b3" />
+              </View>
+            ) : null}
+          </View>
         </View>
       ))}
       {detailData.refundButtonText || detailData.aftersaleEntryRoute ? (

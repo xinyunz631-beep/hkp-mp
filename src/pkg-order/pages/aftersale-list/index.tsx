@@ -36,7 +36,7 @@ const AftersaleListPage = observer(function AftersaleListPage() {
   const [pageData, setPageData] = useState<OrderAftersaleListData>();
   const [activeTabKey, setActiveTabKey] = useState('all');
   const [visiblePage, setVisiblePage] = useState(1);
-  const [scrollTop, setScrollTop] = useState(0);
+  const [scrollTop, setScrollTop] = useState<number>();
   const scrollTopTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const routeOrderId = Taro.getCurrentInstance().router?.params?.orderId;
   const pageRuntime = usePageRuntime({
@@ -82,8 +82,9 @@ const AftersaleListPage = observer(function AftersaleListPage() {
 
     setScrollTop(1);
     scrollTopTimerRef.current = setTimeout(() => {
-      setScrollTop(0);
-    }, 0);
+      setScrollTop(undefined);
+      scrollTopTimerRef.current = undefined;
+    }, 360);
   }
 
   function switchAftersaleTab(tabKey: string) {
@@ -137,8 +138,7 @@ const AftersaleListPage = observer(function AftersaleListPage() {
           reserveTabBarSpace={false}
           scrollViewProps={{
             lowerThreshold: 180,
-            scrollTop,
-            scrollWithAnimation: true,
+            ...(typeof scrollTop === 'number' ? { scrollTop, scrollWithAnimation: true } : {}),
             onScrollToLower: loadMoreAftersaleRecords,
           }}
         >

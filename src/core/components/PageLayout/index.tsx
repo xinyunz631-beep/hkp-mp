@@ -352,6 +352,7 @@ export function PageLayout({
             enableFlex={scrollViewProps?.enableFlex ?? true}
             enhanced={scrollViewProps?.enhanced ?? true}
             showScrollbar={scrollViewProps?.showScrollbar ?? false}
+            onRefresherRefresh={scrollViewProps?.onRefresherRefresh}
           >
             <View className="page-layout__content">
               {children}

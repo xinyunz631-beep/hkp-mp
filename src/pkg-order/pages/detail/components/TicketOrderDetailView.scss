@@ -1,9 +1,582 @@
 ._pg-scene--ticket {
   ._pg-status-card {
-    border-top: 8px solid #d94a88;
+    padding: 20px 26px 18px;
+    border-top: 2px solid #d94a88;
+
+    &_title {
+      font-size: 34px;
+      line-height: 1.3;
+    }
+
+    &_amount {
+      margin-top: 10px;
+    }
+
+    &_label {
+      font-size: 24px;
+      transform: translateY(-2px);
+    }
+
+    &_value {
+      margin-left: 12px;
+      font-size: 38px;
+      line-height: 1.2;
+    }
   }
 
-  ._pg-ticket-voucher-card {
-    margin-top: 16px;
+  ._pg-card,
+  ._pg-status-card {
+    margin-right: 30px;
+    margin-left: 30px;
+    border-radius: 24px;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
   }
+
+  ._pg-contact-card,
+  ._pg-amount-card,
+  ._pg-order-meta-card {
+    padding: 26px 30px;
+
+  }
+   ._pg-card_section-title {
+      padding-bottom: 0px;
+      color: #23262f;
+      font-size: 28px;
+      font-weight: 500;
+      line-height: 1.45;
+    }
+  ._pg-contact-card,
+  ._pg-amount-card {
+    ._pg-line-row {
+      align-items: center;
+      min-height: 76px;
+      padding: 0;
+      border-top: 0;
+      border-bottom: 1px solid #edf0f4;
+
+      &:last-child {
+        border-bottom: 0;
+      }
+    }
+
+    ._pg-line-row_label {
+      width: 136px;
+      color: #98a2b3;
+      font-size: 26px;
+      line-height: 1.45;
+    }
+
+    ._pg-line-row_value {
+      color: #46576d;
+      font-size: 26px;
+      line-height: 1.45;
+    }
+
+    ._pg-line-row_value-wrap {
+      align-items: center;
+    }
+  }
+
+  ._pg-amount-card {
+    ._pg-line-row_value {
+      text-align: right;
+    }
+
+    ._pg-line-row:nth-child(2) ._pg-line-row_value {
+      color: #22a06b;
+    }
+
+    ._pg-line-row:last-child {
+      ._pg-line-row_label {
+        color: #23262f;
+        font-weight: 500;
+      }
+
+      ._pg-line-row_value {
+        color: #d94a88;
+        font-weight: 500;
+      }
+    }
+  }
+
+  ._pg-order-meta-card {
+    ._pg-order-meta {
+      align-items: center;
+      min-height: 76px;
+      padding: 0;
+      border-bottom: 1px solid #edf0f4;
+
+      &:last-of-type {
+        border-bottom: 0;
+      }
+    }
+
+    ._pg-order-meta_label {
+      width: 136px;
+      color: #98a2b3;
+      font-size: 26px;
+      line-height: 1.45;
+    }
+
+    ._pg-order-meta_value {
+      flex: 0 1 auto;
+      max-width: 100%;
+      color: #46576d;
+      font-size: 26px;
+      line-height: 1.45;
+      word-break: break-all;
+    }
+
+    ._pg-order-meta_value-wrap {
+      align-items: center;
+    }
+
+    ._pg-order-meta_copy {
+      margin-left: 10px;
+      padding-top: 0;
+    }
+  }
+
+  ._pg-ticket-detail-card {
+    margin-top: 24px;
+    padding: 28px 0 24px;
+    overflow: hidden;
+  }
+
+  ._pg-ticket-detail-card_header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-right: 30px;
+    padding-bottom: 34px;
+    padding-left: 30px;
+  }
+
+  ._pg-ticket-detail-card_count {
+    color: #98a2b3;
+    font-size: 24px;
+    line-height: 1.4;
+  }
+
+  ._pg-ticket-detail-card_hint {
+    display: flex;
+    align-items: center;
+
+    .app-icon {
+      margin-left: 6px;
+    }
+  }
+
+  ._pg-ticket-swiper {
+    height: 700px;
+    margin-right: -30px;
+  }
+
+  ._pg-ticket-swiper_item {
+    height: 100%;
+    box-sizing: border-box;
+    padding-right: 20px;
+
+    &--first {
+      padding-left: 20px;
+    }
+
+    &--last {
+      padding-right: 50px;
+    }
+  }
+
+  ._pg-ticket-single {
+    width: 100%;
+    box-sizing: border-box;
+    padding-right: 30px;
+    padding-left: 30px;
+
+    ._pg-ticket-slide-card {
+      height: auto;
+    }
+  }
+
+  ._pg-ticket-slide-card {
+    height: 100%;
+    padding: 22px 24px 24px;
+    border-radius: 24px;
+    background: #f9f9f9;
+    box-sizing: border-box;
+  }
+
+  ._pg-ticket-group_header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    min-height: 62px;
+  }
+
+  ._pg-ticket-group_title-wrap {
+    display: flex;
+    flex: 1;
+    align-items: flex-start;
+    min-width: 0;
+  }
+
+  ._pg-ticket-group_icon-wrap {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 54px;
+    height: 54px;
+    margin-right: 14px;
+    border-radius: 50%;
+    background: #fff1f7;
+  }
+
+  ._pg-ticket-group_title-box {
+    flex: 1;
+    min-width: 0;
+  }
+
+  ._pg-ticket-group_title-row {
+    display: flex;
+    align-items: flex-start;
+    min-width: 0;
+  }
+
+  ._pg-ticket-group_title {
+    display: block;
+    flex: 0 1 auto;
+    min-width: 0;
+    color: #23262f;
+    font-size: 30px;
+    font-weight: 500;
+    line-height: 1.45;
+    word-break: break-word;
+  }
+
+  ._pg-ticket-group_title-quantity {
+    flex: none;
+    margin-left: 12px;
+    color: #667085;
+    font-size: 24px;
+    line-height: 1.75;
+  }
+
+  ._pg-ticket-group_subtitle {
+    display: block;
+    margin-top: 6px;
+    color: #7b8794;
+    font-size: 24px;
+    line-height: 1.45;
+  }
+
+  ._pg-ticket-group_quantity {
+    flex: none;
+    margin-left: 18px;
+    color: #667085;
+    font-size: 26px;
+    line-height: 1.45;
+  }
+
+  ._pg-ticket-group_action {
+    display: flex;
+    flex: none;
+    align-items: center;
+    margin-left: 18px;
+  }
+
+  ._pg-ticket-group_status {
+    flex: none;
+    font-size: 24px;
+    line-height: 1.35;
+
+    &--available {
+      background: #ecfdf3;
+      color: #16a34a;
+    }
+
+    &--neutral {
+      background: #f4f6fa;
+      color: #98a2b3;
+    }
+  }
+
+  ._pg-ticket-swiper_dots {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 34px;
+    margin-top: 12px;
+  }
+
+  ._pg-ticket-swiper_dot {
+    width: 10px;
+    height: 10px;
+    margin: 0 6px;
+    border-radius: 5px;
+    background: #d6dbe4;
+    transition: width 0.2s ease, background 0.2s ease;
+
+    &--active {
+      width: 28px;
+      background: #d94a88;
+    }
+  }
+
+  ._pg-ticket-voucher {
+    margin-top: 30px;
+  }
+
+  ._pg-ticket-voucher_state-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 34px;
+    margin: 18px 0 22px;
+
+    ._pg-ticket-group_status {
+      display: flex;
+      align-items: center;
+      padding: 0;
+      background: transparent;
+      font-size: 24px;
+
+      &::before {
+        display: block;
+        width: 8px;
+        height: 8px;
+        margin-right: 8px;
+        border-radius: 50%;
+        background: currentColor;
+        content: '';
+      }
+    }
+
+    ._pg-ticket-group_status--neutral {
+      color: #98a2b3;
+    }
+  }
+
+  ._pg-ticket-voucher_count {
+    margin-left: 18px;
+    color: #667085;
+    font-size: 24px;
+    line-height: 1.4;
+  }
+
+  ._pg-ticket-voucher_code-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    margin: 18px 0 24px;
+  }
+
+  ._pg-ticket-voucher_code {
+    flex: 0 1 auto;
+    max-width: 100%;
+    color: #667085;
+    font-size: 24px;
+    line-height: 1.45;
+    text-align: center;
+    word-break: break-all;
+  }
+
+  ._pg-ticket-voucher_code-copy {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    margin-left: 10px;
+  }
+
+  ._pg-ticket-voucher_header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  ._pg-ticket-voucher_title-wrap {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    min-width: 0;
+  }
+
+  ._pg-ticket-voucher_icon {
+    flex: none;
+    margin-right: 10px;
+  }
+
+  ._pg-ticket-voucher_title {
+    flex: 1;
+    color: #23262f;
+    font-size: 26px;
+    line-height: 1.45;
+    word-break: break-all;
+  }
+
+  ._pg-ticket-voucher_status {
+    flex: none;
+    margin-left: 16px;
+    padding: 6px 16px;
+    border-radius: 999px;
+    background: #ecfdf3;
+    color: #16a34a;
+    font-size: 24px;
+    line-height: 1.35;
+  }
+
+  ._pg-ticket-voucher_qr-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 260px;
+    height: 260px;
+    margin: 0 auto;
+    padding: 20px;
+    border-radius: 24px;
+    background: #ffffff;
+    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.1);
+    box-sizing: border-box;
+
+    &--disabled {
+      opacity: 0.34;
+    }
+  }
+
+  ._pg-ticket-voucher_qr {
+    display: block;
+    width: 220px;
+    height: 220px;
+  }
+
+  ._pg-ticket-fields {
+    min-height: 184px;
+    margin-top: 0;
+    padding-top: 14px;
+    border-top: 1px dashed #dfe4ec;
+    box-sizing: border-box;
+  }
+
+  ._pg-ticket-field {
+    display: flex;
+    align-items: flex-start;
+    min-height: 36px;
+    padding-top: 10px;
+    box-sizing: border-box;
+
+    &--detail-action {
+      align-items: center;
+      min-height: 48px;
+      padding-top: 12px;
+    }
+
+    &--detail-preview {
+      padding-top: 14px;
+    }
+  }
+
+  ._pg-ticket-field_label {
+    flex: none;
+    width: 132px;
+    color: #98a2b3;
+    font-size: 24px;
+    line-height: 1.5;
+  }
+
+  ._pg-ticket-field_value-wrap {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    min-width: 0;
+
+    &--preview {
+      display: block;
+    }
+  }
+
+  ._pg-ticket-field_value {
+    flex: 0 1 auto;
+    max-width: 100%;
+    color: #667085;
+    font-size: 24px;
+    line-height: 1.5;
+    word-break: break-word;
+  }
+
+  ._pg-ticket-field_copy {
+    flex: none;
+    margin-left: 10px;
+  }
+
+  ._pg-ticket-field_detail-action-value {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    min-width: 0;
+  }
+
+  ._pg-ticket-field_value--detail-action {
+    display: block;
+    overflow: hidden;
+    max-width: 100%;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  ._pg-ticket-field_value--preview {
+    display: block;
+    overflow: hidden;
+    line-height: 1.55;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+  }
+
+  ._pg-ticket-field_rich-preview {
+    display: block;
+    max-height: 112px;
+    overflow: hidden;
+    color: #667085;
+    font-size: 24px;
+    line-height: 1.55;
+    word-break: break-word;
+  }
+
+  ._pg-ticket-field_rich-content {
+    display: block;
+    color: #667085;
+    font-size: 24px;
+    line-height: 1.55;
+  }
+
+  ._pg-ticket-field_more {
+    display: inline-flex;
+    margin-top: 8px;
+    color: #98a2b3;
+    font-size: 24px;
+    line-height: 1.4;
+
+    &--inline {
+      flex: none;
+      margin-top: 0;
+      margin-left: 12px;
+    }
+  }
+}
+
+._pg-ticket-detail-sheet {
+  .app-bottom-sheet__body-inner {
+    padding-top: 24px;
+    padding-bottom: 34px;
+  }
+}
+
+._pg-ticket-detail-sheet_text,
+._pg-ticket-detail-sheet_rich {
+  display: block;
+  color: #46576d;
+  font-size: 26px;
+  line-height: 1.7;
+  word-break: break-word;
 }

@@ -1,8 +1,9 @@
 import Taro, { useDidHide, useDidShow } from '@tarojs/taro';
-import { View } from '@tarojs/components';
+import { RichText, Text, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
 import drawQrcode from 'weapp-qrcode';
-import { PageShell } from '@/core/components/PageShell';
+import { AppBottomSheet } from '@/core/components/AppBottomSheet';
+import { PageRoot, PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -21,6 +22,7 @@ import {
 } from '@/core/services/bff-order-api';
 import { fetchDetailData, type OrderDetailData } from '@/pkg-order/services/detail';
 import { OrderDetailSceneView } from './components/OrderDetailSceneView';
+import type { OrderTicketDetailPopupData } from './components/order-detail-scene-types';
 import './index.scss';
 
 const TICKET_ORDER_DETAIL_POLL_INTERVAL_MS = 3000;
@@ -40,10 +42,51 @@ const TICKET_ORDER_DETAIL_POLLING_STATUSES = [
   'REFUND_PENDING',
   'REFUND_PROCESSING',
 ];
+const TICKET_ORDER_DETAIL_PRE_VOUCHER_POLLING_STATUSES = [
+  'PENDING_PAYMENT',
+  'PAYING',
+  'PAID',
+  'FULFILLING',
+];
+const TICKET_ORDER_DETAIL_TERMINAL_TICKET_STATUS_KEYS = [
+  'USED',
+  'FULFILLED',
+  'COMPLETED',
+  'SUCCESS',
+  'VOIDED',
+  'CANCELED',
+  'CANCELLED',
+  'REFUNDED',
+  'EXPIRED',
+];
 const TICKET_ORDER_DETAIL_TERMINAL_TICKET_STATUS_TEXTS = ['已核销', '已作废', '已退款', '已过期'];
 
 function resolveCouponDetailRoute(couponNo: string) {
   return `${MINI_PACKAGE_ROUTES.memberCouponDetail}?id=${encodeURIComponent(couponNo)}`;
+}
+
+function TicketDetailRootPopup({ detail, onClose }: {
+  detail?: OrderTicketDetailPopupData;
+  onClose: () => void;
+}) {
+  return (
+    <AppBottomSheet
+      visible={Boolean(detail)}
+      title={detail?.title || '详情'}
+      className="_pg-ticket-detail-sheet"
+      bodyMaxHeight="56vh"
+      confirmText="我已知晓"
+      onClose={onClose}
+    >
+      {detail?.content ? (
+        detail.rich ? (
+          <RichText className="_pg-ticket-detail-sheet_rich" nodes={detail.content} />
+        ) : (
+          <Text className="_pg-ticket-detail-sheet_text">{detail.content}</Text>
+        )
+      ) : null}
+    </AppBottomSheet>
+  );
 }
 
 function resolveTicketCodeCanvasSizeRpx() {
@@ -58,7 +101,7 @@ function resolveTicketCodeCanvasSizeRpx() {
 }
 
 function resolveTicketQrKey(ticket: OrderDetailData['ticketInstances'][number], index: number) {
-  return `${ticket.ticketNo || 'ticket'}-${ticket.qrCodePayload || ticket.qrImageSrc || 'code'}-${index}`;
+  return `${ticket.id || ticket.ticketNo || 'ticket'}-${ticket.qrCodePayload || ticket.qrImageSrc || 'code'}-${index}`;
 }
 
 function resolveTicketQrCanvasId(index: number) {
@@ -81,24 +124,58 @@ function convertTicketQrCanvasToImage(canvasId: string) {
   });
 }
 
+function isTerminalTicketInstance(ticket: OrderDetailData['ticketInstances'][number]) {
+  const normalizedStatusKey = String(ticket.statusKey || '').toUpperCase();
+  return TICKET_ORDER_DETAIL_TERMINAL_TICKET_STATUS_KEYS.includes(normalizedStatusKey)
+    || TICKET_ORDER_DETAIL_TERMINAL_TICKET_STATUS_TEXTS.includes(ticket.statusText);
+}
+
 // 判断票务凭证页是否需要继续静默刷新，覆盖异步出票和停留券码页被外部核销的场景。
 function shouldPollTicketOrderDetail(detailData?: OrderDetailData) {
   if (!detailData) return false;
   if (detailData.sceneType !== 'TICKET') return false;
 
   const normalizedStatus = String(detailData.orderStatus || '').toUpperCase();
-  if (!TICKET_ORDER_DETAIL_POLLING_STATUSES.includes(normalizedStatus)) return false;
 
-  if (!detailData.ticketInstances.length) return true;
-  return detailData.ticketInstances.some((ticket) => (
-    !TICKET_ORDER_DETAIL_TERMINAL_TICKET_STATUS_TEXTS.includes(ticket.statusText)
-  ));
+  if (!detailData.ticketInstances.length) {
+    return TICKET_ORDER_DETAIL_PRE_VOUCHER_POLLING_STATUSES.includes(normalizedStatus);
+  }
+
+  if (!TICKET_ORDER_DETAIL_POLLING_STATUSES.includes(normalizedStatus)) {
+    return detailData.ticketInstances.some((ticket) => !isTerminalTicketInstance(ticket));
+  }
+
+  return detailData.ticketInstances.some((ticket) => !isTerminalTicketInstance(ticket));
+}
+
+function resolveTicketInstancePollingItems(detailData: OrderDetailData) {
+  return detailData.ticketInstances
+    .map((ticket) => ({
+      ticketCode: ticket.ticketNo || '',
+      voucherCode: ticket.copyValue || '',
+      status: ticket.statusKey || ticket.statusText || '',
+      usedNum: ticket.usedNum ?? 0,
+      totalNum: ticket.totalNum ?? 0,
+    }))
+    .sort((left, right) => `${left.ticketCode}:${left.voucherCode}`.localeCompare(`${right.ticketCode}:${right.voucherCode}`));
+}
+
+function resolveSnapshotTicketVoucherItems(snapshot: BffOrderStatusSnapshot) {
+  return (snapshot.ticketVouchersSummary || [])
+    .map((ticket) => ({
+      ticketCode: ticket.ticketCode || '',
+      voucherCode: ticket.voucherCode || '',
+      status: String(ticket.ticketStatus || '').toUpperCase(),
+      usedNum: ticket.usedNum ?? 0,
+      totalNum: ticket.totalNum ?? 0,
+    }))
+    .sort((left, right) => `${left.ticketCode}:${left.voucherCode}`.localeCompare(`${right.ticketCode}:${right.voucherCode}`));
 }
 
 function resolveTicketOrderPollingSnapshot(detailData?: OrderDetailData) {
   if (!detailData) return '';
 
-  if (detailData.statusVersion) return `version:${detailData.statusVersion}`;
+  if (detailData.sceneType !== 'TICKET' && detailData.statusVersion) return `version:${detailData.statusVersion}`;
 
   return JSON.stringify({
     sceneType: detailData.sceneType || '',
@@ -114,19 +191,24 @@ function resolveTicketOrderPollingSnapshot(detailData?: OrderDetailData) {
       value: field.value,
       couponNos: field.couponLinks?.map((link) => `${link.couponNo}:${link.detailText || ''}`),
     })),
-    ticketInstances: detailData.ticketInstances.map((ticket) => ({
-      ticketNo: ticket.ticketNo,
-      qrCodePayload: ticket.qrCodePayload,
-      hasVoucherCode: Boolean(ticket.qrCodePayload || ticket.qrImageSrc),
-      statusText: ticket.statusText,
-      useTimesText: ticket.useTimesText,
-    })),
+    ticketVouchersSummary: resolveTicketInstancePollingItems(detailData),
   });
 }
 
 // 归一轻量状态快照，尽量与详情接口的 updatedAt 基线保持一致，避免无变化时反复刷新详情。
 function resolveStatusSnapshotPollingSnapshot(snapshot?: BffOrderStatusSnapshot) {
   if (!snapshot) return '';
+
+  if (String(snapshot.sceneType || '').toUpperCase() === 'TICKET') {
+    return JSON.stringify({
+      sceneType: snapshot.sceneType || '',
+      orderStatus: snapshot.orderStatus || '',
+      paymentStatus: snapshot.paymentStatus || '',
+      payNo: snapshot.payNo || '',
+      ticketVoucherVersion: snapshot.ticketVoucherVersion || 0,
+      ticketVouchersSummary: resolveSnapshotTicketVoucherItems(snapshot),
+    });
+  }
 
   const updatedAt = Date.parse(snapshot.updatedAt || '');
   if (Number.isFinite(updatedAt)) return `version:${updatedAt}`;
@@ -152,6 +234,7 @@ function resolveStatusSnapshotPollingSnapshot(snapshot?: BffOrderStatusSnapshot)
 
 const DetailPage = observer(function DetailPage() {
   const [detailData, setDetailData] = useState<OrderDetailData>();
+  const [ticketDetailPopup, setTicketDetailPopup] = useState<OrderTicketDetailPopupData | undefined>();
   const [ticketQrCanvasSizeRpx] = useState(resolveTicketCodeCanvasSizeRpx);
   const [localTicketQrImages, setLocalTicketQrImages] = useState<Record<string, string>>({});
   const pageVisibleRef = useRef(true);
@@ -421,9 +504,16 @@ const DetailPage = observer(function DetailPage() {
               onCouponPress={handleCouponPress}
               onPrimaryAction={() => void handlePrimaryAction()}
               onSceneAction={handleSceneAction}
+              onTicketDetailPress={setTicketDetailPopup}
               onViewAftersale={handleViewAftersale}
             />
           </View>
+          <PageRoot>
+            <TicketDetailRootPopup
+              detail={ticketDetailPopup}
+              onClose={() => setTicketDetailPopup(undefined)}
+            />
+          </PageRoot>
         </PageShell>
       </View>
     );

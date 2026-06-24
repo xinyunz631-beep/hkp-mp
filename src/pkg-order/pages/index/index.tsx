@@ -97,7 +97,7 @@ const OrderIndexPage = observer(function OrderIndexPage() {
   const [activeTabKey, setActiveTabKey] = useState('all');
   const [loadingMore, setLoadingMore] = useState(false);
   const [tabLoading, setTabLoading] = useState(false);
-  const [scrollTop, setScrollTop] = useState(0);
+  const [scrollTop, setScrollTop] = useState<number>();
   const tabRequestSeqRef = useRef(0);
   const scrollTopTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const pageRuntime = usePageRuntime({
@@ -129,8 +129,9 @@ const OrderIndexPage = observer(function OrderIndexPage() {
 
     setScrollTop(1);
     scrollTopTimerRef.current = setTimeout(() => {
-      setScrollTop(0);
-    }, 0);
+      setScrollTop(undefined);
+      scrollTopTimerRef.current = undefined;
+    }, 360);
   }
 
   async function switchOrderTab(tabKey: string) {
@@ -200,8 +201,7 @@ const OrderIndexPage = observer(function OrderIndexPage() {
           reserveTabBarSpace={false}
           scrollViewProps={{
             lowerThreshold: 180,
-            scrollTop,
-            scrollWithAnimation: true,
+            ...(typeof scrollTop === 'number' ? { scrollTop, scrollWithAnimation: true } : {}),
             onScrollToLower: () => void loadMoreOrders(),
           }}
         >

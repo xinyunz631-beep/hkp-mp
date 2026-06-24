@@ -10,12 +10,19 @@ export interface TicketQrRenderOptions {
   getQrKey: (ticket: OrderDetailData['ticketInstances'][number], index: number) => string;
 }
 
+export interface OrderTicketDetailPopupData {
+  title: string;
+  content: string;
+  rich?: boolean;
+}
+
 export interface OrderDetailSceneViewProps {
   detailData: OrderDetailData;
   ticketQr: TicketQrRenderOptions;
   onCouponPress: (couponNo: string) => void;
   onPrimaryAction: () => void;
   onSceneAction: (action: OrderDetailData['sceneActions'][number]) => void;
+  onTicketDetailPress?: (detail: OrderTicketDetailPopupData) => void;
   onViewAftersale: () => void;
 }
 

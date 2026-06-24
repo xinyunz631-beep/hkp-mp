@@ -120,7 +120,6 @@ const TICKET_BOOKING_AVAILABLE_DAYS = 30;
 const TICKET_WEEKDAY_TITLES = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
 const DEFAULT_SERVICE_PHONE = '4009778899';
 const DEFAULT_ENTRY_ADDRESS = '浙江安吉县昌硕街道天使大道1号';
-const TICKET_REQUEST_CACHE_TTL = 10 * 1000;
 const TICKET_CALENDAR_BATCH_SIZE = 20;
 const PRODUCT_CALENDAR_SUMMARY_SKU_ID = '__product_calendar_summary__';
 const MINI_PROGRAM_CHANNELS = ['miniProgram', 'wechatMiniProgram', 'WECHAT_MINI_PROGRAM', 'weapp'];
@@ -266,12 +265,8 @@ function getCachedTicketRequest<TData>(cache: Map<string, TicketRequestCacheEntr
 
   if (!cachedRequest) return undefined;
 
+  // 只复用进行中的同 key 请求；完成态不缓存，确保用户下拉刷新会重新请求真实接口。
   if (!cachedRequest.completedAt) return cachedRequest.request;
-
-  if (Date.now() - cachedRequest.completedAt <= TICKET_REQUEST_CACHE_TTL) {
-    return cachedRequest.request;
-  }
-
   cache.delete(requestKey);
   return undefined;
 }
