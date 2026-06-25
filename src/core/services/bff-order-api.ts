@@ -824,6 +824,7 @@ export function confirmBffOrder(data: BffOrderUnifiedRequest) {
       ...data,
       freightAmountCent: data.freightAmountCent ?? 0,
     },
+    sign: true,
   });
 }
 
@@ -836,6 +837,7 @@ export function createBffOrder(data: BffOrderUnifiedRequest) {
       ...data,
       freightAmountCent: data.freightAmountCent ?? 0,
     },
+    sign: true,
   });
 }
 
@@ -848,6 +850,7 @@ export function payBffOrder(orderNo: string, paymentChannel: BffOrderPaymentChan
       paymentChannel,
       appId: resolveCurrentMiniProgramAppId(),
     },
+    sign: true,
   });
 }
 

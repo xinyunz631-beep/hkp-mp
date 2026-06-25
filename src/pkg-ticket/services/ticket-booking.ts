@@ -79,6 +79,7 @@ export interface TicketProduct {
   fulfillmentType?: string;
   realNameRequired?: boolean;
   entryMethods?: string[];
+  cardRule?: Record<string, unknown>;
   usageInstructionHtml?: string;
   ruleTexts: string[];
   ruleRichTexts: string[];
@@ -130,6 +131,7 @@ const DEFAULT_ENTRY_ADDRESS = '浙江安吉县昌硕街道天使大道1号';
 const TICKET_CALENDAR_BATCH_SIZE = 20;
 const PRODUCT_CALENDAR_SUMMARY_SKU_ID = '__product_calendar_summary__';
 const MINI_PROGRAM_CHANNELS = ['miniProgram', 'wechatMiniProgram', 'WECHAT_MINI_PROGRAM', 'weapp'];
+const HIDDEN_UNAVAILABLE_STOCK_TEXTS = new Set(['待上线', '暂无可售日期', '暂无可售门票']);
 
 interface TicketRequestCacheEntry<TData> {
   request: Promise<TData>;
@@ -401,8 +403,7 @@ function uniquePublishedTicketProductCodes(ticketProducts: BffTicketProduct[]) {
 function resolvePublishStatusText(status?: string) {
   if (!status) return '';
   if (status === 'published') return '';
-  if (status === 'offline' || status === 'archived') return '暂不可订';
-  return '待上线';
+  return '';
 }
 
 function resolveUnavailableStockText(
@@ -411,19 +412,25 @@ function resolveUnavailableStockText(
   availableStock: number,
 ) {
   if (!isPublishedTicketProduct(item)) return resolvePublishStatusText(item.publishStatus);
-  if (!inventoryDay) return item.availableDateSummary || '暂无可售日期';
-  if (inventoryDay.saleStatus === 'soldOut') return '已售罄';
+  if (!inventoryDay) return '';
+  if (inventoryDay.saleStatus === 'soldOut') return '当日已售罄';
   if (inventoryDay.saleStatus !== 'onSale') return inventoryDay.restrictionReason || '暂不可订';
-  if (availableStock <= 0) return '已售罄';
+  if (availableStock <= 0) return '当日已售罄';
   return '暂不可订';
+}
+
+function shouldHideTicketProductForMiniProgram(
+  item: BffTicketProduct,
+  inventoryDay: BffTicketInventoryDay | undefined,
+  unavailableStockText: string,
+) {
+  if (!isPublishedTicketProduct(item)) return true;
+  if (!inventoryDay) return true;
+  return HIDDEN_UNAVAILABLE_STOCK_TEXTS.has(unavailableStockText);
 }
 
 function compactTags(tags: Array<string | undefined>) {
   return Array.from(new Set(tags.filter((tag): tag is string => Boolean(tag))));
-}
-
-function compactRules(rules: Array<string | undefined>) {
-  return Array.from(new Set(rules.map((rule) => rule?.trim()).filter((rule): rule is string => Boolean(rule))));
 }
 
 function compactRichTextSegments(rules: Array<string | undefined>) {
@@ -438,38 +445,18 @@ function resolveTicketProductImage(images?: BffTicketImageAsset[]) {
   return sanitizeMallRuntimeUrl(sortedImages[0]?.url, { allowMockImage: true });
 }
 
-function resolveVerificationMethodText(method?: string) {
-  if (method === 'idCard') return '入园时请携带购票证件核验。';
-  if (method === 'memberCode') return '入园时可出示会员码核验。';
-  if (method === 'ticketCode') return '入园时请出示订单入园码核验。';
-  if (method === 'manual') return '入园时可由现场工作人员人工核验。';
-  return undefined;
-}
-
-function buildProductRuleFragments(item: BffTicketProduct, sku: BffTicketSkuRule, stockText: string) {
-  return [
-    item.notice,
-    sku.qualificationRule,
-    sku.refundRule || item.refundRule,
-    resolveVerificationMethodText(sku.verificationMethod),
-    item.entryTimeText ? `入园时间：${item.entryTimeText}` : undefined,
-    item.entryAddress ? `入园地点：${item.entryAddress}` : undefined,
-    stockText ? `当前日期：${stockText}` : undefined,
-  ];
-}
-
-function buildProductRuleTexts(item: BffTicketProduct, sku: BffTicketSkuRule, stockText: string) {
-  return compactRules(buildProductRuleFragments(item, sku, stockText));
-}
-
 function buildProductRuleRichTexts(item: BffTicketProduct, sku: BffTicketSkuRule) {
   return compactRichTextSegments([
     sku.usageInstructionHtml,
     item.usageInstructionHtml,
-    item.notice,
-    sku.qualificationRule,
-    sku.refundRule || item.refundRule,
   ]);
+}
+
+function buildParkRuleRichTexts(ticketProducts: BffTicketProduct[]) {
+  return compactRichTextSegments(ticketProducts.flatMap((product) => [
+    product.usageInstructionHtml,
+    ...(product.skuRules || []).map((sku) => sku.usageInstructionHtml),
+  ]));
 }
 
 // 将票务商品和 SKU 归一为页面票种模型。
@@ -489,6 +476,9 @@ function normalizeTicketProduct(
   const skuMaxQuantity = sku.maxQuantity && sku.maxQuantity > 0 ? sku.maxQuantity : availableStock;
   const maxQuantity = saleable ? Math.max(0, Math.min(availableStock, skuMaxQuantity)) : 0;
   const unavailableStockText = saleable ? '' : resolveUnavailableStockText(item, inventoryDay, availableStock);
+  if (!saleable && shouldHideTicketProductForMiniProgram(item, inventoryDay, unavailableStockText)) {
+    return undefined;
+  }
   const publishStatusTag = resolvePublishStatusText(item.publishStatus);
   const stockText = saleable ? `余票 ${availableStock}` : unavailableStockText;
   const category = resolveProductCategory(item);
@@ -532,8 +522,9 @@ function normalizeTicketProduct(
     fulfillmentType,
     realNameRequired,
     entryMethods: sku.entryMethods || item.entryMethods,
+    cardRule: item.cardRule,
     usageInstructionHtml: sku.usageInstructionHtml || item.usageInstructionHtml,
-    ruleTexts: buildProductRuleTexts(item, sku, stockText),
+    ruleTexts: [],
     ruleRichTexts: buildProductRuleRichTexts(item, sku),
   };
 }
@@ -541,22 +532,19 @@ function normalizeTicketProduct(
 function resolveDateAvailabilityText(products: TicketProduct[]) {
   const saleableCount = products.filter((product) => product.saleable).length;
   if (saleableCount > 0) return `${saleableCount} 个票种可订`;
-  if (products.some((product) => product.publishStatus && product.publishStatus !== 'published')) return '部分票种待上线';
   if (products.length > 0) return '当前日期暂无余票';
   return '暂无可售门票';
 }
 
 function resolveParkInfoFromProducts(fallback: TicketBookingParkInfo, ticketProducts: BffTicketProduct[]) {
-  const firstConfiguredProduct = ticketProducts.find((product) => product.entryAddress || product.servicePhone || product.notice || product.refundRule);
-  const noticeRules = compactRules(ticketProducts.flatMap((product) => [product.notice, product.refundRule]));
-  const ruleRichTexts = compactRichTextSegments(ticketProducts.flatMap((product) => [product.notice, product.refundRule]));
+  const firstConfiguredProduct = ticketProducts.find((product) => product.entryAddress || product.servicePhone);
 
   return {
     ...fallback,
     hotline: firstConfiguredProduct?.servicePhone || fallback.hotline,
     address: firstConfiguredProduct?.entryAddress || fallback.address,
-    rules: noticeRules.length ? noticeRules : fallback.rules,
-    ruleRichTexts,
+    rules: [],
+    ruleRichTexts: buildParkRuleRichTexts(ticketProducts),
   };
 }
 
@@ -613,7 +601,9 @@ function buildTicketBookingDataFromApi(
   inventoryMap: Record<string, BffTicketInventoryDay[]>,
   resources: CmsResourceSlotApiItem[],
 ) {
-  const miniProgramTicketProducts = ticketProducts.filter(isMiniProgramTicketProduct);
+  const miniProgramTicketProducts = ticketProducts
+    .filter(isMiniProgramTicketProduct)
+    .filter(isPublishedTicketProduct);
   const products = miniProgramTicketProducts
     .flatMap((product) => {
       const skuRules = product.skuRules || [];
@@ -651,7 +641,7 @@ async function fetchTicketBookingDataUncached(fallback: TicketBookingData) {
   const startDate = fallback.parkInfo.travelDate;
   const endDate = fallback.parkInfo.travelDate;
   const [ticketProducts, resources] = await Promise.all([
-    fetchBffTicketProducts(),
+    fetchBffTicketProducts({ visitDate: startDate }),
     fetchPurchaseResources().catch(() => []),
   ]);
   const calendarBatchMaps = await Promise.all(

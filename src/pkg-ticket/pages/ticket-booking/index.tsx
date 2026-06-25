@@ -60,8 +60,17 @@ type TicketScrollHandler = NonNullable<ScrollViewProps['onScroll']>;
 
 type TicketSectionOffsets = Partial<Record<TicketBookingSectionKey, number>>;
 
+const TICKET_BOOKING_TOP_ANCHOR_ID = 'ticket-booking-top-anchor';
+const TICKET_SECTION_ANCHOR_GAP = 8;
+const TICKET_SECTION_ACTIVE_MARKER_GAP = 18;
+const TICKET_SECTION_SCROLL_LOCK_MS = 460;
+
 function getTicketSectionId(key: TicketBookingSectionKey) {
   return `ticket-booking-section-${key.replace(/[^a-zA-Z0-9_-]/g, '-')}`;
+}
+
+function getTicketSectionAnchorId(key: TicketBookingSectionKey) {
+  return `${getTicketSectionId(key)}-anchor`;
 }
 
 function TicketShareButton() {
@@ -87,7 +96,9 @@ function TicketBookingTabs({
       <View
         className={`_pg-tabs_item ${activeKey === item.key ? '_pg-tabs_item--active' : ''}`}
         key={item.key}
-        onClick={() => onChange(item.key)}
+        onClick={() => {
+          if (activeKey !== item.key) onChange(item.key);
+        }}
       >
         {item.badge ? (
           <Badge
@@ -282,16 +293,32 @@ function TicketSectionTitle({
 
 function ProductCard({ product, quantity, onQuantityChange, onShowRules }: ProductCardProps) {
   const maxQuantity = product.saleable ? product.maxQuantity : 0;
-  const stockClassName = product.saleable
-    ? '_pg-product_stock'
-    : '_pg-product_stock _pg-product_stock--disabled';
+  const safeQuantity = Math.min(quantity, maxQuantity);
+  const reachedMaxQuantity = product.saleable && maxQuantity > 0 && safeQuantity >= maxQuantity;
+  const maxQuantityText = maxQuantity > 0 ? `最多可购 ${maxQuantity} 张` : '';
+  const unavailableReason = product.stockText || '当前票种暂不可订';
+  const stepperStatusText = product.saleable
+    ? reachedMaxQuantity ? maxQuantityText : ''
+    : unavailableReason;
+
+  function handleUnavailableDateSelect() {
+    if (product.saleable) return;
+    void showWechatToast(`${unavailableReason}，请选择其他游玩日期`);
+  }
+
+  function handleMaxStepperClick() {
+    if (!maxQuantityText) return;
+    void showWechatToast(maxQuantityText);
+  }
 
   return (
     <View className="_pg-product">
       <View className="_pg-product_main">
         <Text className="_pg-product_title">{product.title}</Text>
         <Text className="_pg-product_desc">{product.description}</Text>
-        <Text className={stockClassName}>{product.stockText}</Text>
+        {product.saleable && product.stockText ? (
+          <Text className="_pg-product_stock">{product.stockText}</Text>
+        ) : null}
         <View className="_pg-product_tags">
           {product.tags.map((tag) => (
             <Text className="_pg-product_tag" key={tag}>{tag}</Text>
@@ -306,15 +333,31 @@ function ProductCard({ product, quantity, onQuantityChange, onShowRules }: Produ
         <Text className="_pg-product_price-label">{product.priceLabel}</Text>
         <Text className="_pg-product_price">¥{product.price}</Text>
       </View>
-      <View className="_pg-product_stepper-wrap">
-        <QuantityStepper
-          className="_pg-product_stepper"
-          value={Math.min(quantity, maxQuantity)}
-          min={0}
-          max={maxQuantity}
-          disabled={!product.saleable}
-          onChange={(value) => onQuantityChange(Math.min(value, maxQuantity))}
-        />
+      <View className={`_pg-product_stepper-wrap ${product.saleable ? '' : '_pg-product_stepper-wrap--disabled'}`}>
+        {stepperStatusText ? (
+          <Text
+            className={`_pg-product_stepper-status ${product.saleable ? '' : '_pg-product_stepper-status--disabled'}`}
+            onClick={product.saleable ? handleMaxStepperClick : handleUnavailableDateSelect}
+          >
+            {stepperStatusText}
+          </Text>
+        ) : null}
+        <View className="_pg-product_stepper-box">
+          <QuantityStepper
+            className="_pg-product_stepper"
+            value={safeQuantity}
+            min={0}
+            max={maxQuantity}
+            disabled={!product.saleable}
+            onChange={(value) => onQuantityChange(Math.min(value, maxQuantity))}
+          />
+          {reachedMaxQuantity ? (
+            <View className="_pg-product_stepper-plus-mask" onClick={handleMaxStepperClick} />
+          ) : null}
+        </View>
+        {!product.saleable ? (
+          <View className="_pg-product_stepper-mask" onClick={handleUnavailableDateSelect} />
+        ) : null}
       </View>
     </View>
   );
@@ -348,8 +391,11 @@ const TicketBookingPage = observer(function TicketBookingPage() {
   const [activeSectionKey, setActiveSectionKey] = useState<TicketBookingSectionKey>('ticket');
   const [sectionOffsets, setSectionOffsets] = useState<TicketSectionOffsets>({});
   const [stickyPanelHeight, setStickyPanelHeight] = useState(0);
-  const [scrollTop, setScrollTop] = useState<number>();
-  const scrollTopResetTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const [sectionScrollIntoView, setSectionScrollIntoView] = useState('');
+  const currentScrollTopRef = useRef(0);
+  const pendingSectionKeyRef = useRef<TicketBookingSectionKey>();
+  const scrollLockTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const scrollIntoViewTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const pageRuntime = usePageRuntime({
     initPage: async () => {
       await loadBookingData(selectedDate || undefined);
@@ -373,9 +419,7 @@ const TicketBookingPage = observer(function TicketBookingPage() {
   const rulesPopupRichTexts = selectedRuleProduct
     ? selectedRuleProduct.ruleRichTexts
     : bookingData?.parkInfo.ruleRichTexts ?? [];
-  const rulesPopupPlainTexts = selectedRuleProduct
-    ? selectedRuleProduct.ruleTexts.filter((ruleText) => !selectedRuleProduct.ruleRichTexts.includes(ruleText))
-    : [];
+  const sectionAnchorOffset = stickyPanelHeight + TICKET_SECTION_ANCHOR_GAP;
   useShareAppMessage(() => ({
     title: shareTitle,
     path: MINI_PACKAGE_ROUTES.ticketBooking,
@@ -395,52 +439,59 @@ const TicketBookingPage = observer(function TicketBookingPage() {
     setStickyPanelHeight(0);
   }
 
-  useEffect(() => () => {
-    if (scrollTopResetTimerRef.current) {
-      clearTimeout(scrollTopResetTimerRef.current);
+  function clearSectionScrollLock() {
+    if (scrollLockTimerRef.current) {
+      clearTimeout(scrollLockTimerRef.current);
+      scrollLockTimerRef.current = undefined;
     }
-  }, []);
+    pendingSectionKeyRef.current = undefined;
+  }
 
-  function scrollBookingTo(nextScrollTop: number) {
-    if (scrollTopResetTimerRef.current) {
-      clearTimeout(scrollTopResetTimerRef.current);
+  function requestScrollIntoView(anchorId: string, targetKey?: TicketBookingSectionKey) {
+    if (scrollIntoViewTimerRef.current) {
+      clearTimeout(scrollIntoViewTimerRef.current);
+      scrollIntoViewTimerRef.current = undefined;
+    }
+    clearSectionScrollLock();
+
+    if (targetKey) {
+      pendingSectionKeyRef.current = targetKey;
+      scrollLockTimerRef.current = setTimeout(() => {
+        clearSectionScrollLock();
+      }, TICKET_SECTION_SCROLL_LOCK_MS);
     }
 
-    setScrollTop((currentScrollTop) => (
-      typeof currentScrollTop === 'number' && Math.abs(currentScrollTop - nextScrollTop) < 1
-        ? nextScrollTop + 0.5
-        : nextScrollTop
-    ));
-    scrollTopResetTimerRef.current = setTimeout(() => {
-      setScrollTop(undefined);
-      scrollTopResetTimerRef.current = undefined;
-    }, 360);
+    setSectionScrollIntoView('');
+    scrollIntoViewTimerRef.current = setTimeout(() => {
+      setSectionScrollIntoView(anchorId);
+      scrollIntoViewTimerRef.current = undefined;
+    }, 0);
   }
 
   function resetBookingScrollTop() {
-    scrollBookingTo(0);
+    requestScrollIntoView(TICKET_BOOKING_TOP_ANCHOR_ID);
   }
 
   function measureSections() {
     Taro.nextTick(() => {
       const query = Taro.createSelectorQuery();
 
-      query.select('._pg-content').boundingClientRect();
+      query.select('.page-layout__scroll').boundingClientRect();
       query.select('._pg-sticky-content').boundingClientRect();
       visibleSections.forEach((item) => {
         query.select(`#${getTicketSectionId(item.key)}`).boundingClientRect();
       });
 
       query.exec((results) => {
-        const [contentRect, stickyRect, ...sectionRects] = results as Array<{ top: number; height?: number } | null | undefined>;
+        const [scrollRect, stickyRect, ...sectionRects] = results as Array<{ top: number; height?: number } | null | undefined>;
 
-        if (!contentRect) return;
+        if (!scrollRect) return;
 
         const nextOffsets = visibleSections.reduce<TicketSectionOffsets>((result, item, index) => {
           const sectionRect = sectionRects[index];
 
           if (sectionRect) {
-            result[item.key] = Math.max(0, sectionRect.top - contentRect.top);
+            result[item.key] = Math.max(0, currentScrollTopRef.current + sectionRect.top - scrollRect.top);
           }
 
           return result;
@@ -463,6 +514,13 @@ const TicketBookingPage = observer(function TicketBookingPage() {
     };
   }, [bookingData, visibleSections]);
 
+  useEffect(() => () => {
+    clearSectionScrollLock();
+    if (scrollIntoViewTimerRef.current) {
+      clearTimeout(scrollIntoViewTimerRef.current);
+    }
+  }, []);
+
   useEffect(() => {
     const firstSectionKey = visibleSections[0]?.key;
 
@@ -472,7 +530,7 @@ const TicketBookingPage = observer(function TicketBookingPage() {
   }, [activeSectionKey, visibleSections]);
 
   function resolveActiveSection(nextScrollTop: number) {
-    const markerTop = nextScrollTop + stickyPanelHeight + 18;
+    const markerTop = nextScrollTop + stickyPanelHeight + TICKET_SECTION_ACTIVE_MARKER_GAP;
     const firstSectionKey = visibleSections[0]?.key ?? 'ticket';
 
     return visibleSections.reduce<TicketBookingSectionKey>((currentKey, item) => {
@@ -485,7 +543,16 @@ const TicketBookingPage = observer(function TicketBookingPage() {
   }
 
   const handlePageScroll: TicketScrollHandler = (event) => {
+    currentScrollTopRef.current = event.detail.scrollTop;
     const nextActiveKey = resolveActiveSection(event.detail.scrollTop);
+    const pendingSectionKey = pendingSectionKeyRef.current;
+
+    if (pendingSectionKey) {
+      if (nextActiveKey === pendingSectionKey) {
+        clearSectionScrollLock();
+      }
+      return;
+    }
 
     if (nextActiveKey !== activeSectionKey) {
       setActiveSectionKey(nextActiveKey);
@@ -493,33 +560,50 @@ const TicketBookingPage = observer(function TicketBookingPage() {
   };
 
   function handleSectionTabChange(key: TicketBookingSectionKey) {
-    const targetTop = sectionOffsets[key] ?? 0;
-    const nextScrollTop = Math.max(0, targetTop - stickyPanelHeight - 8);
+    if (key === activeSectionKey) return;
+
+    const targetTop = sectionOffsets[key];
+    const nextScrollTop = targetTop === undefined
+      ? undefined
+      : Math.max(0, targetTop - stickyPanelHeight - TICKET_SECTION_ANCHOR_GAP);
 
     setActiveSectionKey(key);
-    scrollBookingTo(nextScrollTop);
+    if (nextScrollTop !== undefined) {
+      currentScrollTopRef.current = nextScrollTop;
+    }
+    requestScrollIntoView(getTicketSectionAnchorId(key), key);
   }
 
   function renderBookingSection(section: TicketBookingSection) {
+    const anchorStyle = sectionAnchorOffset > 0
+      ? {
+          height: `${sectionAnchorOffset}px`,
+          marginTop: `-${sectionAnchorOffset}px`,
+        }
+      : undefined;
+
     if (section.type !== 'package') {
       const sectionProducts = getProductsForSection(section, products);
 
       return (
-        <View className="_pg-package-section" id={getTicketSectionId(section.key)} key={section.key}>
-          <TicketSectionTitle title={section.title} />
-          <View className="_pg-products">
-            {sectionProducts.map((product) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                quantity={quantities[product.id] ?? 0}
-                onQuantityChange={(value) => setQuantities((current) => ({ ...current, [product.id]: value }))}
-                onShowRules={() => {
-                  setSelectedRuleProductId(product.id);
-                  setRulesPopupVisible(true);
-                }}
-              />
-            ))}
+        <View className="_pg-section-wrap" key={section.key}>
+          <View className="_pg-section-anchor" id={getTicketSectionAnchorId(section.key)} style={anchorStyle} />
+          <View className="_pg-package-section" id={getTicketSectionId(section.key)}>
+            <TicketSectionTitle title={section.title} />
+            <View className="_pg-products">
+              {sectionProducts.map((product) => (
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  quantity={quantities[product.id] ?? 0}
+                  onQuantityChange={(value) => setQuantities((current) => ({ ...current, [product.id]: value }))}
+                  onShowRules={() => {
+                    setSelectedRuleProductId(product.id);
+                    setRulesPopupVisible(true);
+                  }}
+                />
+              ))}
+            </View>
           </View>
         </View>
       );
@@ -528,12 +612,15 @@ const TicketBookingPage = observer(function TicketBookingPage() {
     const sectionPackages = getPackagesForSection(section, packages);
 
     return (
-      <View className="_pg-package-section" id={getTicketSectionId(section.key)} key={section.key}>
-        <TicketSectionTitle title={section.title} />
-        <View className="_pg-package-list">
-          {sectionPackages.map((product) => (
-            <TicketPackageCard key={product.id} product={product} onReserve={handlePackageReserve} />
-          ))}
+      <View className="_pg-section-wrap" key={section.key}>
+        <View className="_pg-section-anchor" id={getTicketSectionAnchorId(section.key)} style={anchorStyle} />
+        <View className="_pg-package-section" id={getTicketSectionId(section.key)}>
+          <TicketSectionTitle title={section.title} />
+          <View className="_pg-package-list">
+            {sectionPackages.map((product) => (
+              <TicketPackageCard key={product.id} product={product} onReserve={handlePackageReserve} />
+            ))}
+          </View>
         </View>
       </View>
     );
@@ -578,6 +665,7 @@ const TicketBookingPage = observer(function TicketBookingPage() {
         fulfillmentType: product.fulfillmentType,
         realNameRequired: product.realNameRequired,
         entryMethods: product.entryMethods,
+        cardRule: product.cardRule,
         usageInstructionHtml: product.usageInstructionHtml,
       })),
     });
@@ -622,12 +710,13 @@ const TicketBookingPage = observer(function TicketBookingPage() {
           />
         )}
         scrollViewProps={{
-          ...(typeof scrollTop === 'number' ? { scrollTop, scrollWithAnimation: true } : {}),
+          ...(sectionScrollIntoView ? { scrollIntoView: sectionScrollIntoView } : {}),
           onScroll: handlePageScroll,
         }}
       >
         {bookingData ? (
           <View className="_pg-content">
+            <View className="_pg-page-top-anchor" id={TICKET_BOOKING_TOP_ANCHOR_ID} />
             <View className="_pg-package-section">
               <TicketBookingHero
                 imageCount={bookingData.parkInfo.imageCount}
@@ -719,11 +808,8 @@ const TicketBookingPage = observer(function TicketBookingPage() {
                   </View>
                 </View>
                 <View className="_pg-rules-popup_content">
-                  {rulesPopupPlainTexts.length || rulesPopupRichTexts.length ? (
+                  {rulesPopupRichTexts.length ? (
                     <>
-                      {rulesPopupPlainTexts.map((ruleText) => (
-                        <Text className="_pg-rules-popup_text" key={ruleText}>{ruleText}</Text>
-                      ))}
                       {rulesPopupRichTexts.map((ruleRichText, index) => (
                         <TicketRichText
                           className="_pg-rules-popup_rich-text"

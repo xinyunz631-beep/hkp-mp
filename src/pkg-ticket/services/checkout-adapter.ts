@@ -31,6 +31,17 @@ function joinTicketTravelerIds(product: TicketOrderDraftProduct, payload: Submit
     .join(',');
 }
 
+// 年卡规则快照按标准 JSON 透传，避免新订单继续依赖后端对历史 {key=value} 字符串的兼容解析。
+function stringifyTicketCardRule(product: TicketOrderDraftProduct) {
+  return product.cardRule ? JSON.stringify(product.cardRule) : undefined;
+}
+
+// 仅在年卡商品带规则快照时写入订单行属性，普通门票不增加无意义字段。
+function buildTicketCardRuleAttributes(product: TicketOrderDraftProduct): Record<string, string> {
+  const cardRule = stringifyTicketCardRule(product);
+  return cardRule ? { cardRule } : {};
+}
+
 // 构建票务订单上下文，实名字段只在当前订单确实需要校验时写入。
 function buildTicketOrderContext(
   draft: TicketOrderDraft,
@@ -89,6 +100,7 @@ export function buildTicketCheckoutOrderRequest(
         requiredFields: JSON.stringify(product.requiredFields || []),
         verificationMethods: JSON.stringify(product.verificationMethods || (product.verificationMethod ? [product.verificationMethod] : [])),
         entryMethods: JSON.stringify(product.entryMethods || []),
+        ...buildTicketCardRuleAttributes(product),
         usageInstructionHtml: product.usageInstructionHtml || '',
         travelers: stringifyTicketTravelers(product, payload),
         travelerIds: joinTicketTravelerIds(product, payload),

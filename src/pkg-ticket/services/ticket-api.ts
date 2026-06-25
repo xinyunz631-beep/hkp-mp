@@ -170,10 +170,17 @@ function normalizePageResult<TItem>(result: BackendPageResult<TItem> | TItem[]) 
   return result.list || result.records || result.items || [];
 }
 
+export interface BffTicketProductsQuery {
+  visitDate?: string;
+}
+
 // 查询小程序可见票务商品。
-export async function fetchBffTicketProducts() {
+export async function fetchBffTicketProducts(query: BffTicketProductsQuery = {}) {
   const result = await request<BackendPageResult<BffTicketProduct>>({
-    url: appendQuery('/api/bff/tickets/products', { size: 100 }),
+    url: appendQuery('/api/bff/tickets/products', {
+      size: 100,
+      visitDate: query.visitDate,
+    }),
     method: 'GET',
   });
   return normalizePageResult(result);

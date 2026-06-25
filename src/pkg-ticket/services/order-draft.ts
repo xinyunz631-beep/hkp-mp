@@ -41,6 +41,7 @@ export interface TicketOrderDraftProduct {
   fulfillmentType?: string;
   realNameRequired?: boolean;
   entryMethods?: string[];
+  cardRule?: Record<string, unknown>;
   usageInstructionHtml?: string;
 }
 
@@ -391,6 +392,7 @@ export function buildTicketUnifiedOrderRequest(
         requiredFields: JSON.stringify(product.requiredFields || []),
         verificationMethods: JSON.stringify(product.verificationMethods || (product.verificationMethod ? [product.verificationMethod] : [])),
         entryMethods: JSON.stringify(product.entryMethods || []),
+        ...(product.cardRule ? { cardRule: JSON.stringify(product.cardRule) } : {}),
         usageInstructionHtml: product.usageInstructionHtml || '',
         travelers: isTicketDraftProductIdentityRequired(product) ? JSON.stringify(payload.travelers) : '[]',
         travelerIds: isTicketDraftProductIdentityRequired(product)
