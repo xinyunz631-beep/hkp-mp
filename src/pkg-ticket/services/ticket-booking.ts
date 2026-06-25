@@ -73,6 +73,11 @@ export interface TicketProduct {
   mobileRequired?: boolean;
   certificateRequired?: boolean;
   verificationMethod?: string;
+  verificationMethods?: string[];
+  fulfillmentType?: string;
+  realNameRequired?: boolean;
+  entryMethods?: string[];
+  usageInstructionHtml?: string;
   ruleTexts: string[];
   ruleRichTexts: string[];
 }
@@ -213,6 +218,10 @@ function isEnabledApiItem(status?: string) {
 
 // 按后端商品类型和标题粗分票种类型。
 function resolveProductCategory(item: BffTicketProduct): TicketProduct['category'] {
+  const fulfillmentType = `${item.fulfillmentType || ''}`.toUpperCase();
+  if (fulfillmentType === 'LOCAL_FAST_PASS_VOUCHER') return 'fastPass';
+  if (fulfillmentType === 'ANNUAL_CARD_ASSET') return 'annualCard';
+
   const categoryText = `${item.productType || ''} ${item.categorySection || ''} ${item.title || ''} ${item.subtitle || ''}`.toLowerCase();
   if (categoryText.includes('fastpass') || categoryText.includes('快速通') || categoryText.includes('速通')) {
     return 'fastPass';
@@ -426,6 +435,8 @@ function buildProductRuleTexts(item: BffTicketProduct, sku: BffTicketSkuRule, st
 
 function buildProductRuleRichTexts(item: BffTicketProduct, sku: BffTicketSkuRule) {
   return compactRichTextSegments([
+    sku.usageInstructionHtml,
+    item.usageInstructionHtml,
     item.notice,
     sku.qualificationRule,
     sku.refundRule || item.refundRule,
@@ -451,13 +462,21 @@ function normalizeTicketProduct(
   const unavailableStockText = saleable ? '' : resolveUnavailableStockText(item, inventoryDay, availableStock);
   const publishStatusTag = resolvePublishStatusText(item.publishStatus);
   const stockText = saleable ? `余票 ${availableStock}` : unavailableStockText;
+  const category = resolveProductCategory(item);
+  const fulfillmentType = sku.fulfillmentType || item.fulfillmentType;
+  const requiredFields = sku.requiredFields || item.requiredFields;
+  const realNameRequired = typeof sku.realNameRequired === 'boolean'
+    ? sku.realNameRequired
+    : typeof item.realNameRequired === 'boolean'
+      ? item.realNameRequired
+      : category !== 'fastPass';
 
   return {
     id: `${item.productCode}__${sku.id}`,
     productCode: item.productCode,
     skuId: sku.id,
     skuName,
-    category: resolveProductCategory(item),
+    category,
     title: skuName === '标准票' ? item.title : `${item.title} ${skuName}`,
     imageSrc: resolveTicketProductImage(item.coverImages),
     description: item.subtitle || sku.audience || item.availableDateSummary || '官方直营票种',
@@ -476,10 +495,15 @@ function normalizeTicketProduct(
     saleable,
     publishStatus: item.publishStatus,
     travelerRoles: sku.travelerRoles,
-    requiredFields: sku.requiredFields,
+    requiredFields,
     mobileRequired: sku.mobileRequired,
     certificateRequired: sku.certificateRequired,
     verificationMethod: sku.verificationMethod,
+    verificationMethods: sku.verificationMethods || item.verificationMethods,
+    fulfillmentType,
+    realNameRequired,
+    entryMethods: sku.entryMethods || item.entryMethods,
+    usageInstructionHtml: sku.usageInstructionHtml || item.usageInstructionHtml,
     ruleTexts: buildProductRuleTexts(item, sku, stockText),
     ruleRichTexts: buildProductRuleRichTexts(item, sku),
   };

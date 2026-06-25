@@ -36,6 +36,12 @@ export interface TicketOrderDraftProduct {
   requiredFields?: string[];
   mobileRequired?: boolean;
   certificateRequired?: boolean;
+  verificationMethod?: string;
+  verificationMethods?: string[];
+  fulfillmentType?: string;
+  realNameRequired?: boolean;
+  entryMethods?: string[];
+  usageInstructionHtml?: string;
 }
 
 export interface TicketOrderContact {
@@ -212,6 +218,9 @@ function hasRequiredField(product: TicketOrderDraftProduct, fieldNames: string[]
 }
 
 function hasAnyRealNameField(product: TicketOrderDraftProduct) {
+  if (product.realNameRequired === false) return false;
+  if (product.realNameRequired === true) return true;
+
   return Boolean(product.mobileRequired)
     || Boolean(product.certificateRequired)
     || hasRequiredField(product, travelerNameFields)
@@ -221,6 +230,16 @@ function hasAnyRealNameField(product: TicketOrderDraftProduct) {
 
 function shouldCreateTravelerSlots(product: TicketOrderDraftProduct) {
   return hasAnyRealNameField(product);
+}
+
+// 后端新契约显式返回实名要求时优先按后端字段判断；历史数据缺字段时继续兼容现有实名字段。
+export function isTicketDraftProductIdentityRequired(product: TicketOrderDraftProduct) {
+  return hasAnyRealNameField(product);
+}
+
+// 当前线上策略是一单复用一组实名；只要任一明细需要实名，结算页就展示这一组表单。
+export function isTicketOrderIdentityRequired(products: TicketOrderDraftProduct[]) {
+  return products.some(isTicketDraftProductIdentityRequired);
 }
 
 // 以后端 SKU 实名字段为准调整本地表单必填项；无实名字段的快速通/票种只保留订单联系人。
@@ -329,24 +348,31 @@ export function buildTicketUnifiedOrderRequest(
   payload: SubmitTicketOrderDraftPayload,
 ): BffOrderUnifiedRequest {
   const selectedCouponNos = payload.selectedCouponId ? [payload.selectedCouponId] : [];
-  const certificateNo = payload.travelers.find((traveler) => Boolean(traveler.idCard))?.idCard || payload.contact.idCard;
-  const travelerSummary = payload.travelers
-    .map((traveler) => `${traveler.name}/${traveler.idCard}/${traveler.productId}`)
-    .join(';');
+  const identityRequired = isTicketOrderIdentityRequired(draft.products);
+  const certificateNo = identityRequired
+    ? payload.travelers.find((traveler) => Boolean(traveler.idCard))?.idCard || payload.contact.idCard
+    : '';
+  const travelerSummary = identityRequired
+    ? payload.travelers
+      .map((traveler) => `${traveler.name}/${traveler.idCard}/${traveler.productId}`)
+      .join(';')
+    : '';
+  const context: Record<string, string> = {
+    visitDate: payload.selectedDate,
+    parkName: draft.parkName,
+    identityRequired: identityRequired ? 'true' : 'false',
+  };
+  if (certificateNo) context.certificateNo = certificateNo;
+  if (travelerSummary) context.travelerSummary = travelerSummary;
 
   return {
     sceneType: 'TICKET',
     channel: 'MINI_PROGRAM',
     paymentChannel: 'WECHAT',
     selectedCouponNos,
-    contactName: payload.contact.name,
-    contactPhone: payload.contact.mobile,
-    context: {
-      visitDate: payload.selectedDate,
-      parkName: draft.parkName,
-      certificateNo,
-      travelerSummary,
-    },
+    contactName: identityRequired ? payload.contact.name : undefined,
+    contactPhone: identityRequired ? payload.contact.mobile : undefined,
+    context,
     items: draft.products.map((product, index) => ({
       lineNo: String(index + 1),
       itemId: product.productCode || product.id,
@@ -360,11 +386,16 @@ export function buildTicketUnifiedOrderRequest(
         imageUrl: sanitizeMallRuntimeUrl(product.imageSrc, { allowMockImage: true }),
         skuId: resolveTicketSkuId(product),
         skuName: product.skuName || '',
-        travelers: JSON.stringify(payload.travelers.filter((traveler) => traveler.productId === product.id)),
-        travelerIds: payload.travelers
-          .filter((traveler) => traveler.productId === product.id)
-          .map((traveler) => traveler.idCard)
-          .join(','),
+        fulfillmentType: product.fulfillmentType || '',
+        realNameRequired: isTicketDraftProductIdentityRequired(product) ? 'true' : 'false',
+        requiredFields: JSON.stringify(product.requiredFields || []),
+        verificationMethods: JSON.stringify(product.verificationMethods || (product.verificationMethod ? [product.verificationMethod] : [])),
+        entryMethods: JSON.stringify(product.entryMethods || []),
+        usageInstructionHtml: product.usageInstructionHtml || '',
+        travelers: isTicketDraftProductIdentityRequired(product) ? JSON.stringify(payload.travelers) : '[]',
+        travelerIds: isTicketDraftProductIdentityRequired(product)
+          ? payload.travelers.map((traveler) => traveler.idCard).filter(Boolean).join(',')
+          : '',
       },
     })),
   };
@@ -516,7 +547,7 @@ export async function submitTicketOrderDraft(draftId: string, payload: SubmitTic
         throw new Error('门票出票失败，请稍后重试或联系工作人员');
       }
     },
-    isOrderComplete: (order) => isBffTicketOrderIssued(order.orderStatus, order.ticketVouchers),
+    isOrderComplete: (order) => isBffTicketOrderIssued(order.orderStatus, order.ticketVouchers, order.annualCards),
   };
   const reusablePendingOrder = canReuseCheckoutPendingOrder(nextDraft.pendingOrder, requestFingerprint);
 

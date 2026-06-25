@@ -62,6 +62,8 @@ export default defineAppConfig({
       pages: [
         'pages/index/index',
         'pages/member-code/index',
+        'pages/cards/index',
+        'pages/card-detail/index',
         'pages/profile/index',
         'pages/legacy-bind/index',
         'pages/coupons/index',

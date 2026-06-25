@@ -8,6 +8,8 @@ export const MINI_PACKAGE_ROUTES = {
   mallHome: '/pkg-mall/pages/index/index',
   memberHome: '/pkg-member/pages/index/index',
   memberCode: '/pkg-member/pages/member-code/index',
+  memberCards: '/pkg-member/pages/cards/index',
+  memberCardDetail: '/pkg-member/pages/card-detail/index',
   memberProfile: '/pkg-member/pages/profile/index',
   memberLegacyBind: '/pkg-member/pages/legacy-bind/index',
   hotelHome: '/pkg-hotel/pages/index/index',

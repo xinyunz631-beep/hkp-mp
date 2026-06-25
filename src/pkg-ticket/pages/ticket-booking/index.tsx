@@ -573,6 +573,12 @@ const TicketBookingPage = observer(function TicketBookingPage() {
         requiredFields: product.requiredFields,
         mobileRequired: product.mobileRequired,
         certificateRequired: product.certificateRequired,
+        verificationMethod: product.verificationMethod,
+        verificationMethods: product.verificationMethods,
+        fulfillmentType: product.fulfillmentType,
+        realNameRequired: product.realNameRequired,
+        entryMethods: product.entryMethods,
+        usageInstructionHtml: product.usageInstructionHtml,
       })),
     });
 

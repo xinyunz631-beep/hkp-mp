@@ -109,6 +109,32 @@ export interface BffTicketVoucher {
   [key: string]: unknown;
 }
 
+export interface BffAnnualCard {
+  cardId?: string;
+  cardNo?: string;
+  productCode?: string;
+  productName?: string;
+  skuId?: string;
+  skuName?: string;
+  status?: string;
+  statusText?: string;
+  holderName?: string;
+  holderMobile?: string;
+  holderMobileMasked?: string;
+  holderIdCard?: string;
+  holderIdCardMasked?: string;
+  validFrom?: string;
+  validTo?: string;
+  activatedAt?: string;
+  entryMethods?: string[];
+  usageInstructionHtml?: string;
+  usageInstruction?: string;
+  orderNo?: string;
+  orderItemNo?: string;
+  rawFields?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
 const BFF_TICKET_VOUCHER_CODE_FIELDS = ['ticketCode', 'voucherCode', 'qrCodePayload', 'codeImage', 'qrImage', 'qrCodeUrl'];
 
 export function getBffTicketVoucherText(voucher: BffTicketVoucher | undefined, key: string) {
@@ -133,13 +159,25 @@ export function isBffTicketVoucherReady(voucher?: BffTicketVoucher) {
   return hasVoucherCode && !blockedStatuses.includes(status);
 }
 
-// 判断订单是否已经拿到真实可用票券，不能只看 ticketVouchers 数组长度。
-export function isBffTicketOrderIssued(orderStatus?: string, ticketVouchers?: BffTicketVoucher[]) {
+// 判断年卡资产是否已真实生成；待激活也是支付成功后的有效履约状态。
+export function isBffAnnualCardReady(card?: BffAnnualCard) {
+  if (!card) return false;
+  const status = String(card.status || card.statusText || '').toUpperCase();
+  const blockedStatuses = ['FAILED', 'FAIL', 'VOIDED', 'VOID', 'CANCELED', 'CANCELLED', 'REFUNDED'];
+
+  return Boolean(card.cardId || card.cardNo || card.productName) && !blockedStatuses.includes(status);
+}
+
+// 判断订单是否已经拿到真实可用履约结果，不能只看 ticketVouchers 数组长度。
+export function isBffTicketOrderIssued(orderStatus?: string, ticketVouchers?: BffTicketVoucher[], annualCards?: BffAnnualCard[]) {
   const normalizedStatus = String(orderStatus || '').toUpperCase();
   const issuedStatus = ['WAIT_USE', 'FULFILLING', 'PART_USED', 'PARTIALLY_USED', 'PARTIALLYUSED', 'USED', 'FULFILLED', 'COMPLETED', 'SUCCESS']
     .includes(normalizedStatus);
 
-  return issuedStatus && Boolean(ticketVouchers?.some((voucher) => isBffTicketVoucherReady(voucher)));
+  return issuedStatus && Boolean(
+    ticketVouchers?.some((voucher) => isBffTicketVoucherReady(voucher))
+      || annualCards?.some((card) => isBffAnnualCardReady(card)),
+  );
 }
 
 export interface BffOrder {
@@ -171,6 +209,7 @@ export interface BffOrder {
   items?: BffOrderItem[];
   ticketInstances?: BffTicketInstance[];
   ticketVouchers?: BffTicketVoucher[];
+  annualCards?: BffAnnualCard[];
   payExpireAt?: string;
   createdAt?: string;
   updatedAt?: string;

@@ -23,7 +23,12 @@ export interface BffTicketSkuRule {
   certificateRequired?: boolean;
   qualificationRule?: string;
   verificationMethod?: string;
+  verificationMethods?: string[];
   refundRule?: string;
+  realNameRequired?: boolean;
+  fulfillmentType?: string;
+  entryMethods?: string[];
+  usageInstructionHtml?: string;
 }
 
 export interface BffTicketProduct {
@@ -43,6 +48,13 @@ export interface BffTicketProduct {
   dailySaleEndTime?: string;
   entryTimeText?: string;
   entryAddress?: string;
+  fulfillmentType?: string;
+  realNameRequired?: boolean;
+  requiredFields?: string[];
+  verificationMethods?: string[];
+  entryMethods?: string[];
+  usageInstructionHtml?: string;
+  cardRule?: Record<string, unknown>;
   servicePhone?: string;
   notice?: string;
   refundRule?: string;

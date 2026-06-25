@@ -1,0 +1,137 @@
+._pg {
+  min-height: 100vh;
+  background: #f5f6f8;
+}
+
+._pg-shell {
+  --page-bg: #f5f6f8;
+}
+
+._pg-content {
+  padding: 24px 30px 44px;
+}
+
+._pg-hero,
+._pg-card {
+  border-radius: 18px;
+  background: #fff;
+}
+
+._pg-hero {
+  padding: 30px;
+  border-top: 4px solid #db2777;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.05);
+}
+
+._pg-hero--active {
+  border-top-color: #16a34a;
+}
+
+._pg-hero--expired,
+._pg-hero--closed {
+  border-top-color: #cbd5e1;
+}
+
+._pg-hero_header,
+._pg-hero_validity,
+._pg-row,
+._pg-row_value-wrap {
+  display: flex;
+  align-items: center;
+}
+
+._pg-hero_header,
+._pg-hero_validity,
+._pg-row {
+  justify-content: space-between;
+}
+
+._pg-hero_title {
+  color: #172033;
+  font-size: 34px;
+  font-weight: 500;
+}
+
+._pg-hero_status {
+  padding: 6px 14px;
+  border-radius: 999px;
+  color: #db2777;
+  font-size: 22px;
+  background: #fff0f6;
+}
+
+._pg-hero--active ._pg-hero_status {
+  color: #16a34a;
+  background: #ecfdf3;
+}
+
+._pg-hero--expired ._pg-hero_status,
+._pg-hero--closed ._pg-hero_status {
+  color: #98a2b3;
+  background: #f2f4f7;
+}
+
+._pg-hero_subtitle {
+  display: block;
+  margin-top: 10px;
+  color: #667085;
+  font-size: 24px;
+}
+
+._pg-hero_validity {
+  margin-top: 28px;
+  padding-top: 22px;
+  border-top: 1px solid #eef1f5;
+}
+
+._pg-hero_validity-label,
+._pg-row_label {
+  color: #8a95a6;
+  font-size: 24px;
+}
+
+._pg-hero_validity-value,
+._pg-row_value {
+  color: #344054;
+  font-size: 24px;
+}
+
+._pg-card {
+  margin-top: 20px;
+  padding: 28px;
+}
+
+._pg-section-title {
+  display: block;
+  margin-bottom: 18px;
+  color: #172033;
+  font-size: 28px;
+  font-weight: 500;
+}
+
+._pg-row {
+  min-height: 68px;
+  border-top: 1px solid #eef1f5;
+}
+
+._pg-section-title + ._pg-row {
+  border-top: none;
+}
+
+._pg-row_value-wrap {
+  max-width: 450px;
+  gap: 8px;
+}
+
+._pg-row_value {
+  overflow: hidden;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+._pg-rich {
+  color: #344054;
+  font-size: 26px;
+  line-height: 1.7;
+}
