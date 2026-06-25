@@ -28,6 +28,7 @@ function maskMobile(mobile?: string) {
 // 解析会员首页快捷入口跳转，保证页面不散写路由判断。
 function resolveShortcutRoute(action: MemberHomeShortcut['action']) {
   if (action === 'memberCode') return MINI_PACKAGE_ROUTES.memberCode;
+  if (action === 'cards') return MINI_PACKAGE_ROUTES.memberCards;
   if (action === 'coupons') return MINI_PACKAGE_ROUTES.memberCoupons;
   if (action === 'orders') return MINI_PACKAGE_ROUTES.orderHome;
   if (action === 'address') return MINI_PACKAGE_ROUTES.orderAddress;
@@ -57,6 +58,7 @@ function showDeferredMemberServiceModal(title: string) {
 // 会员首页快捷入口统一映射图标，优先复用项目图标封装。
 function resolveShortcutIcon(action: MemberHomeShortcut['action']) {
   if (action === 'memberCode') return 'check' as const;
+  if (action === 'cards') return 'ticket' as const;
   if (action === 'coupons') return 'list' as const;
   if (action === 'orders') return 'order' as const;
   if (action === 'address') return 'service' as const;

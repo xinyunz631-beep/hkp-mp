@@ -4,7 +4,7 @@ export interface MemberHomeShortcut {
   key: string;
   title: string;
   value: string;
-  action: 'memberCode' | 'coupons' | 'orders' | 'address' | 'comingSoon';
+  action: 'memberCode' | 'cards' | 'coupons' | 'orders' | 'address' | 'comingSoon';
   disabled?: boolean;
 }
 
@@ -34,6 +34,12 @@ const MEMBER_HOME_SHORTCUTS: MemberHomeShortcut[] = [
     title: '会员码',
     value: '快速核销',
     action: 'memberCode',
+  },
+  {
+    key: 'cards',
+    title: '我的卡包',
+    value: '年卡状态',
+    action: 'cards',
   },
   {
     key: 'coupons',

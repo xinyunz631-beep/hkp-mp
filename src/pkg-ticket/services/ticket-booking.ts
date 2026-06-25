@@ -73,6 +73,11 @@ export interface TicketProduct {
   mobileRequired?: boolean;
   certificateRequired?: boolean;
   verificationMethod?: string;
+  verificationMethods?: string[];
+  fulfillmentType?: string;
+  realNameRequired?: boolean;
+  entryMethods?: string[];
+  usageInstructionHtml?: string;
   ruleTexts: string[];
   ruleRichTexts: string[];
 }
@@ -211,14 +216,17 @@ function isEnabledApiItem(status?: string) {
   return !status || status === ENABLED_STATUS;
 }
 
-// 按后端商品类型和标题粗分票种类型。
+// 按后端结构化商品字段粗分票种类型，不再从标题猜履约。
 function resolveProductCategory(item: BffTicketProduct): TicketProduct['category'] {
-  const categoryText = `${item.productType || ''} ${item.categorySection || ''} ${item.title || ''} ${item.subtitle || ''}`.toLowerCase();
-  if (categoryText.includes('fastpass') || categoryText.includes('快速通') || categoryText.includes('速通')) {
+  const fulfillmentType = `${item.fulfillmentType || ''}`.toUpperCase();
+  if (fulfillmentType === 'LOCAL_FAST_PASS_VOUCHER') return 'fastPass';
+  if (fulfillmentType === 'ANNUAL_CARD_ASSET') return 'annualCard';
+
+  if (item.productType === 'fastPass' || item.categorySection === 'fastPass') {
     return 'fastPass';
   }
 
-  return categoryText.includes('annual') || categoryText.includes('年卡') ? 'annualCard' : 'ticket';
+  return item.productType === 'annualPass' || item.categorySection === 'annualPass' ? 'annualCard' : 'ticket';
 }
 
 // 将后端分为单位的价格转为页面使用的元单位价格。
@@ -426,6 +434,8 @@ function buildProductRuleTexts(item: BffTicketProduct, sku: BffTicketSkuRule, st
 
 function buildProductRuleRichTexts(item: BffTicketProduct, sku: BffTicketSkuRule) {
   return compactRichTextSegments([
+    sku.usageInstructionHtml,
+    item.usageInstructionHtml,
     item.notice,
     sku.qualificationRule,
     sku.refundRule || item.refundRule,
@@ -444,23 +454,31 @@ function normalizeTicketProduct(
   const unitPriceCent = inventoryDay?.skuId === PRODUCT_CALENDAR_SUMMARY_SKU_ID
     ? sku.basePrice ?? inventoryDay?.price ?? item.minPrice ?? 0
     : inventoryDay?.price ?? sku.basePrice ?? item.minPrice ?? 0;
-  const skuName = sku.name || '标准票';
+  const skuName = sku.name || '';
   const saleable = isPublishedTicketProduct(item) && inventoryDay?.saleStatus === 'onSale' && availableStock > 0;
   const skuMaxQuantity = sku.maxQuantity && sku.maxQuantity > 0 ? sku.maxQuantity : availableStock;
   const maxQuantity = saleable ? Math.max(0, Math.min(availableStock, skuMaxQuantity)) : 0;
   const unavailableStockText = saleable ? '' : resolveUnavailableStockText(item, inventoryDay, availableStock);
   const publishStatusTag = resolvePublishStatusText(item.publishStatus);
   const stockText = saleable ? `余票 ${availableStock}` : unavailableStockText;
+  const category = resolveProductCategory(item);
+  const fulfillmentType = sku.fulfillmentType || item.fulfillmentType;
+  const requiredFields = sku.requiredFields || item.requiredFields;
+  const realNameRequired = typeof sku.realNameRequired === 'boolean'
+    ? sku.realNameRequired
+    : typeof item.realNameRequired === 'boolean'
+      ? item.realNameRequired
+      : category !== 'fastPass';
 
   return {
     id: `${item.productCode}__${sku.id}`,
     productCode: item.productCode,
     skuId: sku.id,
     skuName,
-    category: resolveProductCategory(item),
-    title: skuName === '标准票' ? item.title : `${item.title} ${skuName}`,
+    category,
+    title: skuName && skuName !== '标准票' ? `${item.title} ${skuName}` : item.title,
     imageSrc: resolveTicketProductImage(item.coverImages),
-    description: item.subtitle || sku.audience || item.availableDateSummary || '官方直营票种',
+    description: item.subtitle || sku.audience || item.availableDateSummary || '',
     priceLabel: '网购价',
     price: resolvePrice(unitPriceCent),
     unitPriceCent,
@@ -476,10 +494,15 @@ function normalizeTicketProduct(
     saleable,
     publishStatus: item.publishStatus,
     travelerRoles: sku.travelerRoles,
-    requiredFields: sku.requiredFields,
+    requiredFields,
     mobileRequired: sku.mobileRequired,
     certificateRequired: sku.certificateRequired,
     verificationMethod: sku.verificationMethod,
+    verificationMethods: sku.verificationMethods || item.verificationMethods,
+    fulfillmentType,
+    realNameRequired,
+    entryMethods: sku.entryMethods || item.entryMethods,
+    usageInstructionHtml: sku.usageInstructionHtml || item.usageInstructionHtml,
     ruleTexts: buildProductRuleTexts(item, sku, stockText),
     ruleRichTexts: buildProductRuleRichTexts(item, sku),
   };
@@ -563,11 +586,7 @@ function buildTicketBookingDataFromApi(
   const miniProgramTicketProducts = ticketProducts.filter(isMiniProgramTicketProduct);
   const products = miniProgramTicketProducts
     .flatMap((product) => {
-      const skuRules = product.skuRules?.length ? product.skuRules : [{
-        id: `${product.productCode}_standard`,
-        name: '标准票',
-        basePrice: product.minPrice,
-      }];
+      const skuRules = product.skuRules || [];
       const inventoryDays = inventoryMap[product.productCode] || [];
 
       return skuRules.map((sku) => normalizeTicketProduct(

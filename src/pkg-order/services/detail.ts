@@ -3,6 +3,7 @@ import {
   getBffTicketVoucherText,
   type BffOrder,
   type BffOrderItem,
+  type BffAnnualCard,
   type BffTicketVoucher,
 } from '@/core/services/bff-order-api';
 import {
@@ -95,6 +96,9 @@ function resolveStatusVersion(order: BffOrder) {
 // 归一订单主状态，避免后端履约中间态直接暴露为内部状态码。
 function resolveStatusText(order: BffOrder) {
   const normalizedStatus = String(order.orderStatus || '').toUpperCase();
+  const annualCardStatusText = resolveAnnualCardOrderStatusText(order);
+
+  if (annualCardStatusText) return annualCardStatusText;
 
   if (isPendingPaymentStatus(normalizedStatus)) return '待付款';
   if (['PAID', 'WAIT_USE', 'FULFILLING'].includes(normalizedStatus)) {
@@ -180,6 +184,27 @@ function resolveTicketStatusText(status?: string) {
   if (normalizedStatus === 'refunded') return '已退款';
   if (normalizedStatus === 'expired') return '已过期';
   return status || '待出票';
+}
+
+// 将年卡资产状态归一成订单详情可读文案，优先使用后端状态文案。
+function resolveAnnualCardStatusText(status?: string, statusText?: string) {
+  if (statusText) return statusText;
+  const normalizedStatus = String(status || '').replace(/[-_\s]/g, '').toUpperCase();
+  if (normalizedStatus.includes('PENDINGACTIVATION')) return '待激活';
+  if (normalizedStatus.includes('ACTIVE')) return '已激活';
+  if (normalizedStatus.includes('EXPIRED')) return '已过期';
+  if (normalizedStatus.includes('REFUND')) return '已退款';
+  if (normalizedStatus.includes('VOID') || normalizedStatus.includes('CANCEL')) return '已失效';
+  return status || '';
+}
+
+// 纯年卡订单优先展示年卡资产状态，混合票券订单仍按订单主状态展示。
+function resolveAnnualCardOrderStatusText(order: BffOrder) {
+  const normalizedSceneType = String(order.sceneType || '').toUpperCase();
+  if (normalizedSceneType !== 'TICKET') return '';
+  if (!order.annualCards?.length || order.ticketVouchers?.length) return '';
+  const statusTexts = Array.from(new Set(order.annualCards.map((card) => resolveAnnualCardStatusText(card.status, card.statusText)).filter(Boolean)));
+  return statusTexts.length === 1 ? statusTexts[0] : '';
 }
 
 function resolveTitle(order: BffOrder) {
@@ -503,6 +528,17 @@ function resolveSceneActions(order: BffOrder, reviewedMallItems?: Set<string>): 
     });
   }
 
+  if (normalizedSceneType === 'TICKET') {
+    const firstAnnualCardId = normalizeString(order.annualCards?.[0]?.cardId || order.annualCards?.[0]?.cardNo);
+    if (firstAnnualCardId) {
+      actions.push({
+        text: '查看年卡',
+        route: `${MINI_PACKAGE_ROUTES.memberCardDetail}?cardId=${encodeURIComponent(firstAnnualCardId)}`,
+        tone: 'default',
+      });
+    }
+  }
+
   if (
     normalizedSceneType === 'MALL'
     && isCompletedStatus(normalizedStatus)
@@ -710,6 +746,62 @@ function resolveTicketGroupUsageInstructionHtml(
     || '';
 }
 
+// 从年卡资产和透传字段中读取指定文案。
+function resolveAnnualCardText(card: BffAnnualCard, keyCandidates: string[]) {
+  for (const key of keyCandidates) {
+    const value = normalizeUnknownText(card[key])
+      || normalizeUnknownText(card.rawFields?.[key]);
+    if (value) return value;
+  }
+
+  return '';
+}
+
+// 将年卡入园方式枚举转换为用户可读文本。
+function resolveAnnualCardEntryMethods(card: BffAnnualCard) {
+  const entryMethods = Array.isArray(card.entryMethods) ? card.entryMethods : [];
+  const labels = entryMethods.map((method) => {
+    const normalizedMethod = String(method).toUpperCase();
+    if (normalizedMethod === 'ID_CARD') return '身份证';
+    if (normalizedMethod === 'PHYSICAL_CARD') return '实体卡';
+    if (normalizedMethod === 'QR_CODE') return '二维码';
+    return String(method);
+  }).filter(Boolean);
+
+  return labels.join('、');
+}
+
+// 生成年卡有效期展示文案，未激活未返回时保持空字段。
+function resolveAnnualCardValidityText(card: BffAnnualCard) {
+  if (card.validFrom && card.validTo) return `${card.validFrom} 至 ${card.validTo}`;
+  if (card.validTo) return `有效至 ${card.validTo}`;
+  return '';
+}
+
+// 将订单里的年卡资产映射成门票详情分组，复用票务详情展示结构。
+function mapAnnualCardGroups(order: BffOrder): OrderTicketGroupData[] {
+  return (order.annualCards || []).map((card, index) => {
+    const title = resolveAnnualCardText(card, ['productName', 'cardName', 'itemName']) || `年卡 ${index + 1}`;
+    const usageInstructionHtml = normalizeString(card.usageInstructionHtml || card.usageInstruction)
+      || resolveAnnualCardText(card, TICKET_USAGE_HTML_KEYS);
+
+    return {
+      id: card.cardId || card.cardNo || `annual-card-${index}`,
+      title,
+      subtitle: resolveAnnualCardText(card, ['skuName', 'specName']),
+      quantityText: 'x1',
+      statusText: resolveAnnualCardStatusText(card.status, card.statusText),
+      entryFields: compactFields([
+        { label: '有效期', value: resolveAnnualCardValidityText(card) },
+        { label: '入园方式', value: resolveAnnualCardEntryMethods(card) },
+        { label: '详情', value: usageInstructionHtml },
+      ]),
+      usageInstructionHtml,
+      vouchers: [],
+    };
+  });
+}
+
 function resolveTicketCertificateNo(order: BffOrder) {
   return resolveOrderText(order, TICKET_CERTIFICATE_KEYS)
     || resolveItemText(order.items?.[0], TICKET_CERTIFICATE_KEYS);
@@ -718,10 +810,11 @@ function resolveTicketCertificateNo(order: BffOrder) {
 function resolveContactFields(order: BffOrder, addressText: string): OrderDetailFieldData[] {
   const normalizedSceneType = String(order.sceneType || '').toUpperCase();
   if (normalizedSceneType === 'TICKET') {
+    const firstAnnualCard = order.annualCards?.[0];
     return compactFields([
-      { label: '联系人', value: order.contactName || '' },
-      { label: '手机号', value: order.contactPhone || '' },
-      { label: '身份证', value: resolveTicketCertificateNo(order) },
+      { label: '联系人', value: order.contactName || firstAnnualCard?.holderName || '' },
+      { label: '手机号', value: order.contactPhone || firstAnnualCard?.holderMobileMasked || firstAnnualCard?.holderMobile || '' },
+      { label: '身份证', value: resolveTicketCertificateNo(order) || firstAnnualCard?.holderIdCardMasked || firstAnnualCard?.holderIdCard || '' },
     ]);
   }
 
@@ -952,6 +1045,10 @@ function mapOrderToDetail(order: BffOrder, reviewedMallItems?: Set<string>): Ord
   const logisticsStatusText = resolveLogisticsField(context, ['logisticsStatusText', 'deliveryStatusText', 'shipmentStatusText']);
   const aftersaleEntryRoute = resolveAftersaleEntryRoute(order);
   const ticketInstances = mapTicketInstances(order);
+  const ticketGroups = [
+    ...mapTicketGroups(order, ticketInstances),
+    ...mapAnnualCardGroups(order),
+  ];
   const normalizedSceneType = String(order.sceneType || '').toUpperCase();
   const paymentStatusText = resolvePaymentStatusText(resolvePaymentFact(order, 'paymentStatus'));
   const paymentChannelText = resolvePaymentChannelText(order.paymentChannel);
@@ -979,7 +1076,7 @@ function mapOrderToDetail(order: BffOrder, reviewedMallItems?: Set<string>): Ord
     quantityText: resolveQuantityText(order),
     productFields: resolveSceneProductFields(order, title, merchantName, mallSpecText),
     ticketInstances,
-    ticketGroups: mapTicketGroups(order, ticketInstances),
+    ticketGroups,
     fulfillmentFields: resolveSceneFulfillmentFields(order, deliveryCompany, trackingNumber, logisticsStatusText),
     couponFields: mapOrderCouponFields(order),
     contactFields: resolveContactFields(order, addressText),

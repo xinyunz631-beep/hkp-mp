@@ -96,6 +96,12 @@ const serviceActions: ProfileServiceItem[] = [
     reason: '登录后可查看会员权益',
   },
   {
+    key: 'cards',
+    title: '我的卡包',
+    route: MINI_PACKAGE_ROUTES.memberCards,
+    reason: '登录后可查看我的卡包',
+  },
+  {
     key: 'address',
     title: '我的地址',
     route: MINI_PACKAGE_ROUTES.orderAddress,

@@ -1,0 +1,148 @@
+._pg {
+  min-height: 100vh;
+  background: #f5f6f8;
+}
+
+._pg-shell {
+  --page-bg: #f5f6f8;
+}
+
+._pg-tabs {
+  display: flex;
+  gap: 12px;
+  padding: 18px 30px 14px;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+._pg-tab {
+  flex: 0 0 auto;
+  padding: 10px 18px;
+  border-radius: 999px;
+  color: #667085;
+  font-size: 24px;
+  background: #fff;
+}
+
+._pg-tab--active {
+  color: #db2777;
+  background: #fff0f6;
+}
+
+._pg-content {
+  padding: 20px 30px 40px;
+}
+
+._pg-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+._pg-card-item {
+  padding: 28px;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.05);
+}
+
+._pg-card-item_header,
+._pg-card-item_title-wrap,
+._pg-card-item_footer,
+._pg-card-item_action,
+._pg-card-item_field {
+  display: flex;
+  align-items: center;
+}
+
+._pg-card-item_header,
+._pg-card-item_footer,
+._pg-card-item_field {
+  justify-content: space-between;
+}
+
+._pg-card-item_title-wrap {
+  min-width: 0;
+  gap: 10px;
+}
+
+._pg-card-item_title {
+  overflow: hidden;
+  color: #172033;
+  font-size: 30px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+._pg-card-item_status {
+  flex: 0 0 auto;
+  padding: 6px 14px;
+  border-radius: 999px;
+  color: #db2777;
+  font-size: 22px;
+  background: #fff0f6;
+}
+
+._pg-card-item--active ._pg-card-item_status {
+  color: #16a34a;
+  background: #ecfdf3;
+}
+
+._pg-card-item--expired ._pg-card-item_status,
+._pg-card-item--closed ._pg-card-item_status {
+  color: #98a2b3;
+  background: #f2f4f7;
+}
+
+._pg-card-item_subtitle {
+  display: block;
+  margin-top: 8px;
+  color: #667085;
+  font-size: 24px;
+}
+
+._pg-card-item_body {
+  margin-top: 24px;
+  padding-top: 18px;
+  border-top: 1px solid #eef1f5;
+}
+
+._pg-card-item_field + ._pg-card-item_field {
+  margin-top: 14px;
+}
+
+._pg-card-item_label {
+  color: #8a95a6;
+  font-size: 24px;
+}
+
+._pg-card-item_value {
+  max-width: 420px;
+  color: #344054;
+  font-size: 24px;
+  text-align: right;
+}
+
+._pg-card-item_footer {
+  margin-top: 22px;
+}
+
+._pg-card-item_order {
+  max-width: 440px;
+  overflow: hidden;
+  color: #98a2b3;
+  font-size: 22px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+._pg-card-item_action {
+  gap: 4px;
+  color: #667085;
+  font-size: 24px;
+}
+
+._pg-empty {
+  padding-top: 120px;
+}

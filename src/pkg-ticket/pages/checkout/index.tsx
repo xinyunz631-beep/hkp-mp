@@ -20,6 +20,7 @@ import { TicketSubmitFooter } from '@/pkg-ticket/components/TicketSubmitFooter';
 import { fetchCheckoutData, type TicketCheckoutPageData } from '@/pkg-ticket/services/checkout';
 import {
   persistTicketCheckoutPendingOrder,
+  isTicketOrderIdentityRequired,
   submitTicketOrderDraft,
   updateTicketOrderDraft,
   type TicketOrderTraveler,
@@ -184,7 +185,7 @@ const CheckoutPage = observer(function CheckoutPage() {
     submit: (data, payload) => submitTicketOrderDraft(data.draft?.id || draftId, payload),
     onPaymentPrepared: (data, payload, result) => persistTicketCheckoutPendingOrder(data.draft?.id || draftId, payload, result),
     buildSuccessRoute: (result) => `${MINI_PACKAGE_ROUTES.orderDetail}?orderId=${encodeURIComponent(result.orderNo)}`,
-    isOrderComplete: (result) => isBffTicketOrderIssued(result.orderStatus, result.order?.ticketVouchers),
+    isOrderComplete: (result) => isBffTicketOrderIssued(result.orderStatus, result.order?.ticketVouchers, result.order?.annualCards),
     submitErrorText: '门票订单提交暂不可用，请稍后再试',
     emptySubmitText: '订单提交失败，请重新选择门票',
     completeSuccessText: '出票成功',
@@ -384,6 +385,7 @@ const CheckoutPage = observer(function CheckoutPage() {
       return;
     }
 
+    const identityRequired = isTicketOrderIdentityRequired(checkoutData.draft.products);
     const nextTravelers = travelerForms.map((traveler) => ({
       ...traveler,
       name: traveler.name.trim(),
@@ -392,12 +394,12 @@ const CheckoutPage = observer(function CheckoutPage() {
     }));
     const nextContact = resolveContactFromTravelers(nextTravelers, contactForm);
 
-    if (!isValidMainlandMobile(nextContact.mobile)) {
+    if (identityRequired && !isValidMainlandMobile(nextContact.mobile)) {
       await showWechatToast('请填写正确联系手机');
       return;
     }
 
-    if (!await validateTravelers(nextTravelers)) return;
+    if (identityRequired && !await validateTravelers(nextTravelers)) return;
 
     setContactForm(nextContact);
     setTravelerForms(nextTravelers);
@@ -408,7 +410,7 @@ const CheckoutPage = observer(function CheckoutPage() {
 
     const confirmed = await showWechatConfirm({
       title: '确认订单',
-      content: nextTravelers.length
+      content: identityRequired && nextTravelers.length
         ? `已核对出游人信息，本次应付 ¥${payAmount.toFixed(2)}，提交后将生成入园凭证。`
         : `已核对订单信息，本次应付 ¥${payAmount.toFixed(2)}，提交后将生成入园凭证。`,
       confirmText: '确认提交',

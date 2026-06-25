@@ -11,6 +11,7 @@ import type { HkpDateOption } from '@/core/types/hkp';
 import {
   createTicketOrderTravelers,
   getTicketOrderDraft,
+  isTicketOrderIdentityRequired,
   type TicketOrderDraft,
   type TicketOrderTraveler,
 } from './order-draft';
@@ -115,9 +116,10 @@ function buildCheckoutDates(selectedDate: string): HkpDateOption[] {
 // 根据草稿和统一订单确认结果生成门票确认单页面数据。
 export async function fetchCheckoutData(draftId?: string, selectedCouponId?: string | null) {
   const draft = getTicketOrderDraft(draftId);
-  const travelers = (draft?.travelers?.length
+  const identityRequired = draft ? isTicketOrderIdentityRequired(draft.products) : false;
+  const travelers = identityRequired ? (draft?.travelers?.length
     ? draft.travelers
-    : createTicketOrderTravelers(draft?.products ?? [], draft?.contact)).slice(0, 1);
+    : createTicketOrderTravelers(draft?.products ?? [], draft?.contact)).slice(0, 1) : [];
 
   if (!draft) {
     return {
