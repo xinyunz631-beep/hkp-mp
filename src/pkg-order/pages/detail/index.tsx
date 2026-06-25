@@ -13,6 +13,7 @@ import { resolveErrorMessage } from '@/core/utils/error-message';
 import { requestWechatPayment, showWechatConfirm, showWechatToast } from '@/core/utils/wechat-actions';
 import { centToYuan, parseNumberLike } from '@/core/utils/money';
 import { syncBffPaymentStatusSilently } from '@/core/services/bff-api';
+import { markTicketBookingRefreshNeeded } from '@/core/services/ticket-booking-refresh-signal';
 import {
   confirmReceiveBffOrder,
   fetchBffOrderStatusSnapshot,
@@ -48,6 +49,11 @@ const TICKET_ORDER_DETAIL_PRE_VOUCHER_POLLING_STATUSES = [
   'PAID',
   'FULFILLING',
 ];
+
+function markTicketBookingRefreshAfterPayment(detailData?: OrderDetailData) {
+  if (String(detailData?.sceneType || '').toUpperCase() !== 'TICKET') return;
+  markTicketBookingRefreshNeeded({ orderNo: detailData?.id });
+}
 const TICKET_ORDER_DETAIL_TERMINAL_TICKET_STATUS_KEYS = [
   'USED',
   'FULFILLED',
@@ -433,6 +439,7 @@ const DetailPage = observer(function DetailPage() {
         if (typeof payableAmountCent === 'number' && payableAmountCent <= 0) {
           await syncBffPaymentStatusSilently(payment.prepay?.payNo);
           await loadDetailData({ showErrorToast: false, orderId: detailData.id });
+          markTicketBookingRefreshAfterPayment(detailData);
           await showWechatToast('订单已更新', 'success');
           return;
         }
@@ -457,6 +464,7 @@ const DetailPage = observer(function DetailPage() {
       await syncBffPaymentStatusSilently(payment.prepay?.payNo ?? payment.order?.payNo);
       const nextData = await fetchDetailData(detailData.id);
       applyDetailData(nextData);
+      markTicketBookingRefreshAfterPayment(nextData);
       await showWechatToast('支付成功', 'success');
       return;
     }

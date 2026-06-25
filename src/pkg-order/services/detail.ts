@@ -385,6 +385,31 @@ function resolveVoucherAssociationValues(voucher: BffTicketVoucher) {
   return values;
 }
 
+function resolveAnnualCardAssociationValues(card: BffAnnualCard) {
+  const values = new Set<string>();
+  const keys = [
+    'orderItemNo',
+    'lineNo',
+    'orderLineNo',
+    'orderItemLineNo',
+    'itemLineNo',
+    'itemId',
+    'productId',
+    'productCode',
+    'skuId',
+    'skuCode',
+    'cardId',
+    'cardNo',
+  ];
+
+  keys.forEach((key) => {
+    pushAssociationValue(values, card[key]);
+    pushAssociationValue(values, card.rawFields?.[key]);
+  });
+
+  return values;
+}
+
 function hasAssociationOverlap(leftValues: Set<string>, rightValues: Set<string>) {
   for (const left of leftValues) {
     for (const right of rightValues) {
@@ -396,6 +421,57 @@ function hasAssociationOverlap(leftValues: Set<string>, rightValues: Set<string>
   }
 
   return false;
+}
+
+function hasAnnualCardItemSignal(item: BffOrderItem) {
+  const values = [
+    item.itemType,
+    item.itemName,
+    item.categoryId,
+    item.attributes?.itemType,
+    item.attributes?.categoryId,
+    item.attributes?.categoryCode,
+    item.attributes?.categorySection,
+    item.attributes?.fulfillmentType,
+    item.attributes?.productType,
+  ].map((value) => normalizeUnknownText(value)).filter(Boolean);
+  const normalizedText = values.join(' ').replace(/[-_\s]/g, '').toUpperCase();
+
+  return normalizedText.includes('ANNUAL')
+    || normalizedText.includes('YEARCARD')
+    || normalizedText.includes('ANNUALPASS')
+    || values.some((value) => value.includes('年卡'));
+}
+
+function resolveAnnualCardsForItem(order: BffOrder, item: BffOrderItem, annualCards: BffAnnualCard[]) {
+  if (!annualCards.length) return [];
+
+  const itemValues = resolveItemAssociationValues(item);
+  const matchedCards = annualCards.filter((card) => hasAssociationOverlap(
+    itemValues,
+    resolveAnnualCardAssociationValues(card),
+  ));
+
+  if (matchedCards.length) return matchedCards;
+
+  if ((order.items || []).length === 1 && annualCards.length === 1 && hasAnnualCardItemSignal(item)) {
+    return annualCards;
+  }
+
+  return [];
+}
+
+function resolveMatchedAnnualCardSet(order: BffOrder) {
+  const matchedCards = new Set<BffAnnualCard>();
+  const annualCards = order.annualCards || [];
+
+  (order.items || []).forEach((item) => {
+    resolveAnnualCardsForItem(order, item, annualCards).forEach((card) => {
+      matchedCards.add(card);
+    });
+  });
+
+  return matchedCards;
 }
 
 function compactFields<T extends { value: string }>(fields: T[]) {
@@ -526,17 +602,6 @@ function resolveSceneActions(order: BffOrder, reviewedMallItems?: Set<string>): 
       actionType: 'confirmReceive',
       tone: 'primary',
     });
-  }
-
-  if (normalizedSceneType === 'TICKET') {
-    const firstAnnualCardId = normalizeString(order.annualCards?.[0]?.cardId || order.annualCards?.[0]?.cardNo);
-    if (firstAnnualCardId) {
-      actions.push({
-        text: '查看年卡',
-        route: `${MINI_PACKAGE_ROUTES.memberCardDetail}?cardId=${encodeURIComponent(firstAnnualCardId)}`,
-        tone: 'default',
-      });
-    }
   }
 
   if (
@@ -752,12 +817,47 @@ function resolveAnnualCardValidityText(card: BffAnnualCard) {
   return '';
 }
 
-// 将订单里的年卡资产映射成门票详情分组，复用票务详情展示结构。
-function mapAnnualCardGroups(order: BffOrder): OrderTicketGroupData[] {
-  return (order.annualCards || []).map((card, index) => {
-    const title = resolveAnnualCardText(card, ['productName', 'cardName', 'itemName']) || `年卡 ${index + 1}`;
+function uniqueText(values: string[]) {
+  return Array.from(new Set(values.filter(Boolean))).join('、');
+}
+
+function resolveAnnualCardStatusSummary(cards: BffAnnualCard[]) {
+  return uniqueText(cards.map((card) => resolveAnnualCardStatusText(card.status, card.statusText)));
+}
+
+function resolveAnnualCardEntryFields(cards: BffAnnualCard[]): OrderDetailFieldData[] {
+  return compactFields([
+    { label: '有效期', value: uniqueText(cards.map((card) => resolveAnnualCardValidityText(card))) },
+    { label: '入园方式', value: uniqueText(cards.map((card) => resolveAnnualCardEntryMethods(card))) },
+  ]);
+}
+
+function resolveAnnualCardUsageInstructionHtml(cards: BffAnnualCard[]) {
+  for (const card of cards) {
     const usageInstructionHtml = normalizeString(card.usageInstructionHtml)
       || resolveAnnualCardText(card, TICKET_USAGE_HTML_KEYS);
+    if (usageInstructionHtml) return usageInstructionHtml;
+  }
+
+  return '';
+}
+
+function resolveAnnualCardAction(card?: BffAnnualCard): OrderTicketGroupData['action'] {
+  const cardId = normalizeString(card?.cardId || card?.cardNo);
+  if (!cardId) return undefined;
+
+  return {
+    text: '查看年卡',
+    route: `${MINI_PACKAGE_ROUTES.memberCardDetail}?cardId=${encodeURIComponent(cardId)}`,
+    tone: 'default',
+  };
+}
+
+// 将订单里的年卡资产映射成门票详情分组，复用票务详情展示结构。
+function mapAnnualCardGroups(order: BffOrder, excludedCards = new Set<BffAnnualCard>()): OrderTicketGroupData[] {
+  return (order.annualCards || []).filter((card) => !excludedCards.has(card)).map((card, index) => {
+    const title = resolveAnnualCardText(card, ['productName', 'cardName', 'itemName']) || `年卡 ${index + 1}`;
+    const usageInstructionHtml = resolveAnnualCardUsageInstructionHtml([card]);
 
     return {
       id: card.cardId || card.cardNo || `annual-card-${index}`,
@@ -765,6 +865,7 @@ function mapAnnualCardGroups(order: BffOrder): OrderTicketGroupData[] {
       subtitle: resolveAnnualCardText(card, ['skuName', 'specName']),
       quantityText: 'x1',
       statusText: resolveAnnualCardStatusText(card.status, card.statusText),
+      action: resolveAnnualCardAction(card),
       entryFields: compactFields([
         { label: '有效期', value: resolveAnnualCardValidityText(card) },
         { label: '入园方式', value: resolveAnnualCardEntryMethods(card) },
@@ -955,20 +1056,29 @@ function mapTicketVoucher(
   };
 }
 
-function mapTicketGroups(order: BffOrder, ticketInstances: OrderTicketInstanceData[]): OrderTicketGroupData[] {
+function mapTicketGroups(
+  order: BffOrder,
+  ticketInstances: OrderTicketInstanceData[],
+  annualCards: BffAnnualCard[],
+): OrderTicketGroupData[] {
   const ticketItems = order.items || [];
   const groups: OrderTicketGroupData[] = ticketItems.map((item, index) => {
     const id = resolveTicketGroupId(item, index);
     const vouchers = ticketInstances.filter((ticket) => ticket.groupId === id);
+    const matchedAnnualCards = resolveAnnualCardsForItem(order, item, annualCards);
     const entryFields = resolveTicketGroupEntryFields(order, item, vouchers);
-    const usageInstructionHtml = resolveTicketGroupUsageInstructionHtml(order, item, vouchers);
+    const annualCardUsageInstructionHtml = resolveAnnualCardUsageInstructionHtml(matchedAnnualCards);
+    const usageInstructionHtml = resolveTicketGroupUsageInstructionHtml(order, item, vouchers)
+      || annualCardUsageInstructionHtml;
 
     return {
       id,
       title: resolveTicketItemTitle(order, item, index),
       subtitle: resolveTicketItemSubtitle(item),
       quantityText: item.quantity ? `x${item.quantity}` : '',
-      entryFields,
+      statusText: resolveAnnualCardStatusSummary(matchedAnnualCards),
+      action: resolveAnnualCardAction(matchedAnnualCards[0]),
+      entryFields: mergeTicketEntryFields(entryFields, resolveAnnualCardEntryFields(matchedAnnualCards)),
       usageInstructionHtml,
       vouchers,
     };
@@ -1019,9 +1129,10 @@ function mapOrderToDetail(order: BffOrder, reviewedMallItems?: Set<string>): Ord
   const logisticsStatusText = resolveLogisticsField(context, ['logisticsStatusText', 'deliveryStatusText', 'shipmentStatusText']);
   const aftersaleEntryRoute = resolveAftersaleEntryRoute(order);
   const ticketInstances = mapTicketInstances(order);
+  const matchedAnnualCards = resolveMatchedAnnualCardSet(order);
   const ticketGroups = [
-    ...mapTicketGroups(order, ticketInstances),
-    ...mapAnnualCardGroups(order),
+    ...mapTicketGroups(order, ticketInstances, order.annualCards || []),
+    ...mapAnnualCardGroups(order, matchedAnnualCards),
   ];
   const normalizedSceneType = String(order.sceneType || '').toUpperCase();
   const paymentStatusText = resolvePaymentStatusText(resolvePaymentFact(order, 'paymentStatus'));

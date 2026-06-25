@@ -1,4 +1,5 @@
 import { MINI_STORAGE_KEYS } from '@/core/constants/storage';
+import { markTicketBookingRefreshNeeded } from '@/core/services/ticket-booking-refresh-signal';
 import {
   isBffTicketOrderIssued,
   type BffTicketVoucher,
@@ -543,7 +544,10 @@ export async function submitTicketOrderDraft(draftId: string, payload: SubmitTic
   const requestFingerprint = createCheckoutRequestFingerprint(request);
   const submitOptions: SubmitAndPayBffOrderOptions = {
     sceneLabel: '门票订单',
-    onCheckoutCompleted: () => removeTicketOrderDraft(draftId),
+    onCheckoutCompleted: (result) => {
+      removeTicketOrderDraft(draftId);
+      markTicketBookingRefreshNeeded({ draftId, orderNo: result.orderNo });
+    },
     validateCreatedOrder: (order) => {
       if (String(order.orderStatus || '').toUpperCase() === 'CLOSED') {
         throw new Error('门票出票失败，请稍后重试或联系工作人员');

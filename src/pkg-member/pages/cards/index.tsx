@@ -15,6 +15,8 @@ import {
 } from '@/pkg-member/services/annual-cards';
 import './index.scss';
 
+const CARD_PAGE_SIZE = 20;
+
 // 生成单张年卡详情页跳转地址。
 function resolveCardDetailRoute(card: MemberAnnualCardItem) {
   return `${MINI_PACKAGE_ROUTES.memberCardDetail}?cardId=${encodeURIComponent(card.id)}`;
@@ -28,14 +30,31 @@ function resolveCardStatusClass(status: MemberAnnualCardStatus) {
   return '';
 }
 
+// 合并分页年卡列表，避免触底加载时重复展示同一张年卡。
+function mergeAnnualCardsData(currentData: MemberAnnualCardsData | undefined, nextData: MemberAnnualCardsData): MemberAnnualCardsData {
+  if (!currentData) return nextData;
+
+  const cardMap = new Map<string, MemberAnnualCardItem>();
+  [...currentData.list, ...nextData.list].forEach((card) => {
+    cardMap.set(card.id, card);
+  });
+
+  return {
+    ...nextData,
+    list: Array.from(cardMap.values()),
+  };
+}
+
 // 渲染我的卡包页面，展示后端返回的年卡资产状态。
 function CardsPage() {
   const [pageData, setPageData] = useState<MemberAnnualCardsData>();
   const [activeStatus, setActiveStatus] = useState<MemberAnnualCardStatus>('all');
+  const [loadingMore, setLoadingMore] = useState(false);
   const pageRuntime = usePageRuntime({
     initPage: async () => {
-      const nextData = await fetchMemberAnnualCards({ status: activeStatus });
+      const nextData = await fetchMemberAnnualCards({ status: activeStatus, page: 1, size: CARD_PAGE_SIZE });
       setPageData(nextData);
+      setLoadingMore(false);
     },
     refreshOnShow: true,
     loginRequired: true,
@@ -46,8 +65,30 @@ function CardsPage() {
   async function handleStatusChange(status: MemberAnnualCardStatus) {
     if (status === activeStatus) return;
     setActiveStatus(status);
-    const nextData = await pageRuntime.withLoading(() => fetchMemberAnnualCards({ status }));
+    setLoadingMore(false);
+    const nextData = await pageRuntime.withLoading(() => fetchMemberAnnualCards({
+      status,
+      page: 1,
+      size: CARD_PAGE_SIZE,
+    }));
     setPageData(nextData);
+  }
+
+  // 触底后继续读取下一页年卡资产。
+  async function handleLoadMore() {
+    if (!pageData?.hasMore || loadingMore) return;
+
+    setLoadingMore(true);
+    try {
+      const nextData = await fetchMemberAnnualCards({
+        status: activeStatus,
+        page: pageData.page + 1,
+        size: pageData.size || CARD_PAGE_SIZE,
+      });
+      setPageData((currentData) => mergeAnnualCardsData(currentData, nextData));
+    } finally {
+      setLoadingMore(false);
+    }
   }
 
   // 渲染单张年卡资产卡片。
@@ -85,6 +126,16 @@ function CardsPage() {
               <Text className="_pg-card-item_value">{card.validityText}</Text>
             </View>
           ) : null}
+          {card.entryMethodLabels.length ? (
+            <View className="_pg-card-item_field">
+              <Text className="_pg-card-item_label">入园方式</Text>
+              <View className="_pg-card-item_method-list">
+                {card.entryMethodLabels.map((method) => (
+                  <Text className="_pg-card-item_method" key={method}>{method}</Text>
+                ))}
+              </View>
+            </View>
+          ) : null}
         </View>
         <View className="_pg-card-item_footer">
           {card.orderNo ? <Text className="_pg-card-item_order">来源订单 {card.orderNo}</Text> : <Text />}
@@ -99,7 +150,15 @@ function CardsPage() {
 
   return pageRuntime.renderPage(() => (
     <View className="_pg">
-      <PageShell title="我的卡包" className="_pg-shell" reserveTabBarSpace={false} scrollViewProps={{}}>
+      <PageShell
+        title="我的卡包"
+        className="_pg-shell"
+        reserveTabBarSpace={false}
+        scrollViewProps={{
+          lowerThreshold: 160,
+          onScrollToLower: () => void handleLoadMore(),
+        }}
+      >
         <PageHeader>
           <View className="_pg-tabs">
             {(pageData?.tabs || [
@@ -122,7 +181,12 @@ function CardsPage() {
         </PageHeader>
         <View className="_pg-content">
           {pageData?.list.length ? (
-            <View className="_pg-list">{pageData.list.map(renderCard)}</View>
+            <>
+              <View className="_pg-list">{pageData.list.map(renderCard)}</View>
+              <View className="_pg-load-more">
+                <Text>{loadingMore ? '加载中...' : pageData.hasMore ? '继续下滑加载更多' : '没有更多年卡了'}</Text>
+              </View>
+            </>
           ) : (
             <View className="_pg-empty">
               <BaseEmpty title="暂无年卡" description="购买年卡后，可在这里查看状态和有效期。" />

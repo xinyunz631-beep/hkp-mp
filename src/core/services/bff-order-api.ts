@@ -128,7 +128,11 @@ export interface BffAnnualCard {
   activatedAt?: string;
   entryMethods?: string[];
   usageInstructionHtml?: string;
+  usageInstructionSummary?: string;
   usageInstruction?: string;
+  physicalCardNo?: string;
+  createdAt?: string;
+  updatedAt?: string;
   orderNo?: string;
   orderItemNo?: string;
   rawFields?: Record<string, unknown>;

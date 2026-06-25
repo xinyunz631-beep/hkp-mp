@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import Taro, { useShareAppMessage } from '@tarojs/taro';
+import Taro, { useDidShow, useShareAppMessage } from '@tarojs/taro';
 import { ScrollView, Text, View } from '@tarojs/components';
 import type { ScrollViewProps } from '@tarojs/components';
 import { Badge, Sticky } from '@nutui/nutui-react-taro';
@@ -13,6 +13,10 @@ import { AppPopup } from '@/core/components/AppPopup';
 import { PageShare, PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
+import {
+  clearTicketBookingRefreshSignal,
+  readTicketBookingRefreshSignal,
+} from '@/core/services/ticket-booking-refresh-signal';
 import { navigateToMiniRoute } from '@/core/utils/navigation';
 import {
   callWechatPhone,
@@ -425,6 +429,17 @@ const TicketBookingPage = observer(function TicketBookingPage() {
     path: MINI_PACKAGE_ROUTES.ticketBooking,
     imageUrl: shareImageUrl,
   }));
+
+  useDidShow(() => {
+    const refreshSignal = readTicketBookingRefreshSignal();
+    if (!refreshSignal) return;
+
+    void pageRuntime.withLoading(async () => {
+      await loadBookingData(selectedDate || undefined);
+      clearTicketBookingRefreshSignal();
+      resetBookingScrollTop();
+    });
+  });
 
   async function loadBookingData(travelDate?: string) {
     const nextData = await fetchTicketBookingData({ travelDate });

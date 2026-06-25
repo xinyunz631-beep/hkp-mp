@@ -563,6 +563,27 @@
       margin-left: 12px;
     }
   }
+
+  ._pg-ticket-group_card-action {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 176px;
+    min-height: 52px;
+    margin: 22px auto 0;
+    padding: 0 24px;
+    border: 1Px solid #d6dbe4;
+    border-radius: 999px;
+    background: #ffffff;
+    box-sizing: border-box;
+  }
+
+  ._pg-ticket-group_card-action-text {
+    margin-right: 6px;
+    color: #46576d;
+    font-size: 24px;
+    line-height: 1.4;
+  }
 }
 
 ._pg-ticket-detail-sheet {

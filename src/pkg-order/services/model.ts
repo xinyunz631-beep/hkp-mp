@@ -140,6 +140,7 @@ export interface OrderTicketGroupData {
   subtitle?: string;
   quantityText?: string;
   statusText?: string;
+  action?: OrderDetailSceneActionData;
   entryFields: OrderDetailFieldData[];
   usageInstructionHtml?: string;
   vouchers: OrderTicketInstanceData[];

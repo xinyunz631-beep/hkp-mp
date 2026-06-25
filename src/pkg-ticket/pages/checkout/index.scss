@@ -151,9 +151,14 @@
     align-items: center;
     align-self: flex-start;
     margin-top: 8px;
-    color: #e45c98;
+    color: #8a94a6;
     font-size: 24px;
     line-height: 1.35;
+  }
+
+  &_notice-icon {
+    flex: none;
+    margin-left: 6px;
   }
 
   &_count {

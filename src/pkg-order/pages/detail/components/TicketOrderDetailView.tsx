@@ -284,12 +284,13 @@ function resolveTicketPanels(detailData: OrderDetailSceneViewProps['detailData']
   });
 }
 
-function TicketGroupPanel({ group, ticket, detailData, ticketQr, onDetailPress }: {
+function TicketGroupPanel({ group, ticket, detailData, ticketQr, onDetailPress, onSceneAction }: {
   group: OrderDetailSceneViewProps['detailData']['ticketGroups'][number];
   ticket?: OrderDetailSceneViewProps['detailData']['ticketInstances'][number];
   detailData: OrderDetailSceneViewProps['detailData'];
   ticketQr: TicketQrRenderOptions;
   onDetailPress?: (detail: OrderTicketDetailPopupData) => void;
+  onSceneAction: OrderDetailSceneViewProps['onSceneAction'];
 }) {
   const statusText = ticket?.statusText || resolveTicketGroupStatusText(group);
   const metaText = resolveTicketPanelMetaText(group, ticket);
@@ -300,6 +301,7 @@ function TicketGroupPanel({ group, ticket, detailData, ticketQr, onDetailPress }
     ? ticketUsageInstructionHtml || groupUsageInstructionHtml
     : groupUsageInstructionHtml;
   const detailRich = Boolean(detailContent);
+  const groupAction = group.action;
 
   return (
     <View className="_pg-ticket-slide-card">
@@ -338,15 +340,25 @@ function TicketGroupPanel({ group, ticket, detailData, ticketQr, onDetailPress }
           />
         </View>
       )}
+      {groupAction ? (
+        <View
+          className="_pg-ticket-group_card-action"
+          onClick={() => onSceneAction(groupAction)}
+        >
+          <Text className="_pg-ticket-group_card-action-text">{groupAction.text}</Text>
+          <AppIcon name="arrowRight" size={14} color="#667085" />
+        </View>
+      ) : null}
     </View>
   );
 }
 
 // 票务详情主体由票务页自己维护，避免一票一码和无凭证富文本被通用订单卡片吞掉。
-function TicketInfoCard({ detailData, ticketQr, onTicketDetailPress }: {
+function TicketInfoCard({ detailData, ticketQr, onTicketDetailPress, onSceneAction }: {
   detailData: OrderDetailSceneViewProps['detailData'];
   ticketQr: TicketQrRenderOptions;
   onTicketDetailPress?: (detail: OrderTicketDetailPopupData) => void;
+  onSceneAction: OrderDetailSceneViewProps['onSceneAction'];
 }) {
   const [activeIndex, setActiveIndex] = useState(0);
   if (!detailData.ticketGroups.length) return null;
@@ -391,6 +403,7 @@ function TicketInfoCard({ detailData, ticketQr, onTicketDetailPress }: {
                   detailData={detailData}
                   group={panel.group}
                   onDetailPress={onTicketDetailPress}
+                  onSceneAction={onSceneAction}
                   ticket={panel.ticket}
                   ticketQr={ticketQr}
                 />
@@ -412,6 +425,7 @@ function TicketInfoCard({ detailData, ticketQr, onTicketDetailPress }: {
             detailData={detailData}
             group={ticketPanels[0].group}
             onDetailPress={onTicketDetailPress}
+            onSceneAction={onSceneAction}
             ticket={ticketPanels[0].ticket}
             ticketQr={ticketQr}
           />
@@ -428,7 +442,12 @@ export function TicketOrderDetailView(props: OrderDetailSceneViewProps) {
   return (
     <>
       <StatusCard detailData={detailData} sceneVariant="ticket" />
-      <TicketInfoCard detailData={detailData} ticketQr={ticketQr} onTicketDetailPress={onTicketDetailPress} />
+      <TicketInfoCard
+        detailData={detailData}
+        onSceneAction={onSceneAction}
+        onTicketDetailPress={onTicketDetailPress}
+        ticketQr={ticketQr}
+      />
       <ContactCard detailData={detailData} title="出游人信息" />
       <SceneActionBar detailData={detailData} onSceneAction={onSceneAction} />
       <SharedTail

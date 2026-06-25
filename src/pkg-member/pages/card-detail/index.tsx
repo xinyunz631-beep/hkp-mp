@@ -1,5 +1,5 @@
 import Taro from '@tarojs/taro';
-import { RichText, Text, View } from '@tarojs/components';
+import { Text, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
 import { useState } from 'react';
 import { AppIcon } from '@/core/components/AppIcon';
@@ -8,6 +8,7 @@ import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import { navigateToMiniRoute } from '@/core/utils/navigation';
 import { copyWechatText } from '@/core/utils/wechat-actions';
+import { MemberRichText } from '@/pkg-member/components/MemberRichText';
 import {
   fetchMemberAnnualCardDetail,
   type MemberAnnualCardItem,
@@ -94,6 +95,9 @@ function CardDetailPage() {
             <View className="_pg-card">
               <Text className="_pg-section-title">年卡信息</Text>
               <DetailRow label="年卡号" value={card.cardNo} copyable />
+              <DetailRow label="入园方式" value={card.entryMethodText} />
+              <DetailRow label="激活时间" value={card.activatedAtText} />
+              <DetailRow label="实体卡号" value={card.physicalCardNo} copyable />
               {card.orderNo ? (
                 <View className="_pg-row _pg-row--link" onClick={() => navigateToMiniRoute(buildOrderDetailRoute(card.orderNo || ''))}>
                   <Text className="_pg-row_label">来源订单</Text>
@@ -109,9 +113,7 @@ function CardDetailPage() {
             {card.usageInstructionHtml ? (
               <View className="_pg-card">
                 <Text className="_pg-section-title">使用说明</Text>
-                <View className="_pg-rich">
-                  <RichText nodes={card.usageInstructionHtml} />
-                </View>
+                <MemberRichText className="_pg-rich" nodes={card.usageInstructionHtml} />
               </View>
             ) : null}
           </View>

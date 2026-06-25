@@ -152,6 +152,14 @@ function hasTicketCheckoutChanged(currentData: TicketCheckoutPageData, nextData:
     || currentData.draftMissing !== nextData.draftMissing;
 }
 
+// 判断确认单是否仅包含快速通票项，纯快速通无实名表单时仍需展示入园码提示。
+function isFastPassOnlyOrder(products: TicketOrderDraftProduct[]) {
+  return products.length > 0 && products.every((product) => (
+    product.category === 'fastPass'
+    || String(product.fulfillmentType || '').toUpperCase() === 'LOCAL_FAST_PASS_VOUCHER'
+  ));
+}
+
 const CheckoutPage = observer(function CheckoutPage() {
   const [draftId, setDraftId] = useState('');
   const [addonQuantity, setAddonQuantity] = useState(1);
@@ -439,6 +447,7 @@ const CheckoutPage = observer(function CheckoutPage() {
       || checkoutData.ticketItem.quantity;
     const activeTraveler = travelerForms[0];
     const hasAddonItem = checkoutData.addonItem.quantity > 0 || addonQuantity > 0;
+    const showTicketEntryTip = isFastPassOnlyOrder(selectedProducts) && travelerForms.length === 0;
     const summaryItemCount = totalTicketQuantity + (hasAddonItem ? addonQuantity : 0);
     const summarySubtotalAmount = typeof ticketAmount === 'number'
       ? ticketAmount + (hasAddonItem && addonAmount > 0 ? addonAmount : 0)
@@ -494,6 +503,13 @@ const CheckoutPage = observer(function CheckoutPage() {
                   </View>
                 </View>
 
+                {showTicketEntryTip ? (
+                  <View className="_pg-entry-tip">
+                    <AppIcon name="code" className="_pg-entry-tip_icon" size={14} color="#94a3b8" />
+                    <Text>支付成功后生成订单入园码，也可凭购票证件核验入园</Text>
+                  </View>
+                ) : null}
+
                 <View className="_pg-product-list">
                   {selectedProducts.map((product) => (
                     <View className="_pg-product" key={product.id}>
@@ -502,6 +518,7 @@ const CheckoutPage = observer(function CheckoutPage() {
                         <Text className="_pg-product_title">{product.title}</Text>
                         <View className="_pg-product_notice" onClick={() => setNoticeProduct(product)}>
                           <Text>预定须知</Text>
+                          <AppIcon name="ask" className="_pg-product_notice-icon" size={11} color="#8a94a6" />
                         </View>
                       </View>
                       <Text className="_pg-product_count">x{product.quantity}</Text>
