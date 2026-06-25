@@ -5,6 +5,7 @@ import {
 } from './purchase-api';
 import { centToYuan, parseNumberLike } from '@/core/utils/money';
 import {
+  fetchBffTicketCalendar,
   fetchBffTicketCalendarBatch,
   fetchBffTicketProducts,
   type BffTicketInventoryDay,
@@ -136,6 +137,7 @@ interface TicketRequestCacheEntry<TData> {
 
 const ticketBookingRequestCache = new Map<string, TicketRequestCacheEntry<TicketBookingData>>();
 const ticketCalendarBatchRequestCache = new Map<string, TicketRequestCacheEntry<Record<string, BffTicketInventoryDay[]>>>();
+const ticketCalendarRequestCache = new Map<string, TicketRequestCacheEntry<BffTicketInventoryDay[]>>();
 
 // 补齐日期控件基础可选日期，真实库存可售性由统一订单确认接口校验。
 function createTicketDates(): HkpDateOption[] {
@@ -268,6 +270,10 @@ function getTicketCalendarBatchRequestKey(productCodes: string[], startDate: str
   return `${productCodes.join(',')}:${startDate}:${endDate}`;
 }
 
+function getTicketCalendarRequestKey(productCode: string, startDate: string, endDate: string) {
+  return `${productCode}:${startDate}:${endDate}`;
+}
+
 function getCachedTicketRequest<TData>(cache: Map<string, TicketRequestCacheEntry<TData>>, requestKey: string) {
   const cachedRequest = cache.get(requestKey);
 
@@ -358,6 +364,22 @@ function fetchBffTicketCalendarBatchOnce(productCodes: string[], startDate: stri
   );
 }
 
+// calendar-batch 当前只返回商品日期摘要；多票种商品需要补一次 SKU 级日历，避免后台改单票种当天价后列表仍显示旧基础价。
+function fetchBffTicketCalendarOnce(productCode: string, startDate: string, endDate: string) {
+  const requestKey = getTicketCalendarRequestKey(productCode, startDate, endDate);
+  const cachedRequest = getCachedTicketRequest(ticketCalendarRequestCache, requestKey);
+
+  if (cachedRequest) return cachedRequest;
+
+  return setCachedTicketRequest(
+    ticketCalendarRequestCache,
+    requestKey,
+    async () => {
+      return fetchBffTicketCalendar(productCode, startDate, endDate);
+    },
+  );
+}
+
 function uniquePublishedTicketProductCodes(ticketProducts: BffTicketProduct[]) {
   const productCodes = ticketProducts
     .filter(isMiniProgramTicketProduct)
@@ -366,6 +388,15 @@ function uniquePublishedTicketProductCodes(ticketProducts: BffTicketProduct[]) {
     .filter(Boolean);
 
   return Array.from(new Set(productCodes));
+}
+
+function skuCalendarRequiredProducts(ticketProducts: BffTicketProduct[]) {
+  const products = ticketProducts
+    .filter(isMiniProgramTicketProduct)
+    .filter(isPublishedTicketProduct)
+    .filter((product) => (product.skuRules || []).filter((sku) => sku.id).length > 1);
+
+  return Array.from(new Map(products.map((product) => [product.productCode, product])).values());
 }
 
 function resolvePublishStatusText(status?: string) {
@@ -452,7 +483,7 @@ function normalizeTicketProduct(
   if (!item.productCode || !item.title || !sku.id) return undefined;
   const availableStock = inventoryDay?.availableStock ?? 0;
   const unitPriceCent = inventoryDay?.skuId === PRODUCT_CALENDAR_SUMMARY_SKU_ID
-    ? sku.basePrice ?? inventoryDay?.price ?? item.minPrice ?? 0
+    ? inventoryDay?.price ?? sku.basePrice ?? item.minPrice ?? 0
     : inventoryDay?.price ?? sku.basePrice ?? item.minPrice ?? 0;
   const skuName = sku.name || '';
   const saleable = isPublishedTicketProduct(item) && inventoryDay?.saleStatus === 'onSale' && availableStock > 0;
@@ -629,6 +660,15 @@ async function fetchTicketBookingDataUncached(fallback: TicketBookingData) {
       .map((productCodes) => fetchBffTicketCalendarBatchOnce(productCodes, startDate, endDate)),
   );
   const inventoryMap = Object.assign({}, ...calendarBatchMaps) as Record<string, BffTicketInventoryDay[]>;
+  const skuCalendarEntries = await Promise.all(
+    skuCalendarRequiredProducts(ticketProducts).map(async (product) => {
+      return [product.productCode, await fetchBffTicketCalendarOnce(product.productCode, startDate, endDate)] as const;
+    }),
+  );
+
+  skuCalendarEntries.forEach(([productCode, inventoryDays]) => {
+    inventoryMap[productCode] = inventoryDays;
+  });
 
   return buildTicketBookingDataFromApi(fallback, ticketProducts, inventoryMap, resources);
 }
