@@ -373,6 +373,9 @@ const TicketBookingPage = observer(function TicketBookingPage() {
   const rulesPopupRichTexts = selectedRuleProduct
     ? selectedRuleProduct.ruleRichTexts
     : bookingData?.parkInfo.ruleRichTexts ?? [];
+  const rulesPopupPlainTexts = selectedRuleProduct
+    ? selectedRuleProduct.ruleTexts.filter((ruleText) => !selectedRuleProduct.ruleRichTexts.includes(ruleText))
+    : [];
   useShareAppMessage(() => ({
     title: shareTitle,
     path: MINI_PACKAGE_ROUTES.ticketBooking,
@@ -710,14 +713,19 @@ const TicketBookingPage = observer(function TicketBookingPage() {
                   </View>
                 </View>
                 <View className="_pg-rules-popup_content">
-                  {rulesPopupRichTexts.length ? (
-                    rulesPopupRichTexts.map((ruleRichText, index) => (
-                      <TicketRichText
-                        className="_pg-rules-popup_rich-text"
-                        key={`${index}-${ruleRichText.length}`}
-                        nodes={ruleRichText}
-                      />
-                    ))
+                  {rulesPopupPlainTexts.length || rulesPopupRichTexts.length ? (
+                    <>
+                      {rulesPopupPlainTexts.map((ruleText) => (
+                        <Text className="_pg-rules-popup_text" key={ruleText}>{ruleText}</Text>
+                      ))}
+                      {rulesPopupRichTexts.map((ruleRichText, index) => (
+                        <TicketRichText
+                          className="_pg-rules-popup_rich-text"
+                          key={`${index}-${ruleRichText.length}`}
+                          nodes={ruleRichText}
+                        />
+                      ))}
+                    </>
                   ) : (
                     <Text className="_pg-rules-popup_empty">暂无须知内容</Text>
                   )}

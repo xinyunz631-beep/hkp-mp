@@ -414,6 +414,7 @@ function buildProductRuleFragments(item: BffTicketProduct, sku: BffTicketSkuRule
     sku.qualificationRule,
     sku.refundRule || item.refundRule,
     resolveVerificationMethodText(sku.verificationMethod),
+    item.entryTimeText ? `入园时间：${item.entryTimeText}` : undefined,
     item.entryAddress ? `入园地点：${item.entryAddress}` : undefined,
     stockText ? `当前日期：${stockText}` : undefined,
   ];

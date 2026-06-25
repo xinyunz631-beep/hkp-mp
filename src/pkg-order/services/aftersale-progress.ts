@@ -20,6 +20,21 @@ interface FetchAftersaleProgressOptions {
   reasonText?: string;
 }
 
+function resolveAftersaleReasonLabel(
+  reasonText: string,
+  progress: Array<{ detailText?: string }> = [],
+) {
+  if (!reasonText) return '';
+
+  const detailText = progress
+    .map((step) => normalizeText(step.detailText))
+    .find((text) => text.includes(reasonText));
+
+  if (detailText?.startsWith('失败原因：')) return '失败原因';
+  if (detailText?.startsWith('申请原因：')) return '申请原因';
+  return '原因';
+}
+
 export async function fetchAftersaleProgressData(
   options: FetchAftersaleProgressOptions = {},
 ): Promise<OrderAftersaleProgressData> {
@@ -41,6 +56,7 @@ export async function fetchAftersaleProgressData(
   const data = progressResult.value;
   const orderSummary = toOrderSummary(data.order);
   const orderDetail = orderDetailResult.status === 'fulfilled' ? orderDetailResult.value : undefined;
+  const reasonText = normalizeText(data.reasonText);
 
   return {
     order: mergeOrderSummaryWithDetail(orderSummary, orderDetail),
@@ -49,7 +65,8 @@ export async function fetchAftersaleProgressData(
     statusText: normalizeText(data.statusText),
     statusDesc: normalizeText(data.statusDesc),
     refundAmountText: normalizeText(data.refundAmountText),
-    reasonText: normalizeText(data.reasonText),
+    reasonText,
+    reasonLabel: resolveAftersaleReasonLabel(reasonText, data.progress),
     couponFields: orderDetailResult.status === 'fulfilled'
       ? mapOrderCouponFields(orderDetailResult.value)
       : [],

@@ -75,7 +75,7 @@ function TicketDetailRootPopup({ detail, onClose }: {
       title={detail?.title || '详情'}
       className="_pg-ticket-detail-sheet"
       bodyMaxHeight="56vh"
-      confirmText="我已知晓"
+      showFooter={false}
       onClose={onClose}
     >
       {detail?.content ? (

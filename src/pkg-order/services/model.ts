@@ -314,6 +314,7 @@ export interface OrderAftersaleProgressData {
   statusDesc: string;
   refundAmountText: string;
   reasonText: string;
+  reasonLabel: string;
   couponFields: OrderDetailCouponFieldData[];
   fields: OrderAftersaleFieldData[];
   progress: OrderAftersaleProgressStepData[];

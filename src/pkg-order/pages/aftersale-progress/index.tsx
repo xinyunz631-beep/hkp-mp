@@ -132,7 +132,7 @@ const AftersaleProgressPage = observer(function AftersaleProgressPage() {
                   ) : null}
                   {pageData.reasonText ? (
                     <View className="_pg-meta_row">
-                      <Text className="_pg-meta_label">申请原因</Text>
+                      <Text className="_pg-meta_label">{pageData.reasonLabel || '原因'}</Text>
                       <Text className="_pg-meta_value">{pageData.reasonText}</Text>
                     </View>
                   ) : null}

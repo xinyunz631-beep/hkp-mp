@@ -39,6 +39,9 @@ export interface BffTicketProduct {
   maxPrice?: number;
   saleStatus?: string;
   availableDateSummary?: string;
+  dailySaleStartTime?: string;
+  dailySaleEndTime?: string;
+  entryTimeText?: string;
   entryAddress?: string;
   servicePhone?: string;
   notice?: string;
