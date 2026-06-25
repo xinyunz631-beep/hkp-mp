@@ -94,7 +94,6 @@ export function useCheckoutController<
   const [data, setData] = useState<TData>();
   const [selectedCouponId, setSelectedCouponId] = useState<string>();
   const [couponPopupVisible, setCouponPopupVisible] = useState(false);
-  const [createdOrderResult, setCreatedOrderResult] = useState<CheckoutSubmitResult>();
   const submitLockRef = useRef(false);
 
   const applyLoadedData = useCallback((nextData: TData) => {
@@ -144,10 +143,9 @@ export function useCheckoutController<
     }
 
     let submitData: TData = data;
-    const shouldRefreshExistingPayment = Boolean(createdOrderResult);
-    let result: CheckoutSubmitResult | undefined = createdOrderResult;
+    let result: CheckoutSubmitResult | undefined;
     const revalidateBeforeSubmit = adapter.revalidateBeforeSubmit;
-    if (!result && revalidateBeforeSubmit) {
+    if (revalidateBeforeSubmit) {
       try {
         const revalidateResult = await runCheckoutTask(() => revalidateBeforeSubmit(submitData, payload), options);
         submitData = revalidateResult.data;
@@ -163,13 +161,11 @@ export function useCheckoutController<
       }
     }
 
-    if (!result) {
-      try {
-        result = await runCheckoutTask(() => adapter.submit(submitData, payload), options);
-      } catch (error) {
-        await showWechatToast(resolveErrorMessage(error, adapter.submitErrorText));
-        return undefined;
-      }
+    try {
+      result = await runCheckoutTask(() => adapter.submit(submitData, payload), options);
+    } catch (error) {
+      await showWechatToast(resolveErrorMessage(error, adapter.submitErrorText));
+      return undefined;
     }
 
     if (!result) {
@@ -177,11 +173,8 @@ export function useCheckoutController<
       return undefined;
     }
 
-    setCreatedOrderResult(result);
-
     if (adapter.isOrderComplete?.(result)) {
       await completeCheckout(adapter, submitData, result);
-      setCreatedOrderResult(undefined);
       await showWechatToast(adapter.completeSuccessText || '下单成功', 'success');
       navigateToMiniRoute(adapter.buildSuccessRoute(result), {
         loginMode: 'none',
@@ -192,7 +185,6 @@ export function useCheckoutController<
 
     if (result.payableAmount <= 0) {
       await completeCheckout(adapter, submitData, result);
-      setCreatedOrderResult(undefined);
       await showWechatToast(adapter.zeroPaySuccessText || '下单成功', 'success');
       navigateToMiniRoute(adapter.buildSuccessRoute(result), {
         loginMode: 'none',
@@ -201,12 +193,11 @@ export function useCheckoutController<
       return result;
     }
 
-    if (shouldRefreshExistingPayment || !readPaymentParams(result)) {
+    if (!readPaymentParams(result)) {
       const currentResult = result;
       try {
         const payment = await runCheckoutTask(() => payBffOrder(currentResult.orderNo, 'WECHAT'), options);
         result = mergePaymentResult(currentResult, payment);
-        setCreatedOrderResult(result);
         await adapter.onPaymentPrepared?.(submitData, payload, result);
       } catch (error) {
         await showWechatToast(resolveErrorMessage(error, '支付参数暂不可用，请稍后重试'));
@@ -230,7 +221,6 @@ export function useCheckoutController<
 
     await syncBffPaymentStatusSilently(result.payment?.prepay?.payNo ?? result.order?.payNo);
     await completeCheckout(adapter, submitData, result);
-    setCreatedOrderResult(undefined);
     await showWechatToast(adapter.paymentSuccessText || '支付成功', 'success');
     navigateToMiniRoute(adapter.buildSuccessRoute(result), {
       loginMode: 'none',
@@ -240,7 +230,7 @@ export function useCheckoutController<
     } finally {
       submitLockRef.current = false;
     }
-  }, [adapter, createdOrderResult, data]);
+  }, [adapter, data]);
 
   return {
     data,
