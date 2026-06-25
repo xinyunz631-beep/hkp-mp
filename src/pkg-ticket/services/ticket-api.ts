@@ -69,9 +69,27 @@ export interface BffTicketInventoryDay {
   date: string;
   price?: number;
   availableStock?: number;
+  totalStock?: number;
+  soldStock?: number;
+  lockedStock?: number;
   publishStatus?: string;
   saleStatus?: string;
   restrictionReason?: string;
+  timeSlot?: string;
+}
+
+export interface BffTicketCalendarSkuInventory {
+  skuId?: string;
+  variantCode?: string;
+  priceCent?: number;
+  totalStock?: number;
+  soldStock?: number;
+  lockedStock?: number;
+  availableStock?: number;
+  publishStatus?: string;
+  saleStatus?: string;
+  restrictionReason?: string;
+  timeSlot?: string;
 }
 
 export interface BffTicketCalendarBatchDay {
@@ -80,6 +98,7 @@ export interface BffTicketCalendarBatchDay {
   availableStock?: number;
   saleStatus?: string;
   restrictionReason?: string;
+  skuInventories?: BffTicketCalendarSkuInventory[];
 }
 
 export interface BffTicketProductCalendar {
@@ -95,6 +114,7 @@ export interface BffTicketCalendarBatchRequest {
   startDate: string;
   endDate: string;
   visitDate?: string;
+  includeSkuInventory?: boolean;
 }
 
 export interface BffTicketCalendarBatchResponse {
