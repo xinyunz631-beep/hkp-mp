@@ -602,22 +602,6 @@ const TICKET_ENTRY_ADDRESS_KEYS = [
   'scenicAddress',
   'scenicSpotAddress',
 ];
-const TICKET_DETAIL_TEXT_KEYS = [
-  'detailText',
-  'usageDetail',
-  'useDetail',
-  'description',
-  'descriptionText',
-  'instruction',
-  'instructionText',
-  'useInstructionText',
-  'usageInstructionText',
-  'usageRule',
-  'useRule',
-  'ruleText',
-  'noticeText',
-  'ticketNotice',
-];
 const TICKET_USAGE_HTML_KEYS = [
   'usageInstructionHtml',
   'useInstructionHtml',
@@ -634,14 +618,6 @@ const TICKET_USAGE_HTML_KEYS = [
   'richText',
   'noticeHtml',
   'ticketNoticeHtml',
-  'notice',
-  'usageNotice',
-  'ticketNotice',
-  'refundRule',
-  'qualificationRule',
-  'useInstruction',
-  'usageInstruction',
-  'instructions',
 ];
 const TICKET_CERTIFICATE_KEYS = [
   'certificateNo',
@@ -679,7 +655,6 @@ function resolveTicketEntryFields(order: BffOrder, item?: BffOrderItem): OrderDe
     { label: '使用日期', value: resolveOrderItemText(order, item, TICKET_VISIT_DATE_KEYS) },
     { label: '入园时间', value: resolveOrderItemText(order, item, TICKET_ENTRY_TIME_KEYS) },
     { label: '入园地址', value: resolveOrderItemText(order, item, TICKET_ENTRY_ADDRESS_KEYS) },
-    { label: '详情', value: resolveOrderItemText(order, item, TICKET_DETAIL_TEXT_KEYS) },
   ]);
 }
 
@@ -688,7 +663,6 @@ function resolveTicketVoucherEntryFields(order: BffOrder, voucher: BffTicketVouc
     { label: '使用日期', value: resolveVoucherText(voucher, TICKET_VISIT_DATE_KEYS) || order.context?.visitDate || '' },
     { label: '入园时间', value: resolveVoucherText(voucher, TICKET_ENTRY_TIME_KEYS) },
     { label: '入园地址', value: resolveVoucherText(voucher, TICKET_ENTRY_ADDRESS_KEYS) },
-    { label: '详情', value: resolveVoucherText(voucher, TICKET_DETAIL_TEXT_KEYS) },
   ]);
 }
 
@@ -782,7 +756,7 @@ function resolveAnnualCardValidityText(card: BffAnnualCard) {
 function mapAnnualCardGroups(order: BffOrder): OrderTicketGroupData[] {
   return (order.annualCards || []).map((card, index) => {
     const title = resolveAnnualCardText(card, ['productName', 'cardName', 'itemName']) || `年卡 ${index + 1}`;
-    const usageInstructionHtml = normalizeString(card.usageInstructionHtml || card.usageInstruction)
+    const usageInstructionHtml = normalizeString(card.usageInstructionHtml)
       || resolveAnnualCardText(card, TICKET_USAGE_HTML_KEYS);
 
     return {

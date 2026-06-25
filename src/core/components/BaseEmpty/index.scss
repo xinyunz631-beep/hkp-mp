@@ -23,3 +23,20 @@
 .base-empty .nut-empty-description {
   color: $color-text-secondary;
 }
+
+.base-empty .nut-empty-actions {
+  margin-top: 44px;
+}
+
+.base-empty .nut-empty-actions .nut-button {
+  min-width: 152px;
+  height: 56px;
+  padding: 0 28px;
+  border: 1Px solid $color-primary;
+  border-radius: 28px;
+  box-sizing: border-box;
+  color: $color-primary;
+  font-size: 26px;
+  line-height: 54px;
+  background: #ffffff;
+}

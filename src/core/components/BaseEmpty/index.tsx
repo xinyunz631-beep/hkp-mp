@@ -49,7 +49,7 @@ export function BaseEmpty({
     ? [{
         text: actionText,
         type: 'primary' as const,
-        fill: 'solid' as const,
+        fill: 'outline' as const,
         disabled: actionDisabled,
         onClick: handleAction,
       }]

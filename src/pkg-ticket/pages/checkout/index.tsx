@@ -16,6 +16,7 @@ import { rootStore } from '@/core/store';
 import { resolveErrorMessage } from '@/core/utils/error-message';
 import { navigateToMiniRoute } from '@/core/utils/navigation';
 import { showWechatConfirm, showWechatToast } from '@/core/utils/wechat-actions';
+import { TicketRichText } from '@/pkg-ticket/components/TicketRichText';
 import { TicketSubmitFooter } from '@/pkg-ticket/components/TicketSubmitFooter';
 import { fetchCheckoutData, type TicketCheckoutPageData } from '@/pkg-ticket/services/checkout';
 import {
@@ -23,6 +24,7 @@ import {
   isTicketOrderIdentityRequired,
   submitTicketOrderDraft,
   updateTicketOrderDraft,
+  type TicketOrderDraftProduct,
   type TicketOrderTraveler,
 } from '@/pkg-ticket/services/order-draft';
 import './index.scss';
@@ -157,6 +159,7 @@ const CheckoutPage = observer(function CheckoutPage() {
   const [couponPopupVisible, setCouponPopupVisible] = useState(false);
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [discountPopupVisible, setDiscountPopupVisible] = useState(false);
+  const [noticeProduct, setNoticeProduct] = useState<TicketOrderDraftProduct>();
   const [travelerForms, setTravelerForms] = useState<TicketOrderTraveler[]>([]);
   const [contactForm, setContactForm] = useState<ContactFormState>({
     name: '',
@@ -497,6 +500,9 @@ const CheckoutPage = observer(function CheckoutPage() {
                       <AppIcon name="ticket" className="_pg-product_icon" size={15} color="#e45c98" />
                       <View className="_pg-product_main">
                         <Text className="_pg-product_title">{product.title}</Text>
+                        <View className="_pg-product_notice" onClick={() => setNoticeProduct(product)}>
+                          <Text>预定须知</Text>
+                        </View>
                       </View>
                       <Text className="_pg-product_count">x{product.quantity}</Text>
                     </View>
@@ -709,6 +715,21 @@ const CheckoutPage = observer(function CheckoutPage() {
                       </View>
                     ))}
                   </View>
+                </AppBottomSheet>
+                <AppBottomSheet
+                  visible={Boolean(noticeProduct)}
+                  title="预定须知"
+                  className="_pg-notice-sheet"
+                  bodyMinHeight={260}
+                  bodyMaxHeight="62vh"
+                  showFooter={false}
+                  onClose={() => setNoticeProduct(undefined)}
+                >
+                  {noticeProduct?.usageInstructionHtml ? (
+                    <TicketRichText className="_pg-notice-rich-text" nodes={noticeProduct.usageInstructionHtml} />
+                  ) : (
+                    <Text className="_pg-notice-empty">暂无须知内容</Text>
+                  )}
                 </AppBottomSheet>
               </>
             ) : null}

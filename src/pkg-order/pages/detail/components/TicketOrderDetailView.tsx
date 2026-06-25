@@ -87,8 +87,8 @@ function TicketFieldRows({ fields, detailContent, detailMode, detailRich, onDeta
   detailRich?: boolean;
   onDetailPress?: (detail: OrderTicketDetailPopupData) => void;
 }) {
-  const { normalFields, detailField } = splitTicketDetailField(fields);
-  const resolvedDetailContent = detailContent || detailField?.value || '';
+  const { normalFields } = splitTicketDetailField(fields);
+  const resolvedDetailContent = detailContent || '';
   if (!normalFields.length && !resolvedDetailContent) return null;
 
   function handleDetailPress() {
@@ -151,10 +151,6 @@ function mergeTicketFieldRows(
   });
 
   return Array.from(fieldMap.values());
-}
-
-function resolveTicketDetailFieldValue(fields: OrderDetailSceneViewProps['detailData']['productFields'] | undefined) {
-  return fields?.find((field) => field.label === '详情')?.value || '';
 }
 
 function resolveTicketGroupStatusText(group: OrderDetailSceneViewProps['detailData']['ticketGroups'][number]) {
@@ -299,15 +295,11 @@ function TicketGroupPanel({ group, ticket, detailData, ticketQr, onDetailPress }
   const metaText = resolveTicketPanelMetaText(group, ticket);
   const entryFields = ticket ? mergeTicketFieldRows(ticket.entryFields, group.entryFields) : group.entryFields;
   const ticketUsageInstructionHtml = ticket?.usageInstructionHtml || '';
-  const ticketDetailFieldValue = resolveTicketDetailFieldValue(ticket?.entryFields);
   const groupUsageInstructionHtml = group.usageInstructionHtml || '';
-  const groupDetailFieldValue = resolveTicketDetailFieldValue(group.entryFields);
   const detailContent = ticket
-    ? ticketUsageInstructionHtml || ticketDetailFieldValue || groupUsageInstructionHtml || groupDetailFieldValue
+    ? ticketUsageInstructionHtml || groupUsageInstructionHtml
     : groupUsageInstructionHtml;
-  const detailRich = ticket
-    ? Boolean(ticketUsageInstructionHtml || (!ticketDetailFieldValue && groupUsageInstructionHtml))
-    : Boolean(groupUsageInstructionHtml);
+  const detailRich = Boolean(detailContent);
 
   return (
     <View className="_pg-ticket-slide-card">
