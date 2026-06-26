@@ -6,8 +6,6 @@ import { AppImage } from '@/core/components/AppImage';
 import { PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
-import { rootStore } from '@/core/store';
-import { resolveMemberAvatar, resolveMemberLevel } from '@/core/utils/member-profile';
 import { navigateToMiniRoute } from '@/core/utils/navigation';
 import { showAppModal } from '@/core/utils/wechat-actions';
 import {
@@ -68,12 +66,12 @@ function resolveShortcutIcon(action: MemberHomeShortcut['action']) {
 // 渲染会员独立分包首页，收口会员资料、快捷入口和权益服务首版。
 const MemberIndexPage = observer(function MemberIndexPage() {
   const [pageData, setPageData] = useState<MemberHomeData>();
-  const memberProfile = rootStore.memberInfo;
   const pageRuntime = usePageRuntime({
     initPage: async () => {
       const nextData = await fetchMemberHomeData();
       setPageData(nextData);
     },
+    refreshOnShow: true,
     loginRequired: true,
     loginReason: '登录后可查看会员权益',
   });
@@ -117,11 +115,10 @@ const MemberIndexPage = observer(function MemberIndexPage() {
   return pageRuntime.renderPage(() => {
     if (!pageData) return null;
 
-    const displayName = memberProfile?.nickname || '乐园会员';
-    const displayLevel = resolveMemberLevel(memberProfile);
-    const displayAvatar = resolveMemberAvatar(memberProfile);
-    const displayPoints = memberProfile?.points ?? pageData.points;
-    const displayMobile = maskMobile(memberProfile?.mobile);
+    const displayName = pageData.memberName || '乐园会员';
+    const displayAvatar = pageData.avatarUrl;
+    const displayPoints = pageData.points;
+    const displayMobile = maskMobile(pageData.mobile);
 
     return (
       <View className="_pg">
@@ -138,7 +135,7 @@ const MemberIndexPage = observer(function MemberIndexPage() {
                 />
                 <View className="_pg-hero_profile-main">
                   <Text className="_pg-hero_name">{displayName}</Text>
-                  <Text className="_pg-hero_meta">{displayLevel.levelNo} {displayLevel.levelName}</Text>
+                  <Text className="_pg-hero_meta">{pageData.levelNo} {pageData.levelName}</Text>
                   <Text className="_pg-hero_mobile">{displayMobile}</Text>
                 </View>
                 <View className="_pg-hero_status">

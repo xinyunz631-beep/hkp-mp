@@ -14,7 +14,7 @@ import { resolveErrorMessage } from '@/core/utils/error-message';
 import { navigateToMiniRoute } from '@/core/utils/navigation';
 import { showWechatToast } from '@/core/utils/wechat-actions';
 import { MemberRichText } from '@/pkg-member/components/MemberRichText';
-import { fetchCouponDetailData, invalidateMemberCouponSnapshot } from '@/pkg-member/services/coupons';
+import { fetchCouponDetailData } from '@/pkg-member/services/coupons';
 import {
   fetchMemberExchangeDetailData,
   submitMemberKcoinExchange,
@@ -54,6 +54,7 @@ const MemberExchangeDetailPage = observer(function MemberExchangeDetailPage() {
       setQuantity(1);
       setConfirmVisible(false);
     },
+    refreshOnShow: true,
     loginRequired: true,
     loginReason: '登录后可兑换商品',
   });
@@ -117,9 +118,7 @@ const MemberExchangeDetailPage = observer(function MemberExchangeDetailPage() {
       const exchangeCouponNo = resolveExchangeCouponNo(response.couponNos);
       const exchangeSucceeded = String(response.status || '').toLowerCase() === 'success';
       if (exchangeSucceeded && exchangeCouponNo) {
-        invalidateMemberCouponSnapshot();
         const exchangedCoupon = await fetchCouponDetailData(exchangeCouponNo, {
-          forceRefresh: true,
           retryTimes: 2,
           retryDelayMs: 300,
         });

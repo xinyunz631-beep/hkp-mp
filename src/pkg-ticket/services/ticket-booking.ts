@@ -1,8 +1,16 @@
-import { HKP_PARK_LOCATION } from '@/core/constants/park-location';
 import {
-  fetchPurchaseResources,
-  type CmsResourceSlotApiItem,
-} from './purchase-api';
+  HKP_PARK_ADDRESS,
+  HKP_PARK_LOCATION,
+  HKP_PARK_OPEN_TIME,
+  HKP_TICKET_SERVICE_PHONE,
+} from '@/core/constants/park-location';
+import {
+  fetchMiniProgramPageAds,
+  findMiniProgramSlotAds,
+  MINI_PROGRAM_AD_PAGE_CODES,
+  resolveMiniProgramAdImage,
+} from '@/core/services/mini-program-ad';
+import type { MiniProgramAdView } from '@/core/types/mini-program-ad';
 import { centToYuan, parseNumberLike } from '@/core/utils/money';
 import {
   fetchBffTicketCalendarBatch,
@@ -45,6 +53,7 @@ export interface TicketBookingParkInfo {
   warmTips: string[];
   rules: string[];
   ruleRichTexts: string[];
+  warmTipRichTexts: string[];
   mapLocation: TicketBookingMapLocation;
 }
 
@@ -123,13 +132,11 @@ export interface FetchTicketBookingDataOptions {
   travelDate?: string;
 }
 
-const ENABLED_STATUS = 'ENABLED';
 const TICKET_BOOKING_AVAILABLE_DAYS = 30;
 const TICKET_WEEKDAY_TITLES = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
-const DEFAULT_SERVICE_PHONE = '4009778899';
-const DEFAULT_ENTRY_ADDRESS = '浙江安吉县昌硕街道天使大道1号';
 const TICKET_CALENDAR_BATCH_SIZE = 20;
 const PRODUCT_CALENDAR_SUMMARY_SKU_ID = '__product_calendar_summary__';
+const TICKET_BOOKING_BANNER_SLOT_CODE = 'ticket_booking_banner';
 const MINI_PROGRAM_CHANNELS = ['miniProgram', 'wechatMiniProgram', 'WECHAT_MINI_PROGRAM', 'weapp'];
 const HIDDEN_UNAVAILABLE_STOCK_TEXTS = new Set(['待上线', '暂无可售日期', '暂无可售门票']);
 
@@ -160,10 +167,10 @@ const ticketBookingData: TicketBookingData = {
   parkInfo: {
     name: '杭州 Hello Kitty 乐园',
     subtitle: '官方直营 · 主题乐园门票',
-    openTime: '10:00~17:00',
-    hotline: DEFAULT_SERVICE_PHONE,
+    openTime: HKP_PARK_OPEN_TIME,
+    hotline: HKP_TICKET_SERVICE_PHONE,
     notice: '详细节目单，欢迎戳一戳～',
-    address: DEFAULT_ENTRY_ADDRESS,
+    address: HKP_PARK_ADDRESS,
     travelDate: createTicketDates()[0].date,
     imageCount: 1,
     heroImages: [''],
@@ -173,13 +180,7 @@ const ticketBookingData: TicketBookingData = {
       '下单后请在确认订单页补全出行人手机号与证件信息。',
       '如需改期，请在未核销前重新选择日期并提交订单。',
     ],
-    warmTips: [
-      '乐园开放时间：10:00--17:00；',
-      '如当日需二次入园，请在出园前至检票口办理二次入园手续，否则将无法再次入园；',
-      '所有活动票、特价票不退不改签；',
-      '如遇雨、雪、雷电、大风等恶劣天气，户外设备停开，请在购票前查询天气预报，以免造成不必要的损失；',
-      '乐园设备进入年检期，开放详情请咨询游客服务中心，或可咨询4009-778899',
-    ],
+    warmTips: [],
     rules: [
       '门票仅限所选游玩日期当天使用，入园时需出示购票人身份证件。',
       '未使用门票支持随时退，已核销或超过有效期后不可退。',
@@ -187,6 +188,7 @@ const ticketBookingData: TicketBookingData = {
       '优惠券以提交订单时可用状态为准，不可与线下活动重复叠加。',
     ],
     ruleRichTexts: [],
+    warmTipRichTexts: [],
     mapLocation: {
       ...HKP_PARK_LOCATION,
     },
@@ -213,11 +215,6 @@ function buildTicketBookingData(options: FetchTicketBookingDataOptions = {}): Ti
     products: [],
     packages: [],
   };
-}
-
-// 判断后端展示项是否处于可见状态，缺省状态按可展示处理。
-function isEnabledApiItem(status?: string) {
-  return !status || status === ENABLED_STATUS;
 }
 
 // 按后端结构化商品字段粗分票种类型，不再从标题猜履约。
@@ -452,13 +449,6 @@ function buildProductRuleRichTexts(item: BffTicketProduct, sku: BffTicketSkuRule
   ]);
 }
 
-function buildParkRuleRichTexts(ticketProducts: BffTicketProduct[]) {
-  return compactRichTextSegments(ticketProducts.flatMap((product) => [
-    product.usageInstructionHtml,
-    ...(product.skuRules || []).map((sku) => sku.usageInstructionHtml),
-  ]));
-}
-
 // 将票务商品和 SKU 归一为页面票种模型。
 function normalizeTicketProduct(
   item: BffTicketProduct,
@@ -536,15 +526,48 @@ function resolveDateAvailabilityText(products: TicketProduct[]) {
   return '暂无可售门票';
 }
 
-function resolveParkInfoFromProducts(fallback: TicketBookingParkInfo, ticketProducts: BffTicketProduct[]) {
-  const firstConfiguredProduct = ticketProducts.find((product) => product.entryAddress || product.servicePhone);
+// 解析广告配置里的门票预定页富文本，保持后端原文不加工。
+function resolveTicketBookingAdRichText(ad?: MiniProgramAdView) {
+  return [
+    ad?.richTextHtml,
+    ad?.richText,
+    ad?.content,
+  ].find((value) => typeof value === 'string' && Boolean(value.trim())) || '';
+}
+
+// 读取门票预定页广告资源位配置；图片可多条轮播，详情须知取第一条富文本。
+async function fetchTicketBookingBannerAds() {
+  const pageAds = await fetchMiniProgramPageAds(MINI_PROGRAM_AD_PAGE_CODES.ticket);
+  return findMiniProgramSlotAds(pageAds, [TICKET_BOOKING_BANNER_SLOT_CODE]);
+}
+
+// 将广告资源位配置转换成门票预定页可消费的轮播图片和首条富文本。
+function resolveTicketBookingBannerContent(ads: MiniProgramAdView[]) {
+  const heroImages = ads
+    .map((ad) => resolveMiniProgramAdImage(ad, 'background') || '')
+    .filter(Boolean);
+  const richText = resolveTicketBookingAdRichText(ads[0]);
 
   return {
+    heroImages,
+    richTexts: richText ? [richText] : [],
+  };
+}
+
+// 合并门票预定页固定园区信息和广告富文本，固定信息统一来自常量文件。
+function resolveParkInfoFromProducts(
+  fallback: TicketBookingParkInfo,
+  pageRichTexts: string[],
+) {
+  return {
     ...fallback,
-    hotline: firstConfiguredProduct?.servicePhone || fallback.hotline,
-    address: firstConfiguredProduct?.entryAddress || fallback.address,
+    openTime: HKP_PARK_OPEN_TIME,
+    hotline: HKP_TICKET_SERVICE_PHONE,
+    address: HKP_PARK_ADDRESS,
+    mapLocation: HKP_PARK_LOCATION,
     rules: [],
-    ruleRichTexts: buildParkRuleRichTexts(ticketProducts),
+    ruleRichTexts: pageRichTexts,
+    warmTipRichTexts: pageRichTexts,
   };
 }
 
@@ -586,20 +609,12 @@ function buildSectionsFromProducts(products: TicketProduct[]) {
   return sections;
 }
 
-// 从购票页 CMS 资源位中提取可用图片，优先使用移动端图片。
-function resolveHeroImages(resources: CmsResourceSlotApiItem[]) {
-  return resources
-    .filter((item) => isEnabledApiItem(item.status))
-    .map((item) => item.mobileImageUrl || item.imageUrl || '')
-    .filter(Boolean);
-}
-
 // 将真实接口数据归一成页面数据，接口缺失时不回退旧本地票种。
 function buildTicketBookingDataFromApi(
   fallback: TicketBookingData,
   ticketProducts: BffTicketProduct[],
   inventoryMap: Record<string, BffTicketInventoryDay[]>,
-  resources: CmsResourceSlotApiItem[],
+  bannerAds: MiniProgramAdView[],
 ) {
   const miniProgramTicketProducts = ticketProducts
     .filter(isMiniProgramTicketProduct)
@@ -618,8 +633,8 @@ function buildTicketBookingDataFromApi(
     })
     .filter((item): item is TicketProduct => Boolean(item));
 
-  const heroImages = resolveHeroImages(resources);
-  const parkInfo = resolveParkInfoFromProducts(fallback.parkInfo, miniProgramTicketProducts);
+  const bannerContent = resolveTicketBookingBannerContent(bannerAds);
+  const parkInfo = resolveParkInfoFromProducts(fallback.parkInfo, bannerContent.richTexts);
   const dateAvailabilityText = resolveDateAvailabilityText(products);
 
   return {
@@ -627,8 +642,8 @@ function buildTicketBookingDataFromApi(
     parkInfo: {
       ...parkInfo,
       notice: dateAvailabilityText,
-      heroImages,
-      imageCount: heroImages.filter(Boolean).length,
+      heroImages: bannerContent.heroImages,
+      imageCount: bannerContent.heroImages.filter(Boolean).length,
     },
     sections: buildSectionsFromProducts(products),
     products,
@@ -640,9 +655,9 @@ function buildTicketBookingDataFromApi(
 async function fetchTicketBookingDataUncached(fallback: TicketBookingData) {
   const startDate = fallback.parkInfo.travelDate;
   const endDate = fallback.parkInfo.travelDate;
-  const [ticketProducts, resources] = await Promise.all([
+  const [ticketProducts, bannerAds] = await Promise.all([
     fetchBffTicketProducts({ visitDate: startDate }),
-    fetchPurchaseResources().catch(() => []),
+    fetchTicketBookingBannerAds(),
   ]);
   const calendarBatchMaps = await Promise.all(
     chunkProductCodes(uniquePublishedTicketProductCodes(ticketProducts))
@@ -650,7 +665,7 @@ async function fetchTicketBookingDataUncached(fallback: TicketBookingData) {
   );
   const inventoryMap = Object.assign({}, ...calendarBatchMaps) as Record<string, BffTicketInventoryDay[]>;
 
-  return buildTicketBookingDataFromApi(fallback, ticketProducts, inventoryMap, resources);
+  return buildTicketBookingDataFromApi(fallback, ticketProducts, inventoryMap, bannerAds);
 }
 
 // 获取门票预定页面真实数据，接口失败时由页面异常态承接。

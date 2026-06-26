@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Taro, { useDidShow, useShareAppMessage } from '@tarojs/taro';
-import { ScrollView, Text, View } from '@tarojs/components';
+import { ScrollView, Swiper, SwiperItem, Text, View } from '@tarojs/components';
 import type { ScrollViewProps } from '@tarojs/components';
 import { Badge, Sticky } from '@nutui/nutui-react-taro';
 import { observer } from 'mobx-react';
@@ -174,15 +174,28 @@ function createInitialQuantities(products: TicketProduct[]) {
 }
 
 function TicketBookingHero({ imageCount, imageSrcs, onPreview }: TicketBookingHeroProps) {
-  const imageSrc = imageSrcs[0] || '';
-  const hasPreviewImages = imageSrcs.some(Boolean);
+  const imageList = imageSrcs.filter(Boolean);
+  const imageSrc = imageList[0] || '';
+  const hasPreviewImages = imageList.length > 0;
   const resolvedImageCount = hasPreviewImages ? imageCount : 0;
 
   return (
     <View className="_pg-hero">
-      <View className="_pg-hero_image-wrap" onClick={onPreview}>
-        <AppImage className="_pg-hero_image" src={imageSrc} mode="aspectFill" />
-      </View>
+      {imageList.length > 1 ? (
+        <Swiper className="_pg-hero_swiper" autoplay circular interval={4200}>
+          {imageList.map((item, index) => (
+            <SwiperItem key={`${item}-${index}`}>
+              <View className="_pg-hero_image-wrap" onClick={onPreview}>
+                <AppImage className="_pg-hero_image" src={item} mode="aspectFill" />
+              </View>
+            </SwiperItem>
+          ))}
+        </Swiper>
+      ) : (
+        <View className="_pg-hero_image-wrap" onClick={onPreview}>
+          <AppImage className="_pg-hero_image" src={imageSrc} mode="aspectFill" />
+        </View>
+      )}
       {resolvedImageCount > 0 ? (
         <Text className="_pg-hero_count" onClick={onPreview}>图片{resolvedImageCount}张</Text>
       ) : null}
@@ -419,10 +432,11 @@ const TicketBookingPage = observer(function TicketBookingPage() {
   const selectedRuleProduct = selectedRuleProductId
     ? products.find((product) => product.id === selectedRuleProductId)
     : undefined;
-  const rulesPopupTitle = selectedRuleProduct ? selectedRuleProduct.title : '预定须知';
+  const rulesPopupTitle = selectedRuleProduct ? selectedRuleProduct.title : '详情须知';
   const rulesPopupRichTexts = selectedRuleProduct
     ? selectedRuleProduct.ruleRichTexts
     : bookingData?.parkInfo.ruleRichTexts ?? [];
+  const warmTipRichTexts = bookingData?.parkInfo.warmTipRichTexts ?? [];
   const sectionAnchorOffset = stickyPanelHeight + TICKET_SECTION_ANCHOR_GAP;
   useShareAppMessage(() => ({
     title: shareTitle,
@@ -780,14 +794,20 @@ const TicketBookingPage = observer(function TicketBookingPage() {
                 />
               </View>
             )}
-            <View className="_pg-tips">
-              <Text className="_pg-tips_title">温馨提示</Text>
-              <View className="_pg-tips_list">
-                {bookingData.parkInfo.warmTips.map((tip, index) => (
-                  <Text className="_pg-tips_item" key={tip}>{index + 1}. {tip}</Text>
-                ))}
+            {warmTipRichTexts.length ? (
+              <View className="_pg-tips">
+                <Text className="_pg-tips_title">温馨提示</Text>
+                <View className="_pg-tips_content">
+                  {warmTipRichTexts.map((richText, index) => (
+                    <TicketRichText
+                      className="_pg-tips_rich-text"
+                      key={`${index}-${richText.length}`}
+                      nodes={richText}
+                    />
+                  ))}
+                </View>
               </View>
-            </View>
+            ) : null}
           </View>
         ) : null}
         <PageShare>

@@ -8,8 +8,7 @@ import { BaseEmpty } from '@/core/components/BaseEmpty';
 import { PageShare, PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
-import { rootStore } from '@/core/store';
-import { resolveMemberAvatar, resolveMemberLevel, type MemberLevelDisplay } from '@/core/utils/member-profile';
+import { resolveMemberLevel, type MemberLevelDisplay } from '@/core/utils/member-profile';
 import { navigateToMiniRoute } from '@/core/utils/navigation';
 import {
   fetchMemberGrowthData,
@@ -89,19 +88,19 @@ const MemberGrowthPage = observer(function MemberGrowthPage() {
   const [pageData, setPageData] = useState<MemberGrowthData>();
   const [selectedLevelId, setSelectedLevelId] = useState('');
   const [levelRuleVisible, setLevelRuleVisible] = useState(false);
-  const memberProfile = rootStore.memberInfo;
   const pageRuntime = usePageRuntime({
     initPage: async () => {
       const nextData = await fetchMemberGrowthData({ includeRecords: false });
       setPageData(nextData);
     },
+    refreshOnShow: true,
     loginRequired: true,
     loginReason: '登录后可查看会员权益',
   });
 
   const memberLevel = useMemo(
-    () => resolveMemberLevel(memberProfile, pageData?.member),
-    [memberProfile, pageData],
+    () => resolveMemberLevel(pageData?.member),
+    [pageData],
   );
   const sortedLevels = useMemo(
     () => (pageData ? sortLevels(pageData.levels) : []),
@@ -329,8 +328,7 @@ const MemberGrowthPage = observer(function MemberGrowthPage() {
 
     if (!currentLevel || !selectedLevel) return null;
 
-    const displayName = memberProfile?.nickname || '微信用户';
-    const displayAvatar = resolveMemberAvatar(memberProfile, pageData.avatarImageSrc);
+    const displayName = pageData.memberName || '微信用户';
 
     return (
       <View className="_pg">
@@ -355,7 +353,7 @@ const MemberGrowthPage = observer(function MemberGrowthPage() {
               <View className="_pg-profile">
                 <AppImage
                   className="_pg-profile_avatar"
-                  src={displayAvatar}
+                  src={pageData.avatarImageSrc}
                   width={96}
                   height={96}
                   placeholderColor="#ffffff"

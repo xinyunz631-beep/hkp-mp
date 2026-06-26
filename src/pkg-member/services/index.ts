@@ -17,6 +17,11 @@ export interface MemberHomeSectionItem {
 }
 
 export interface MemberHomeData {
+  memberName: string;
+  avatarUrl: string;
+  mobile: string;
+  levelNo: number;
+  levelName: string;
   points: number;
   growthText: string;
   couponCount: number;
@@ -99,6 +104,11 @@ export async function fetchMemberHomeData(): Promise<MemberHomeData> {
   }));
 
   return {
+    memberName: profile.nickName || '乐园会员',
+    avatarUrl: profile.avatarUrl || '',
+    mobile: profile.phone || '',
+    levelNo: profile.levelNo ?? 1,
+    levelName: profile.levelName || '会员',
     points: pointsBalance,
     growthText: nextLevelText,
     couponCount,

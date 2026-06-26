@@ -67,8 +67,6 @@ export interface MemberCouponsData {
   moreButtonText: string;
 }
 
-let memberCouponSnapshot: MemberCouponItem[] = [];
-let memberCouponsLoaded = false;
 let memberCouponsRequest: Promise<MemberCouponItem[]> | null = null;
 
 function formatYuan(amountCent: unknown = 0) {
@@ -303,23 +301,6 @@ function resolveRefundReturnStatusText(refundReturnStatus?: string) {
   return '';
 }
 
-function cacheMemberCoupons(coupons: MemberCouponItem[]) {
-  memberCouponSnapshot = coupons;
-  memberCouponsLoaded = true;
-  return coupons;
-}
-
-function upsertMemberCouponSnapshot(nextCoupon: MemberCouponItem) {
-  const currentIndex = memberCouponSnapshot.findIndex((coupon) => coupon.id === nextCoupon.id);
-  if (currentIndex < 0) {
-    return cacheMemberCoupons([nextCoupon, ...memberCouponSnapshot]);
-  }
-
-  const nextCoupons = [...memberCouponSnapshot];
-  nextCoupons[currentIndex] = nextCoupon;
-  return cacheMemberCoupons(nextCoupons);
-}
-
 function waitCouponSnapshotRetry(delayMs: number) {
   return new Promise<void>((resolve) => {
     setTimeout(resolve, delayMs);
@@ -327,12 +308,13 @@ function waitCouponSnapshotRetry(delayMs: number) {
 }
 
 // 单飞读取我的券列表，避免列表页和详情页在同一轮操作里重复打同一份券资产接口。
-async function loadMemberCouponItems(forceRefresh = false) {
-  if (!forceRefresh && memberCouponsLoaded) return memberCouponSnapshot;
+async function loadMemberCouponItems() {
   if (memberCouponsRequest) return memberCouponsRequest;
 
   memberCouponsRequest = fetchBffMemberCoupons({ page: 1, size: 100 })
-    .then((response) => cacheMemberCoupons(getBffMemberCouponList(response).map(toMemberCouponItem)))
+    .then((response) => getBffMemberCouponList(response)
+      .map(toMemberCouponItem)
+      .filter((coupon): coupon is MemberCouponItem => Boolean(coupon)))
     .finally(() => {
       memberCouponsRequest = null;
     });
@@ -340,7 +322,9 @@ async function loadMemberCouponItems(forceRefresh = false) {
   return memberCouponsRequest;
 }
 
-function toMemberCouponItem(coupon: BffCouponAssetView): MemberCouponItem {
+function toMemberCouponItem(coupon: BffCouponAssetView): MemberCouponItem | undefined {
+  if (!coupon.couponNo) return undefined;
+
   const status = resolveMemberCouponStatus(coupon.status);
   return {
     id: coupon.couponNo,
@@ -384,8 +368,8 @@ function buildTabs(coupons: MemberCouponItem[]): MemberCouponTab[] {
 }
 
 // 获取我的优惠券页面数据，只读取真实 BFF 券资产。
-export async function fetchCouponsData(options: { forceRefresh?: boolean } = {}): Promise<MemberCouponsData> {
-  const coupons = await loadMemberCouponItems(options.forceRefresh);
+export async function fetchCouponsData(): Promise<MemberCouponsData> {
+  const coupons = await loadMemberCouponItems();
   return {
     tabs: buildTabs(coupons),
     coupons,
@@ -393,43 +377,26 @@ export async function fetchCouponsData(options: { forceRefresh?: boolean } = {})
   };
 }
 
-// 把领券接口直接返回的券资产补进当前会话快照，保证详情页可立即承接新券。
-export function cacheClaimedMemberCoupon(coupon?: BffCouponAssetView | null) {
-  if (!coupon?.couponNo) return null;
-  return upsertMemberCouponSnapshot(toMemberCouponItem(coupon));
-}
-
-// 让下一次我的券读取强制回源，适合领券/兑换后重新核对真实券资产。
-export function invalidateMemberCouponSnapshot() {
-  memberCouponsLoaded = false;
-}
-
-// 获取优惠券详情页数据：优先复用当前会话快照，缺失时按需回源重试真实券资产接口。
+// 获取优惠券详情页数据：只按我的券资产接口回源，必要时短暂重试等待后端落库。
 export async function fetchCouponDetailData(
   couponId: string,
   options: {
-    forceRefresh?: boolean;
     retryTimes?: number;
     retryDelayMs?: number;
   } = {},
 ) {
   if (!couponId) return null;
 
-  const cachedCoupon = memberCouponSnapshot.find((coupon) => coupon.id === couponId);
-  if (cachedCoupon && !options.forceRefresh) return cachedCoupon;
-
   const retryTimes = Math.max(options.retryTimes ?? 0, 0);
   const retryDelayMs = Math.max(options.retryDelayMs ?? 250, 0);
-  let forceRefresh = options.forceRefresh ?? memberCouponsLoaded;
 
   for (let attempt = 0; attempt <= retryTimes; attempt += 1) {
-    const coupons = await loadMemberCouponItems(forceRefresh);
+    const coupons = await loadMemberCouponItems();
     const matchedCoupon = coupons.find((coupon) => coupon.id === couponId);
     if (matchedCoupon) return matchedCoupon;
 
     if (attempt >= retryTimes) break;
 
-    forceRefresh = true;
     await waitCouponSnapshotRetry(retryDelayMs);
   }
 

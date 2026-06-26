@@ -114,9 +114,10 @@ const CouponDetailPage = observer(function CouponDetailPage() {
   const [coupon, setCoupon] = useState<MemberCouponItem | null | undefined>();
   const pageRuntime = usePageRuntime({
     initPage: async () => {
-      const nextCoupon = await fetchCouponDetailData(resolveCouponId());
+      const nextCoupon = await fetchCouponDetailData(resolveCouponId(), { retryTimes: 2 });
       setCoupon(nextCoupon);
     },
+    refreshOnShow: true,
     loginRequired: true,
     loginReason: '登录后可查看优惠券详情',
   });

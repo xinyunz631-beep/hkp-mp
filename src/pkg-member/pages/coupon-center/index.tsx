@@ -15,7 +15,6 @@ import {
   type MemberCouponCenterData,
   type MemberCouponCenterTabKey,
 } from '@/pkg-member/services/coupon-center';
-import { cacheClaimedMemberCoupon, invalidateMemberCouponSnapshot } from '@/pkg-member/services/coupons';
 import './index.scss';
 
 const DEFAULT_TAB_KEY: MemberCouponCenterTabKey = 'recommend';
@@ -49,6 +48,7 @@ const MemberCouponCenterPage = observer(function MemberCouponCenterPage() {
     initPage: async () => {
       await loadPageData({ resetTab: true });
     },
+    refreshOnShow: true,
     loginRequired: true,
     loginReason: '登录后可进入领券中心',
   });
@@ -61,18 +61,6 @@ const MemberCouponCenterPage = observer(function MemberCouponCenterPage() {
   // 切换领券中心顶部 tab，顶部切换固定在 PageHeader 内。
   function handleTabPress(tabKey: MemberCouponCenterTabKey) {
     setActiveTabKey(tabKey);
-  }
-
-  // 把领取/兑换返回的券资产写入会话快照，保证详情页能立即承接。
-  function cacheClaimResponseCoupons(response: Awaited<ReturnType<typeof claimMemberCoupon>>) {
-    const claimedCoupons = response.coupons?.length
-      ? response.coupons
-      : (response.coupon ? [response.coupon] : []);
-    if (claimedCoupons.length > 0) {
-      claimedCoupons.forEach((claimedCoupon) => cacheClaimedMemberCoupon(claimedCoupon));
-    } else {
-      invalidateMemberCouponSnapshot();
-    }
   }
 
   // 读取领取/兑换返回的第一张券号，成功后跳到券详情核对真实资产。
@@ -94,7 +82,6 @@ const MemberCouponCenterPage = observer(function MemberCouponCenterPage() {
     try {
       const response = await pageRuntime.withLoading(async () => {
         const claimResponse = await claimMemberCoupon(coupon);
-        cacheClaimResponseCoupons(claimResponse);
         await loadPageData();
         return claimResponse;
       });
@@ -119,7 +106,6 @@ const MemberCouponCenterPage = observer(function MemberCouponCenterPage() {
     try {
       const response = await pageRuntime.withLoading(async () => {
         const exchangeResponse = await exchangeMemberCouponCode(normalizedCode);
-        cacheClaimResponseCoupons(exchangeResponse);
         await loadPageData();
         return exchangeResponse;
       });

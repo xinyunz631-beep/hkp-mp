@@ -83,15 +83,14 @@ function normalizeBffCrmProfile(
   profile: BffCrmProfile,
   legacyStatus: MemberProfileLegacyStatus = MEMBER_PROFILE_LEGACY_UNBOUND,
 ): MemberProfileData {
-  const currentProfile = rootStore.memberInfo;
-  const mobile = profile.phone || currentProfile?.mobile || '';
-  const growthValue = profile.growthValue ?? currentProfile?.growthValue ?? DEFAULT_MEMBER_GROWTH_VALUE;
-  const pointsBalance = profile.pointsBalance ?? currentProfile?.points ?? 0;
+  const mobile = profile.phone || '';
+  const growthValue = profile.growthValue ?? DEFAULT_MEMBER_GROWTH_VALUE;
+  const pointsBalance = profile.pointsBalance ?? 0;
 
   return {
-    id: mobile || currentProfile?.id || 'current-member',
-    nickname: profile.nickName || currentProfile?.nickname || '乐园会员',
-    avatarUrl: profile.avatarUrl || currentProfile?.avatarUrl || DEFAULT_MEMBER_AVATAR_URL,
+    id: mobile,
+    nickname: profile.nickName || '乐园会员',
+    avatarUrl: profile.avatarUrl || DEFAULT_MEMBER_AVATAR_URL,
     mobile,
     idCardNo: profile.idCardNo || '',
     birthday: profile.birthday || '',
@@ -121,7 +120,7 @@ function toBffProfileUpdatePayload(payload: MemberProfileUpdatePayload): BffCrmP
 }
 
 function syncGlobalMemberProfile(profile: MemberProfileData) {
-  rootStore.member.setProfile(buildLoginProfileFromMemberProfile(profile, rootStore.memberInfo));
+  rootStore.member.setProfile(buildLoginProfileFromMemberProfile(profile));
 }
 
 // 拉取会员资料，头像和昵称以该接口结果为展示事实源。
@@ -161,17 +160,16 @@ export async function bindLegacyMember(payload: LegacyMemberBindPayload) {
 // 将会员资料接口结果转换为全局登录态可承载的字段，避免页面各自拼 profile。
 export function buildLoginProfileFromMemberProfile(
   profile: MemberProfileData,
-  currentProfile?: LoginUserProfile,
 ): LoginUserProfile {
   return {
-    id: profile.id || currentProfile?.id || profile.mobile,
-    nickname: profile.nickname || currentProfile?.nickname || '微信用户',
-    avatarUrl: profile.avatarUrl || currentProfile?.avatarUrl || DEFAULT_MEMBER_AVATAR_URL,
-    mobile: profile.mobile || currentProfile?.mobile || '',
-    levelId: profile.levelId || currentProfile?.levelId || DEFAULT_MEMBER_LEVEL_ID,
-    levelNo: profile.levelNo || currentProfile?.levelNo || DEFAULT_MEMBER_LEVEL_NO,
-    levelName: profile.levelName || currentProfile?.levelName || DEFAULT_MEMBER_LEVEL_NAME,
-    growthValue: profile.growthValue ?? currentProfile?.growthValue ?? DEFAULT_MEMBER_GROWTH_VALUE,
-    points: profile.points ?? currentProfile?.points ?? 0,
+    id: profile.id || profile.mobile,
+    nickname: profile.nickname || '微信用户',
+    avatarUrl: profile.avatarUrl || DEFAULT_MEMBER_AVATAR_URL,
+    mobile: profile.mobile || '',
+    levelId: profile.levelId || DEFAULT_MEMBER_LEVEL_ID,
+    levelNo: profile.levelNo || DEFAULT_MEMBER_LEVEL_NO,
+    levelName: profile.levelName || DEFAULT_MEMBER_LEVEL_NAME,
+    growthValue: profile.growthValue ?? DEFAULT_MEMBER_GROWTH_VALUE,
+    points: profile.points ?? 0,
   };
 }

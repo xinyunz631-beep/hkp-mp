@@ -9,7 +9,6 @@ import { PageShare, PageShell } from '@/core/components/PageShell';
 import { MINI_MAIN_ROUTES, MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import { logout } from '@/core/services/auth';
-import { rootStore } from '@/core/store';
 import { resolveErrorMessage } from '@/core/utils/error-message';
 import { navigateToMiniRoute } from '@/core/utils/navigation';
 import { chooseWechatImages, showWechatConfirm, showWechatToast } from '@/core/utils/wechat-actions';
@@ -120,6 +119,7 @@ const MemberProfilePage = observer(function MemberProfilePage() {
       const nextProfile = await fetchMemberProfileData();
       setProfileData(nextProfile);
     },
+    refreshOnShow: true,
     loginRequired: true,
     loginReason: '登录后可查看个人信息',
   });
@@ -284,10 +284,9 @@ const MemberProfilePage = observer(function MemberProfilePage() {
   return pageRuntime.renderPage(() => {
     if (!profileData) return null;
 
-    const memberInfo = rootStore.memberInfo;
-    const displayAvatar = memberInfo?.avatarUrl || profileData.avatarUrl;
-    const displayName = memberInfo?.nickname || profileData.nickname;
-    const displayMobile = memberInfo?.mobile || profileData.mobile;
+    const displayAvatar = profileData.avatarUrl;
+    const displayName = profileData.nickname;
+    const displayMobile = profileData.mobile;
 
     return (
       <View className="_pg">

@@ -34,6 +34,7 @@ const MemberExchangePage = observer(function MemberExchangePage() {
       const nextData = await fetchMemberExchangeListData();
       setPageData(nextData);
     },
+    refreshOnShow: true,
     loginRequired: true,
     loginReason: '登录后可进入兑换专区',
   });

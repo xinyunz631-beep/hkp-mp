@@ -162,14 +162,17 @@ function resolveEntryMethodText(entryMethodLabels: string[]) {
 }
 
 // 将 BFF 年卡资产结构转换成小程序卡包页面模型。
-function normalizeAnnualCard(card: BffAnnualCard, index = 0): MemberAnnualCardItem {
+function normalizeAnnualCard(card: BffAnnualCard): MemberAnnualCardItem | undefined {
+  const cardId = normalizeString(card.cardId) || normalizeString(card.cardNo);
+  if (!cardId) return undefined;
+
   const status = normalizeCardStatus(card.status, card.statusText);
   const usageInstructionHtml = normalizeString(card.usageInstructionHtml);
   const entryMethods = normalizeStringList(card.entryMethods ?? card.rawFields?.entryMethods);
   const entryMethodLabels = resolveEntryMethodLabels(entryMethods);
 
   return {
-    id: normalizeString(card.cardId) || normalizeString(card.cardNo) || `annual-card-${index}`,
+    id: cardId,
     cardNo: normalizeString(card.cardNo),
     title: normalizeString(card.productName) || '年卡',
     skuName: normalizeString(card.skuName),
@@ -304,8 +307,9 @@ async function fetchAnnualCardPage(status: string | undefined, page: number, siz
 function mergeAnnualCardPageResults(results: Array<Awaited<ReturnType<typeof fetchAnnualCardPage>>>, page: number, size: number) {
   const cardMap = new Map<string, BffAnnualCard>();
   results.forEach((result) => {
-    result.list.forEach((card, index) => {
-      const cardId = normalizeString(card.cardId) || normalizeString(card.cardNo) || `${result.page}-${index}`;
+    result.list.forEach((card) => {
+      const cardId = normalizeString(card.cardId) || normalizeString(card.cardNo);
+      if (!cardId) return;
       cardMap.set(cardId, card);
     });
   });
@@ -337,7 +341,9 @@ export async function fetchMemberAnnualCards(options: FetchMemberAnnualCardsOpti
 
   return {
     tabs: buildTabs(normalizedResult.total, normalizedResult.statusCounts),
-    list: normalizedResult.list.map(normalizeAnnualCard),
+    list: normalizedResult.list
+      .map(normalizeAnnualCard)
+      .filter((card): card is MemberAnnualCardItem => Boolean(card)),
     total: normalizedResult.total,
     page: normalizedResult.page,
     size: normalizedResult.size,
@@ -352,5 +358,10 @@ export async function fetchMemberAnnualCardDetail(cardId: string) {
     method: 'GET',
   });
 
-  return normalizeAnnualCard(result);
+  const card = normalizeAnnualCard(result);
+  if (!card) {
+    throw new Error('年卡资产缺少编号');
+  }
+
+  return card;
 }

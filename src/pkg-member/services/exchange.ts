@@ -46,7 +46,7 @@ function toExchangeProduct(item: BffCrmP1ConfigItem): MemberExchangeProduct {
     originalKCoinPrice: price,
     exchangedCount: Math.max(Number(item.stockTotal || 0) - Number(item.stockAvailable || 0), 0),
     stock: Number(item.stockAvailable || 0),
-    detailHtml: `<div><p>${item.description || item.subtitle || '兑换商品以实际配置为准。'}</p></div>`,
+    detailHtml: item.description || item.subtitle || '',
     liked: false,
   };
 }

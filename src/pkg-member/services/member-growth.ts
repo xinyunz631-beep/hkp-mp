@@ -45,6 +45,7 @@ export interface MemberGrowthRecord {
 export interface MemberGrowthData {
   backgroundImageSrc: string;
   avatarImageSrc: string;
+  memberName: string;
   member: {
     levelId: string;
     levelNo?: number;
@@ -167,14 +168,14 @@ function normalizeGrowthRecord(record: BffCrmGrowthRecord, index: number): Membe
   };
 }
 
-// 获取成长值聚合数据，组合等级权益、规则说明和真实流水，避免页面继续消费假数据。
+// 获取成长值聚合数据，组合等级权益、规则说明和真实流水。
 export async function fetchMemberGrowthData(options: FetchMemberGrowthDataOptions = {}) {
   const includeRecords = options.includeRecords !== false;
   const [center, growth, growthRecords] = await Promise.all([
     fetchBffCrmCenter(),
     fetchBffCrmGrowth(),
     includeRecords
-      ? fetchBffCrmGrowthRecords().catch(() => undefined)
+      ? fetchBffCrmGrowthRecords()
       : Promise.resolve(undefined),
   ]);
 
@@ -191,11 +192,10 @@ export async function fetchMemberGrowthData(options: FetchMemberGrowthDataOption
   return {
     backgroundImageSrc: normalizeText(growth.backgroundImageSrc),
     avatarImageSrc: normalizeText(growth.avatarImageSrc) || normalizeText(center.profile.avatarUrl),
+    memberName: normalizeText(center.profile.nickName),
     member: {
-      levelId: normalizeText(growth.member?.levelId) || normalizeText(center.profile.levelCode),
-      levelNo: center.profile.levelNo,
-      levelName: normalizeText(center.profile.levelName),
-      growthValue: Math.max(0, normalizeNumber(growth.member?.growthValue, normalizeNumber(center.profile.growthValue))),
+      levelId: normalizeText(growth.member?.levelId),
+      growthValue: Math.max(0, normalizeNumber(growth.member?.growthValue)),
     },
     levels,
     levelRuleIntro: (growth.levelRuleIntro || []).map(normalizeText).filter(Boolean),

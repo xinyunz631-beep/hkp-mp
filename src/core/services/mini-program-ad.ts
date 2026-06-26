@@ -9,6 +9,7 @@ import type {
 
 export const MINI_PROGRAM_AD_PAGE_CODES = {
   home: 'index',
+  ticket: 'ticket',
 } as const;
 
 function normalizeMiniProgramAdPageAds(
@@ -42,7 +43,7 @@ function normalizeMiniProgramAdPageAds(
 }
 
 // 读取小程序页面广告聚合，先完成小程序授权并携带访问令牌；真实接口链路不吞异常，避免旧内容掩盖配置问题。
-export function fetchMiniProgramPageAds(pagecode = MINI_PROGRAM_AD_PAGE_CODES.home) {
+export function fetchMiniProgramPageAds(pagecode: string = MINI_PROGRAM_AD_PAGE_CODES.home) {
   return request<MiniProgramAdPageAdsResponse | MiniProgramAdSlotMapResponse>({
     url: `/api/bff/content/mini-program/ads?pagecode=${encodeURIComponent(pagecode)}`,
     method: 'GET',

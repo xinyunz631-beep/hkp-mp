@@ -6,8 +6,7 @@ import { AppImage } from '@/core/components/AppImage';
 import { AppPopup } from '@/core/components/AppPopup';
 import { PageShare, PageShell } from '@/core/components/PageShell';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
-import { rootStore } from '@/core/store';
-import { resolveMemberAvatar, resolveMemberLevel, type MemberLevelDisplay } from '@/core/utils/member-profile';
+import { resolveMemberLevel, type MemberLevelDisplay } from '@/core/utils/member-profile';
 import {
   fetchMemberGrowthData,
   type MemberGrowthData,
@@ -45,19 +44,19 @@ function formatGrowthValue(value: number) {
 const MemberGrowthDetailPage = observer(function MemberGrowthDetailPage() {
   const [pageData, setPageData] = useState<MemberGrowthData>();
   const [growthRuleVisible, setGrowthRuleVisible] = useState(false);
-  const memberProfile = rootStore.memberInfo;
   const pageRuntime = usePageRuntime({
     initPage: async () => {
       const nextData = await fetchMemberGrowthData({ includeRecords: true });
       setPageData(nextData);
     },
+    refreshOnShow: true,
     loginRequired: true,
     loginReason: '登录后可查看成长值',
   });
 
   const memberLevel = useMemo(
-    () => resolveMemberLevel(memberProfile, pageData?.member),
-    [memberProfile, pageData],
+    () => resolveMemberLevel(pageData?.member),
+    [pageData],
   );
   const currentLevel = useMemo(
     () => (pageData ? resolveCurrentLevel(pageData, memberLevel) : undefined),
@@ -143,8 +142,7 @@ const MemberGrowthDetailPage = observer(function MemberGrowthDetailPage() {
       );
     }
 
-    const displayName = memberProfile?.nickname || '微信用户';
-    const displayAvatar = resolveMemberAvatar(memberProfile, pageData.avatarImageSrc);
+    const displayName = pageData.memberName || '微信用户';
 
     return (
       <View className="_pg">
@@ -164,7 +162,7 @@ const MemberGrowthDetailPage = observer(function MemberGrowthDetailPage() {
               <View className="_pg-profile">
                 <AppImage
                   className="_pg-profile_avatar"
-                  src={displayAvatar}
+                  src={pageData.avatarImageSrc}
                   width={104}
                   height={104}
                   placeholderColor="#ffffff"

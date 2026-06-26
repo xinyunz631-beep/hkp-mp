@@ -51,7 +51,7 @@ const CouponsPage = observer(function CouponsPage() {
   const [activeTabKey, setActiveTabKey] = useState<MemberCouponStatus>('claimed');
   const pageRuntime = usePageRuntime({
     initPage: async () => {
-      const nextData = await fetchCouponsData({ forceRefresh: true });
+      const nextData = await fetchCouponsData();
       setPageData(nextData);
       setActiveTabKey(nextData.tabs[0]?.key ?? 'claimed');
     },
