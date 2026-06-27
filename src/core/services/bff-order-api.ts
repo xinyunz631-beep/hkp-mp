@@ -61,6 +61,12 @@ export interface BffOrderRejectedCoupon {
   status?: string;
 }
 
+export interface BffOrderCoupon {
+  couponNo?: string;
+  couponName?: string;
+  displayName?: string;
+}
+
 export interface BffTicketInstance {
   ticketNo?: string;
   qrCodePayload?: string;
@@ -145,6 +151,11 @@ export interface BffOrder {
   lockedCouponNos?: string[];
   releasedCouponNos?: string[];
   refundReturnedCouponNos?: string[];
+  selectedCoupons?: BffOrderCoupon[];
+  appliedCoupons?: BffOrderCoupon[];
+  lockedCoupons?: BffOrderCoupon[];
+  releasedCoupons?: BffOrderCoupon[];
+  refundReturnedCoupons?: BffOrderCoupon[];
   rejectedCoupons?: BffOrderRejectedCoupon[];
   contactName?: string;
   contactPhone?: string;

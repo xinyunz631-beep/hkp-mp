@@ -1,5 +1,6 @@
 import type {
   BffOrder,
+  BffOrderCoupon,
   BffOrderRejectedCoupon,
 } from '@/core/services/bff-order-api';
 import type {
@@ -21,8 +22,27 @@ function normalizeCouponNos(values?: string[]) {
   ));
 }
 
-function formatCouponNos(values?: string[]) {
-  return normalizeCouponNos(values).join('、');
+function normalizeCouponEntries(coupons?: BffOrderCoupon[], fallbackCouponNos?: string[]) {
+  const source: BffOrderCoupon[] = coupons?.length
+    ? coupons
+    : normalizeCouponNos(fallbackCouponNos).map((couponNo) => ({ couponNo } satisfies BffOrderCoupon));
+  const entryMap = new Map<string, { couponNo?: string; displayText: string }>();
+
+  source.forEach((coupon, index) => {
+    const couponNo = normalizeString(coupon.couponNo);
+    const displayText = normalizeString(coupon.displayName || coupon.couponName || couponNo);
+    if (!couponNo && !displayText) return;
+    const key = couponNo || `${displayText}_${index}`;
+    if (!entryMap.has(key)) entryMap.set(key, { couponNo: couponNo || undefined, displayText });
+  });
+
+  return Array.from(entryMap.values());
+}
+
+function formatCoupons(coupons?: BffOrderCoupon[], fallbackCouponNos?: string[]) {
+  return normalizeCouponEntries(coupons, fallbackCouponNos)
+    .map((coupon) => coupon.displayText)
+    .join('、');
 }
 
 function compactCouponLinks(links: Array<OrderDetailCouponLinkData | undefined>) {
@@ -37,9 +57,13 @@ function compactCouponLinks(links: Array<OrderDetailCouponLinkData | undefined>)
   return Array.from(linkMap.values());
 }
 
-function buildCouponLinks(values?: string[]) {
+function buildCouponDisplayLinks(coupons?: BffOrderCoupon[], fallbackCouponNos?: string[]) {
   return compactCouponLinks(
-    normalizeCouponNos(values).map((couponNo) => ({ couponNo })),
+    normalizeCouponEntries(coupons, fallbackCouponNos).map((coupon) => (
+      coupon.couponNo
+        ? { couponNo: coupon.couponNo, displayText: coupon.displayText }
+        : undefined
+    )),
   );
 }
 
@@ -91,11 +115,11 @@ export function mapOrderCouponFields(order: BffOrder) {
   );
 
   return compactCouponFields([
-    mapCouponField('下单选择', formatCouponNos(order.selectedCouponNos), buildCouponLinks(order.selectedCouponNos)),
-    mapCouponField('实际使用', formatCouponNos(order.appliedCouponNos), buildCouponLinks(order.appliedCouponNos)),
-    mapCouponField('锁定中', formatCouponNos(order.lockedCouponNos), buildCouponLinks(order.lockedCouponNos)),
+    mapCouponField('下单选择', formatCoupons(order.selectedCoupons, order.selectedCouponNos), buildCouponDisplayLinks(order.selectedCoupons, order.selectedCouponNos)),
+    mapCouponField('实际使用', formatCoupons(order.appliedCoupons, order.appliedCouponNos), buildCouponDisplayLinks(order.appliedCoupons, order.appliedCouponNos)),
+    mapCouponField('锁定中', formatCoupons(order.lockedCoupons, order.lockedCouponNos), buildCouponDisplayLinks(order.lockedCoupons, order.lockedCouponNos)),
     mapCouponField('未生效', rejectedCoupons, rejectedCouponLinks),
-    mapCouponField('已释放', formatCouponNos(order.releasedCouponNos), buildCouponLinks(order.releasedCouponNos)),
-    mapCouponField('退款返还', formatCouponNos(order.refundReturnedCouponNos), buildCouponLinks(order.refundReturnedCouponNos)),
+    mapCouponField('已释放', formatCoupons(order.releasedCoupons, order.releasedCouponNos), buildCouponDisplayLinks(order.releasedCoupons, order.releasedCouponNos)),
+    mapCouponField('退款返还', formatCoupons(order.refundReturnedCoupons, order.refundReturnedCouponNos), buildCouponDisplayLinks(order.refundReturnedCoupons, order.refundReturnedCouponNos)),
   ]);
 }
