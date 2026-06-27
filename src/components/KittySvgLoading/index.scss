@@ -5,6 +5,27 @@
   vertical-align: middle;
 }
 
+.kitty-svg-loading__motion {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transform-origin: center;
+  animation: kitty-svg-loading-motion 1.55s ease-in-out infinite;
+}
+
 .kitty-svg-loading__image {
   display: block;
+}
+
+@keyframes kitty-svg-loading-motion {
+  0%,
+  100% {
+    opacity: 0.6;
+    transform: translateY(0);
+  }
+
+  50% {
+    opacity: 1;
+    transform: translateY(-8px);
+  }
 }

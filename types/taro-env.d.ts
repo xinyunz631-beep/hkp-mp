@@ -4,3 +4,7 @@ declare function definePageConfig<TConfig extends Record<string, unknown>>(confi
 
 declare module '*.scss';
 declare module '*.css';
+declare module '*.svg' {
+  const src: string;
+  export default src;
+}
