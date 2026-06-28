@@ -118,12 +118,18 @@ function isClaimableCouponPackage(
   return Array.isArray((couponPackage as BffCouponPackageView).coupons);
 }
 
+function normalizePackageActionText(actionText?: string) {
+  if (actionText?.includes('已达到领取上限')) return '已领取';
+  return actionText;
+}
+
 function toPackageCoupon(couponPackage: BffCouponPackageView): MemberCouponCenterCoupon {
   const firstCoupon = couponPackage.coupons?.[0];
   const templateNo = firstCoupon?.templateNo;
   const activityId = couponPackage.activityId;
   const claimable = couponPackage.claimable !== false && Boolean(templateNo || activityId);
   const disabledReason = couponPackage.reason || (templateNo || activityId ? undefined : '当前优惠券暂不可领取');
+  const normalizedDisabledReason = normalizePackageActionText(disabledReason);
 
   return {
     id: couponPackage.packageNo,
@@ -133,9 +139,9 @@ function toPackageCoupon(couponPackage: BffCouponPackageView): MemberCouponCente
     amountText: resolveTemplateAmountText(firstCoupon),
     thresholdText: resolveTemplateThresholdText(firstCoupon),
     validityText: resolveTemplateValidityText(firstCoupon),
-    actionText: claimable ? '立即领取' : disabledReason || '暂不可领',
+    actionText: claimable ? '立即领取' : normalizedDisabledReason || '暂不可领',
     claimable,
-    disabledReason,
+    disabledReason: normalizedDisabledReason,
     templateNo,
     activityId,
   };
