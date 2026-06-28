@@ -1,4 +1,6 @@
 import {
+  fetchBffOrderCenterPage,
+  fetchBffOrderPage,
   fetchBffOrderStatusCounts,
   fetchMergedBffOrderPage,
   type BffOrder,
@@ -167,16 +169,64 @@ function normalizeServerBadgeCounts(payload?: BffOrderStatusCounts): OrderStatus
   };
 }
 
-// 会员页订单红点优先读取后端轻量计数，未发布时再用真实订单和真实评价记录静默聚合。
+// 读取商城待评价订单页，老后端不支持聚合状态筛选时回退商城订单分页再本地过滤。
+function fetchMallPendingReviewOrderPage(page: number, pageSize: number) {
+  return fetchBffOrderCenterPage('MALL', page, pageSize, 'pendingReview', false)
+    .catch(() => fetchBffOrderPage('MALL', page, pageSize, false));
+}
+
+// 待评价红点只统计真实可评价的商城订单，避免门票、酒店完成态误亮评价入口。
+async function fetchMallPendingReviewBadgeCount(
+  reviewedMallItems: Set<string>,
+  reviewLookupReady: boolean,
+) {
+  if (!reviewLookupReady) return 0;
+
+  const seenOrderNos = new Set<string>();
+  let count = 0;
+  let page = 1;
+  let hasMore = true;
+  let fetchedPages = 0;
+
+  while (hasMore && fetchedPages < ORDER_BADGE_MAX_PAGES) {
+    const orderPage = await fetchMallPendingReviewOrderPage(page, ORDER_BADGE_PAGE_SIZE);
+    let newOrderCount = 0;
+
+    orderPage.orders.forEach((order) => {
+      const orderNo = normalizeString(order.orderNo);
+      if (!orderNo || seenOrderNos.has(orderNo)) return;
+
+      seenOrderNos.add(orderNo);
+      newOrderCount += 1;
+      if (resolveTabKey(order, reviewedMallItems, true) === 'pendingReview') {
+        count += 1;
+      }
+    });
+
+    fetchedPages += 1;
+    page = orderPage.page + 1;
+    hasMore = orderPage.hasMore && newOrderCount > 0;
+  }
+
+  return count;
+}
+
+// 会员页订单红点优先读取后端轻量计数，待评价单独按商城评价口径修正。
 export async function fetchOrderStatusBadgeCounts(): Promise<OrderStatusBadgeCounts> {
   const serverCounts = normalizeServerBadgeCounts(
     await fetchBffOrderStatusCounts('ALL', { showErrorToast: false }).catch(() => undefined),
   );
-  if (serverCounts) return serverCounts;
-
   const mallReviews = await fetchBffMallMyReviews().catch(() => undefined);
   const reviewLookupReady = Boolean(mallReviews);
   const reviewedMallItems = buildReviewedMallItemSet(mallReviews);
+
+  if (serverCounts) {
+    return {
+      ...serverCounts,
+      pendingReview: await fetchMallPendingReviewBadgeCount(reviewedMallItems, reviewLookupReady).catch(() => 0),
+    };
+  }
+
   const counts = emptyBadgeCounts();
   const seenOrderNos = new Set<string>();
   let page = 1;

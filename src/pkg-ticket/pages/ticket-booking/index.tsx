@@ -22,12 +22,17 @@ import {
   callWechatPhone,
   openWechatLocation,
   previewWechatImages,
+  showAppModal,
   showWechatConfirm,
   showWechatToast,
 } from '@/core/utils/wechat-actions';
 import { TicketRichText } from '@/pkg-ticket/components/TicketRichText';
 import { TicketSubmitFooter } from '@/pkg-ticket/components/TicketSubmitFooter';
-import { createTicketOrderDraft } from '@/pkg-ticket/services/order-draft';
+import {
+  createTicketOrderDraft,
+  TICKET_ORDER_SOURCE_OFFLINE_QR_FAST_BUY,
+  type TicketOrderDraftProduct,
+} from '@/pkg-ticket/services/order-draft';
 import {
   fetchTicketBookingData,
   type TicketBookingData,
@@ -171,6 +176,98 @@ function createInitialQuantities(products: TicketProduct[]) {
     result[product.id] = product.defaultQuantity ?? 0;
     return result;
   }, {});
+}
+
+// 安全解码小程序路由参数，兼容普通 query 和小程序码 scene 二次编码。
+function decodeTicketRouteParam(value: string) {
+  try {
+    return decodeURIComponent(value).trim();
+  } catch (error) {
+    return value.trim();
+  }
+}
+
+// 读取小程序码 scene 中的门票编号，允许 scene=id 或 scene=id=xxx 两类物料配置。
+function readOfflineFastBuyIdFromScene(scene?: string) {
+  const decodedScene = scene ? decodeTicketRouteParam(scene) : '';
+  if (!decodedScene) return '';
+  const pairs = decodedScene.split(/[&;]/).map((item) => item.split('='));
+  const idPair = pairs.find(([key]) => ['id', 'ticketId', 'productId', 'productCode', 'skuId'].includes(key));
+
+  if (idPair?.[1]) return decodeTicketRouteParam(idPair[1]);
+  if (!decodedScene.includes('=')) return decodedScene;
+  return '';
+}
+
+// 从当前门票预定页路由读取线下快速购票编号，路由 id 优先，scene 作为小程序码兼容兜底。
+function readOfflineFastBuyProductIdFromRoute() {
+  const params = Taro.getCurrentInstance().router?.params ?? {};
+  const directId = [
+    params.id,
+    params.ticketId,
+    params.productId,
+    params.productCode,
+    params.skuId,
+  ].find((value) => typeof value === 'string' && value.trim());
+
+  if (typeof directId === 'string') return decodeTicketRouteParam(directId);
+  return typeof params.scene === 'string' ? readOfflineFastBuyIdFromScene(params.scene) : '';
+}
+
+// 归一化门票编号匹配键，避免物料码大小写或前后空格导致命中失败。
+function normalizeTicketIdentityKey(value?: string) {
+  return decodeTicketRouteParam(value || '').toLowerCase();
+}
+
+// 根据线下物料码编号匹配当前已加载票种，多个规格命中时不自动下单。
+function resolveOfflineFastBuyProduct(products: TicketProduct[], routeProductId: string) {
+  const routeKey = normalizeTicketIdentityKey(routeProductId);
+  if (!routeKey) return { product: undefined, matchedCount: 0 };
+
+  const matchedProducts = products.filter((product) => (
+    product.identityKeys.some((key) => normalizeTicketIdentityKey(key) === routeKey)
+  ));
+
+  return {
+    product: matchedProducts.length === 1 ? matchedProducts[0] : undefined,
+    matchedCount: matchedProducts.length,
+  };
+}
+
+// 线下物料码快速购买只承接快速通票品，避免普通门票和年卡被二维码误触直跳确认单。
+function isOfflineFastBuyProduct(product: TicketProduct) {
+  return product.category === 'fastPass'
+    || String(product.fulfillmentType || '').toUpperCase() === 'LOCAL_FAST_PASS_VOUCHER';
+}
+
+// 将页面票种快照转换为确认单草稿商品，快速购买数量变更需要保留库存上限。
+function buildTicketDraftProduct(product: TicketProduct, quantity: number): TicketOrderDraftProduct {
+  return {
+    id: product.id,
+    productCode: product.productCode,
+    skuId: product.skuId,
+    skuName: product.skuName,
+    title: product.title,
+    imageSrc: product.imageSrc,
+    category: product.category,
+    price: product.price,
+    unitPriceCent: product.unitPriceCent,
+    quantity,
+    availableStock: product.availableStock,
+    maxQuantity: product.maxQuantity,
+    noticeText: product.noticeText,
+    travelerRoles: product.travelerRoles,
+    requiredFields: product.requiredFields,
+    mobileRequired: product.mobileRequired,
+    certificateRequired: product.certificateRequired,
+    verificationMethod: product.verificationMethod,
+    verificationMethods: product.verificationMethods,
+    fulfillmentType: product.fulfillmentType,
+    realNameRequired: product.realNameRequired,
+    entryMethods: product.entryMethods,
+    cardRule: product.cardRule,
+    usageInstructionHtml: product.usageInstructionHtml,
+  };
 }
 
 function TicketBookingHero({ imageCount, imageSrcs, onPreview }: TicketBookingHeroProps) {
@@ -411,6 +508,8 @@ const TicketBookingPage = observer(function TicketBookingPage() {
   const [sectionScrollIntoView, setSectionScrollIntoView] = useState('');
   const currentScrollTopRef = useRef(0);
   const pendingSectionKeyRef = useRef<TicketBookingSectionKey>();
+  const offlineFastBuyHandledKeyRef = useRef('');
+  const offlineFastBuySubmittingRef = useRef(false);
   const scrollLockTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const scrollIntoViewTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const pageRuntime = usePageRuntime({
@@ -543,6 +642,12 @@ const TicketBookingPage = observer(function TicketBookingPage() {
     };
   }, [bookingData, visibleSections]);
 
+  useEffect(() => {
+    if (!bookingData) return;
+
+    void handleOfflineFastBuyAfterLoad(bookingData);
+  }, [bookingData]);
+
   useEffect(() => () => {
     clearSectionScrollLock();
     if (scrollIntoViewTimerRef.current) {
@@ -673,33 +778,72 @@ const TicketBookingPage = observer(function TicketBookingPage() {
       selectedDate,
       coupons: [],
       addonQuantity,
-      products: selectedProducts.map((product) => ({
-        id: product.id,
-        productCode: product.productCode,
-        skuId: product.skuId,
-        skuName: product.skuName,
-        title: product.title,
-        imageSrc: product.imageSrc,
-        category: product.category,
-        price: product.price,
-        unitPriceCent: product.unitPriceCent,
-        quantity: quantities[product.id] ?? 0,
-        noticeText: product.noticeText,
-        travelerRoles: product.travelerRoles,
-        requiredFields: product.requiredFields,
-        mobileRequired: product.mobileRequired,
-        certificateRequired: product.certificateRequired,
-        verificationMethod: product.verificationMethod,
-        verificationMethods: product.verificationMethods,
-        fulfillmentType: product.fulfillmentType,
-        realNameRequired: product.realNameRequired,
-        entryMethods: product.entryMethods,
-        cardRule: product.cardRule,
-        usageInstructionHtml: product.usageInstructionHtml,
-      })),
+      products: selectedProducts.map((product) => buildTicketDraftProduct(product, quantities[product.id] ?? 0)),
     });
 
     navigateToMiniRoute(`${MINI_PACKAGE_ROUTES.ticketCheckout}?draftId=${encodeURIComponent(draft.id)}`);
+  }
+
+  // 线下物料码进入门票预定页后，只在当前数据加载完成时自动购买一次，避免返回页面重复生成草稿。
+  async function handleOfflineFastBuyAfterLoad(data: TicketBookingData) {
+    const routeProductId = readOfflineFastBuyProductIdFromRoute();
+    if (!routeProductId || offlineFastBuySubmittingRef.current) return;
+
+    const handledKey = routeProductId;
+    if (offlineFastBuyHandledKeyRef.current === handledKey) return;
+    offlineFastBuyHandledKeyRef.current = handledKey;
+
+    const { product, matchedCount } = resolveOfflineFastBuyProduct(data.products, routeProductId);
+    if (matchedCount > 1) {
+      await showAppModal({
+        title: '请手动选择票种',
+        content: '该二维码对应多个可选规格，请在当前页面选择具体票种后再提交订单。',
+        showCancel: false,
+      });
+      return;
+    }
+
+    if (!product) {
+      await showAppModal({
+        title: '暂不可购买',
+        content: '未找到该门票，或该门票今日暂不可售，请选择其他票种或咨询现场工作人员。',
+        showCancel: false,
+      });
+      return;
+    }
+
+    if (!isOfflineFastBuyProduct(product)) {
+      await showAppModal({
+        title: '暂不支持快速购买',
+        content: '该二维码当前仅支持快速通票品购买，请在页面内选择对应票种后提交订单。',
+        showCancel: false,
+      });
+      return;
+    }
+
+    if (!product.saleable || product.maxQuantity < 1) {
+      await showAppModal({
+        title: '暂不可购买',
+        content: product.stockText || '该门票今日暂不可售，请选择其他票种或咨询现场工作人员。',
+        showCancel: false,
+      });
+      return;
+    }
+
+    offlineFastBuySubmittingRef.current = true;
+    setQuantities((current) => ({ ...current, [product.id]: 1 }));
+
+    const draft = createTicketOrderDraft({
+      parkName: data.parkInfo.name,
+      selectedDate: data.parkInfo.travelDate,
+      coupons: [],
+      source: TICKET_ORDER_SOURCE_OFFLINE_QR_FAST_BUY,
+      products: [buildTicketDraftProduct(product, 1)],
+    });
+
+    navigateToMiniRoute(
+      `${MINI_PACKAGE_ROUTES.ticketCheckout}?draftId=${encodeURIComponent(draft.id)}&source=${encodeURIComponent(TICKET_ORDER_SOURCE_OFFLINE_QR_FAST_BUY)}`,
+    );
   }
 
   async function handleSubmit() {

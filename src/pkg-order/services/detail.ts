@@ -79,6 +79,14 @@ function isCompletedStatus(status?: string) {
   return ['FULFILLED', 'USED', 'COMPLETED', 'SUCCESS'].includes(String(status || '').toUpperCase());
 }
 
+// 判断订单是否包含年卡资产或年卡商品，年卡当前不开放会员端主动退款入口。
+function hasAnnualCardOrderSignal(order: BffOrder) {
+  const normalizedSceneType = String(order.sceneType || '').toUpperCase();
+  if (normalizedSceneType !== 'TICKET') return false;
+  return Boolean(order.annualCards?.length)
+    || (order.items || []).some((item) => hasAnnualCardItemSignal(item));
+}
+
 // 判断商城订单是否允许展示会员确认收货入口，最终可确认性以后端接口校验为准。
 function canConfirmMallReceive(order: BffOrder) {
   if (order.sceneType !== 'MALL') return false;
@@ -120,6 +128,7 @@ function resolveStatusText(order: BffOrder) {
 function resolvePrimaryAction(order: BffOrder): OrderDetailData['primaryActionType'] {
   const normalizedStatus = String(order.orderStatus || '').toUpperCase();
   if (isPendingPaymentStatus(normalizedStatus)) return 'pay';
+  if (hasAnnualCardOrderSignal(order)) return 'none';
   if (['PAID', 'WAIT_USE', 'FULFILLING'].includes(normalizedStatus)) {
     return order.sceneType === 'MALL' ? 'aftersale' : 'refund';
   }

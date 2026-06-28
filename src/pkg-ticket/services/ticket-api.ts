@@ -9,6 +9,7 @@ export interface BffTicketImageAsset {
 
 export interface BffTicketSkuRule {
   id: string;
+  skuId?: string;
   variantCode?: string;
   name: string;
   audience?: string;
@@ -32,6 +33,8 @@ export interface BffTicketSkuRule {
 }
 
 export interface BffTicketProduct {
+  id?: string;
+  productId?: string;
   productCode: string;
   title: string;
   subtitle?: string;

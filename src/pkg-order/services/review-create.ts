@@ -1,5 +1,5 @@
 import { uploadBffImage } from '@/core/services/bff-api';
-import { fetchBffOrderReviewDraft, submitBffOrderReview } from '@/core/services/bff-order-api';
+import { fetchBffOrderDetail, fetchBffOrderReviewDraft, submitBffOrderReview } from '@/core/services/bff-order-api';
 import { sanitizeMallRuntimeText, sanitizeMallRuntimeUrl } from '@/core/utils/mall-runtime';
 import type { OrderReviewCreateData } from './model';
 
@@ -9,6 +9,11 @@ const DEFAULT_MAX_LENGTH = 200;
 
 function normalizeString(value?: string) {
   return typeof value === 'string' ? value.trim() : '';
+}
+
+// 评价创建页只承接商城订单，门票、酒店和年卡订单不开放评价能力。
+function isMallReviewOrder(sceneType?: string) {
+  return String(sceneType || '').toUpperCase() === 'MALL';
 }
 
 function createBaseReviewData(orderId?: string, itemId?: string): OrderReviewCreateData {
@@ -39,6 +44,14 @@ export async function fetchReviewCreateData(orderId?: string, itemId?: string): 
   }
 
   try {
+    const order = await fetchBffOrderDetail(orderId, { showErrorToast: false });
+    if (!isMallReviewOrder(order.sceneType)) {
+      return {
+        ...baseData,
+        unavailableReason: '当前订单暂不支持评价',
+      };
+    }
+
     const draft = await fetchBffOrderReviewDraft(orderId, itemId, false);
     const submitTip = normalizeString(draft.submitTip) || '提交后将进入审核，审核通过后展示在商品详情页';
     return {

@@ -222,6 +222,15 @@ function resolveOrderActions(order: BffOrder, reviewedMallItems: Set<string>, re
   return [{ text: '查看详情', tone: 'default' }];
 }
 
+// 待评价页签只展示真实可评价的商城订单，门票、酒店和已评价商城订单不进入该列表。
+function shouldShowOrderInTab(order: BffOrder, tabKey: string, reviewedMallItems: Set<string>, reviewLookupReady: boolean) {
+  if (tabKey !== 'pendingReview') return true;
+  return order.sceneType === 'MALL'
+    && isCompletedStatus(order.orderStatus)
+    && reviewLookupReady
+    && !hasReviewedMallOrder(order, reviewedMallItems);
+}
+
 function mapOrderItem(order: BffOrder, reviewedMallItems: Set<string>, reviewLookupReady: boolean): OrderHomeItemData {
   const merchantName = resolveMerchantName(order);
   const firstItem = order.items?.[0];
@@ -298,15 +307,19 @@ export async function fetchOrderHomeData(options: FetchOrderHomeDataOptions = {}
   const reviewLookupReady = Boolean(mallReviews);
   const reviewedMallItems = buildReviewedMallItemSet(mallReviews);
   const nextSections = sortBffOrdersByCreatedAt(orders.orders)
+    .filter((order) => shouldShowOrderInTab(order, tabKey, reviewedMallItems, reviewLookupReady))
     .map((order) => mapOrderSection(order, reviewedMallItems, reviewLookupReady));
   const sections = mergeOrderSections(existingSections, nextSections);
   const hasNewSections = sections.length > existingSections.length;
+  const hasMore = tabKey === 'pendingReview'
+    ? orders.hasMore
+    : orders.hasMore && hasNewSections;
 
   return {
     tabs: normalizeOrderTabs(orders.tabs, orders.tabCounts),
     sections,
     page: orders.page,
     pageSize: orders.pageSize,
-    hasMore: orders.hasMore && hasNewSections,
+    hasMore,
   };
 }

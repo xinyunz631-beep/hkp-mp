@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import Taro from '@tarojs/taro';
-import { Input, Text, View } from '@tarojs/components';
+import { Input, ScrollView, Text, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
 import { AppBottomSheet } from '@/core/components/AppBottomSheet';
 import { AppIcon } from '@/core/components/AppIcon';
@@ -19,10 +19,12 @@ import { showWechatConfirm, showWechatToast } from '@/core/utils/wechat-actions'
 import { TicketRichText } from '@/pkg-ticket/components/TicketRichText';
 import { TicketSubmitFooter } from '@/pkg-ticket/components/TicketSubmitFooter';
 import { fetchCheckoutData, type TicketCheckoutPageData } from '@/pkg-ticket/services/checkout';
+import { fetchTicketBookingData, type TicketProduct } from '@/pkg-ticket/services/ticket-booking';
 import {
   persistTicketCheckoutPendingOrder,
   isTicketOrderIdentityRequired,
   submitTicketOrderDraft,
+  TICKET_ORDER_SOURCE_OFFLINE_QR_FAST_BUY,
   updateTicketOrderDraft,
   type TicketOrderDraftProduct,
   type TicketOrderTraveler,
@@ -143,11 +145,25 @@ function toTicketAmountCent(value?: number) {
   return Math.round((Number(value) || 0) * 100);
 }
 
+// 读取门票商品行单价，后端确认单单价优先，缺逐行单价时用草稿价格快照兜底展示。
+function resolveTicketProductUnitPriceCent(product: TicketOrderDraftProduct) {
+  const unitPriceCent = Number(product.unitPriceCent);
+  if (Number.isFinite(unitPriceCent) && unitPriceCent >= 0) return unitPriceCent;
+
+  return toTicketAmountCent(product.price);
+}
+
+// 格式化门票商品行单价，确认单商品列表保持两位小数展示。
+function formatTicketProductUnitPrice(product: TicketOrderDraftProduct) {
+  return `¥${(resolveTicketProductUnitPriceCent(product) / 100).toFixed(2)}`;
+}
+
 // 判断门票提交前确认结果是否发生支付关键字段变化。
 function hasTicketCheckoutChanged(currentData: TicketCheckoutPageData, nextData: TicketCheckoutPageData) {
   return toTicketAmountCent(currentData.payableAmount) !== toTicketAmountCent(nextData.payableAmount)
     || toTicketAmountCent(currentData.discountAmount) !== toTicketAmountCent(nextData.discountAmount)
     || toTicketAmountCent(currentData.ticketItem.price) !== toTicketAmountCent(nextData.ticketItem.price)
+    || currentData.ticketItem.quantity !== nextData.ticketItem.quantity
     || currentData.draft?.selectedCouponId !== nextData.draft?.selectedCouponId
     || currentData.draftMissing !== nextData.draftMissing;
 }
@@ -160,10 +176,140 @@ function isFastPassOnlyOrder(products: TicketOrderDraftProduct[]) {
   ));
 }
 
+// 安全解码确认单来源参数，兼容小程序路由二次编码。
+function decodeCheckoutRouteParam(value?: string) {
+  if (!value) return '';
+  try {
+    return decodeURIComponent(value).trim();
+  } catch (error) {
+    return value.trim();
+  }
+}
+
+// 判断当前确认单是否来自线下快速购票入口，草稿来源优先于路由兜底。
+function isOfflineQrFastBuyCheckout(source?: string, routeSource?: string) {
+  return source === TICKET_ORDER_SOURCE_OFFLINE_QR_FAST_BUY
+    || routeSource === TICKET_ORDER_SOURCE_OFFLINE_QR_FAST_BUY;
+}
+
+// 判断快速购买确认单中哪些票品允许改数量，避免普通门票确认单误开放编辑。
+function canEditOfflineFastBuyProduct(sourceEnabled: boolean, product: TicketOrderDraftProduct) {
+  if (!sourceEnabled) return false;
+  return product.category === 'fastPass'
+    || String(product.fulfillmentType || '').toUpperCase() === 'LOCAL_FAST_PASS_VOUCHER';
+}
+
+// 读取快速购买数量上限，优先沿用预定页当日库存和限购的交集。
+function resolveOfflineFastBuyQuantityMax(product: TicketOrderDraftProduct) {
+  const maxQuantity = Number(product.maxQuantity);
+  const availableStock = Number(product.availableStock);
+  const candidates = [maxQuantity, availableStock].filter((value) => Number.isFinite(value) && value > 0);
+
+  return candidates.length ? Math.min(...candidates) : 99;
+}
+
+// 生成快速购买数量上限提示，和门票预定页加号反馈保持一致。
+function resolveOfflineFastBuyQuantityMaxText(product: TicketOrderDraftProduct) {
+  const maxQuantity = resolveOfflineFastBuyQuantityMax(product);
+  return maxQuantity > 0 ? `最多可购 ${maxQuantity} 张` : '';
+}
+
+// 将快速购买数量限制在 1 到库存上限内，防止输入框产生 0 或小数。
+function clampOfflineFastBuyQuantity(product: TicketOrderDraftProduct, value: number) {
+  const maxQuantity = resolveOfflineFastBuyQuantityMax(product);
+  const normalizedValue = Math.floor(Number(value) || 1);
+
+  return Math.min(maxQuantity, Math.max(1, normalizedValue));
+}
+
+// 判断推荐区是否展示快速通商品，和线下快速购买入口保持同一类目口径。
+function isFastPassRecommendationProduct(product: TicketProduct) {
+  return product.category === 'fastPass'
+    || String(product.fulfillmentType || '').toUpperCase() === 'LOCAL_FAST_PASS_VOUCHER';
+}
+
+// 读取推荐快速通数量上限，沿用门票预定页的当日可售和限购结果。
+function resolveFastPassRecommendationMaxQuantity(product: TicketProduct) {
+  if (!product.saleable) return 0;
+  const maxQuantity = Math.floor(Number(product.maxQuantity) || 0);
+  return Math.max(0, maxQuantity);
+}
+
+// 判断快速通推荐商品是否可加购，不可售或无库存限购时不进入推荐区。
+function isAddableFastPassRecommendationProduct(product: TicketProduct) {
+  return isFastPassRecommendationProduct(product)
+    && resolveFastPassRecommendationMaxQuantity(product) > 0;
+}
+
+// 生成结算页推荐列表，只排除初始化时已选票品，后续推荐区加购的票品仍保留展示。
+function buildFastPassRecommendations(products: TicketProduct[], initialSelectedProductIds: string[]) {
+  const initialSelectedIdSet = new Set(initialSelectedProductIds);
+
+  return products
+    .filter(isAddableFastPassRecommendationProduct)
+    .filter((product) => !initialSelectedIdSet.has(product.id));
+}
+
+// 生成推荐快速通数量上限提示，和门票预定页加号反馈保持一致。
+function resolveFastPassRecommendationMaxText(product: TicketProduct) {
+  const maxQuantity = resolveFastPassRecommendationMaxQuantity(product);
+  return maxQuantity > 0 ? `最多可购 ${maxQuantity} 张` : '';
+}
+
+// 将推荐快速通数量限制在 0 到库存上限内，0 表示从当前确认单移除该票品。
+function clampFastPassRecommendationQuantity(product: TicketProduct, value: number) {
+  const maxQuantity = resolveFastPassRecommendationMaxQuantity(product);
+  const normalizedValue = Math.floor(Number(value) || 0);
+
+  return Math.min(maxQuantity, Math.max(0, normalizedValue));
+}
+
+// 将推荐快速通商品快照转换为确认单草稿商品，确保后续统一确认接口能识别 SKU。
+function buildFastPassRecommendationDraftProduct(product: TicketProduct, quantity: number): TicketOrderDraftProduct {
+  return {
+    id: product.id,
+    productCode: product.productCode,
+    skuId: product.skuId,
+    skuName: product.skuName,
+    title: product.title,
+    imageSrc: product.imageSrc,
+    category: product.category,
+    price: product.price,
+    unitPriceCent: product.unitPriceCent,
+    quantity,
+    availableStock: product.availableStock,
+    maxQuantity: product.maxQuantity,
+    noticeText: product.noticeText,
+    travelerRoles: product.travelerRoles,
+    requiredFields: product.requiredFields,
+    mobileRequired: product.mobileRequired,
+    certificateRequired: product.certificateRequired,
+    verificationMethod: product.verificationMethod,
+    verificationMethods: product.verificationMethods,
+    fulfillmentType: product.fulfillmentType,
+    realNameRequired: product.realNameRequired,
+    entryMethods: product.entryMethods,
+    cardRule: product.cardRule,
+    usageInstructionHtml: product.usageInstructionHtml,
+  };
+}
+
+// 格式化推荐快速通单价，优先使用后端返回的分单位价格。
+function formatFastPassRecommendationPrice(product: TicketProduct) {
+  const unitPriceCent = Number(product.unitPriceCent);
+  if (Number.isFinite(unitPriceCent) && unitPriceCent >= 0) {
+    return `¥${(unitPriceCent / 100).toFixed(2)}`;
+  }
+
+  return `¥${(Number(product.price) || 0).toFixed(2)}`;
+}
+
 const CheckoutPage = observer(function CheckoutPage() {
   const [draftId, setDraftId] = useState('');
+  const [routeSource, setRouteSource] = useState('');
   const [addonQuantity, setAddonQuantity] = useState(1);
   const [selectedDate, setSelectedDate] = useState('');
+  const [fastPassRecommendations, setFastPassRecommendations] = useState<TicketProduct[]>([]);
   const [couponPopupVisible, setCouponPopupVisible] = useState(false);
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [discountPopupVisible, setDiscountPopupVisible] = useState(false);
@@ -205,7 +351,9 @@ const CheckoutPage = observer(function CheckoutPage() {
   });
   const pageRuntime = usePageRuntime({
     initPage: async () => {
-      const nextDraftId = Taro.getCurrentInstance().router?.params?.draftId || '';
+      const routeParams = Taro.getCurrentInstance().router?.params ?? {};
+      const nextDraftId = routeParams.draftId || '';
+      const nextRouteSource = decodeCheckoutRouteParam(routeParams.source);
       const nextData = await checkoutController.load({ draftId: nextDraftId });
       const nextContact = mergeContactWithMemberSeed({
         name: nextData.contact.name,
@@ -229,12 +377,17 @@ const CheckoutPage = observer(function CheckoutPage() {
         travelers: nextTravelers,
       };
       setDraftId(nextDraftId);
+      setRouteSource(nextRouteSource);
       setAddonQuantity(nextData.addonItem.quantity);
       setSelectedDate(nextData.ticketItem.travelDate);
       setTravelerForms(nextTravelers);
       setSubmitAttempted(false);
       setContactForm(nextContact);
       checkoutController.setData(normalizedData);
+      void loadFastPassRecommendations(
+        nextData.ticketItem.travelDate,
+        (nextData.draft?.products ?? []).map((product) => product.id),
+      );
       if (nextDraftId && !nextData.draftMissing) {
         updateTicketOrderDraft(nextDraftId, {
           contact: nextContact,
@@ -331,6 +484,131 @@ const CheckoutPage = observer(function CheckoutPage() {
   function handleAddonQuantityChange(value: number) {
     setAddonQuantity(value);
     if (draftId) updateTicketOrderDraft(draftId, { addonQuantity: value });
+  }
+
+  // 拉取同一游玩日期的快速通推荐商品，失败时不阻断确认单主流程。
+  async function loadFastPassRecommendations(travelDate: string, initialSelectedProductIds: string[]) {
+    if (!travelDate) {
+      setFastPassRecommendations([]);
+      return;
+    }
+
+    try {
+      const bookingData = await fetchTicketBookingData({ travelDate });
+      setFastPassRecommendations(buildFastPassRecommendations(bookingData.products, initialSelectedProductIds));
+    } catch (error) {
+      setFastPassRecommendations([]);
+    }
+  }
+
+  // 读取推荐卡片当前在草稿中的数量，用于主商品区和推荐区双向同步。
+  function resolveFastPassRecommendationQuantity(productId: string) {
+    return checkoutData?.draft?.products.find((product) => product.id === productId)?.quantity ?? 0;
+  }
+
+  // 票品数量变化后统一刷新确认单，避免结算页自己计算优惠和应付金额。
+  async function refreshTicketProductsAfterQuantityChange(
+    nextProducts: TicketOrderDraftProduct[],
+    previousProducts: TicketOrderDraftProduct[],
+    errorText: string,
+  ) {
+    if (!draftId) return;
+
+    updateTicketOrderDraft(draftId, {
+      products: nextProducts,
+      selectedCouponId,
+      addonQuantity,
+      contact: contactForm,
+      travelers: travelerForms,
+    });
+
+    try {
+      const nextData = await pageRuntime.withLoading(() => fetchCheckoutData(draftId, selectedCouponId));
+      checkoutController.setData(nextData);
+      if (nextData.couponNoticeText) await showWechatToast(nextData.couponNoticeText);
+    } catch (error) {
+      updateTicketOrderDraft(draftId, {
+        products: previousProducts,
+        selectedCouponId,
+        addonQuantity,
+        contact: contactForm,
+        travelers: travelerForms,
+      });
+      await showWechatToast(resolveErrorMessage(error, errorText));
+    }
+  }
+
+  // 快速购买数量已达上限时继续点击加号，给出和预定页一致的库存/限购反馈。
+  function handleOfflineFastBuyMaxQuantityClick(product: TicketOrderDraftProduct) {
+    const maxQuantityText = resolveOfflineFastBuyQuantityMaxText(product);
+    if (!maxQuantityText) return;
+    void showWechatToast(maxQuantityText);
+  }
+
+  // 线下快速购票在确认单内调整票品数量后，重新走统一订单确认刷新金额与优惠。
+  async function handleOfflineFastBuyQuantityChange(product: TicketOrderDraftProduct, value: number) {
+    if (!draftId || !checkoutData?.draft) return;
+    if (Number(value) > resolveOfflineFastBuyQuantityMax(product)) {
+      await showWechatToast(resolveOfflineFastBuyQuantityMaxText(product));
+    }
+    const nextQuantity = clampOfflineFastBuyQuantity(product, value);
+    if (nextQuantity === product.quantity) return;
+
+    const previousProducts = checkoutData.draft.products;
+    const nextProducts = previousProducts.map((item) => (
+      item.id === product.id ? { ...item, quantity: nextQuantity } : item
+    ));
+
+    await refreshTicketProductsAfterQuantityChange(nextProducts, previousProducts, '门票数量暂不可调整，请稍后再试');
+  }
+
+  // 推荐快速通不可售时点击步进器区域，给出和门票预定页一致的原因反馈。
+  function handleFastPassRecommendationUnavailableClick(product: TicketProduct) {
+    const unavailableReason = product.stockText || '当前票种暂不可订';
+    void showWechatToast(`${unavailableReason}，请选择其他游玩日期`);
+  }
+
+  // 推荐快速通数量已达上限时继续点击加号，给出库存/限购反馈。
+  function handleFastPassRecommendationMaxQuantityClick(product: TicketProduct) {
+    const maxQuantityText = resolveFastPassRecommendationMaxText(product);
+    if (!maxQuantityText) return;
+    void showWechatToast(maxQuantityText);
+  }
+
+  // 推荐快速通加减后写入草稿并刷新确认单，支持新增、改量和移除推荐票品。
+  async function handleFastPassRecommendationQuantityChange(product: TicketProduct, value: number) {
+    if (!draftId || !checkoutData?.draft) return;
+    const maxQuantity = resolveFastPassRecommendationMaxQuantity(product);
+    if (maxQuantity < 1) {
+      handleFastPassRecommendationUnavailableClick(product);
+      return;
+    }
+
+    if (Number(value) > maxQuantity) {
+      await showWechatToast(resolveFastPassRecommendationMaxText(product));
+    }
+
+    const nextQuantity = clampFastPassRecommendationQuantity(product, value);
+    const previousProducts = checkoutData.draft.products;
+    const currentProduct = previousProducts.find((item) => item.id === product.id);
+    if ((currentProduct?.quantity ?? 0) === nextQuantity) return;
+
+    const nextProducts = currentProduct
+      ? nextQuantity > 0
+        ? previousProducts.map((item) => (
+            item.id === product.id ? { ...item, quantity: nextQuantity } : item
+          ))
+        : previousProducts.filter((item) => item.id !== product.id)
+      : nextQuantity > 0
+        ? [...previousProducts, buildFastPassRecommendationDraftProduct(product, nextQuantity)]
+        : previousProducts;
+
+    if (nextProducts.length < 1) {
+      await showWechatToast('请至少保留 1 个票品');
+      return;
+    }
+
+    await refreshTicketProductsAfterQuantityChange(nextProducts, previousProducts, '快速通数量暂不可调整，请稍后再试');
   }
 
   async function validateTravelers(nextTravelers: TicketOrderTraveler[]) {
@@ -445,6 +723,7 @@ const CheckoutPage = observer(function CheckoutPage() {
     if (!checkoutData) return null;
 
     const selectedProducts = checkoutData.draft?.products ?? [];
+    const offlineFastBuyEnabled = isOfflineQrFastBuyCheckout(checkoutData.draft?.source, routeSource);
     const totalTicketQuantity = selectedProducts.reduce((total, product) => total + product.quantity, 0)
       || checkoutData.ticketItem.quantity;
     const activeTraveler = travelerForms[0];
@@ -513,19 +792,42 @@ const CheckoutPage = observer(function CheckoutPage() {
                 ) : null}
 
                 <View className="_pg-product-list">
-                  {selectedProducts.map((product) => (
-                    <View className="_pg-product" key={product.id}>
-                      <AppIcon name="ticket" className="_pg-product_icon" size={15} color="#e45c98" />
-                      <View className="_pg-product_main">
-                        <Text className="_pg-product_title">{product.title}</Text>
-                        <View className="_pg-product_notice" onClick={() => setNoticeProduct(product)}>
-                          <Text>预定须知</Text>
-                          <AppIcon name="ask" className="_pg-product_notice-icon" size={11} color="#8a94a6" />
+                  {selectedProducts.map((product) => {
+                    const editableQuantity = canEditOfflineFastBuyProduct(offlineFastBuyEnabled, product);
+                    const maxQuantity = resolveOfflineFastBuyQuantityMax(product);
+                    const reachedMaxQuantity = editableQuantity && maxQuantity > 0 && product.quantity >= maxQuantity;
+
+                    return (
+                      <View className="_pg-product" key={product.id}>
+                        <AppIcon name="ticket" className="_pg-product_icon" size={15} color="#e45c98" />
+                        <View className="_pg-product_main">
+                          <Text className="_pg-product_title">{product.title}</Text>
+                          <View className="_pg-product_notice" onClick={() => setNoticeProduct(product)}>
+                            <Text>预定须知</Text>
+                            <AppIcon name="ask" className="_pg-product_notice-icon" size={11} color="#8a94a6" />
+                          </View>
+                        </View>
+                        <View className="_pg-product_aside">
+                          <Text className="_pg-product_amount">{formatTicketProductUnitPrice(product)}</Text>
+                          {editableQuantity ? (
+                            <View className="_pg-product_stepper">
+                              <QuantityStepper
+                                value={product.quantity}
+                                min={1}
+                                max={resolveOfflineFastBuyQuantityMax(product)}
+                                onChange={(value) => void handleOfflineFastBuyQuantityChange(product, value)}
+                              />
+                              {reachedMaxQuantity ? (
+                                <View className="_pg-product_stepper-plus-mask" onClick={() => handleOfflineFastBuyMaxQuantityClick(product)} />
+                              ) : null}
+                            </View>
+                          ) : (
+                            <Text className="_pg-product_count">x{product.quantity}</Text>
+                          )}
                         </View>
                       </View>
-                      <Text className="_pg-product_count">x{product.quantity}</Text>
-                    </View>
-                  ))}
+                    );
+                  })}
                 </View>
 
                 {hasAddonItem ? (
@@ -630,6 +932,53 @@ const CheckoutPage = observer(function CheckoutPage() {
               <View className="_pg-check-tip">
                 <AppIcon name="check" className="_pg-check-tip_icon" size={14} color="#e45c98" />
                 <Text>请确认所填信息准确无误，提交后信息不可更改。如有疑问请联系客服。</Text>
+              </View>
+            ) : null}
+
+            {fastPassRecommendations.length > 0 ? (
+              <View className="_pg-card _pg-card--recommend">
+                <View className="_pg-recommend">
+                  <Text className="_pg-recommend_title">更多推荐</Text>
+                  <ScrollView className="_pg-recommend_scroll" scrollX enhanced showScrollbar={false}>
+                    <View className="_pg-recommend_list">
+                      {fastPassRecommendations.map((product) => {
+                        const quantity = resolveFastPassRecommendationQuantity(product.id);
+                        const maxQuantity = resolveFastPassRecommendationMaxQuantity(product);
+                        const reachedMaxQuantity = product.saleable && maxQuantity > 0 && quantity >= maxQuantity;
+                        const disabled = !product.saleable || maxQuantity < 1;
+
+                        return (
+                          <View
+                            className={`_pg-recommend_item ${disabled ? '_pg-recommend_item--disabled' : ''}`}
+                            key={product.id}
+                            onClick={disabled ? () => handleFastPassRecommendationUnavailableClick(product) : undefined}
+                          >
+                            <Text className="_pg-recommend_name">{product.title}</Text>
+                            <View className="_pg-recommend_footer">
+                              <Text className="_pg-recommend_price">{formatFastPassRecommendationPrice(product)}</Text>
+                              <View className="_pg-recommend_stepper">
+                                <QuantityStepper
+                                  value={quantity}
+                                  min={0}
+                                  max={maxQuantity}
+                                  disabled={disabled}
+                                  onChange={(value) => void handleFastPassRecommendationQuantityChange(product, value)}
+                                />
+                                {reachedMaxQuantity ? (
+                                  <View
+                                    className="_pg-recommend_stepper-plus-mask"
+                                    onClick={() => handleFastPassRecommendationMaxQuantityClick(product)}
+                                  />
+                                ) : null}
+                                {disabled ? <View className="_pg-recommend_stepper-mask" /> : null}
+                              </View>
+                            </View>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  </ScrollView>
+                </View>
               </View>
             ) : null}
 

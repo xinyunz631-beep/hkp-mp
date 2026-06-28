@@ -1,4 +1,4 @@
-import { confirmBffOrder, type BffOrderConfirmResponse } from '@/core/services/bff-order-api';
+import { confirmBffOrder, type BffOrderConfirmResponse, type BffOrderItem } from '@/core/services/bff-order-api';
 import { fetchBffCouponAvailable, getBffAvailableCouponList } from '@/core/services/bff-coupon-api';
 import {
   applyConfirmedCouponFacts,
@@ -104,6 +104,40 @@ function buildTicketDiscountDetails(confirmation: BffOrderConfirmResponse): Tick
     .filter((item): item is TicketCheckoutDiscountDetail => Boolean(item));
 }
 
+// 从确认单明细里匹配当前草稿票品，优先按行号，其次兼容商品和 SKU 编号。
+function findConfirmedTicketItem(
+  product: TicketOrderDraft['products'][number],
+  index: number,
+  confirmationItems?: BffOrderItem[],
+) {
+  if (!confirmationItems?.length) return undefined;
+  const lineNo = String(index + 1);
+
+  return confirmationItems.find((item) => item.lineNo === lineNo)
+    || confirmationItems.find((item) => (
+      item.itemId === (product.productCode || product.id)
+      && (!item.skuId || !product.skuId || item.skuId === product.skuId)
+    ))
+    || confirmationItems.find((item) => item.skuId && item.skuId === product.skuId);
+}
+
+// 用后端确认单逐行单价刷新本地票品展示金额，接口缺明细时保留预定页价格快照。
+function mergeTicketProductsWithConfirmedItems(
+  products: TicketOrderDraft['products'],
+  confirmation: BffOrderConfirmResponse,
+) {
+  return products.map((product, index) => {
+    const confirmedItem = findConfirmedTicketItem(product, index, confirmation.items);
+    if (!confirmedItem) return product;
+    const unitPriceCent = parseNumberLike(confirmedItem.unitPriceCent);
+
+    return {
+      ...product,
+      ...(typeof unitPriceCent === 'number' && unitPriceCent >= 0 ? { unitPriceCent } : {}),
+    };
+  });
+}
+
 // 生成当前确认单可展示的票务日期，真实可售性由后端确认接口校验。
 function buildCheckoutDates(selectedDate: string): HkpDateOption[] {
   return [
@@ -202,6 +236,7 @@ export async function fetchCheckoutData(draftId?: string, selectedCouponId?: str
   const confirmedCouponId = selectedCoupon?.id ?? couponState.selectedCouponId;
   const nextDraft = {
     ...draft,
+    products: mergeTicketProductsWithConfirmedItems(draft.products, confirmation),
     selectedCouponId: confirmedCouponId,
     coupons,
   };

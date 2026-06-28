@@ -82,7 +82,7 @@ function resolveOrderEmptyCopy(activeTabKey: string) {
   if (activeTabKey === 'pendingReview') {
     return {
       title: '暂无待评价订单',
-      description: '完成游玩、入住或收货后，可评价的订单会展示在这里。',
+      description: '商城订单完成收货后，可评价的订单会展示在这里。',
     };
   }
 

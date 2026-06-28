@@ -59,6 +59,7 @@ export interface TicketBookingParkInfo {
 
 export interface TicketProduct {
   id: string;
+  identityKeys: string[];
   productCode: string;
   skuId: string;
   skuName: string;
@@ -430,6 +431,21 @@ function compactTags(tags: Array<string | undefined>) {
   return Array.from(new Set(tags.filter((tag): tag is string => Boolean(tag))));
 }
 
+// 汇总后端商品、SKU 和前端组合编号，线下物料码只要命中唯一编号即可承接快速购买。
+function buildTicketProductIdentityKeys(item: BffTicketProduct, sku: BffTicketSkuRule, productId: string) {
+  return compactTags([
+    productId,
+    item.id,
+    item.productId,
+    item.productCode,
+    sku.id,
+    sku.skuId,
+    sku.variantCode,
+    `${item.productCode}__${sku.id}`,
+    sku.variantCode ? `${item.productCode}__${sku.variantCode}` : undefined,
+  ]);
+}
+
 function compactRichTextSegments(rules: Array<string | undefined>) {
   return rules.filter((rule): rule is string => typeof rule === 'string' && Boolean(rule.trim()));
 }
@@ -457,6 +473,7 @@ function normalizeTicketProduct(
   inventoryDay?: BffTicketInventoryDay,
 ): TicketProduct | undefined {
   if (!item.productCode || !item.title || !sku.id) return undefined;
+  const productId = `${item.productCode}__${sku.id}`;
   const availableStock = inventoryDay?.availableStock ?? 0;
   const unitPriceCent = inventoryDay?.skuId === PRODUCT_CALENDAR_SUMMARY_SKU_ID
     ? inventoryDay?.price ?? sku.basePrice ?? item.minPrice ?? 0
@@ -481,7 +498,8 @@ function normalizeTicketProduct(
       : category !== 'fastPass';
 
   return {
-    id: `${item.productCode}__${sku.id}`,
+    id: productId,
+    identityKeys: buildTicketProductIdentityKeys(item, sku, productId),
     productCode: item.productCode,
     skuId: sku.id,
     skuName,

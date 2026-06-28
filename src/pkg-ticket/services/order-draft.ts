@@ -21,6 +21,8 @@ import { sanitizeMallRuntimeUrl } from '@/core/utils/mall-runtime';
 import { buildTicketCheckoutOrderRequest } from './checkout-adapter';
 import type { TicketCoupon } from './ticket-booking';
 
+export const TICKET_ORDER_SOURCE_OFFLINE_QR_FAST_BUY = 'offlineQrFastBuy';
+
 export interface TicketOrderDraftProduct {
   id: string;
   productCode?: string;
@@ -32,6 +34,8 @@ export interface TicketOrderDraftProduct {
   price: number;
   unitPriceCent?: number;
   quantity: number;
+  availableStock?: number;
+  maxQuantity?: number;
   noticeText: string;
   travelerRoles?: string[];
   requiredFields?: string[];
@@ -84,6 +88,7 @@ export interface TicketOrderDraft {
   products: TicketOrderDraftProduct[];
   coupons: TicketCoupon[];
   selectedCouponId?: string;
+  source?: string;
   addonQuantity: number;
   contact: TicketOrderContact;
   travelers: TicketOrderTraveler[];
@@ -98,6 +103,7 @@ export interface CreateTicketOrderDraftPayload {
   products: TicketOrderDraftProduct[];
   coupons: TicketCoupon[];
   selectedCouponId?: string;
+  source?: string;
   addonQuantity?: number;
 }
 
@@ -481,6 +487,7 @@ export function createTicketOrderDraft(payload: CreateTicketOrderDraftPayload) {
     products: payload.products,
     coupons: payload.coupons,
     selectedCouponId: payload.selectedCouponId,
+    source: payload.source,
     addonQuantity: payload.addonQuantity ?? 0,
     contact,
     travelers: createTicketOrderTravelers(payload.products, contact),
