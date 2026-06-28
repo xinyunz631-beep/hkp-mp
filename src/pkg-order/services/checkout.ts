@@ -1,9 +1,11 @@
 import { confirmBffOrder, type BffOrderConfirmResponse } from '@/core/services/bff-order-api';
 import { fetchBffCouponAvailable } from '@/core/services/bff-coupon-api';
 import {
+  applyConfirmedCouponFacts,
   buildCheckoutPendingOrder,
   canReuseCheckoutPendingOrder,
   createCheckoutRequestFingerprint,
+  getCheckoutPromotionCouponSummaries,
   isCheckoutCouponSummary,
   normalizeCheckoutAmounts,
   restoreCheckoutPendingResult,
@@ -149,28 +151,6 @@ function buildCheckoutProducts(
   });
 }
 
-// 将确认单拒绝券事实合并到券列表，避免可用券接口与最终试算结果短暂不一致时仍显示已选。
-function applyConfirmedCouponFacts(
-  coupons: NonNullable<ReturnType<typeof toCheckoutCouponSummary>>[],
-  couponState: ReturnType<typeof resolveCheckoutCouponState>,
-) {
-  const rejectedCouponMap = new Map(couponState.rejectedCoupons.map((coupon) => [
-    coupon.couponNo,
-    coupon.unavailableReason || coupon.reason || '该优惠券暂不可用',
-  ]));
-
-  return coupons.map((coupon) => {
-    const rejectedReason = rejectedCouponMap.get(coupon.id);
-    if (!rejectedReason) return coupon;
-
-    return {
-      ...coupon,
-      status: 'disabled' as const,
-      tag: sanitizeMallRuntimeText(rejectedReason) || coupon.tag,
-    };
-  });
-}
-
 function buildReadonlyCheckoutData(
   draft: MallCheckoutDraft,
   address: Awaited<ReturnType<typeof resolveMallCheckoutAddress>>,
@@ -269,9 +249,13 @@ export async function fetchCheckoutData(options: FetchCheckoutDataOptions = {}) 
       .map((coupon) => toCheckoutCouponSummary(coupon))
       .filter(isCheckoutCouponSummary),
     couponState,
+    {
+      confirmedCoupons: getCheckoutPromotionCouponSummaries(confirmation),
+      sanitizeReason: sanitizeMallRuntimeText,
+    },
   );
   const selectedCoupon = coupons.find((coupon) => coupon.id === couponState.selectedCouponId && coupon.status === 'available');
-  const confirmedCouponId = selectedCoupon?.id;
+  const confirmedCouponId = selectedCoupon?.id ?? couponState.selectedCouponId;
 
   if (Object.prototype.hasOwnProperty.call(options, 'selectedCouponId')) {
     updateMallCheckoutDraft(draft.id, { selectedCouponId: confirmedCouponId });

@@ -1,6 +1,8 @@
 import { confirmBffOrder, type BffOrderConfirmResponse } from '@/core/services/bff-order-api';
 import { fetchBffCouponAvailable, getBffAvailableCouponList } from '@/core/services/bff-coupon-api';
 import {
+  applyConfirmedCouponFacts,
+  getCheckoutPromotionCouponSummaries,
   isCheckoutCouponSummary,
   normalizeCheckoutAmounts,
   resolveCheckoutCouponState,
@@ -186,12 +188,18 @@ export async function fetchCheckoutData(draftId?: string, selectedCouponId?: str
     visitDate: draft.selectedDate,
   });
   const totalQuantity = draft.products.reduce((total, product) => total + product.quantity, 0);
-  const coupons = getBffAvailableCouponList(availableCouponsResponse)
-    .map((coupon) => toCheckoutCouponSummary(coupon))
-    .filter(isCheckoutCouponSummary) as TicketCoupon[];
   const couponState = resolveCheckoutCouponState(confirmation, resolvedSelectedCouponId);
+  const coupons = applyConfirmedCouponFacts(
+    getBffAvailableCouponList(availableCouponsResponse)
+      .map((coupon) => toCheckoutCouponSummary(coupon))
+      .filter(isCheckoutCouponSummary),
+    couponState,
+    {
+      confirmedCoupons: getCheckoutPromotionCouponSummaries(confirmation),
+    },
+  ) as TicketCoupon[];
   const selectedCoupon = coupons.find((coupon) => coupon.id === couponState.selectedCouponId && coupon.status === 'available');
-  const confirmedCouponId = selectedCoupon?.id;
+  const confirmedCouponId = selectedCoupon?.id ?? couponState.selectedCouponId;
   const nextDraft = {
     ...draft,
     selectedCouponId: confirmedCouponId,

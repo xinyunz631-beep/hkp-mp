@@ -18,6 +18,7 @@ export interface BffCouponAssetView {
   templateNo: string;
   templateId?: string;
   couponName: string;
+  displayName?: string;
   title?: string;
   description?: string;
   sceneType: BffCouponSceneType;
@@ -72,6 +73,7 @@ export interface BffCouponTemplateView {
   templateNo: string;
   templateId?: string;
   templateName: string;
+  displayName?: string;
   title?: string;
   sceneType: BffCouponSceneType;
   couponType?: string;
@@ -170,6 +172,7 @@ export interface BffAvailableCouponView {
   templateNo: string;
   templateId?: string;
   couponName: string;
+  displayName?: string;
   title?: string;
   sceneType: BffCouponSceneType;
   thresholdAmountCent?: number;
@@ -307,12 +310,12 @@ export function isBffCouponAvailable(coupon: { available?: boolean; status?: Bff
   return normalizeBffCouponStatus(coupon.status) === 'AVAILABLE';
 }
 
-// 读取券标题，兼容 couponName、title、templateName 三类后端字段。
+// 读取券标题，优先使用 BFF 展示名，再兼容历史名称字段。
 export function getBffCouponTitle(
-  coupon: { couponName?: string; title?: string; templateName?: string },
+  coupon: { displayName?: string; couponName?: string; title?: string; templateName?: string },
   fallback = '',
 ) {
-  return [coupon.couponName, coupon.title, coupon.templateName, fallback]
+  return [coupon.displayName, coupon.couponName, coupon.title, coupon.templateName, fallback]
     .map((value) => (typeof value === 'string' ? value.trim() : ''))
     .find(Boolean) || '';
 }

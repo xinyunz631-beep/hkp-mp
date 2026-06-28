@@ -2,6 +2,7 @@ import {
   createBffOrder,
   type BffOrder,
   type BffOrderConfirmResponse,
+  type BffOrderCouponView,
   type BffOrderPaymentChannel,
   type BffOrderPaymentResponse,
   type BffPromotionCouponView,
@@ -120,6 +121,15 @@ function normalizeCouponNos(couponNos?: unknown) {
   return couponNos.map((couponNo) => String(couponNo || '').trim()).filter(Boolean);
 }
 
+function normalizeRequestedCouponId(couponId?: string | null) {
+  return typeof couponId === 'string' ? couponId.trim() || undefined : undefined;
+}
+
+function normalizeCouponNosFromViews(coupons?: BffOrderCouponView[]) {
+  if (!Array.isArray(coupons)) return [];
+  return normalizeCouponNos(coupons.map((coupon) => coupon?.couponNo));
+}
+
 function stableStringify(value: unknown): string {
   if (Array.isArray(value)) {
     return `[${value.map((item) => stableStringify(item)).join(',')}]`;
@@ -211,11 +221,13 @@ function isOrderWithCouponFacts(
   return Boolean(confirmation && (
     'appliedCouponNos' in confirmation
     || 'selectedCouponNos' in confirmation
+    || 'appliedCoupons' in confirmation
+    || 'selectedCoupons' in confirmation
     || 'rejectedCoupons' in confirmation
   ));
 }
 
-function couponNoOf(record: BffPromotionDiscountLine | BffPromotionCouponView | undefined) {
+function couponNoOf(record: BffPromotionDiscountLine | BffPromotionCouponView | BffOrderCouponView | BffOrderRejectedCoupon | undefined) {
   return typeof record?.couponNo === 'string' ? record.couponNo.trim() : '';
 }
 
@@ -228,6 +240,9 @@ function resolveAppliedCouponNos(confirmation: BffOrderConfirmResponse | BffOrde
   if (isOrderWithCouponFacts(confirmation)) {
     const orderAppliedCouponNos = normalizeCouponNos(confirmation.appliedCouponNos);
     if (orderAppliedCouponNos.length > 0) return orderAppliedCouponNos;
+
+    const orderAppliedCoupons = normalizeCouponNosFromViews(confirmation.appliedCoupons);
+    if (orderAppliedCoupons.length > 0) return orderAppliedCoupons;
   }
 
   const appliedDiscounts = promotionQuoteOf(confirmation)?.appliedDiscounts;
@@ -240,6 +255,9 @@ function resolveSelectedCouponNos(confirmation: BffOrderConfirmResponse | BffOrd
   if (isOrderWithCouponFacts(confirmation)) {
     const orderSelectedCouponNos = normalizeCouponNos(confirmation.selectedCouponNos);
     if (orderSelectedCouponNos.length > 0) return orderSelectedCouponNos;
+
+    const orderSelectedCoupons = normalizeCouponNosFromViews(confirmation.selectedCoupons);
+    if (orderSelectedCoupons.length > 0) return orderSelectedCoupons;
   }
 
   const availableCoupons = promotionQuoteOf(confirmation)?.availableCoupons;
@@ -262,17 +280,15 @@ export function resolveCheckoutCouponState(
   confirmation: BffOrderConfirmResponse | BffOrder | undefined,
   requestedCouponId?: string | null,
 ): CheckoutCouponState {
-  const normalizedRequestedCouponId = requestedCouponId || undefined;
+  const normalizedRequestedCouponId = normalizeRequestedCouponId(requestedCouponId);
   const appliedCouponNos = resolveAppliedCouponNos(confirmation);
   const selectedCouponNos = resolveSelectedCouponNos(confirmation);
   const rejectedCoupons = resolveRejectedCoupons(confirmation);
   const rejectedCouponNos = normalizeCouponNos(rejectedCoupons.map((coupon) => coupon.couponNo || ''));
-  let selectedCouponId: string | undefined = appliedCouponNos[0];
+  let selectedCouponId: string | undefined = appliedCouponNos[0] || selectedCouponNos[0];
 
-  if (!selectedCouponId && normalizedRequestedCouponId) {
-    if (rejectedCouponNos.includes(normalizedRequestedCouponId)) {
-      selectedCouponId = undefined;
-    }
+  if (!selectedCouponId && normalizedRequestedCouponId && !rejectedCouponNos.includes(normalizedRequestedCouponId)) {
+    selectedCouponId = normalizedRequestedCouponId;
   }
 
   const rejectedCoupon = normalizedRequestedCouponId
@@ -301,7 +317,7 @@ export function isCheckoutCouponSummary(coupon: HkpCouponSummary | undefined): c
 }
 
 // 将 BFF 可用券统一转成项目券卡片 DTO，只展示后端返回了关键展示字段的券。
-export function toCheckoutCouponSummary(coupon: BffAvailableCouponView): HkpCouponSummary | undefined {
+export function toCheckoutCouponSummary(coupon: BffAvailableCouponView | BffPromotionCouponView): HkpCouponSummary | undefined {
   const couponNo = typeof coupon.couponNo === 'string' ? coupon.couponNo.trim() : '';
   const couponName = getBffCouponTitle(coupon);
   const discountAmountCent = getBffCouponAmountCent(coupon);
@@ -336,6 +352,67 @@ export function toCheckoutCouponSummary(coupon: BffAvailableCouponView): HkpCoup
     minimumAmount: thresholdAmount ?? 0,
     discountAmount: hasDiscountAmount ? centToYuan(discountAmountCent) : 0,
   };
+}
+
+export function getCheckoutPromotionCouponSummaries(
+  confirmation: BffOrderConfirmResponse | BffOrder | undefined,
+) {
+  const availableCoupons = promotionQuoteOf(confirmation)?.availableCoupons;
+  if (!Array.isArray(availableCoupons)) return [];
+
+  return availableCoupons
+    .map((coupon) => toCheckoutCouponSummary(coupon))
+    .filter(isCheckoutCouponSummary);
+}
+
+export interface ApplyConfirmedCouponFactsOptions {
+  confirmedCoupons?: HkpCouponSummary[];
+  sanitizeReason?: (reason: string) => string;
+}
+
+// 合并确认单券事实，避免 GET 可用券未携带 selected 状态时清空本地选券。
+export function applyConfirmedCouponFacts<T extends HkpCouponSummary>(
+  coupons: T[],
+  couponState: CheckoutCouponState,
+  options: ApplyConfirmedCouponFactsOptions = {},
+) {
+  const selectedCouponNoSet = new Set([
+    ...couponState.selectedCouponNos,
+    ...couponState.appliedCouponNos,
+  ]);
+  const couponMap = new Map<string, T>();
+
+  coupons.forEach((coupon) => {
+    if (coupon?.id) couponMap.set(coupon.id, coupon);
+  });
+
+  options.confirmedCoupons?.forEach((coupon) => {
+    if (!coupon?.id) return;
+
+    const currentCoupon = couponMap.get(coupon.id);
+    if (!currentCoupon || selectedCouponNoSet.has(coupon.id)) {
+      couponMap.set(coupon.id, { ...currentCoupon, ...coupon } as T);
+    }
+  });
+
+  const rejectedCouponMap = new Map<string, string>();
+  couponState.rejectedCoupons.forEach((coupon) => {
+    const couponNo = couponNoOf(coupon);
+    if (!couponNo) return;
+    rejectedCouponMap.set(couponNo, coupon.unavailableReason || coupon.reason || '该优惠券暂不可用');
+  });
+
+  return Array.from(couponMap.values()).map((coupon) => {
+    const rejectedReason = rejectedCouponMap.get(coupon.id);
+    if (!rejectedReason) return coupon;
+
+    const sanitizedReason = options.sanitizeReason?.(rejectedReason) || rejectedReason.trim() || coupon.tag;
+    return {
+      ...coupon,
+      status: 'disabled' as const,
+      tag: sanitizedReason,
+    };
+  });
 }
 
 // 支付链路终态成功后执行业务清理，清理失败不影响已创建订单继续查看。

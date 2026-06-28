@@ -10,22 +10,98 @@
   align-items: center;
   justify-content: center;
   transform-origin: center;
-  animation: kitty-svg-loading-motion 1.55s ease-in-out infinite;
+  animation: kitty-svg-loading-motion 1s ease-in-out infinite;
+}
+
+.kitty-svg-loading__stage {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  overflow: hidden;
 }
 
 .kitty-svg-loading__image {
   display: block;
+  flex: none;
+}
+
+.kitty-svg-loading__outline-mask {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 1;
+  width: 0;
+  overflow: hidden;
+  animation: kitty-svg-loading-outline-draw 1s cubic-bezier(0.32, 0, 0.18, 1) infinite;
+}
+
+.kitty-svg-loading__draw-image {
+  animation: kitty-svg-loading-outline-glow 1s ease-in-out infinite;
+}
+
+.kitty-svg-loading__blink-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 2;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.kitty-svg-loading__blink-layer--closed {
+  z-index: 3;
+  animation: kitty-svg-loading-closed-blink 1s ease-in-out 1 both;
 }
 
 @keyframes kitty-svg-loading-motion {
   0%,
   100% {
-    opacity: 0.6;
     transform: translateY(0);
   }
 
   50% {
-    opacity: 1;
     transform: translateY(-8px);
+  }
+}
+
+@keyframes kitty-svg-loading-closed-blink {
+  0%,
+  38%,
+  62%,
+  100% {
+    opacity: 0;
+  }
+
+  48%,
+  52% {
+    opacity: 1;
+  }
+}
+
+@keyframes kitty-svg-loading-outline-glow {
+  0%,
+  18% {
+    filter: drop-shadow(0 0 0 rgba(35, 25, 22, 0));
+  }
+
+  42%,
+  72% {
+    filter: drop-shadow(0 0 2px rgba(35, 25, 22, 0.2));
+  }
+
+  100% {
+    filter: drop-shadow(0 0 0 rgba(35, 25, 22, 0));
+  }
+}
+
+@keyframes kitty-svg-loading-outline-draw {
+  0% {
+    width: 0;
+  }
+
+  76%,
+  100% {
+    width: 100%;
   }
 }

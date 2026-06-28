@@ -3,7 +3,9 @@ import { Image, View } from '@tarojs/components';
 import { Loading as NutLoading } from '@nutui/nutui-react-taro';
 import classNames from 'classnames';
 import type { CSSProperties } from 'react';
-import kittyLoadingSvg from '@/assets/loading/hello-kitty-kt-tp-4.svg';
+import kittyLoadingBaseSvg from '@/assets/loading/hello-kitty-kt-tp-4-outline-draw.svg';
+import kittyLoadingBlinkSvg from '@/assets/loading/hello-kitty-kt-tp-4-motion-blink.svg';
+import kittyLoadingDrawSvg from '@/assets/loading/hello-kitty-kt-tp-4-motion.svg';
 import './index.scss';
 
 export type KittySvgLoadingProps = {
@@ -55,14 +57,36 @@ export function KittySvgLoading({
         />
       ) : (
         <View className="kitty-svg-loading__motion">
-          <Image
-            svg
-            src={kittyLoadingSvg}
-            mode="aspectFit"
-            className="kitty-svg-loading__image"
-            style={imageStyle}
-            onError={handleImageError}
-          />
+          <View className="kitty-svg-loading__stage" style={imageStyle}>
+            <Image
+              svg
+              src={kittyLoadingBaseSvg}
+              mode="aspectFit"
+              className="kitty-svg-loading__image"
+              style={imageStyle}
+              onError={handleImageError}
+            />
+            <View className="kitty-svg-loading__outline-mask">
+              <Image
+                svg
+                src={kittyLoadingDrawSvg}
+                mode="aspectFit"
+                className="kitty-svg-loading__image kitty-svg-loading__draw-image"
+                style={imageStyle}
+                onError={handleImageError}
+              />
+            </View>
+            <View className="kitty-svg-loading__blink-layer kitty-svg-loading__blink-layer--closed" style={imageStyle}>
+              <Image
+                svg
+                src={kittyLoadingBlinkSvg}
+                mode="aspectFit"
+                className="kitty-svg-loading__image"
+                style={imageStyle}
+                onError={handleImageError}
+              />
+            </View>
+          </View>
         </View>
       )}
     </View>

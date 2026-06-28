@@ -99,6 +99,7 @@ export interface OrderDetailFieldData {
 
 export interface OrderDetailCouponLinkData {
   couponNo: string;
+  displayText?: string;
   detailText?: string;
 }
 

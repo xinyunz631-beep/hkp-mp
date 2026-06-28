@@ -1,9 +1,11 @@
 import { confirmBffOrder, type BffOrderConfirmResponse, type BffOrderItem } from '@/core/services/bff-order-api';
 import { fetchBffCouponAvailable, getBffAvailableCouponList } from '@/core/services/bff-coupon-api';
 import {
+  applyConfirmedCouponFacts,
   buildCheckoutPendingOrder,
   canReuseCheckoutPendingOrder,
   createCheckoutRequestFingerprint,
+  getCheckoutPromotionCouponSummaries,
   isCheckoutCouponSummary,
   normalizeCheckoutAmounts,
   restoreCheckoutPendingResult,
@@ -142,11 +144,17 @@ export async function fetchCheckoutData(params: FetchHotelCheckoutParams = {}) {
     checkOutDate: draft.stayRange.checkOut,
   });
   const couponState = resolveCheckoutCouponState(confirmation, selectedCouponId);
-  const coupons = getBffAvailableCouponList(availableCouponsResponse)
-    .map((coupon) => toCheckoutCouponSummary(coupon))
-    .filter(isCheckoutCouponSummary) as HotelCheckoutCouponData[];
+  const coupons = applyConfirmedCouponFacts(
+    getBffAvailableCouponList(availableCouponsResponse)
+      .map((coupon) => toCheckoutCouponSummary(coupon))
+      .filter(isCheckoutCouponSummary),
+    couponState,
+    {
+      confirmedCoupons: getCheckoutPromotionCouponSummaries(confirmation),
+    },
+  ) as HotelCheckoutCouponData[];
   const selectedCoupon = coupons.find((coupon) => coupon.id === couponState.selectedCouponId && coupon.status === 'available');
-  const confirmedCouponId = selectedCoupon?.id;
+  const confirmedCouponId = selectedCoupon?.id ?? couponState.selectedCouponId;
 
   if (Object.prototype.hasOwnProperty.call(params, 'selectedCouponId')) {
     updateHotelOrderDraft(draft.id, { selectedCouponId: confirmedCouponId });

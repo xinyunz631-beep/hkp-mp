@@ -61,6 +61,13 @@ export interface BffOrderRejectedCoupon {
   status?: string;
 }
 
+export interface BffOrderCouponView {
+  couponNo?: string;
+  couponName?: string;
+  displayName?: string;
+  [key: string]: unknown;
+}
+
 export interface BffTicketInstance {
   ticketNo?: string;
   qrCodePayload?: string;
@@ -200,6 +207,11 @@ export interface BffOrder {
   payableAmountCent?: number;
   quoteSnapshotNo?: string;
   promotionSnapshotNo?: string;
+  selectedCoupons?: BffOrderCouponView[];
+  appliedCoupons?: BffOrderCouponView[];
+  lockedCoupons?: BffOrderCouponView[];
+  releasedCoupons?: BffOrderCouponView[];
+  refundReturnedCoupons?: BffOrderCouponView[];
   selectedCouponNos?: string[];
   appliedCouponNos?: string[];
   lockedCouponNos?: string[];
@@ -324,15 +336,22 @@ export interface BffPromotionCouponView {
   couponNo?: string;
   templateNo?: string;
   couponName?: string;
+  displayName?: string;
   sceneType?: string;
   thresholdAmountCent?: number;
+  thresholdAmount?: number;
   discountAmountCent?: number;
+  discountPercent?: number;
+  discountRate?: number;
+  maxDiscountCent?: number;
   status?: string;
   selected?: boolean;
   reason?: string;
   available?: boolean;
   unavailableReason?: string;
   discountAmount?: number;
+  amount?: number;
+  validEndAt?: string;
   priority?: number;
   mutexGroup?: string;
   [key: string]: unknown;

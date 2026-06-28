@@ -46,9 +46,9 @@ const AftersaleProgressPage = observer(function AftersaleProgressPage() {
         {item.couponLinks?.length ? (
           <View className="_pg-coupon-links">
             {item.couponLinks.map((link) => (
-              <View className="_pg-coupon-links_item" key={`${item.label}-${link.couponNo}-${link.detailText || ''}`}>
+              <View className="_pg-coupon-links_item" key={`${item.label}-${link.couponNo}-${link.displayText || ''}-${link.detailText || ''}`}>
                 <View className="_pg-coupon-links_chip" onClick={() => handleCouponPress(link.couponNo)}>
-                  <Text className="_pg-coupon-links_chip-text">{link.couponNo}</Text>
+                  <Text className="_pg-coupon-links_chip-text">{link.displayText || link.couponNo}</Text>
                 </View>
                 {link.detailText ? <Text className="_pg-coupon-links_desc">{link.detailText}</Text> : null}
               </View>
