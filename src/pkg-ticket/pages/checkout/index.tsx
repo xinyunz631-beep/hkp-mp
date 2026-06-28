@@ -195,11 +195,13 @@ const CheckoutPage = observer(function CheckoutPage() {
     },
     submit: (data, payload) => submitTicketOrderDraft(data.draft?.id || draftId, payload),
     onPaymentPrepared: (data, payload, result) => persistTicketCheckoutPendingOrder(data.draft?.id || draftId, payload, result),
-    buildSuccessRoute: (result) => `${MINI_PACKAGE_ROUTES.orderDetail}?orderId=${encodeURIComponent(result.orderNo)}`,
+    buildSuccessRoute: (result) => `${MINI_PACKAGE_ROUTES.orderDetail}?orderId=${encodeURIComponent(result.orderNo)}&paymentSettling=1`,
     isOrderComplete: (result) => isBffTicketOrderIssued(result.orderStatus, result.order?.ticketVouchers, result.order?.annualCards),
     submitErrorText: '门票订单提交暂不可用，请稍后再试',
     emptySubmitText: '订单提交失败，请重新选择门票',
     completeSuccessText: '出票成功',
+    paymentSuccessRedirectDelayMs: 2000,
+    paymentSuccessLoadingText: '加载中',
   });
   const pageRuntime = usePageRuntime({
     initPage: async () => {

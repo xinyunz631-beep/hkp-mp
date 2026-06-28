@@ -16,10 +16,8 @@ import { syncBffPaymentStatusSilently } from '@/core/services/bff-api';
 import { markTicketBookingRefreshNeeded } from '@/core/services/ticket-booking-refresh-signal';
 import {
   confirmReceiveBffOrder,
-  fetchBffOrderStatusSnapshot,
   payBffOrder,
   refundBffOrder,
-  type BffOrderStatusSnapshot,
 } from '@/core/services/bff-order-api';
 import { fetchDetailData, type OrderDetailData } from '@/pkg-order/services/detail';
 import { OrderDetailSceneView } from './components/OrderDetailSceneView';
@@ -31,7 +29,9 @@ const TICKET_CODE_CANVAS_ID_PREFIX = 'ticket-order-code-canvas';
 const TICKET_CODE_CANVAS_SIZE_PX = 300;
 const WEAPP_DESIGN_WIDTH = 750;
 const TICKET_ORDER_DETAIL_POLLING_STATUSES = [
+  'PENDING',
   'PENDING_PAYMENT',
+  'UNPAID',
   'PAYING',
   'PAID',
   'WAIT_USE',
@@ -44,11 +44,25 @@ const TICKET_ORDER_DETAIL_POLLING_STATUSES = [
   'REFUND_PROCESSING',
 ];
 const TICKET_ORDER_DETAIL_PRE_VOUCHER_POLLING_STATUSES = [
+  'PENDING',
   'PENDING_PAYMENT',
+  'UNPAID',
   'PAYING',
   'PAID',
+  'WAIT_USE',
   'FULFILLING',
+  'PART_USED',
+  'PARTIALLY_USED',
+  'PARTIALLYUSED',
 ];
+const TICKET_ORDER_DETAIL_PAYMENT_SYNC_STATUSES = [
+  'PENDING',
+  'PENDING_PAYMENT',
+  'UNPAID',
+  'PAYING',
+];
+const PAYMENT_SETTLING_DETAIL_REFRESH_INTERVAL_MS = 2000;
+const PAYMENT_SETTLING_DETAIL_REFRESH_MAX_ATTEMPTS = 3;
 
 function markTicketBookingRefreshAfterPayment(detailData?: OrderDetailData) {
   if (String(detailData?.sceneType || '').toUpperCase() !== 'TICKET') return;
@@ -136,6 +150,62 @@ function isTerminalTicketInstance(ticket: OrderDetailData['ticketInstances'][num
     || TICKET_ORDER_DETAIL_TERMINAL_TICKET_STATUS_TEXTS.includes(ticket.statusText);
 }
 
+// 判断详情是否仍停留在待支付链路，支付成功回跳和静默查单都复用同一状态集。
+function isPendingPaymentDetail(detailData?: OrderDetailData) {
+  return TICKET_ORDER_DETAIL_PAYMENT_SYNC_STATUSES.includes(String(detailData?.orderStatus || '').toUpperCase());
+}
+
+// 识别从微信支付成功回调跳转来的订单详情，避免和普通待支付入口混淆。
+function isPaymentSettlingRoute() {
+  return Taro.getCurrentInstance().router?.params?.paymentSettling === '1';
+}
+
+// 支付成功回跳但后端尚未落库时，订单元信息也展示为确认中。
+function mapPaymentSettlingOrderFields(fields: OrderDetailData['orderFields']) {
+  return fields.map((field) => (
+    field.label === '支付状态'
+      ? { ...field, value: '确认中' }
+      : field
+  ));
+}
+
+// 支付成功跳转来的待支付快照只展示确认中，避免用户误点继续支付。
+function resolveDisplayDetailData(
+  detailData: OrderDetailData,
+  paymentSettling: boolean,
+): OrderDetailData {
+  const shouldShowPaymentSettling = paymentSettling && isPendingPaymentDetail(detailData);
+
+  if (!shouldShowPaymentSettling) return detailData;
+
+  return {
+    ...detailData,
+    statusText: '支付结果确认中',
+    primaryActionType: 'none',
+    payExpireAt: undefined,
+    refundButtonText: '',
+    orderFields: mapPaymentSettlingOrderFields(detailData.orderFields),
+  };
+}
+
+function shouldPollOrderDetail(detailData: OrderDetailData, paymentSettling: boolean) {
+  if (paymentSettling && String(detailData.sceneType || '').toUpperCase() !== 'TICKET') return false;
+  return shouldPollTicketOrderDetail(detailData);
+}
+
+// 酒店/商城支付回跳只做有限次状态同步刷新，不需要像票务凭证一样持续轮询。
+function shouldRefreshPaymentSettlingDetail(detailData: OrderDetailData, paymentSettling: boolean) {
+  return paymentSettling
+    && String(detailData.sceneType || '').toUpperCase() !== 'TICKET'
+    && isPendingPaymentDetail(detailData);
+}
+
+function waitPaymentSettlingRefreshInterval() {
+  return new Promise<void>((resolve) => {
+    setTimeout(resolve, PAYMENT_SETTLING_DETAIL_REFRESH_INTERVAL_MS);
+  });
+}
+
 // 判断票务凭证页是否需要继续静默刷新，覆盖异步出票和停留券码页被外部核销的场景。
 function shouldPollTicketOrderDetail(detailData?: OrderDetailData) {
   if (!detailData) return false;
@@ -157,28 +227,39 @@ function shouldPollTicketOrderDetail(detailData?: OrderDetailData) {
 function resolveTicketInstancePollingItems(detailData: OrderDetailData) {
   return detailData.ticketInstances
     .map((ticket) => ({
+      id: ticket.id || '',
       ticketCode: ticket.ticketNo || '',
       voucherCode: ticket.copyValue || '',
+      qrCodePayload: ticket.qrCodePayload || '',
+      qrImageSrc: ticket.qrImageSrc || '',
       status: ticket.statusKey || ticket.statusText || '',
+      statusText: ticket.statusText || '',
       usedNum: ticket.usedNum ?? 0,
       totalNum: ticket.totalNum ?? 0,
+      fields: ticket.fields.map((field) => `${field.label}:${field.value}`),
+      entryFields: ticket.entryFields?.map((field) => `${field.label}:${field.value}`) || [],
     }))
-    .sort((left, right) => `${left.ticketCode}:${left.voucherCode}`.localeCompare(`${right.ticketCode}:${right.voucherCode}`));
+    .sort((left, right) => (
+      `${left.id}:${left.ticketCode}:${left.voucherCode}:${left.qrCodePayload}`
+        .localeCompare(`${right.id}:${right.ticketCode}:${right.voucherCode}:${right.qrCodePayload}`)
+    ));
 }
 
-function resolveSnapshotTicketVoucherItems(snapshot: BffOrderStatusSnapshot) {
-  return (snapshot.ticketVouchersSummary || [])
-    .map((ticket) => ({
-      ticketCode: ticket.ticketCode || '',
-      voucherCode: ticket.voucherCode || '',
-      status: String(ticket.ticketStatus || '').toUpperCase(),
-      usedNum: ticket.usedNum ?? 0,
-      totalNum: ticket.totalNum ?? 0,
+// 多张票时逐组记录 Swiper 面板状态，避免只核销单张票时漏刷新。
+function resolveTicketGroupPollingItems(detailData: OrderDetailData) {
+  return detailData.ticketGroups
+    .map((group) => ({
+      id: group.id,
+      title: group.title,
+      statusText: group.statusText || '',
+      quantityText: group.quantityText || '',
+      entryFields: group.entryFields.map((field) => `${field.label}:${field.value}`),
+      voucherIds: group.vouchers.map((ticket) => ticket.id).sort(),
     }))
-    .sort((left, right) => `${left.ticketCode}:${left.voucherCode}`.localeCompare(`${right.ticketCode}:${right.voucherCode}`));
+    .sort((left, right) => left.id.localeCompare(right.id));
 }
 
-function resolveTicketOrderPollingSnapshot(detailData?: OrderDetailData) {
+function resolveOrderPollingSnapshot(detailData?: OrderDetailData) {
   if (!detailData) return '';
 
   if (detailData.sceneType !== 'TICKET' && detailData.statusVersion) return `version:${detailData.statusVersion}`;
@@ -192,49 +273,15 @@ function resolveTicketOrderPollingSnapshot(detailData?: OrderDetailData) {
     statusText: detailData.statusText || '',
     primaryActionType: detailData.primaryActionType || '',
     refundButtonText: detailData.refundButtonText || '',
+    productFields: detailData.productFields.map((field) => `${field.label}:${field.value}`),
+    fulfillmentFields: detailData.fulfillmentFields.map((field) => `${field.label}:${field.value}`),
     couponFields: detailData.couponFields.map((field) => ({
       label: field.label,
       value: field.value,
       couponNos: field.couponLinks?.map((link) => `${link.couponNo}:${link.detailText || ''}`),
     })),
-    ticketVouchersSummary: resolveTicketInstancePollingItems(detailData),
-  });
-}
-
-// 归一轻量状态快照，尽量与详情接口的 updatedAt 基线保持一致，避免无变化时反复刷新详情。
-function resolveStatusSnapshotPollingSnapshot(snapshot?: BffOrderStatusSnapshot) {
-  if (!snapshot) return '';
-
-  if (String(snapshot.sceneType || '').toUpperCase() === 'TICKET') {
-    return JSON.stringify({
-      sceneType: snapshot.sceneType || '',
-      orderStatus: snapshot.orderStatus || '',
-      paymentStatus: snapshot.paymentStatus || '',
-      payNo: snapshot.payNo || '',
-      ticketVoucherVersion: snapshot.ticketVoucherVersion || 0,
-      ticketVouchersSummary: resolveSnapshotTicketVoucherItems(snapshot),
-    });
-  }
-
-  const updatedAt = Date.parse(snapshot.updatedAt || '');
-  if (Number.isFinite(updatedAt)) return `version:${updatedAt}`;
-
-  if (typeof snapshot.version === 'number' && Number.isFinite(snapshot.version)) {
-    return `version:${snapshot.version}`;
-  }
-
-  return JSON.stringify({
-    sceneType: snapshot.sceneType || '',
-    orderStatus: snapshot.orderStatus || '',
-    paymentStatus: snapshot.paymentStatus || '',
-    fulfillmentStatus: snapshot.fulfillmentStatus || '',
-    refundStatus: snapshot.refundStatus || '',
-    aftersaleStatus: snapshot.aftersaleStatus || '',
-    logisticsStatus: snapshot.logisticsStatus || '',
-    reviewStatus: snapshot.reviewStatus || '',
-    payNo: snapshot.payNo || '',
-    ticketVoucherVersion: snapshot.ticketVoucherVersion || 0,
-    ticketVouchersSummary: snapshot.ticketVouchersSummary || [],
+    ticketGroups: resolveTicketGroupPollingItems(detailData),
+    ticketInstances: resolveTicketInstancePollingItems(detailData),
   });
 }
 
@@ -246,15 +293,17 @@ const DetailPage = observer(function DetailPage() {
   const pageVisibleRef = useRef(true);
   const pollingRequestRef = useRef(false);
   const pollingSnapshotRef = useRef('');
+  const paymentSettlingRef = useRef(isPaymentSettlingRoute());
+  const paymentSettlingRefreshOrderIdsRef = useRef<Set<string>>(new Set());
   const generatedTicketQrImageKeysRef = useRef<Set<string>>(new Set());
-  const ticketPollingSnapshot = useMemo(() => resolveTicketOrderPollingSnapshot(detailData), [detailData]);
+  const orderPollingSnapshot = useMemo(() => resolveOrderPollingSnapshot(detailData), [detailData]);
   const hiddenTicketQrCanvasStyle: CSSProperties = {
     width: `${ticketQrCanvasSizeRpx}rpx`,
     height: `${ticketQrCanvasSizeRpx}rpx`,
   };
 
   function applyDetailData(nextData: OrderDetailData) {
-    pollingSnapshotRef.current = resolveTicketOrderPollingSnapshot(nextData);
+    pollingSnapshotRef.current = resolveOrderPollingSnapshot(nextData);
     setDetailData(nextData);
   }
 
@@ -309,19 +358,44 @@ const DetailPage = observer(function DetailPage() {
     return nextData;
   }
 
-  async function pollTicketOrderDetailSilently(orderId: string) {
-    if (String(detailData?.orderStatus || '').toUpperCase() === 'PAYING') {
+  async function pollOrderDetailSilently(orderId: string) {
+    if (isPendingPaymentDetail(detailData)) {
       await syncBffPaymentStatusSilently(detailData?.payNo);
     }
 
-    const statusSnapshot = await fetchBffOrderStatusSnapshot(orderId, { showErrorToast: false });
+    const nextData = await fetchDetailData(orderId, { showErrorToast: false });
     if (!pageVisibleRef.current) return;
 
-    const nextSnapshot = resolveStatusSnapshotPollingSnapshot(statusSnapshot);
+    const nextSnapshot = resolveOrderPollingSnapshot(nextData);
 
     if (nextSnapshot !== pollingSnapshotRef.current) {
-      await loadDetailData({ showErrorToast: false, orderId, skipApplyWhenHidden: true });
-      pollingSnapshotRef.current = nextSnapshot;
+      applyDetailData(nextData);
+    }
+  }
+
+  async function refreshPaymentSettlingDetail(orderId: string, payNo?: string) {
+    if (payNo) {
+      await syncBffPaymentStatusSilently(payNo);
+    }
+
+    const nextData = await fetchDetailData(orderId, { showErrorToast: false });
+    if (!pageVisibleRef.current) return;
+    applyDetailData(nextData);
+    return nextData;
+  }
+
+  async function refreshPaymentSettlingDetailWithRetries(orderId: string, initialPayNo?: string) {
+    let payNo = initialPayNo;
+
+    for (let attempt = 0; attempt < PAYMENT_SETTLING_DETAIL_REFRESH_MAX_ATTEMPTS; attempt += 1) {
+      if (attempt > 0) {
+        await waitPaymentSettlingRefreshInterval();
+      }
+      if (!pageVisibleRef.current) return;
+
+      const nextData = await refreshPaymentSettlingDetail(orderId, payNo);
+      if (!nextData || !isPendingPaymentDetail(nextData)) return;
+      payNo = nextData.payNo;
     }
   }
 
@@ -343,14 +417,14 @@ const DetailPage = observer(function DetailPage() {
   });
 
   useEffect(() => {
-    if (!detailData || !shouldPollTicketOrderDetail(detailData)) return undefined;
+    if (!detailData || !shouldPollOrderDetail(detailData, paymentSettlingRef.current)) return undefined;
 
     const pollingOrderId = detailData.id;
     const timer = setInterval(() => {
       if (!pageVisibleRef.current || pollingRequestRef.current) return;
 
       pollingRequestRef.current = true;
-      pollTicketOrderDetailSilently(pollingOrderId)
+      pollOrderDetailSilently(pollingOrderId)
         .catch(() => undefined)
         .finally(() => {
           pollingRequestRef.current = false;
@@ -360,7 +434,15 @@ const DetailPage = observer(function DetailPage() {
     return () => {
       clearInterval(timer);
     };
-  }, [detailData?.id, ticketPollingSnapshot]);
+  }, [detailData?.id, orderPollingSnapshot]);
+
+  useEffect(() => {
+    if (!detailData || !shouldRefreshPaymentSettlingDetail(detailData, paymentSettlingRef.current)) return;
+    if (paymentSettlingRefreshOrderIdsRef.current.has(detailData.id)) return;
+
+    paymentSettlingRefreshOrderIdsRef.current.add(detailData.id);
+    refreshPaymentSettlingDetailWithRetries(detailData.id, detailData.payNo).catch(() => undefined);
+  }, [detailData?.id, orderPollingSnapshot]);
 
   useEffect(() => {
     if (!detailData?.ticketInstances.length) {
@@ -496,13 +578,14 @@ const DetailPage = observer(function DetailPage() {
 
   return pageRuntime.renderPage(() => {
     if (!detailData) return null;
+    const displayDetailData = resolveDisplayDetailData(detailData, paymentSettlingRef.current);
 
     return (
       <View className="_pg">
         <PageShell title="订单详情" className="_pg-shell" reserveTabBarSpace={false}>
           <View className="_pg-content">
             <OrderDetailSceneView
-              detailData={detailData}
+              detailData={displayDetailData}
               ticketQr={{
                 canvasStyle: hiddenTicketQrCanvasStyle,
                 getCanvasId: resolveTicketQrCanvasId,

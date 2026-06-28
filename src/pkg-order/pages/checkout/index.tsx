@@ -78,9 +78,11 @@ const CheckoutPage = observer(function CheckoutPage() {
     },
     submit: (data, remark) => submitOrderCheckoutOrder(data, remark),
     onPaymentPrepared: (data, remark, result) => persistMallCheckoutPendingOrder(data, result, remark),
-    buildSuccessRoute: (result) => `${MINI_PACKAGE_ROUTES.orderDetail}?orderId=${encodeURIComponent(result.orderNo)}`,
+    buildSuccessRoute: (result) => `${MINI_PACKAGE_ROUTES.orderDetail}?orderId=${encodeURIComponent(result.orderNo)}&paymentSettling=1`,
     submitErrorText: '商城订单提交暂不可用，请稍后再试',
     emptySubmitText: '订单信息已失效，请重新选择商品',
+    paymentSuccessRedirectDelayMs: 2000,
+    paymentSuccessLoadingText: '加载中',
   });
   const pageRuntime = usePageRuntime({
     initPage: async () => {

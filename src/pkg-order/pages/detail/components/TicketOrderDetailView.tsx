@@ -2,7 +2,7 @@ import { Canvas, RichText, Swiper, SwiperItem, Text, View } from '@tarojs/compon
 import { AppImage } from '@/core/components/AppImage';
 import { AppIcon } from '@/core/components/AppIcon';
 import { copyWechatText } from '@/core/utils/wechat-actions';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ContactCard,
   SceneActionBar,
@@ -361,8 +361,13 @@ function TicketInfoCard({ detailData, ticketQr, onTicketDetailPress, onSceneActi
   onSceneAction: OrderDetailSceneViewProps['onSceneAction'];
 }) {
   const [activeIndex, setActiveIndex] = useState(0);
-  if (!detailData.ticketGroups.length) return null;
   const ticketPanels = resolveTicketPanels(detailData);
+  useEffect(() => {
+    if (activeIndex < ticketPanels.length) return;
+    setActiveIndex(Math.max(ticketPanels.length - 1, 0));
+  }, [activeIndex, ticketPanels.length]);
+
+  if (!detailData.ticketGroups.length || !ticketPanels.length) return null;
   const multipleTickets = ticketPanels.length > 1;
 
   return (

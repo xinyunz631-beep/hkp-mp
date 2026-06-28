@@ -43,6 +43,8 @@ export interface CheckoutControllerAdapter<
   completeSuccessText?: string;
   zeroPaySuccessText?: string;
   paymentSuccessText?: string;
+  paymentSuccessRedirectDelayMs?: number;
+  paymentSuccessLoadingText?: string;
 }
 
 function runCheckoutTask<TResult>(
@@ -67,6 +69,57 @@ async function completeCheckout<TData, TSubmitPayload, TLoadParams extends Check
 
 function readPaymentParams(result: CheckoutSubmitResult) {
   return result.payment?.prepay?.paymentParams || result.payment?.prepay?.payParams;
+}
+
+// 等待固定时长，给支付回调和后端异步履约留出落库窗口。
+function waitForCheckoutRedirect(delayMs: number) {
+  return new Promise<void>((resolve) => {
+    setTimeout(resolve, delayMs);
+  });
+}
+
+function runCheckoutRedirectTask(task?: () => Promise<void>) {
+  if (!task) return;
+
+  try {
+    task().catch(() => undefined);
+  } catch {
+    // 支付后清理任务失败不能影响 2s 后进入订单详情。
+  }
+}
+
+// 支付成功后可用全屏 loading 锁住页面，避免立即跳详情读到后端旧状态。
+async function waitPaymentSuccessRedirect(
+  delayMs: number | undefined,
+  loadingText = '加载中',
+  task?: () => Promise<void>,
+) {
+  const normalizedDelayMs = Number(delayMs);
+  if (!Number.isFinite(normalizedDelayMs) || normalizedDelayMs <= 0) {
+    await task?.();
+    return;
+  }
+
+  try {
+    Taro.showLoading({
+      title: loadingText,
+      mask: true,
+    }).catch(() => undefined);
+  } catch {
+    // loading 只是支付成功后的体验保护，失败不能阻断订单详情跳转。
+  }
+
+  runCheckoutRedirectTask(task);
+
+  try {
+    await waitForCheckoutRedirect(normalizedDelayMs);
+  } finally {
+    try {
+      Taro.hideLoading();
+    } catch {
+      // 关闭 loading 失败时继续跳订单详情，避免支付完成后停在确认单。
+    }
+  }
 }
 
 function mergePaymentResult(result: CheckoutSubmitResult, payment: Awaited<ReturnType<typeof payBffOrder>>): CheckoutSubmitResult {
@@ -219,9 +272,16 @@ export function useCheckoutController<
       return result;
     }
 
-    await syncBffPaymentStatusSilently(result.payment?.prepay?.payNo ?? result.order?.payNo);
-    await completeCheckout(adapter, submitData, result);
-    await showWechatToast(adapter.paymentSuccessText || '支付成功', 'success');
+    if (adapter.paymentSuccessRedirectDelayMs && adapter.paymentSuccessRedirectDelayMs > 0) {
+      await waitPaymentSuccessRedirect(adapter.paymentSuccessRedirectDelayMs, adapter.paymentSuccessLoadingText, async () => {
+        await syncBffPaymentStatusSilently(result.payment?.prepay?.payNo ?? result.order?.payNo);
+        await completeCheckout(adapter, submitData, result);
+      });
+    } else {
+      await syncBffPaymentStatusSilently(result.payment?.prepay?.payNo ?? result.order?.payNo);
+      await completeCheckout(adapter, submitData, result);
+      await showWechatToast(adapter.paymentSuccessText || '支付成功', 'success');
+    }
     navigateToMiniRoute(adapter.buildSuccessRoute(result), {
       loginMode: 'none',
       method: 'redirectTo',
