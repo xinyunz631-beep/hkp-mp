@@ -97,6 +97,7 @@ function buildWechatPaymentDebugParams(paymentParams: WechatPaymentParams) {
 
 function readWechatPaymentString(params: Record<string, unknown>, key: string) {
   const value = params[key];
+  if (typeof value === 'number') return String(value);
   return typeof value === 'string' ? value.trim() : '';
 }
 

@@ -277,7 +277,7 @@ const ProductDetailPage = observer(function ProductDetailPage() {
               <View
                 className="_pg-footer_action"
                 onClick={() => {
-                  Taro.switchTab({ url: MINI_MAIN_ROUTES.home });
+                  navigateToMiniRoute(MINI_MAIN_ROUTES.home);
                 }}
               >
                 <AppIcon name="home" size={16} color="#6b7280" />

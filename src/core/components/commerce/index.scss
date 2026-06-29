@@ -232,7 +232,7 @@
   &__body {
     min-width: 0;
     flex: 1;
-    padding: 28px 28px 24px;
+    padding: 28px 104px 24px 28px;
   }
 
   &__title {
@@ -253,7 +253,9 @@
   &__tag {
     position: absolute;
     top: 20px;
-    right: 20px;
+    right: 28px;
+    max-width: 88px;
+    text-align: right;
     color: $color-primary;
     font-size: 22px;
     font-weight: 500;
@@ -698,6 +700,7 @@
   position: relative;
   border: 1Px solid transparent;
   border-radius: 24px;
+  overflow: hidden;
 
   &--active {
     border-color: $color-primary;
@@ -714,14 +717,15 @@
 
 .hkp-coupon-popup__checkbox {
   position: absolute;
-  right: 20px;
-  bottom: 20px;
+  right: 28px;
+  top: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 8px;
   border-radius: 999px;
   background: #ffffff;
+  transform: translateY(-50%);
   --nutui-color-primary: #{$color-primary};
   --nutui-color-primary-disabled: #{$color-primary-disabled};
   --nutui-checkbox-icon-font-size: 24px;

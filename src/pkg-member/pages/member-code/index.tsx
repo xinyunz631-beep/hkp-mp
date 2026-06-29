@@ -10,6 +10,7 @@ import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import { navigateToMiniRoute } from '@/core/utils/navigation';
 import { fetchMemberCode } from '@/pkg-member/services/member-code';
+import { fetchMemberCodeThemeConfig, type MemberCodeThemeConfig } from '@/pkg-member/services/member-code-theme';
 import './index.scss';
 
 const MEMBER_CODE_CANVAS_ID = 'member-code-canvas';
@@ -50,6 +51,7 @@ const MemberCodePage = observer(function MemberCodePage() {
   const [canvasSizeRpx] = useState(resolveCanvasSizeRpx);
   const [memberCode, setMemberCode] = useState('');
   const [memberCodeImageSrc, setMemberCodeImageSrc] = useState('');
+  const [memberCodeTheme, setMemberCodeTheme] = useState<MemberCodeThemeConfig>({});
   const [memberCodeRefreshId, setMemberCodeRefreshId] = useState(0);
   const [pageVisible, setPageVisible] = useState(false);
   const hiddenCanvasStyle: CSSProperties = {
@@ -59,7 +61,11 @@ const MemberCodePage = observer(function MemberCodePage() {
 
   // 拉取会员码内容，页面初始化和定时刷新都复用这一条链路。
   const refreshMemberCode = useCallback(async () => {
-    const nextMemberCode = await fetchMemberCode();
+    const [nextMemberCode, nextTheme] = await Promise.all([
+      fetchMemberCode(),
+      fetchMemberCodeThemeConfig().catch(() => undefined),
+    ]);
+    if (nextTheme) setMemberCodeTheme(nextTheme);
     setMemberCode(nextMemberCode);
     setMemberCodeRefreshId((id) => id + 1);
   }, []);
@@ -127,7 +133,7 @@ const MemberCodePage = observer(function MemberCodePage() {
       <PageShell title="会员码" reserveTabBarSpace={false} className="_pg-shell">
         <AppImage
           className="_pg-bg"
-          src=""
+          src={memberCodeTheme.backgroundImageUrl || ''}
           mode="aspectFill"
           placeholderColor="#f5f7fa"
           showErrorIcon={false}
@@ -135,7 +141,7 @@ const MemberCodePage = observer(function MemberCodePage() {
         <View className="_pg-scene">
           <AppImage
             className="_pg-logo"
-            src=""
+            src={memberCodeTheme.logoImageUrl || ''}
             mode="aspectFit"
             placeholderColor="#d9e0e8"
             showErrorIcon={false}

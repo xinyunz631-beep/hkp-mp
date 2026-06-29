@@ -40,17 +40,6 @@ function extractMainPages(appConfigText) {
   return match ? extractStrings(match[1]) : [];
 }
 
-// 提取 app.config.ts 中 tabBar 配置的页面路径。
-function extractTabBarPages(appConfigText) {
-  const pages = [];
-  const pattern = /pagePath:\s*['"]([^'"]+)['"]/g;
-  let match;
-  while ((match = pattern.exec(appConfigText))) {
-    pages.push(match[1]);
-  }
-  return pages;
-}
-
 // 提取 app.config.ts 中全部分包 root。
 function extractSubPackageRoots(appConfigText) {
   const roots = [];
@@ -94,18 +83,22 @@ function checkNoMainPackageImportsBusiness() {
   }
 }
 
-// 检查主包页面目录、tabBar 路径和分包 root 是否符合项目约束。
+// 检查主包页面目录、分包 root 和原生 tabBar 配置是否符合项目约束。
 function checkAppConfig() {
   const appConfigText = readText('src/app.config.ts');
   const configText = readText('config/index.ts');
+  const mainPages = extractMainPages(appConfigText);
 
   if (!existsSync(join(srcDir, 'pages'))) fail('缺少主包页面目录 src/pages');
   if (existsSync(join(srcDir, 'pages-tab'))) fail('禁止存在非标准主包页面目录 src/pages-tab');
   if (existsSync(join(srcDir, 'main-pages'))) fail('禁止存在非标准主包页面目录 src/main-pages');
 
   for (const page of requiredMainPages) {
-    if (!extractMainPages(appConfigText).includes(page)) fail(`主包 pages 缺少 ${page}`);
-    if (!extractTabBarPages(appConfigText).includes(page)) fail(`tabBar 缺少 ${page}`);
+    if (!mainPages.includes(page)) fail(`主包 pages 缺少 ${page}`);
+  }
+
+  if (/tabBar\s*:/.test(appConfigText)) {
+    fail('禁止配置微信原生 tabBar，请使用页面内 AppTabBar');
   }
 
   for (const root of requiredPackages) {
