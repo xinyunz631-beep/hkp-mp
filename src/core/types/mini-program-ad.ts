@@ -42,6 +42,7 @@ export interface MiniProgramAdView {
   jumpAppId?: string;
   jumpUrl?: string;
   jumpCustomValue?: string;
+  jumpParams?: Record<string, unknown>;
   status?: string;
   sortOrder?: number;
   effectiveAt?: string;

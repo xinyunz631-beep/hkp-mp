@@ -54,6 +54,14 @@ interface ScanCodeResult {
 
 type AppPaymentStatus = 'success' | 'pending' | 'failed';
 type WechatPaymentParams = Parameters<typeof Taro.requestPayment>[0];
+type RawWechatPaymentParams = WechatPaymentParams & {
+  [key: string]: unknown;
+  timeStamp?: string | number;
+  nonceStr?: string;
+  package?: string;
+  signType?: WechatPaymentParams['signType'] | string;
+  paySign?: string;
+};
 
 interface AppPaymentOptions {
   title?: string;
@@ -77,6 +85,18 @@ function resolveWechatPaymentFailMessage(error: unknown) {
   }
 
   return resolveErrorMessage(error, '支付未完成');
+}
+
+function normalizeWechatPaymentParams(paymentParams: WechatPaymentParams): WechatPaymentParams {
+  const params = paymentParams as RawWechatPaymentParams;
+
+  return {
+    timeStamp: String(params.timeStamp ?? ''),
+    nonceStr: String(params.nonceStr ?? ''),
+    package: String(params.package ?? ''),
+    signType: (params.signType || 'RSA') as WechatPaymentParams['signType'],
+    paySign: String(params.paySign ?? ''),
+  };
 }
 
 // 展示微信小程序原生轻提示，页面只传业务文案。
@@ -138,7 +158,7 @@ export async function requestWechatPayment({
 }: AppPaymentOptions): Promise<AppPaymentStatus> {
   if (paymentParams) {
     try {
-      await Taro.requestPayment(paymentParams);
+      await Taro.requestPayment(normalizeWechatPaymentParams(paymentParams));
       return 'success';
     } catch (error) {
       const errMsg = getWechatFailMessage(error);

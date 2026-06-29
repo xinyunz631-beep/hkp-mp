@@ -96,9 +96,45 @@ function normalizeCouponNos(couponNos?: string[]) {
   return (couponNos ?? []).map((couponNo) => String(couponNo || '').trim()).filter(Boolean);
 }
 
+function couponNosFromUnknown(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return value.map((couponNo) => String(couponNo || '').trim()).filter(Boolean);
+}
+
+function appliedCouponNosFromPromotionQuote(confirmation: BffOrderConfirmResponse) {
+  const quote = confirmation.promotionQuote;
+  if (!quote || typeof quote !== 'object') return [];
+
+  const appliedDiscounts = (quote as { appliedDiscounts?: unknown }).appliedDiscounts;
+  if (!Array.isArray(appliedDiscounts)) return [];
+
+  return appliedDiscounts
+    .map((discount) => {
+      if (!discount || typeof discount !== 'object') return '';
+      return String((discount as { couponNo?: unknown }).couponNo || '').trim();
+    })
+    .filter(Boolean);
+}
+
+function selectedCouponNosFromPromotionQuote(confirmation: BffOrderConfirmResponse) {
+  const quote = confirmation.promotionQuote;
+  if (!quote || typeof quote !== 'object') return [];
+
+  const availableCoupons = (quote as { availableCoupons?: unknown }).availableCoupons;
+  if (!Array.isArray(availableCoupons)) return [];
+
+  return availableCoupons
+    .filter((coupon) => Boolean(coupon && typeof coupon === 'object' && (coupon as { selected?: unknown }).selected))
+    .map((coupon) => String((coupon as { couponNo?: unknown }).couponNo || '').trim())
+    .filter(Boolean);
+}
+
 // 以后端确认结果为唯一事实源，只有被 applied 的券才允许回显为已选。
 function resolveConfirmedCouponId(confirmation: BffOrderConfirmResponse, requestedCouponId?: string) {
-  const appliedCouponNos = normalizeCouponNos(confirmation.appliedCouponNos);
+  const appliedCouponNos = [
+    ...normalizeCouponNos(confirmation.appliedCouponNos),
+    ...appliedCouponNosFromPromotionQuote(confirmation),
+  ];
   if (appliedCouponNos.length > 0) return appliedCouponNos[0];
   if (!requestedCouponId) return undefined;
 
@@ -106,7 +142,11 @@ function resolveConfirmedCouponId(confirmation: BffOrderConfirmResponse, request
   if (rejectedCouponNos.includes(requestedCouponId)) return undefined;
   if (Array.isArray(confirmation.appliedCouponNos)) return undefined;
 
-  const selectedCouponNos = normalizeCouponNos(confirmation.selectedCouponNos);
+  const selectedCouponNos = [
+    ...normalizeCouponNos(confirmation.selectedCouponNos),
+    ...selectedCouponNosFromPromotionQuote(confirmation),
+    ...couponNosFromUnknown((confirmation.promotionQuote as { selectedCouponNos?: unknown } | undefined)?.selectedCouponNos),
+  ];
   const hasDiscount = (parseNumberLike(confirmation.discountAmountCent) ?? 0) > 0;
   return selectedCouponNos.includes(requestedCouponId) && hasDiscount ? requestedCouponId : undefined;
 }

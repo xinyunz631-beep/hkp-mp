@@ -222,6 +222,7 @@ export function PageShell({
   const chromeCacheSignature = resolvePageShellChromeCacheSignature(chromeMetrics);
   const layoutFooter = slots.hasFooter ? slots.footer : footer ?? bottom;
   const layoutShare = slots.hasShare ? slots.share : share;
+
   const handleRefresherRefresh = useCallback<PageShellRefresherRefreshHandler>((event) => {
     const customRefresh = scrollViewProps?.onRefresherRefresh;
 

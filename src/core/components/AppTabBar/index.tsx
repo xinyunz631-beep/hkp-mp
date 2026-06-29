@@ -12,7 +12,7 @@ interface AppTabBarItem {
   key: AppTabBarKey;
   text: string;
   path: AppTabBarRoute;
-  routeType: 'tab' | 'package';
+  routeType: 'main' | 'package';
   center?: boolean;
   hideText?: boolean;
 }
@@ -42,7 +42,7 @@ const tabBarImages: Record<AppTabBarKey, { selected: string; unselected: string 
 };
 
 const tabBarItems: AppTabBarItem[] = [
-  { key: 'home', text: '首页', path: MINI_MAIN_ROUTES.home, routeType: 'tab' },
+  { key: 'home', text: '首页', path: MINI_MAIN_ROUTES.home, routeType: 'main' },
   { key: 'ticket', text: '购票', path: MINI_PACKAGE_ROUTES.ticketBooking, routeType: 'package' },
   {
     key: 'memberCode',
@@ -53,15 +53,15 @@ const tabBarItems: AppTabBarItem[] = [
     hideText: true,
   },
   { key: 'hotel', text: '酒店', path: MINI_PACKAGE_ROUTES.hotelHome, routeType: 'package' },
-  { key: 'profile', text: '我的', path: MINI_MAIN_ROUTES.member, routeType: 'tab' },
+  { key: 'profile', text: '我的', path: MINI_MAIN_ROUTES.member, routeType: 'main' },
 ];
 
-// 获取当前 tab 页面路径，兼容微信页面栈里无前导斜杠的 route。
+// 获取当前主包入口页面路径，兼容微信页面栈里无前导斜杠的 route。
 function resolveCurrentRoute(): MiniMainRoute {
   const pages = Taro.getCurrentPages();
   const route = pages[pages.length - 1]?.route;
   const normalizedRoute = route ? `/${route}` : MINI_MAIN_ROUTES.home;
-  const matched = tabBarItems.find((item) => item.routeType === 'tab' && item.path === normalizedRoute);
+  const matched = tabBarItems.find((item) => item.routeType === 'main' && item.path === normalizedRoute);
   return (matched?.path as MiniMainRoute | undefined) ?? MINI_MAIN_ROUTES.home;
 }
 
@@ -77,15 +77,10 @@ export function AppTabBar() {
     setActivePath(resolveCurrentRoute());
   });
 
-  // 打开分包页面，保持页面内 tabbar 对登录入口的前置拦截。
-  function openPackageRoute(item: AppTabBarItem) {
-    navigateToMiniRoute(item.path as MiniPackageRoute);
-  }
-
-  // 切换主包 tab 页或打开分包页面，并即时刷新当前页面内 tabbar 选中态。
+  // 切换主包入口页或打开分包页面，并即时刷新当前页面内 tabbar 选中态。
   function handleNavigate(item: AppTabBarItem) {
     if (item.routeType === 'package') {
-      openPackageRoute(item);
+      navigateToMiniRoute(item.path as MiniPackageRoute);
       return;
     }
 
@@ -93,13 +88,13 @@ export function AppTabBar() {
     if (activePath === nextPath) return;
 
     setActivePath(nextPath);
-    Taro.switchTab({ url: nextPath });
+    navigateToMiniRoute(nextPath);
   }
 
   return (
     <View className="hkitty-tabbar">
       {tabBarItems.map((item) => {
-        const isActive = item.routeType === 'tab' && activePath === item.path;
+        const isActive = item.routeType === 'main' && activePath === item.path;
         const itemClassName = [
           'hkitty-tabbar__item',
           isActive ? 'hkitty-tabbar__item--active' : '',

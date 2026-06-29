@@ -39,6 +39,7 @@ interface OrderCardProps {
 interface CouponCardProps {
   coupon: HkpCouponSummary;
   className?: string;
+  selected?: boolean;
   onClick?: (coupon: HkpCouponSummary) => void;
 }
 
@@ -290,7 +291,9 @@ export function OrderCard({
   );
 }
 
-export function CouponCard({ coupon, className, onClick }: CouponCardProps) {
+export function CouponCard({ coupon, className, selected = false, onClick }: CouponCardProps) {
+  const tagText = selected ? '已选' : coupon.tag;
+
   return (
     <View
       className={classNames('hkp-coupon-card', `hkp-coupon-card--${coupon.status}`, className)}
@@ -304,7 +307,7 @@ export function CouponCard({ coupon, className, onClick }: CouponCardProps) {
         <Text className="hkp-coupon-card__threshold">{coupon.thresholdText}</Text>
         <Text className="hkp-coupon-card__validity">{coupon.validityText}</Text>
       </View>
-      {coupon.tag ? <Text className="hkp-coupon-card__tag">{coupon.tag}</Text> : null}
+      {tagText ? <Text className="hkp-coupon-card__tag">{tagText}</Text> : null}
     </View>
   );
 }
@@ -664,7 +667,7 @@ export function CouponSelectionPopup({
             key={coupon.id}
             onClick={() => handleCouponPress(coupon)}
           >
-            <CouponCard coupon={coupon} />
+            <CouponCard coupon={coupon} selected={draftCouponId === coupon.id} />
             <View
               className="hkp-coupon-popup__checkbox"
               onClick={(event) => {

@@ -2,7 +2,7 @@ import Taro from '@tarojs/taro';
 import { MINI_MAIN_ROUTES, MINI_PACKAGE_ROUTES, type MiniRoute } from '@/core/constants/routes';
 import { promptLogin, requireLogin } from '@/core/services/auth';
 
-const MAIN_TAB_ROUTE_SET = new Set<string>(Object.values(MINI_MAIN_ROUTES));
+const MAIN_ROUTE_SET = new Set<string>(Object.values(MINI_MAIN_ROUTES));
 const LOGIN_REQUIRED_ROUTE_REASONS: Partial<Record<MiniRoute, string>> = {
   [MINI_PACKAGE_ROUTES.memberHome]: '登录后可进入会员中心',
   [MINI_PACKAGE_ROUTES.memberCode]: '登录后可查看会员码',
@@ -82,6 +82,12 @@ function resolveMiniRouteLoginMode(url: string, options: NavigateToMiniRouteOpti
 }
 
 function navigateToMiniRouteDirectly(url: string) {
+  const routePath = resolveRoutePathFromUrl(url);
+  if (MAIN_ROUTE_SET.has(routePath)) {
+    Taro.reLaunch({ url });
+    return;
+  }
+
   Taro.navigateTo({ url });
 }
 
@@ -115,7 +121,7 @@ export function navigateToMiniRoute(url: string, options: NavigateToMiniRouteOpt
   return true;
 }
 
-// 获取当前页面路径，供导航栏和页面组件判断当前是否为 tab 页面。
+// 获取当前页面路径，供导航栏和页面组件判断当前是否为主包入口页。
 export function getCurrentMiniRoute() {
   const pages = Taro.getCurrentPages();
   return normalizeRoute(pages[pages.length - 1]?.route);
@@ -139,9 +145,9 @@ export function navigateBackInPageStack() {
   return true;
 }
 
-// 判断当前页面是否是主包 tab 页，tab 页自定义 navbar 默认只展示标题。
+// 判断当前页面是否是主包入口页，主包入口页自定义 navbar 默认只展示标题。
 export function isCurrentMainTabPage() {
-  return MAIN_TAB_ROUTE_SET.has(getCurrentMiniRoute());
+  return MAIN_ROUTE_SET.has(getCurrentMiniRoute());
 }
 
 // 判断当前是否是首页，避免首页错误态展示无意义的返回入口。

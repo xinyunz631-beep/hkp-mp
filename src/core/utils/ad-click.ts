@@ -23,8 +23,6 @@ export interface AdClickOptions {
   emptyText?: string;
 }
 
-const MAIN_ROUTE_SET = new Set<string>(Object.values(MINI_MAIN_ROUTES));
-
 // 归一化后台维护的小程序路径，兼容旧首页路径和不带前导斜杠的页面路径。
 function normalizeAdMiniProgramPath(path?: string) {
   const nextPath = path?.trim();
@@ -81,16 +79,10 @@ export function resolveMiniProgramAdClickTarget(ad: MiniProgramAdView): MiniProg
   };
 }
 
-// 跳转小程序内部页面，tab 页走 switchTab，其它页面走统一登录守卫导航。
+// 跳转小程序内部页面，统一走项目路由工具，避免触发微信原生 tabBar。
 function navigateByMiniProgramPath(path: string) {
   const miniPath = normalizeAdMiniProgramPath(path);
   if (!miniPath) return false;
-
-  const [routePath] = miniPath.split('?');
-  if (MAIN_ROUTE_SET.has(routePath)) {
-    Taro.switchTab({ url: routePath });
-    return true;
-  }
 
   navigateToMiniRoute(miniPath);
   return true;

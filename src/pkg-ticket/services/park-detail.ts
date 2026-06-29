@@ -5,6 +5,10 @@ import {
   resolveMiniProgramAdTitle,
 } from '@/core/services/mini-program-ad';
 import type { MiniProgramAdView } from '@/core/types/mini-program-ad';
+import {
+  resolveMiniProgramAdNumberParam,
+  resolveMiniProgramAdStringParam,
+} from './mini-program-ad-jump-params';
 
 export interface TicketProjectDetail {
   id: string;
@@ -25,14 +29,16 @@ export interface TicketParkDetailData {
 function mapAdToProjectDetail(ad: MiniProgramAdView): TicketProjectDetail {
   const imageSrc = resolveMiniProgramAdImage(ad, 'material') || resolveMiniProgramAdImage(ad, 'background') || '';
   const detailHtml = ad.richTextHtml || ad.richText || '';
+  const legacyLocation = resolveMiniProgramAdStringParam(ad, 'legacyLocation');
+  const legacyStatus = resolveMiniProgramAdStringParam(ad, 'legacyStatus');
   return {
     id: ad.id || ad.adNo || '',
     name: resolveMiniProgramAdTitle(ad) || '热玩项目',
     heroImages: imageSrc ? [imageSrc] : [],
-    locationText: resolveMiniProgramAdDescription(ad) || ad.slotName || '热玩项目',
-    statusText: ad.badgeText || '开放情况，以现场为准',
+    locationText: legacyLocation || resolveMiniProgramAdDescription(ad) || ad.slotName || '热玩项目',
+    statusText: legacyStatus || ad.badgeText || '开放情况，以现场为准',
     liked: false,
-    likeCount: 0,
+    likeCount: resolveMiniProgramAdNumberParam(ad, 'likeCount'),
     detailHtml,
   };
 }
