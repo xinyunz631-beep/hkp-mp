@@ -3,9 +3,13 @@ import {
   claimBffFreeClaimActivity,
   claimBffCoupon,
   exchangeBffCoupon,
+  fetchBffMemberCoupons,
   fetchBffFreeClaimActivities,
+  getBffCouponTitle,
   getBffFreeClaimActivityList,
+  getBffMemberCouponList,
   type BffClaimCouponResponse,
+  type BffCouponAssetView,
   type BffFreeClaimActivityClaimResponse,
   type BffFreeClaimActivityView,
   type BffFreeClaimGiftItemView,
@@ -30,8 +34,10 @@ export interface MemberCouponCenterCoupon {
   validityText: string;
   actionText: string;
   claimable: boolean;
+  claimed?: boolean;
   disabledReason?: string;
   templateNo?: string;
+  couponNo?: string;
   activityId?: string;
   giftItems?: MemberCouponCenterActivityGift[];
   targetRoute?: string;
@@ -48,6 +54,8 @@ export interface MemberCouponCenterActivityGift {
   actionText: string;
   claimable: boolean;
   claimed: boolean;
+  couponNo?: string;
+  templateNo?: string;
   disabledReason?: string;
 }
 
@@ -110,6 +118,92 @@ function isClaimedReason(reason?: string) {
   return typeof reason === 'string' && reason.includes('已领取');
 }
 
+function firstText(...values: Array<string | undefined>) {
+  return values.map((value) => value?.trim()).find(Boolean);
+}
+
+function normalizeReason(reason?: string) {
+  const normalized = reason?.trim();
+  if (!normalized) return undefined;
+  const genericReasons = [
+    '暂不可领',
+    '当前券暂不可领',
+    '当前礼品不可领取',
+    '当前优惠券暂不可领取',
+    '优惠券当前不可领取',
+    '当前活动暂不可领取',
+    '领券活动当前不可领取',
+  ];
+  return genericReasons.some((item) => normalized.includes(item)) ? undefined : normalized;
+}
+
+function parseDateTime(dateText?: string, endOfDay = false) {
+  if (!dateText) return undefined;
+  const normalized = dateText.trim();
+  if (!normalized) return undefined;
+  const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(normalized);
+  const fallbackTime = endOfDay ? ' 23:59:59' : ' 00:00:00';
+  const parseTarget = (dateOnly ? normalized + fallbackTime : normalized).replace(/-/g, '/');
+  const date = new Date(parseTarget);
+  return Number.isNaN(date.getTime()) ? undefined : date;
+}
+
+function resolveWindowReason(startAt?: string, endAt?: string, label = '活动') {
+  const now = Date.now();
+  const startTime = parseDateTime(startAt)?.getTime();
+  if (startTime && now < startTime) return `${label}未开始`;
+  const endTime = parseDateTime(endAt, true)?.getTime();
+  if (endTime && now > endTime) return `${label}已结束`;
+  return undefined;
+}
+
+function resolveActivityStatusReason(activity: BffFreeClaimActivityView) {
+  const windowReason = resolveWindowReason(activity.startAt, activity.endAt, '活动');
+  if (windowReason) return windowReason;
+
+  switch (activity.activityStatus) {
+    case 'draft':
+      return '活动未发布';
+    case 'paused':
+      return '活动已暂停';
+    case 'ended':
+      return '活动已结束';
+    case 'abnormal':
+      return '活动异常';
+    default:
+      return undefined;
+  }
+}
+
+function resolveGiftStatusReason(activity: BffFreeClaimActivityView, giftItem: BffFreeClaimGiftItemView, giftId?: string) {
+  const backendReason = normalizeReason(giftItem.cannotClaimReason || activity.cannotClaimReason);
+  if (backendReason) return backendReason;
+
+  const activityReason = resolveActivityStatusReason(activity);
+  if (activityReason) return activityReason;
+
+  const giftWindowReason = resolveWindowReason(giftItem.issueStartAt, giftItem.issueEndAt, '券');
+  if (giftWindowReason) return giftWindowReason;
+
+  if (typeof giftItem.remainingStock === 'number' && giftItem.remainingStock <= 0) return '库存不足';
+  const couponTemplateStatus = giftItem.couponTemplateStatus?.trim().toLowerCase();
+  if (couponTemplateStatus && !['published', 'enabled', 'enable', 'active', 'normal', '正常', '启用', '上架'].includes(couponTemplateStatus)) {
+    return '券模板不可用';
+  }
+  if (!giftId) return '活动配置待同步';
+  return '暂不可领';
+}
+
+function resolveGiftCouponNo(giftItem: BffFreeClaimGiftItemView) {
+  return firstText(
+    giftItem.couponNo,
+    giftItem.memberCouponNo,
+    giftItem.claimedCouponNo,
+    giftItem.couponNos?.[0],
+    giftItem.couponInstances?.find((coupon) => coupon.couponNo)?.couponNo,
+  );
+}
+
 // 格式化免费领券活动的前台可见有效期。
 function resolveActivityValidityText(activity: BffFreeClaimActivityView) {
   const startAt = formatDate(activity.startAt);
@@ -135,19 +229,27 @@ function resolveGiftId(activityId: string, giftItem: BffFreeClaimGiftItemView, i
   return giftItem.giftId || `${activityId}-gift-${giftItem.giftObjectId || index}`;
 }
 
+function resolveActivityGiftTotalCount(activity: BffFreeClaimActivityView) {
+  return Number(activity.totalCouponCount || 0)
+    || (activity.giftItems || []).reduce((total, item) => total + Number(item.claimUnitCount || item.sendNumber || 1), 0);
+}
+
 // 将 BFF 子券转换为活动卡内部的可点击券行。
 function toActivityGift(activity: BffFreeClaimActivityView, giftItem: BffFreeClaimGiftItemView, index: number): MemberCouponCenterActivityGift {
   const activityClaimable = typeof activity.canClaim === 'boolean' ? activity.canClaim : activity.activityStatus === 'running';
   const claimedCount = Math.max(readClaimedCount(giftItem.claimedByCurrentMember), readClaimedCount(giftItem.currentMemberClaimedCount));
   const reason = giftItem.cannotClaimReason || activity.cannotClaimReason;
-  const alreadyClaimed = claimedCount > 0 || isClaimedReason(reason);
+  const activityClaimedCount = readClaimedCount(activity.claimedByCurrentMember);
+  const activityGiftTotalCount = resolveActivityGiftTotalCount(activity);
+  const inferredActivityClaimed = activityGiftTotalCount > 0 && activityClaimedCount >= activityGiftTotalCount;
+  const alreadyClaimed = claimedCount > 0 || isClaimedReason(reason) || inferredActivityClaimed;
   const giftClaimable = typeof giftItem.canClaim === 'boolean' ? giftItem.canClaim : activityClaimable;
   const giftId = giftItem.giftId;
+  const couponNo = resolveGiftCouponNo(giftItem);
+  const templateNo = firstText(giftItem.templateNo, giftItem.couponTemplateId);
   const disabledReason = alreadyClaimed
     ? '已领取'
-    : reason
-    || (!giftId ? '当前券暂不可领' : undefined)
-    || (giftClaimable ? undefined : '当前优惠券暂不可领取');
+    : resolveGiftStatusReason(activity, giftItem, giftId);
   const claimable = Boolean(!alreadyClaimed && giftClaimable && giftId);
   const sendNumber = Number(giftItem.claimUnitCount || giftItem.sendNumber || 1);
 
@@ -159,6 +261,8 @@ function toActivityGift(activity: BffFreeClaimActivityView, giftItem: BffFreeCla
     actionText: alreadyClaimed ? '已领取' : claimable ? '领取' : '暂不可领',
     claimable,
     claimed: alreadyClaimed,
+    couponNo,
+    templateNo,
     disabledReason,
   };
 }
@@ -175,8 +279,7 @@ function resolveActivityGiftSummary(giftItems: BffFreeClaimGiftItemView[] = []) 
 
 // 计算活动卡片上的权益数量文案。
 function resolveActivityAmountText(activity: BffFreeClaimActivityView) {
-  const totalGiftCount = Number(activity.totalCouponCount || 0)
-    || (activity.giftItems || []).reduce((total, item) => total + Number(item.claimUnitCount || item.sendNumber || 1), 0);
+  const totalGiftCount = resolveActivityGiftTotalCount(activity);
   if (totalGiftCount > 0) return `${totalGiftCount}张券`;
   return '领券';
 }
@@ -193,10 +296,13 @@ function toActivityCoupon(activity: BffFreeClaimActivityView): MemberCouponCente
     || giftItems.reduce((total, item) => total + Number.parseInt(item.amountText, 10), 0);
   const allGiftClaimed = Boolean(giftItems.length && giftItems.every((item) => item.claimed));
   const allClaimed = allGiftClaimed || Boolean(giftItems.length && totalCouponCount > 0 && activityClaimedCount >= totalCouponCount);
+  const claimedCouponNo = giftItems.find((item) => item.claimed && item.couponNo)?.couponNo;
   const canClaimAll = typeof activity.canClaimAll === 'boolean'
     ? activity.canClaimAll
     : (giftItems.length ? giftItems.some((item) => item.claimable) : canClaim);
-  const disabledReason = allClaimed ? '已领取' : activity.cannotClaimReason || (canClaim ? undefined : '当前活动暂不可领取');
+  const disabledReason = allClaimed
+    ? '已领取'
+    : normalizeReason(activity.cannotClaimReason) || resolveActivityStatusReason(activity) || (canClaim ? undefined : '暂不可领');
 
   return {
     id: activityId,
@@ -206,12 +312,38 @@ function toActivityCoupon(activity: BffFreeClaimActivityView): MemberCouponCente
     amountText: resolveActivityAmountText(activity),
     thresholdText: resolveActivityGiftSummary(activity.giftItems),
     validityText: resolveActivityValidityText(activity),
-    actionText: allClaimed ? '已领取' : canClaimAll ? '一键领取' : disabledReason || '暂不可领',
+    actionText: allClaimed ? '已领取' : canClaimAll ? '一键领取' : '暂不可领',
     claimable: Boolean(!allClaimed && canClaimAll),
+    claimed: allClaimed,
     disabledReason,
     activityId,
+    couponNo: claimedCouponNo,
     giftItems,
   };
+}
+
+function matchClaimedCoupon(coupon: BffCouponAssetView, target?: { templateNo?: string; title?: string }) {
+  if (!coupon.couponNo) return false;
+  if (target?.templateNo && [coupon.templateNo, coupon.templateId].includes(target.templateNo)) return true;
+  const title = target?.title?.trim();
+  if (!title) return false;
+  return [coupon.couponName, coupon.displayName, coupon.title, getBffCouponTitle(coupon)]
+    .map((value) => value?.trim())
+    .some((value) => Boolean(value && (value.includes(title) || title.includes(value))));
+}
+
+export async function resolveClaimedMemberCouponNo(coupon: MemberCouponCenterCoupon, gift?: MemberCouponCenterActivityGift) {
+  const directCouponNo = firstText(gift?.couponNo, coupon.couponNo);
+  if (directCouponNo) return directCouponNo;
+  if (!(gift?.claimed || coupon.claimed)) return undefined;
+
+  const response = await fetchBffMemberCoupons({ page: 1, size: 100 });
+  const memberCoupons = getBffMemberCouponList(response);
+  const target = {
+    templateNo: firstText(gift?.templateNo, coupon.templateNo),
+    title: gift?.title || coupon.title,
+  };
+  return memberCoupons.find((item) => matchClaimedCoupon(item, target))?.couponNo;
 }
 
 function toKcoinCoupon(item: BffCrmP1ConfigItem): MemberCouponCenterCoupon | undefined {

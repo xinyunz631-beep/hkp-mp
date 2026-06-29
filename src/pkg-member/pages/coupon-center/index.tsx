@@ -11,6 +11,7 @@ import {
   claimMemberCoupon,
   exchangeMemberCouponCode,
   fetchMemberCouponCenterData,
+  resolveClaimedMemberCouponNo,
   type MemberCouponCenterActivityGift,
   type MemberCouponCenterCoupon,
   type MemberCouponCenterData,
@@ -66,7 +67,11 @@ const MemberCouponCenterPage = observer(function MemberCouponCenterPage() {
 
   // 读取领取/兑换返回的第一张券号，成功后跳到券详情核对真实资产。
   function resolveFirstCouponNo(response: Awaited<ReturnType<typeof claimMemberCoupon>>) {
-    return response.coupons?.[0]?.couponNo || response.coupon?.couponNo || response.couponNos?.[0];
+    return response.coupons?.[0]?.couponNo
+      || response.coupon?.couponNo
+      || response.couponNos?.[0]
+      || response.claimedGiftItems?.find((item) => item.couponNo)?.couponNo
+      || response.claimedGiftItems?.flatMap((item) => item.couponInstances ?? []).find((item) => item.couponNo)?.couponNo;
   }
 
   // 后端活动一键领取允许 200 返回部分或全部失败，这里把零发券结果转成可见失败提示。
@@ -89,6 +94,17 @@ const MemberCouponCenterPage = observer(function MemberCouponCenterPage() {
 
     const claimable = gift ? gift.claimable : coupon.claimable;
     const disabledReason = gift?.disabledReason || coupon.disabledReason;
+    if (gift?.claimed || coupon.claimed) {
+      const couponNo = await pageRuntime.withLoading(() => resolveClaimedMemberCouponNo(coupon, gift));
+      if (couponNo) {
+        navigateToMiniRoute(resolveCouponDetailRoute(couponNo));
+        return;
+      }
+      await showWechatToast('已领取，可在我的优惠券查看');
+      navigateToMiniRoute(MINI_PACKAGE_ROUTES.memberCoupons);
+      return;
+    }
+
     if (!claimable) {
       await showWechatToast(disabledReason || '当前优惠券暂不可领取');
       return;
@@ -195,9 +211,12 @@ const MemberCouponCenterPage = observer(function MemberCouponCenterPage() {
                             <Text className="_pg-activity-card_amount">{coupon.amountText}</Text>
                             <Text className="_pg-activity-card_title">{coupon.title}</Text>
                             <Text className="_pg-activity-card_date">{coupon.validityText}</Text>
+                            {!coupon.claimed && !coupon.claimable && coupon.disabledReason ? (
+                              <Text className="_pg-activity-card_reason">{coupon.disabledReason}</Text>
+                            ) : null}
                           </View>
                           <Text
-                            className={`_pg-activity-card_action ${coupon.claimable ? '' : '_pg-activity-card_action--disabled'}`}
+                            className={`_pg-activity-card_action ${coupon.claimable || coupon.claimed ? '' : '_pg-activity-card_action--disabled'}`}
                             onClick={() => void handleCouponPress(coupon)}
                           >
                             {coupon.actionText}
@@ -209,9 +228,12 @@ const MemberCouponCenterPage = observer(function MemberCouponCenterPage() {
                               <View className="_pg-gift-row_main">
                                 <Text className="_pg-gift-row_title">{gift.title}</Text>
                                 <Text className="_pg-gift-row_desc">{gift.amountText}</Text>
+                                {!gift.claimed && !gift.claimable && gift.disabledReason ? (
+                                  <Text className="_pg-gift-row_reason">{gift.disabledReason}</Text>
+                                ) : null}
                               </View>
                               <Text
-                                className={`_pg-gift-row_action ${gift.claimable ? '' : '_pg-gift-row_action--disabled'}`}
+                                className={`_pg-gift-row_action ${gift.claimable || gift.claimed ? '' : '_pg-gift-row_action--disabled'}`}
                                 onClick={() => void handleCouponPress(coupon, gift)}
                               >
                                 {gift.actionText}

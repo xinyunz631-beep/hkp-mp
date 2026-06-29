@@ -154,6 +154,11 @@ export interface BffFreeClaimGiftItemView {
   giftId?: string;
   giftType?: string;
   giftObjectId?: string;
+  couponNo?: string;
+  memberCouponNo?: string;
+  claimedCouponNo?: string;
+  couponNos?: string[];
+  couponInstances?: BffCouponAssetView[];
   templateNo?: string;
   couponTemplateId?: string;
   issueBatchId?: string;
@@ -258,6 +263,7 @@ export interface BffFreeClaimActivityClaimResponse {
     giftObjectId?: string;
     templateNo?: string;
     couponTemplateId?: string;
+    issuedCount?: number;
     code?: string;
     message?: string;
     errorCode?: string;
