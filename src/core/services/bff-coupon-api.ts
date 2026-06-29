@@ -148,6 +148,51 @@ export interface BffCouponPackagesResponse {
   hasMore?: boolean;
 }
 
+export interface BffFreeClaimGiftItemView {
+  giftId?: string;
+  giftType?: string;
+  giftObjectId?: string;
+  giftObjectName?: string;
+  couponName?: string;
+  templateName?: string;
+  displayName?: string;
+  sendNumber?: number;
+}
+
+export interface BffFreeClaimActivityView {
+  activityId: string;
+  activityName: string;
+  bannerImage?: string;
+  shareTitle?: string;
+  startAt?: string;
+  endAt?: string;
+  activityStatus?: string;
+  claimLimitPerMember?: number;
+  dailyLimit?: number;
+  claimedByCurrentMember?: number;
+  canClaim?: boolean;
+  cannotClaimReason?: string;
+  giftItems?: BffFreeClaimGiftItemView[];
+}
+
+export interface BffFreeClaimActivitiesResponse {
+  list?: BffFreeClaimActivityView[];
+  records?: BffFreeClaimActivityView[];
+  items?: BffFreeClaimActivityView[];
+  total?: number;
+  page?: number;
+  pageSize?: number;
+  size?: number;
+  hasMore?: boolean;
+}
+
+export interface FetchBffFreeClaimActivitiesParams {
+  placement?: string;
+  displayTab?: string;
+  page?: number;
+  pageSize?: number;
+}
+
 export interface BffClaimCouponRequest {
   templateNo?: string;
   activityId?: string;
@@ -161,6 +206,45 @@ export interface BffClaimCouponResponse {
   coupons?: BffCouponAssetView[];
   successCount?: number;
   failCount?: number;
+}
+
+export interface BffFreeClaimActivityClaimRequest {
+  giftId?: string;
+  idempotentKey: string;
+}
+
+export interface BffFreeClaimActivityClaimResponse {
+  claimRecordId?: string;
+  activityId?: string;
+  activityName?: string;
+  couponNos?: string[];
+  couponInstances?: BffCouponAssetView[];
+  coupons?: BffCouponAssetView[];
+  claimedByCurrentMember?: number;
+  canClaim?: boolean;
+  nextAction?: {
+    type?: string;
+    text?: string;
+    path?: string;
+  };
+}
+
+export interface BffFreeClaimActivityMemberRecord {
+  claimRecordId?: string;
+  activityId?: string;
+  activityName?: string;
+  couponNos?: string[];
+  couponInstances?: BffCouponAssetView[];
+  claimAt?: string;
+  status?: string;
+}
+
+export interface BffFreeClaimActivityMemberRecordsResponse {
+  list?: BffFreeClaimActivityMemberRecord[];
+  records?: BffFreeClaimActivityMemberRecord[];
+  total?: number;
+  page?: number;
+  pageSize?: number;
 }
 
 export interface BffCouponExchangeRequest {
@@ -372,6 +456,11 @@ export function getBffCouponPackageList(response?: BffCouponPackagesResponse) {
   return response?.list ?? response?.packages ?? [];
 }
 
+// 读取免费领券活动列表，兼容 PageResult 的多种列表字段。
+export function getBffFreeClaimActivityList(response?: BffFreeClaimActivitiesResponse) {
+  return response?.list ?? response?.records ?? response?.items ?? [];
+}
+
 // 读取结算可用券列表，兼容分页 list 和早期 coupons。
 export function getBffAvailableCouponList(response?: BffAvailableCouponsResponse) {
   return response?.list ?? response?.coupons ?? [];
@@ -400,6 +489,19 @@ export function fetchBffMemberCouponPackages(params: { sceneType?: BffCouponScen
   });
 }
 
+// 查询活动中心免费领券活动卡，小程序推荐 tab 以活动为展示维度。
+export function fetchBffFreeClaimActivities(params: FetchBffFreeClaimActivitiesParams = {}) {
+  return request<BffFreeClaimActivitiesResponse>({
+    url: appendQuery('/api/bff/activity-center/free-claim-activities', {
+      placement: params.placement ?? 'couponCenter',
+      displayTab: params.displayTab ?? 'recommend',
+      page: params.page ?? 1,
+      pageSize: params.pageSize ?? 20,
+    }),
+    method: 'GET',
+  });
+}
+
 // 按真实券模板领取优惠券，写接口必须带 HMAC 签名。
 export function claimBffCoupon(data: BffClaimCouponRequest) {
   return request<BffClaimCouponResponse, BffClaimCouponRequest>({
@@ -407,6 +509,27 @@ export function claimBffCoupon(data: BffClaimCouponRequest) {
     method: 'POST',
     data,
     sign: true,
+  });
+}
+
+// 按活动维度领取免费领券活动，写接口必须带幂等键和 HMAC 签名。
+export function claimBffFreeClaimActivity(activityId: string, data: BffFreeClaimActivityClaimRequest) {
+  return request<BffFreeClaimActivityClaimResponse, BffFreeClaimActivityClaimRequest>({
+    url: `/api/bff/activity-center/free-claim-activities/${encodeURIComponent(activityId)}/claim`,
+    method: 'POST',
+    data,
+    sign: true,
+  });
+}
+
+// 查询当前会员在单个免费领券活动下的领取记录。
+export function fetchBffFreeClaimActivityMyRecords(activityId: string, params: { page?: number; pageSize?: number } = {}) {
+  return request<BffFreeClaimActivityMemberRecordsResponse>({
+    url: appendQuery(`/api/bff/activity-center/free-claim-activities/${encodeURIComponent(activityId)}/my-records`, {
+      page: params.page ?? 1,
+      pageSize: params.pageSize ?? 20,
+    }),
+    method: 'GET',
   });
 }
 
