@@ -8,9 +8,14 @@ import { AppShareButton } from '@/core/components/AppShareButton';
 import { PageFooter, PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
-import { previewWechatImages } from '@/core/utils/wechat-actions';
+import { resolveErrorMessage } from '@/core/utils/error-message';
+import { previewWechatImages, showWechatToast } from '@/core/utils/wechat-actions';
 import { TicketRichText } from '@/pkg-ticket/components/TicketRichText';
-import { fetchParkDetailData, type TicketParkDetailData } from '@/pkg-ticket/services/park-detail';
+import {
+  fetchParkDetailData,
+  updateParkProjectLikeState,
+  type TicketParkDetailData,
+} from '@/pkg-ticket/services/park-detail';
 import './index.scss';
 
 function resolveProjectId() {
@@ -22,6 +27,7 @@ const ParkDetailPage = observer(function ParkDetailPage() {
   const [detailData, setDetailData] = useState<TicketParkDetailData>();
   const [activeIndex, setActiveIndex] = useState(0);
   const [liked, setLiked] = useState(false);
+  const [liking, setLiking] = useState(false);
   const pageRuntime = usePageRuntime({
     initPage: async () => {
       const nextData = await fetchParkDetailData(resolveProjectId());
@@ -50,8 +56,30 @@ const ParkDetailPage = observer(function ParkDetailPage() {
     });
   }
 
-  function handleLikePress() {
-    setLiked((nextLiked) => !nextLiked);
+  async function handleLikePress() {
+    if (!project || liking) return;
+
+    const authed = await pageRuntime.ensureLogin('登录后可喜欢项目');
+    if (!authed) return;
+
+    const nextLiked = !liked;
+    setLiking(true);
+    try {
+      const likeState = await updateParkProjectLikeState(project.id, nextLiked);
+      setLiked(likeState.liked);
+      setDetailData((current) => current ? {
+        ...current,
+        project: {
+          ...current.project,
+          liked: likeState.liked,
+          likeCount: likeState.likeCount,
+        },
+      } : current);
+    } catch (error) {
+      await showWechatToast(resolveErrorMessage(error, '喜欢状态更新失败，请稍后再试'));
+    } finally {
+      setLiking(false);
+    }
   }
 
   function handleTicketPress() {
@@ -65,8 +93,7 @@ const ParkDetailPage = observer(function ParkDetailPage() {
   return pageRuntime.renderPage(() => {
     if (!project) return null;
 
-    const likeCount = project.likeCount + (liked && !project.liked ? 1 : 0) - (!liked && project.liked ? 1 : 0);
-    const likeText = `${likeCount}人喜欢`;
+    const likeText = `${project.likeCount}人喜欢`;
 
     return (
       <View className="_pg">

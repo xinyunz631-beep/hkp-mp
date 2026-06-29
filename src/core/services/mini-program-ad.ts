@@ -22,6 +22,13 @@ type MiniProgramAdSlotAdsApiResponse = MiniProgramAdView[] | MiniProgramAdSlotAd
   records?: unknown;
 } | undefined | null;
 
+export interface MiniProgramAdLikeState {
+  adId?: string;
+  adNo?: string;
+  liked: boolean;
+  likeCount: number;
+}
+
 function isMiniProgramAdPageAdsResponse(
   response: MiniProgramAdPageAdsApiResponse,
 ): response is MiniProgramAdPageAdsResponse {
@@ -132,6 +139,25 @@ export function fetchMiniProgramAdDetail(id: string) {
     url: `/api/bff/content/mini-program/ads/${encodeURIComponent(id)}`,
     method: 'GET',
     showErrorToast: false,
+  });
+}
+
+// 查询单个广告的当前用户喜欢状态和实时总数。
+export function fetchMiniProgramAdLikeState(id: string) {
+  return request<MiniProgramAdLikeState>({
+    url: `/api/bff/content/mini-program/ads/${encodeURIComponent(id)}/like`,
+    method: 'GET',
+    showErrorToast: false,
+  });
+}
+
+// 更新单个广告的喜欢状态，服务端按当前登录态归属用户。
+export function updateMiniProgramAdLikeState(id: string, liked: boolean) {
+  return request<MiniProgramAdLikeState, { liked: boolean }>({
+    url: `/api/bff/content/mini-program/ads/${encodeURIComponent(id)}/like`,
+    method: 'POST',
+    data: { liked },
+    sign: true,
   });
 }
 
