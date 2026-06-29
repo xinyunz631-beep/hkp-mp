@@ -137,33 +137,13 @@ function normalizeReason(reason?: string) {
   return genericReasons.some((item) => normalized.includes(item)) ? undefined : normalized;
 }
 
-function parseDateTime(dateText?: string, endOfDay = false) {
-  if (!dateText) return undefined;
-  const normalized = dateText.trim();
-  if (!normalized) return undefined;
-  const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(normalized);
-  const fallbackTime = endOfDay ? ' 23:59:59' : ' 00:00:00';
-  const parseTarget = (dateOnly ? normalized + fallbackTime : normalized).replace(/-/g, '/');
-  const date = new Date(parseTarget);
-  return Number.isNaN(date.getTime()) ? undefined : date;
-}
-
-function resolveWindowReason(startAt?: string, endAt?: string, label = '活动') {
-  const now = Date.now();
-  const startTime = parseDateTime(startAt)?.getTime();
-  if (startTime && now < startTime) return `${label}未开始`;
-  const endTime = parseDateTime(endAt, true)?.getTime();
-  if (endTime && now > endTime) return `${label}已结束`;
-  return undefined;
-}
-
+// 不用前端本地时间推断活动窗口，状态原因以 BFF 明确字段为准。
 function resolveActivityStatusReason(activity: BffFreeClaimActivityView) {
-  const windowReason = resolveWindowReason(activity.startAt, activity.endAt, '活动');
-  if (windowReason) return windowReason;
-
   switch (activity.activityStatus) {
     case 'draft':
       return '活动未发布';
+    case 'scheduled':
+      return '活动待开始';
     case 'paused':
       return '活动已暂停';
     case 'ended':
@@ -181,9 +161,6 @@ function resolveGiftStatusReason(activity: BffFreeClaimActivityView, giftItem: B
 
   const activityReason = resolveActivityStatusReason(activity);
   if (activityReason) return activityReason;
-
-  const giftWindowReason = resolveWindowReason(giftItem.issueStartAt, giftItem.issueEndAt, '券');
-  if (giftWindowReason) return giftWindowReason;
 
   if (typeof giftItem.remainingStock === 'number' && giftItem.remainingStock <= 0) return '库存不足';
   const couponTemplateStatus = giftItem.couponTemplateStatus?.trim().toLowerCase();
