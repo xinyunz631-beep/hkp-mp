@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react';
 import { Input, Picker, Text, View } from '@tarojs/components';
-import Taro from '@tarojs/taro';
 import { observer } from 'mobx-react';
 import { AppIcon } from '@/core/components/AppIcon';
 import { AppImage } from '@/core/components/AppImage';
@@ -207,7 +206,7 @@ const MemberProfilePage = observer(function MemberProfilePage() {
 
     await pageRuntime.withLoading(logout);
     await showWechatToast('已退出登录', 'success');
-    await Taro.switchTab({ url: MINI_MAIN_ROUTES.member });
+    navigateToMiniRoute(MINI_MAIN_ROUTES.member);
   }
 
   function renderArrow(showArrow = true) {

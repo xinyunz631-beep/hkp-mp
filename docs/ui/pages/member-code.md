@@ -12,14 +12,15 @@
 - Figma nodeId：-
 - Pencil file：/Users/kite/Desktop/vibe-coding/codex/pencil/HKP.pen
 - Pencil nodeId：member-code-page
-- 当前版本：v0.6
+- 当前版本：v0.7
 - 页面状态：interaction-ready
-- 更新时间：2026-05-18
+- 更新时间：2026-06-29
 - 实现文件：
   - src/pkg-member/pages/member-code/index.tsx
   - src/pkg-member/pages/member-code/index.scss
   - src/pkg-member/pages/member-code/index.config.ts
   - src/pkg-member/services/member-code.ts
+  - src/pkg-member/services/member-code-theme.ts
   - src/core/constants/routes.ts
   - src/core/components/AppTabBar/index.tsx
   - src/app.config.ts
@@ -39,9 +40,9 @@
 
 ## 动态与静态边界
 
-- 接口图片：无。
+- 接口图片：页面背景和顶部头图来自 `GET /api/bff/content/mini-program/ads?pagecode=member_code` 的后台广告配置。
 - 接口文本/数据：会员码字符串由 `GET /api/bff/crm/member-code` 返回的 `qrContent` 提供。
-- 代码渲染：隐藏 canvas 按微信真实像素生成二维码、转成本地临时图片后通过 `AppImage` 按 750 设计稿 `rpx` 展示，页面背景、卡片样式和提示文案。
+- 代码渲染：隐藏 canvas 按微信真实像素生成二维码、转成本地临时图片后通过 `AppImage` 按 750 设计稿 `rpx` 展示，页面背景、顶部头图、卡片样式和提示文案。
 - 本地配置：自定义导航标题、页面分包路由、30 秒自动刷新定时器。
 
 ## 状态要求
@@ -57,6 +58,7 @@
 | 模块 | service | 失败策略 | 是否阻断页面 |
 |---|---|---|---|
 | 会员码内容 | `fetchMemberCode()` | 接口失败、缺少 `qrContent` 或未登录时进入异常态，不回退本地码 | 是，首屏必须拿到内容后再展示二维码 |
+| 会员码主题图 | `fetchMemberCodeThemeConfig()` | 配置读取失败时保留占位，不影响会员码生成 | 否 |
 
 ## 交互与跳转
 
@@ -97,11 +99,17 @@
 - `src/pkg-member/pages/member-code/index.scss`：页面视觉、白卡和背景氛围。
 - `src/pkg-member/pages/member-code/index.config.ts`：系统导航标题。
 - `src/pkg-member/services/member-code.ts`：会员码真实接口适配。
+- `src/pkg-member/services/member-code-theme.ts`：会员码页后台主题配置解析。
 - `src/core/components/AppTabBar/index.tsx`：底部中间会员码入口跳转到本页面。
 - `src/core/constants/routes.ts`：分包路由常量。
 - `src/app.config.ts`：分包页面接入。
 
 ## 变更记录
+
+### v0.7
+
+- 会员码页背景图和顶部 Hello Kitty Park 头图改为读取后台小程序广告配置 `member_code`。
+- 新增 `member_code_background`、`member_code_logo` 两个资源位消费口径，后续换图只改后台配置。
 
 ### v0.6
 
@@ -143,3 +151,4 @@
 - 2026-05-14：`yarn check:ui-contract` 通过。
 - 2026-05-15：`yarn check:page-convention` 通过。
 - 2026-05-18：待在微信开发工具中目视确认二维码图片渲染、顶部导航和 30 秒刷新表现。
+- 2026-06-29：生产 `member_code` 页面、资源位和默认广告已回读；两张默认主题图公网 `200 OK`。
