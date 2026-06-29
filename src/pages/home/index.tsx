@@ -162,15 +162,32 @@ function mapAdToPlayCategory(ad: MiniProgramAdView, index: number): HomePlayCate
   };
 }
 
+function normalizeHomeAdJumpType(jumpType?: string) {
+  return jumpType?.trim().replace(/[\s-]+/g, '_').toUpperCase();
+}
+
+function isHomeMiniProgramPathValue(value?: string) {
+  const trimmedValue = value?.trim();
+  return Boolean(trimmedValue && (
+    trimmedValue.startsWith('/')
+    || trimmedValue.startsWith('pages/')
+    || trimmedValue.startsWith('pkg-')
+  ));
+}
+
 function hasExecutableAdTarget(target: MiniProgramAdClickTarget) {
+  const jumpType = normalizeHomeAdJumpType(target.jumpType);
   return Boolean(
-    target.jumpType
-    || target.jumpTarget
+    target.jumpTarget
     || target.jumpPath
-    || target.jumpUrl
-    || target.jumpCustomValue
+    || isHomeMiniProgramPathValue(target.jumpUrl)
     || target.richText
     || target.richTextHtml
+    || (jumpType === 'H5' && target.jumpUrl)
+    || (jumpType === 'CUSTOM' && target.jumpCustomValue)
+    || (jumpType === 'AD_DETAIL' && (target.detailAdNo || target.adNo || target.id))
+    || ((jumpType === 'OTHERMINIPROGRAM' || jumpType === 'OTHER_MINI_PROGRAM')
+      && (target.jumpAppId || target.jumpMiniProgramAppId))
   );
 }
 
@@ -250,7 +267,7 @@ const HomePage = observer(function HomePage() {
 
   async function handleShortcutPress(entry: HomeShortcutEntry) {
     const action = async () => {
-      if (entry.jumpType || entry.jumpPath || entry.jumpUrl || entry.jumpCustomValue || entry.richText || entry.richTextHtml) {
+      if (hasExecutableAdTarget(entry)) {
         await adClick(entry);
         return;
       }
@@ -333,7 +350,7 @@ const HomePage = observer(function HomePage() {
   }
 
   async function handleSectionCardPress(card: HomeSectionCard) {
-    if (card.jumpType || card.jumpPath || card.jumpUrl || card.jumpCustomValue || card.richText || card.richTextHtml) {
+    if (hasExecutableAdTarget(card)) {
       await adClick(card);
       return;
     }
@@ -350,7 +367,7 @@ const HomePage = observer(function HomePage() {
   }
 
   async function handlePlayCategoryPress(category: HomePlayCategory) {
-    if (category.jumpType || category.jumpPath || category.jumpUrl || category.jumpCustomValue || category.richText || category.richTextHtml) {
+    if (hasExecutableAdTarget(category)) {
       await adClick(category);
       return;
     }
