@@ -369,6 +369,100 @@ function createFreeClaimIdempotentKey(activityId: string, giftId?: string) {
   return `FCLAIM-${activityId}${giftId ? `-${giftId}` : ''}-${Date.now()}-${random}`;
 }
 
+function getClaimedCoupons(response: BffClaimCouponResponse) {
+  return response.coupons ?? (response.coupon ? [response.coupon] : []);
+}
+
+function getClaimedCouponNos(response: BffClaimCouponResponse) {
+  const couponNos = [
+    ...(response.couponNos ?? []),
+    ...getClaimedCoupons(response).map((coupon) => coupon.couponNo),
+  ].filter((couponNo): couponNo is string => Boolean(couponNo));
+  return Array.from(new Set(couponNos));
+}
+
+function resolveClaimErrorMessage(error: unknown) {
+  if (error instanceof Error && error.message) return error.message;
+  if (typeof error === 'string' && error.trim()) return error.trim();
+  return '领取失败，请稍后再试';
+}
+
+function resolveTemplateGiftItems(coupon: MemberCouponCenterCoupon) {
+  return (coupon.giftItems ?? []).filter(
+    (gift): gift is MemberCouponCenterActivityGift & { templateNo: string } => Boolean(gift.claimable && gift.templateNo),
+  );
+}
+
+async function claimActivityCouponByTemplate(activityId: string, templateNo: string) {
+  const claimResponse = await claimBffCoupon({ templateNo, activityId });
+  return {
+    ...claimResponse,
+    activityId,
+    coupons: getClaimedCoupons(claimResponse),
+    couponNos: getClaimedCouponNos(claimResponse),
+  };
+}
+
+async function claimActivityCouponsByTemplates(coupon: MemberCouponCenterCoupon): Promise<MemberCouponClaimResponse> {
+  if (!coupon.activityId) {
+    throw new Error(coupon.disabledReason || '当前优惠券暂不可领取');
+  }
+
+  const giftItems = resolveTemplateGiftItems(coupon);
+  const coupons: NonNullable<BffClaimCouponResponse['coupons']> = [];
+  const couponNos: string[] = [];
+  const claimedGiftItems: NonNullable<BffFreeClaimActivityClaimResponse['claimedGiftItems']> = [];
+  const failedGiftItems: NonNullable<BffFreeClaimActivityClaimResponse['failedGiftItems']> = [];
+
+  for (const gift of giftItems) {
+    try {
+      const claimResponse = await claimActivityCouponByTemplate(coupon.activityId, gift.templateNo);
+      const nextCoupons = claimResponse.coupons ?? [];
+      const nextCouponNos = claimResponse.couponNos ?? [];
+      coupons.push(...nextCoupons);
+      couponNos.push(...nextCouponNos);
+      claimedGiftItems.push({
+        giftId: gift.giftId,
+        templateNo: gift.templateNo,
+        couponTemplateId: gift.templateNo,
+        couponNo: nextCouponNos[0] || nextCoupons[0]?.couponNo,
+        coupon: nextCoupons[0],
+        couponInstances: nextCoupons,
+        issuedCount: Math.max(nextCouponNos.length, nextCoupons.length, Number(claimResponse.successCount || 0)),
+      });
+    } catch (error) {
+      failedGiftItems.push({
+        giftId: gift.giftId,
+        templateNo: gift.templateNo,
+        couponTemplateId: gift.templateNo,
+        issuedCount: 0,
+        message: resolveClaimErrorMessage(error),
+        errorMessage: resolveClaimErrorMessage(error),
+      });
+    }
+  }
+
+  const uniqueCouponNos = Array.from(new Set(couponNos));
+  const issuedCount = Math.max(uniqueCouponNos.length, coupons.length, claimedGiftItems.reduce((total, item) => total + Number(item.issuedCount || 0), 0));
+  if (issuedCount <= 0 && failedGiftItems.length > 0) {
+    throw new Error(failedGiftItems[0]?.errorMessage || '领取失败，请稍后再试');
+  }
+
+  return {
+    activityId: coupon.activityId,
+    activityName: coupon.title,
+    claimMode: 'activityAll',
+    coupons,
+    couponNos: uniqueCouponNos,
+    couponInstances: coupons,
+    claimedGiftItems,
+    failedGiftItems,
+    issuedCount,
+    successCount: issuedCount,
+    failCount: failedGiftItems.length,
+  };
+}
+
 // 领取优惠券，推荐 tab 走活动中心新接口，历史模板号只作为兼容路径。
 export async function claimMemberCoupon(
   coupon: MemberCouponCenterCoupon,
@@ -379,20 +473,36 @@ export async function claimMemberCoupon(
   }
 
   if (coupon.activityId) {
-    if (!options.giftId && options.templateNo) {
-      return claimBffCoupon({ templateNo: options.templateNo, activityId: coupon.activityId });
+    if (options.templateNo) {
+      return claimActivityCouponByTemplate(coupon.activityId, options.templateNo);
     }
     const claimMode = options.giftId ? 'singleGift' : 'activityAll';
-    const claimResponse = await claimBffFreeClaimActivity(coupon.activityId, {
-      idempotentKey: createFreeClaimIdempotentKey(coupon.activityId, options.giftId),
-      claimMode,
-      giftId: options.giftId,
-      quantity: options.giftId ? 1 : undefined,
-    });
-    return {
-      ...claimResponse,
-      coupons: claimResponse.couponInstances || claimResponse.coupons,
-    };
+    try {
+      const claimResponse = await claimBffFreeClaimActivity(coupon.activityId, {
+        idempotentKey: createFreeClaimIdempotentKey(coupon.activityId, options.giftId),
+        claimMode,
+        giftId: options.giftId,
+        quantity: options.giftId ? 1 : undefined,
+      });
+      const coupons = claimResponse.couponInstances || claimResponse.coupons || [];
+      const issuedCount = Math.max(
+        Number(claimResponse.issuedCount || 0),
+        coupons.length,
+        claimResponse.couponNos?.length || 0,
+      );
+      if (claimMode === 'activityAll' && issuedCount <= 0 && resolveTemplateGiftItems(coupon).length > 0) {
+        return claimActivityCouponsByTemplates(coupon);
+      }
+      return {
+        ...claimResponse,
+        coupons,
+      };
+    } catch (error) {
+      if (claimMode === 'activityAll' && resolveTemplateGiftItems(coupon).length > 0) {
+        return claimActivityCouponsByTemplates(coupon);
+      }
+      throw error;
+    }
   }
 
   return claimBffCoupon({ templateNo: coupon.templateNo });
