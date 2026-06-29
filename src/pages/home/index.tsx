@@ -156,6 +156,18 @@ function mapAdToPlayCategory(ad: MiniProgramAdView, index: number): HomePlayCate
   };
 }
 
+function hasExecutableAdTarget(target: MiniProgramAdClickTarget) {
+  return Boolean(
+    target.jumpType
+    || target.jumpTarget
+    || target.jumpPath
+    || target.jumpUrl
+    || target.jumpCustomValue
+    || target.richText
+    || target.richTextHtml
+  );
+}
+
 // 渲染主包首页，按当前 Pencil 750px 开发稿实现首页结构和接口图占位。
 const HomePage = observer(function HomePage() {
   const [homeAds, setHomeAds] = useState<MiniProgramAdPageAdsResponse>();
@@ -296,6 +308,8 @@ const HomePage = observer(function HomePage() {
   }
 
   async function handleBannerPress(entry: HomeBannerEntry) {
+    if (!hasExecutableAdTarget(entry)) return;
+
     const action = async () => {
       await adClick(entry);
     };
