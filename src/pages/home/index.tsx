@@ -123,12 +123,18 @@ function mapAdToBannerEntry(ad: MiniProgramAdView, index: number): HomeBannerEnt
   };
 }
 
+function resolveHomeShortcutTitle(ad: MiniProgramAdView, index: number) {
+  const title = resolveMiniProgramAdTitle(ad);
+  if (title === '分享收益') return '敬请期待';
+  return title || `入口${index + 1}`;
+}
+
 // 把广告映射成快捷入口项。
 function mapAdToShortcutEntry(ad: MiniProgramAdView, index: number): HomeShortcutEntry {
   return {
     ...resolveMiniProgramAdClickTarget(ad),
     key: ad.id || ad.adNo || `shortcut-${index}`,
-    title: resolveMiniProgramAdTitle(ad) || `入口${index + 1}`,
+    title: resolveHomeShortcutTitle(ad, index),
     imageSrc: resolveMiniProgramAdImage(ad, 'icon'),
   };
 }
