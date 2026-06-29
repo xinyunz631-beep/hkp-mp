@@ -416,7 +416,9 @@
   &_actions {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    width: 246px;
+    width: 286px;
+    padding: 0 10px;
+    box-sizing: border-box;
     background: #ffffff;
   }
 
@@ -427,6 +429,16 @@
     justify-content: center;
     gap: 8px;
     min-height: 104px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: #ffffff;
+    line-height: 1;
+
+    &::after {
+      border: 0;
+    }
   }
 
   &_icon-wrap {
@@ -443,14 +455,16 @@
 
   &_buttons {
     display: flex;
-    flex: 1;
+    flex: none;
+    width: 464px;
   }
 
   &_button {
     display: flex;
     align-items: center;
     justify-content: center;
-    flex: 1;
+    flex: none;
+    width: 232px;
     min-height: 104px;
     color: #ffffff;
     font-size: 28px;

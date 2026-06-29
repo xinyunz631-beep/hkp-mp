@@ -9,6 +9,7 @@ import { AppShareButton } from '@/core/components/AppShareButton';
 import { SkuPopup } from '@/core/components/commerce';
 import { PageShare, PageShell } from '@/core/components/PageShell';
 import { MINI_MAIN_ROUTES, MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
+import { openCustomerService } from '@/core/services/customer-service';
 import { createMallCheckoutDraft } from '@/core/services/mall-checkout-draft';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import type { HkpSkuGroup } from '@/core/types/hkp';
@@ -21,7 +22,6 @@ import {
   resolveSkuState,
 } from '@/core/utils/sku';
 import {
-  callWechatPhone,
   previewWechatImages,
   showWechatConfirm,
   showWechatToast,
@@ -264,6 +264,21 @@ const ProductDetailPage = observer(function ProductDetailPage() {
     }
   }
 
+  // 商品详情客服入口先走统一客服配置，未配置时回退到商品客服电话。
+  async function handleCustomerServicePress() {
+    await openCustomerService({
+      source: 'mall-product',
+      fallbackPhone: servicePhone,
+      payload: {
+        productId: product?.id,
+        productTitle: product?.title,
+        skuId: selectedVariant?.id,
+        skuText: selectedVariant?.skuText,
+      },
+      unavailableText: '当前商品暂未配置客服',
+    });
+  }
+
   return pageRuntime.renderPage(() => (
     <View className="_pg">
       <PageShell
@@ -284,14 +299,8 @@ const ProductDetailPage = observer(function ProductDetailPage() {
                 <Text className="_pg-footer_action-text">首页</Text>
               </View>
               <View
-                className="_pg-footer_action"
-                onClick={() => {
-                  if (!servicePhone) {
-                    void showWechatToast('当前商品暂未配置客服电话');
-                    return;
-                  }
-                  void callWechatPhone(servicePhone);
-                }}
+                className="_pg-footer_action _pg-footer_action--contact"
+                onClick={() => void handleCustomerServicePress()}
               >
                 <AppIcon name="service" size={16} color="#6b7280" />
                 <Text className="_pg-footer_action-text">客服</Text>

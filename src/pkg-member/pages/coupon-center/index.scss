@@ -139,6 +139,135 @@
   }
 }
 
+._pg-activity-card {
+  margin-bottom: 20px;
+  padding: 24px 26px 10px;
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.1);
+
+  &_header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+  }
+
+  &_main {
+    flex: 1;
+    min-width: 0;
+    padding-right: 22px;
+  }
+
+  &_amount,
+  &_title,
+  &_date {
+    display: block;
+  }
+
+  &_amount {
+    color: #ee1338;
+    font-size: 34px;
+    line-height: 1.25;
+  }
+
+  &_title {
+    margin-top: 8px;
+    overflow: hidden;
+    color: #111111;
+    font-size: 28px;
+    line-height: 1.35;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &_date {
+    margin-top: 6px;
+    color: #888888;
+    font-size: 24px;
+    line-height: 1.35;
+  }
+
+  &_action {
+    flex: none;
+    min-width: 132px;
+    margin-top: 28px;
+    padding: 13px 18px;
+    border-radius: 999px;
+    background: #eb6fa6;
+    color: #ffffff;
+    font-size: 26px;
+    line-height: 1.3;
+    text-align: center;
+
+    &--disabled {
+      background: #d1d5db;
+      color: #ffffff;
+    }
+  }
+
+  &_gifts {
+    margin-top: 20px;
+    border-top: 1px solid #f0f0f0;
+  }
+}
+
+._pg-gift-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 92px;
+  padding: 16px 0;
+  border-bottom: 1px solid #f4f4f4;
+
+  &:last-child {
+    border-bottom: 0;
+  }
+
+  &_main {
+    flex: 1;
+    min-width: 0;
+    padding-right: 18px;
+  }
+
+  &_title,
+  &_desc {
+    display: block;
+  }
+
+  &_title {
+    overflow: hidden;
+    color: #222222;
+    font-size: 27px;
+    line-height: 1.35;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &_desc {
+    margin-top: 6px;
+    color: #888888;
+    font-size: 23px;
+    line-height: 1.3;
+  }
+
+  &_action {
+    flex: none;
+    min-width: 104px;
+    padding: 10px 16px;
+    border: 1Px solid #eb6fa6;
+    border-radius: 999px;
+    color: #eb6fa6;
+    font-size: 24px;
+    line-height: 1.3;
+    text-align: center;
+
+    &--disabled {
+      border-color: #d1d5db;
+      color: #9ca3af;
+    }
+  }
+}
+
 ._pg-exchange {
   margin-top: 24px;
   padding: 32px 28px 36px;

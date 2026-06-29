@@ -51,6 +51,13 @@ function extractSubPackageRoots(appConfigText) {
   return roots;
 }
 
+// 允许 Taro custom-tab-bar 占位，继续禁止微信原生 tabBar 视觉层。
+function hasDisallowedNativeTabBar(appConfigText) {
+  const match = appConfigText.match(/tabBar\s*:\s*\{([\s\S]*?)\n\s*\},\s*\n\s*subPackages\s*:/);
+  if (!match) return false;
+  return !/custom\s*:\s*true/.test(match[1]);
+}
+
 // 递归遍历目录中的源码文件，用于检查主包 import 链。
 function walkSourceFiles(dir) {
   const files = [];
@@ -97,8 +104,8 @@ function checkAppConfig() {
     if (!mainPages.includes(page)) fail(`主包 pages 缺少 ${page}`);
   }
 
-  if (/tabBar\s*:/.test(appConfigText)) {
-    fail('禁止配置微信原生 tabBar，请使用页面内 AppTabBar');
+  if (hasDisallowedNativeTabBar(appConfigText)) {
+    fail('禁止配置微信原生 tabBar，请使用页面内 AppTabBar；仅允许 custom: true 占位');
   }
 
   for (const root of requiredPackages) {

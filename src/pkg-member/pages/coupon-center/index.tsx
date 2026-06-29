@@ -11,6 +11,7 @@ import {
   claimMemberCoupon,
   exchangeMemberCouponCode,
   fetchMemberCouponCenterData,
+  type MemberCouponCenterActivityGift,
   type MemberCouponCenterCoupon,
   type MemberCouponCenterData,
   type MemberCouponCenterTabKey,
@@ -68,23 +69,42 @@ const MemberCouponCenterPage = observer(function MemberCouponCenterPage() {
     return response.coupons?.[0]?.couponNo || response.coupon?.couponNo || response.couponNos?.[0];
   }
 
-  async function handleCouponPress(coupon: MemberCouponCenterCoupon) {
+  // 后端活动一键领取允许 200 返回部分或全部失败，这里把零发券结果转成可见失败提示。
+  function resolveClaimFailureMessage(response: Awaited<ReturnType<typeof claimMemberCoupon>>) {
+    const issuedCount = Number(response.issuedCount ?? response.couponNos?.length ?? response.couponInstances?.length ?? response.coupons?.length ?? (response.coupon ? 1 : 0));
+    if (issuedCount > 0) return '';
+
+    const firstFailedGift = response.failedGiftItems?.[0];
+    return firstFailedGift?.errorMessage
+      || firstFailedGift?.message
+      || response.failedGiftItems?.map((item) => item.errorMessage || item.message).find(Boolean)
+      || '';
+  }
+
+  async function handleCouponPress(coupon: MemberCouponCenterCoupon, gift?: MemberCouponCenterActivityGift) {
     if (coupon.source === 'kcoin' && coupon.targetRoute) {
       navigateToMiniRoute(coupon.targetRoute);
       return;
     }
 
-    if (!coupon.claimable) {
-      await showWechatToast(coupon.disabledReason || '当前优惠券暂不可领取');
+    const claimable = gift ? gift.claimable : coupon.claimable;
+    const disabledReason = gift?.disabledReason || coupon.disabledReason;
+    if (!claimable) {
+      await showWechatToast(disabledReason || '当前优惠券暂不可领取');
       return;
     }
 
     try {
       const response = await pageRuntime.withLoading(async () => {
-        const claimResponse = await claimMemberCoupon(coupon);
+        const claimResponse = await claimMemberCoupon(coupon, { giftId: gift?.giftId });
         await loadPageData();
         return claimResponse;
       });
+      const failureMessage = resolveClaimFailureMessage(response);
+      if (failureMessage) {
+        await showWechatToast(failureMessage);
+        return;
+      }
       await showWechatToast('领取成功', 'success');
       const firstCouponNo = resolveFirstCouponNo(response);
       if (firstCouponNo) {
@@ -164,17 +184,57 @@ const MemberCouponCenterPage = observer(function MemberCouponCenterPage() {
               </View>
             ) : visibleCoupons.length > 0 ? (
               <View className="_pg-list">
-                {visibleCoupons.map((coupon) => (
-                  <View className="_pg-coupon-card" key={coupon.id} onClick={() => void handleCouponPress(coupon)}>
-                    <View className="_pg-coupon-card_main">
-                      <Text className="_pg-coupon-card_amount">{coupon.amountText}</Text>
-                      <Text className="_pg-coupon-card_title">{coupon.title}</Text>
-                      <Text className="_pg-coupon-card_desc">{coupon.thresholdText}</Text>
-                      <Text className="_pg-coupon-card_date">{coupon.validityText}</Text>
+                {visibleCoupons.map((coupon) => {
+                  const isActivityCard = coupon.source === 'activity' && coupon.giftItems?.length;
+
+                  if (isActivityCard) {
+                    return (
+                      <View className="_pg-activity-card" key={coupon.id}>
+                        <View className="_pg-activity-card_header">
+                          <View className="_pg-activity-card_main">
+                            <Text className="_pg-activity-card_amount">{coupon.amountText}</Text>
+                            <Text className="_pg-activity-card_title">{coupon.title}</Text>
+                            <Text className="_pg-activity-card_date">{coupon.validityText}</Text>
+                          </View>
+                          <Text
+                            className={`_pg-activity-card_action ${coupon.claimable ? '' : '_pg-activity-card_action--disabled'}`}
+                            onClick={() => void handleCouponPress(coupon)}
+                          >
+                            {coupon.actionText}
+                          </Text>
+                        </View>
+                        <View className="_pg-activity-card_gifts">
+                          {coupon.giftItems?.map((gift) => (
+                            <View className="_pg-gift-row" key={gift.id}>
+                              <View className="_pg-gift-row_main">
+                                <Text className="_pg-gift-row_title">{gift.title}</Text>
+                                <Text className="_pg-gift-row_desc">{gift.amountText}</Text>
+                              </View>
+                              <Text
+                                className={`_pg-gift-row_action ${gift.claimable ? '' : '_pg-gift-row_action--disabled'}`}
+                                onClick={() => void handleCouponPress(coupon, gift)}
+                              >
+                                {gift.actionText}
+                              </Text>
+                            </View>
+                          ))}
+                        </View>
+                      </View>
+                    );
+                  }
+
+                  return (
+                    <View className="_pg-coupon-card" key={coupon.id}>
+                      <View className="_pg-coupon-card_main">
+                        <Text className="_pg-coupon-card_amount">{coupon.amountText}</Text>
+                        <Text className="_pg-coupon-card_title">{coupon.title}</Text>
+                        <Text className="_pg-coupon-card_desc">{coupon.thresholdText}</Text>
+                        <Text className="_pg-coupon-card_date">{coupon.validityText}</Text>
+                      </View>
+                      <Text className="_pg-coupon-card_action" onClick={() => void handleCouponPress(coupon)}>{coupon.actionText}</Text>
                     </View>
-                    <Text className="_pg-coupon-card_action">{coupon.actionText}</Text>
-                  </View>
-                ))}
+                  );
+                })}
               </View>
             ) : (
               <View className="_pg-empty">

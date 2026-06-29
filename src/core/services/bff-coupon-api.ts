@@ -148,15 +148,31 @@ export interface BffCouponPackagesResponse {
   hasMore?: boolean;
 }
 
+export type BffClaimedCountValue = number | boolean | string;
+
 export interface BffFreeClaimGiftItemView {
   giftId?: string;
   giftType?: string;
   giftObjectId?: string;
+  templateNo?: string;
+  couponTemplateId?: string;
+  issueBatchId?: string;
+  batchId?: string;
   giftObjectName?: string;
+  giftName?: string;
   couponName?: string;
   templateName?: string;
   displayName?: string;
   sendNumber?: number;
+  claimUnitCount?: number;
+  claimedByCurrentMember?: BffClaimedCountValue;
+  currentMemberClaimedCount?: BffClaimedCountValue;
+  remainingStock?: number;
+  canClaim?: boolean;
+  cannotClaimReason?: string;
+  couponTemplateStatus?: string;
+  issueStartAt?: string;
+  issueEndAt?: string;
 }
 
 export interface BffFreeClaimActivityView {
@@ -169,9 +185,12 @@ export interface BffFreeClaimActivityView {
   activityStatus?: string;
   claimLimitPerMember?: number;
   dailyLimit?: number;
-  claimedByCurrentMember?: number;
+  claimedByCurrentMember?: BffClaimedCountValue;
   canClaim?: boolean;
+  canClaimAll?: boolean;
+  claimableGiftCount?: number;
   cannotClaimReason?: string;
+  totalCouponCount?: number;
   giftItems?: BffFreeClaimGiftItemView[];
 }
 
@@ -209,19 +228,45 @@ export interface BffClaimCouponResponse {
 }
 
 export interface BffFreeClaimActivityClaimRequest {
+  claimMode?: 'activityAll' | 'singleGift';
   giftId?: string;
   idempotentKey: string;
+  quantity?: number;
 }
 
 export interface BffFreeClaimActivityClaimResponse {
   claimRecordId?: string;
   activityId?: string;
   activityName?: string;
+  claimMode?: 'activityAll' | 'singleGift';
   couponNos?: string[];
   couponInstances?: BffCouponAssetView[];
   coupons?: BffCouponAssetView[];
-  claimedByCurrentMember?: number;
+  claimedGiftId?: string;
+  claimedGiftItems?: Array<{
+    giftId?: string;
+    giftObjectId?: string;
+    templateNo?: string;
+    couponTemplateId?: string;
+    issuedCount?: number;
+    couponNo?: string;
+    coupon?: BffCouponAssetView;
+    couponInstances?: BffCouponAssetView[];
+  }>;
+  failedGiftItems?: Array<{
+    giftId?: string;
+    giftObjectId?: string;
+    templateNo?: string;
+    couponTemplateId?: string;
+    code?: string;
+    message?: string;
+    errorCode?: string;
+    errorMessage?: string;
+  }>;
+  issuedCount?: number;
+  claimedByCurrentMember?: BffClaimedCountValue;
   canClaim?: boolean;
+  canClaimAll?: boolean;
   nextAction?: {
     type?: string;
     text?: string;

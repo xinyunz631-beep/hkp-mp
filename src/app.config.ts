@@ -18,6 +18,27 @@ export default defineAppConfig({
   requiredPrivateInfos: [
     'chooseLocation',
   ],
+  tabBar: {
+    custom: true,
+    color: '#626a73',
+    selectedColor: '#db2777',
+    backgroundColor: '#ffffff',
+    borderStyle: 'black',
+    list: [
+      {
+        pagePath: 'pages/home/index',
+        text: '首页',
+      },
+      {
+        pagePath: 'pages/park/index',
+        text: '乐园',
+      },
+      {
+        pagePath: 'pages/member/index',
+        text: '我的',
+      },
+    ],
+  },
   subPackages: [
     {
       root: 'pkg-mall',
