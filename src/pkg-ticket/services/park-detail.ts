@@ -1,5 +1,8 @@
 import {
   fetchMiniProgramAdDetail,
+  fetchMiniProgramAdLikeState,
+  updateMiniProgramAdLikeState,
+  type MiniProgramAdLikeState,
   resolveMiniProgramAdDescription,
   resolveMiniProgramAdImage,
   resolveMiniProgramAdTitle,
@@ -24,6 +27,8 @@ export interface TicketProjectDetail {
 export interface TicketParkDetailData {
   project: TicketProjectDetail;
 }
+
+export type TicketProjectLikeState = MiniProgramAdLikeState;
 
 // 将广告详情转换成热玩项目详情模型，支持首页广告直接落项目详情页。
 function mapAdToProjectDetail(ad: MiniProgramAdView): TicketProjectDetail {
@@ -51,8 +56,21 @@ export async function fetchParkDetailData(projectId = '') {
   if (adDetail?.id || adDetail?.adNo) {
     const project = mapAdToProjectDetail(adDetail);
     if (!project.detailHtml) throw new Error('广告详情缺少富文本内容');
+    const likeState = await fetchParkProjectLikeState(project.id).catch(() => undefined);
+    if (likeState) {
+      project.liked = likeState.liked;
+      project.likeCount = likeState.likeCount;
+    }
     return { project };
   }
 
   throw new Error('未获取到广告详情内容');
+}
+
+export function fetchParkProjectLikeState(projectId: string) {
+  return fetchMiniProgramAdLikeState(projectId);
+}
+
+export function updateParkProjectLikeState(projectId: string, liked: boolean) {
+  return updateMiniProgramAdLikeState(projectId, liked);
 }
