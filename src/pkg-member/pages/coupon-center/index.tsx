@@ -112,7 +112,7 @@ const MemberCouponCenterPage = observer(function MemberCouponCenterPage() {
 
     try {
       const response = await pageRuntime.withLoading(async () => {
-        const claimResponse = await claimMemberCoupon(coupon, { giftId: gift?.giftId });
+        const claimResponse = await claimMemberCoupon(coupon, { giftId: gift?.giftId, templateNo: gift?.templateNo });
         await loadPageData();
         return claimResponse;
       });

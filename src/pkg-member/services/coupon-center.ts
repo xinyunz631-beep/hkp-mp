@@ -224,10 +224,11 @@ function toActivityGift(activity: BffFreeClaimActivityView, giftItem: BffFreeCla
   const giftId = giftItem.giftId;
   const couponNo = resolveGiftCouponNo(giftItem);
   const templateNo = firstText(giftItem.templateNo, giftItem.couponTemplateId);
+  const claimIdentity = giftId || templateNo;
   const disabledReason = alreadyClaimed
     ? '已领取'
-    : resolveGiftStatusReason(activity, giftItem, giftId);
-  const claimable = Boolean(!alreadyClaimed && giftClaimable && giftId);
+    : resolveGiftStatusReason(activity, giftItem, claimIdentity);
+  const claimable = Boolean(!alreadyClaimed && giftClaimable && claimIdentity);
   const sendNumber = Number(giftItem.claimUnitCount || giftItem.sendNumber || 1);
 
   return {
@@ -371,13 +372,16 @@ function createFreeClaimIdempotentKey(activityId: string, giftId?: string) {
 // 领取优惠券，推荐 tab 走活动中心新接口，历史模板号只作为兼容路径。
 export async function claimMemberCoupon(
   coupon: MemberCouponCenterCoupon,
-  options: { giftId?: string } = {},
+  options: { giftId?: string; templateNo?: string } = {},
 ): Promise<MemberCouponClaimResponse> {
   if (!coupon.activityId && !coupon.templateNo) {
     throw new Error(coupon.disabledReason || '当前优惠券暂不可领取');
   }
 
   if (coupon.activityId) {
+    if (!options.giftId && options.templateNo) {
+      return claimBffCoupon({ templateNo: options.templateNo, activityId: coupon.activityId });
+    }
     const claimMode = options.giftId ? 'singleGift' : 'activityAll';
     const claimResponse = await claimBffFreeClaimActivity(coupon.activityId, {
       idempotentKey: createFreeClaimIdempotentKey(coupon.activityId, options.giftId),
