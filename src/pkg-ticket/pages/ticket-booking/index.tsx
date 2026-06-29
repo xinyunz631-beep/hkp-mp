@@ -4,6 +4,7 @@ import { ScrollView, Swiper, SwiperItem, Text, View } from '@tarojs/components';
 import type { ScrollViewProps } from '@tarojs/components';
 import { Badge, Sticky } from '@nutui/nutui-react-taro';
 import { observer } from 'mobx-react';
+import { AppBottomSheet } from '@/core/components/AppBottomSheet';
 import { AppIcon } from '@/core/components/AppIcon';
 import { AppImage } from '@/core/components/AppImage';
 import { AppShareButton } from '@/core/components/AppShareButton';
@@ -27,7 +28,6 @@ import {
   showWechatToast,
 } from '@/core/utils/wechat-actions';
 import { TicketRichText } from '@/pkg-ticket/components/TicketRichText';
-import { TicketSubmitFooter } from '@/pkg-ticket/components/TicketSubmitFooter';
 import {
   createTicketOrderDraft,
   TICKET_ORDER_SOURCE_OFFLINE_QR_FAST_BUY,
@@ -270,6 +270,12 @@ function buildTicketDraftProduct(product: TicketProduct, quantity: number): Tick
   };
 }
 
+// 格式化门票预订页金额，整数金额不展示小数，避免底部栏信息过重。
+function formatTicketBookingAmount(value: number) {
+  const amount = Number(value) || 0;
+  return Number.isInteger(amount) ? `¥${amount}` : `¥${amount.toFixed(2)}`;
+}
+
 function TicketBookingHero({ imageCount, imageSrcs, onPreview }: TicketBookingHeroProps) {
   const imageList = imageSrcs.filter(Boolean);
   const imageSrc = imageList[0] || '';
@@ -501,6 +507,7 @@ const TicketBookingPage = observer(function TicketBookingPage() {
   const [selectedDate, setSelectedDate] = useState('');
   const [datePopupVisible, setDatePopupVisible] = useState(false);
   const [rulesPopupVisible, setRulesPopupVisible] = useState(false);
+  const [selectedCartVisible, setSelectedCartVisible] = useState(false);
   const [selectedRuleProductId, setSelectedRuleProductId] = useState<string>();
   const [activeSectionKey, setActiveSectionKey] = useState<TicketBookingSectionKey>('ticket');
   const [sectionOffsets, setSectionOffsets] = useState<TicketSectionOffsets>({});
@@ -528,6 +535,12 @@ const TicketBookingPage = observer(function TicketBookingPage() {
   }, [bookingData, packages, products]);
   const selectedProducts = useMemo(() => products.filter((product) => (quantities[product.id] ?? 0) > 0), [products, quantities]);
   const hasSelectedProducts = selectedProducts.length > 0;
+  const selectedTotalQuantity = useMemo(() => (
+    selectedProducts.reduce((total, product) => total + (quantities[product.id] ?? 0), 0)
+  ), [quantities, selectedProducts]);
+  const selectedTotalAmount = useMemo(() => (
+    selectedProducts.reduce((total, product) => total + product.price * (quantities[product.id] ?? 0), 0)
+  ), [quantities, selectedProducts]);
   const selectedRuleProduct = selectedRuleProductId
     ? products.find((product) => product.id === selectedRuleProductId)
     : undefined;
@@ -663,6 +676,25 @@ const TicketBookingPage = observer(function TicketBookingPage() {
     }
   }, [activeSectionKey, visibleSections]);
 
+  useEffect(() => {
+    if (!hasSelectedProducts && selectedCartVisible) setSelectedCartVisible(false);
+  }, [hasSelectedProducts, selectedCartVisible]);
+
+  // 更新指定票品数量，商品卡和已选清单共用同一份数量状态。
+  function updateProductQuantity(productId: string, value: number) {
+    setQuantities((current) => ({ ...current, [productId]: value }));
+  }
+
+  // 底部已选摘要点击后展开或收起已选清单，未选择票品时给出轻提示。
+  function handleSelectedCartToggle() {
+    if (!hasSelectedProducts) {
+      void showWechatToast('请选择门票数量');
+      return;
+    }
+
+    setSelectedCartVisible((visible) => !visible);
+  }
+
   function resolveActiveSection(nextScrollTop: number) {
     const markerTop = nextScrollTop + stickyPanelHeight + TICKET_SECTION_ACTIVE_MARKER_GAP;
     const firstSectionKey = visibleSections[0]?.key ?? 'ticket';
@@ -730,7 +762,7 @@ const TicketBookingPage = observer(function TicketBookingPage() {
                   key={product.id}
                   product={product}
                   quantity={quantities[product.id] ?? 0}
-                  onQuantityChange={(value) => setQuantities((current) => ({ ...current, [product.id]: value }))}
+                  onQuantityChange={(value) => updateProductQuantity(product.id, value)}
                   onShowRules={() => {
                     setSelectedRuleProductId(product.id);
                     setRulesPopupVisible(true);
@@ -871,16 +903,40 @@ const TicketBookingPage = observer(function TicketBookingPage() {
       <PageShell
         title={'门票预订'}
         className="_pg-shell"
+        footerClassName="_pg-cart-footer-layer"
         navbarRight={<TicketShareButton />}
         // reserveTabBarSpace={false}
         footer={(
-          <TicketSubmitFooter
-            label="已选:"
-            amountText={`${selectedProducts.length}种票品`}
-            buttonText="提交订单"
-            disabled={!hasSelectedProducts}
-            onSubmit={handleSubmit}
-          />
+          <View className="_pg-cart-footer">
+            <View className="_pg-cart-footer_shadow" />
+            <View className="_pg-cart-footer_inner">
+              <View
+                className={`_pg-cart-footer_summary ${hasSelectedProducts ? '' : '_pg-cart-footer_summary--empty'}`}
+                onClick={handleSelectedCartToggle}
+              >
+                <View className="_pg-cart-footer_text">
+                  <View className="_pg-cart-footer_count-row">
+                    <Text className="_pg-cart-footer_label">已选</Text>
+                    <Text className="_pg-cart-footer_count">{selectedTotalQuantity}</Text>
+                    <Text className="_pg-cart-footer_label">张</Text>
+                    <AppIcon
+                      name="arrowRight"
+                      className="_pg-cart-footer_arrow"
+                      size={12}
+                      color="#333333"
+                    />
+                  </View>
+                  <Text className="_pg-cart-footer_amount">{formatTicketBookingAmount(selectedTotalAmount)}</Text>
+                </View>
+              </View>
+              <View
+                className={`_pg-cart-footer_button ${hasSelectedProducts ? '' : '_pg-cart-footer_button--disabled'}`}
+                onClick={() => void handleSubmit()}
+              >
+                <Text>提交订单</Text>
+              </View>
+            </View>
+          </View>
         )}
         scrollViewProps={{
           ...(sectionScrollIntoView ? { scrollIntoView: sectionScrollIntoView } : {}),
@@ -954,6 +1010,57 @@ const TicketBookingPage = observer(function TicketBookingPage() {
             ) : null}
           </View>
         ) : null}
+        <PageShare className="_pg-cart-share">
+          {bookingData ? (
+            <AppBottomSheet
+              visible={selectedCartVisible && hasSelectedProducts}
+              title="已选门票"
+              showFooter={false}
+              bodyMinHeight={220}
+              bodyMaxHeight="58vh"
+              onClose={() => setSelectedCartVisible(false)}
+            >
+              <View className="_pg-cart-sheet">
+                {selectedProducts.map((product) => {
+                  const quantity = quantities[product.id] ?? 0;
+                  const maxQuantity = product.maxQuantity;
+                  const reachedMaxQuantity = product.saleable && maxQuantity > 0 && quantity >= maxQuantity;
+
+                  return (
+                    <View className="_pg-cart-item" key={product.id}>
+                      <View className="_pg-cart-item_main">
+                        <Text className="_pg-cart-item_title">{product.title}</Text>
+                        <Text className="_pg-cart-item_price">
+                          {formatTicketBookingAmount(product.price)}
+                          <Text className="_pg-cart-item_unit"> x {quantity}</Text>
+                        </Text>
+                      </View>
+                      <View className="_pg-cart-item_aside">
+                        <View className="_pg-cart-item_stepper">
+                          <QuantityStepper
+                            value={quantity}
+                            min={0}
+                            max={maxQuantity}
+                            disabled={!product.saleable}
+                            onChange={(value) => updateProductQuantity(product.id, Math.min(value, maxQuantity))}
+                          />
+                          {reachedMaxQuantity ? (
+                            <View
+                              className="_pg-cart-item_stepper-plus-mask"
+                              onClick={() => {
+                                void showWechatToast(`最多可购 ${maxQuantity} 张`);
+                              }}
+                            />
+                          ) : null}
+                        </View>
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+            </AppBottomSheet>
+          ) : null}
+        </PageShare>
         <PageShare>
           {bookingData ? (
             <>

@@ -12,7 +12,11 @@ import {
 import Taro from '@tarojs/taro';
 import { View } from '@tarojs/components';
 import { AppTabBar } from '@/core/components/AppTabBar';
-import { PageLayout, type PageLayoutProps } from '@/core/components/PageLayout';
+import {
+  PageLayout,
+  type PageLayoutProps,
+  type PageLayoutShareLayer,
+} from '@/core/components/PageLayout';
 import { PageNavbar } from '@/core/components/PageNavbar';
 import { usePageRuntimeRefresh } from '@/core/runtime/page-runtime-context';
 import {
@@ -35,6 +39,7 @@ interface PageShellProps extends PropsWithChildren {
   navbarLeft?: ReactNode;
   navbarRight?: ReactNode;
   footer?: ReactNode;
+  footerClassName?: string;
   bottom?: ReactNode;
   share?: ReactNode;
   runtimeNode?: ReactNode;
@@ -43,12 +48,14 @@ interface PageShellProps extends PropsWithChildren {
   scrollViewProps?: PageLayoutProps['scrollViewProps'];
 }
 
-interface PageShellSlotProps extends PropsWithChildren {}
+interface PageShellSlotProps extends PropsWithChildren {
+  className?: string;
+}
 
 interface PageShellSlots {
   header?: ReactNode;
   footer?: ReactNode;
-  share?: ReactNode;
+  shareLayers?: PageLayoutShareLayer[];
   content: ReactNode[];
   hasHeader: boolean;
   hasFooter: boolean;
@@ -65,7 +72,7 @@ export function PageFooter({ children }: PageShellSlotProps) {
   return <>{children}</>;
 }
 
-// 声明页面相对插槽，作为 PageShell 的直接子节点时会按普通内容渲染，但层级高于 header/footer。
+// 声明页面相对插槽，作为 PageShell 的直接子节点时会按普通内容渲染；默认层级高于 header/footer，可用 className 定制单个 share layer。
 export function PageShare({ children }: PageShellSlotProps) {
   return <>{children}</>;
 }
@@ -130,7 +137,7 @@ function isPageShellSlot(node: ReactNode, slotComponent: typeof PageHeader | typ
 function resolvePageShellSlots(children: ReactNode): PageShellSlots {
   const headers: ReactNode[] = [];
   const footers: ReactNode[] = [];
-  const shares: ReactNode[] = [];
+  const shareLayers: PageLayoutShareLayer[] = [];
   const content: ReactNode[] = [];
 
   Children.toArray(children).forEach((child) => {
@@ -145,7 +152,11 @@ function resolvePageShellSlots(children: ReactNode): PageShellSlots {
     }
 
     if (isPageShellSlot(child, PageShare)) {
-      shares.push(child.props.children);
+      shareLayers.push({
+        key: `page-share-${shareLayers.length}`,
+        node: child.props.children,
+        className: child.props.className,
+      });
       return;
     }
 
@@ -155,11 +166,11 @@ function resolvePageShellSlots(children: ReactNode): PageShellSlots {
   return {
     header: headers.length > 0 ? headers : undefined,
     footer: footers.length > 0 ? footers : undefined,
-    share: shares.length > 0 ? shares : undefined,
+    shareLayers: shareLayers.length > 0 ? shareLayers : undefined,
     content,
     hasHeader: headers.length > 0,
     hasFooter: footers.length > 0,
-    hasShare: shares.length > 0,
+    hasShare: shareLayers.length > 0,
   };
 }
 
@@ -192,6 +203,7 @@ export function PageShell({
   navbarLeft,
   navbarRight,
   footer,
+  footerClassName,
   bottom,
   share,
   runtimeNode,
@@ -221,8 +233,8 @@ export function PageShell({
   const chromeCacheKey = resolvePageShellChromeCacheKey(title);
   const chromeCacheSignature = resolvePageShellChromeCacheSignature(chromeMetrics);
   const layoutFooter = slots.hasFooter ? slots.footer : footer ?? bottom;
-  const layoutShare = slots.hasShare ? slots.share : share;
-
+  const layoutShare = slots.hasShare ? undefined : share;
+  const layoutShareLayers = slots.hasShare ? slots.shareLayers : undefined;
   const handleRefresherRefresh = useCallback<PageShellRefresherRefreshHandler>((event) => {
     const customRefresh = scrollViewProps?.onRefresherRefresh;
 
@@ -263,7 +275,9 @@ export function PageShell({
       className={className}
       header={layoutHeader}
       footer={layoutFooter}
+      footerClassName={footerClassName}
       share={layoutShare}
+      shareLayers={layoutShareLayers}
       tabBar={reserveTabBarSpace ? <AppTabBar /> : undefined}
       runtimeNode={runtimeNode}
       scrollViewProps={resolvedScrollViewProps}
