@@ -13,13 +13,21 @@ import './index.scss';
 
 type PageLayoutScrollViewProps = Omit<ScrollViewProps, 'children' | 'className' | 'scrollY'>;
 
+export interface PageLayoutShareLayer {
+  key: string;
+  node: ReactNode;
+  className?: string;
+}
+
 export interface PageLayoutProps extends PropsWithChildren {
   // 透传到最外层布局容器，供页面按需覆盖 layout 样式。
   className?: string;
   header?: ReactNode;
   footer?: ReactNode;
+  footerClassName?: string;
   bottom?: ReactNode;
   share?: ReactNode;
+  shareLayers?: PageLayoutShareLayer[];
   tabBar?: ReactNode;
   runtimeNode?: ReactNode;
   scrollViewProps?: PageLayoutScrollViewProps;
@@ -115,8 +123,10 @@ function createPageLayoutId() {
 export function PageLayout({
   header,
   footer,
+  footerClassName,
   bottom,
   share,
+  shareLayers,
   tabBar,
   runtimeNode,
   scrollViewProps,
@@ -308,6 +318,9 @@ export function PageLayout({
 
   const resolvedHeaderHeight = hasHeaderContent ? headerHeight : 0;
   const resolvedFooterHeight = hasFooterContent ? footerHeight : 0;
+  const resolvedShareLayers = shareLayers?.length
+    ? shareLayers
+    : share ? [{ key: 'default', node: share }] : [];
   const scrollContentHeight = Math.max(viewportHeight - resolvedHeaderHeight, 0);
   const plainContentHeight = Math.max(viewportHeight - resolvedHeaderHeight - resolvedFooterHeight, 0);
   const layoutStyle = {
@@ -378,12 +391,21 @@ export function PageLayout({
         </View>
       )}
       {hasFooterContent ? (
-        <View className={classNames('page-layout__footer', hasFooterContent && 'page-layout__footer--content')} id={footerId}>
+        <View
+          className={classNames('page-layout__footer', hasFooterContent && 'page-layout__footer--content', footerClassName)}
+          id={footerId}
+        >
           {footerNode}
           {bottomSafeAreaNeeded && !tabBar ? <View className="page-layout__footer-safe-bottom-spacer" /> : null}
         </View>
       ) : null}
-      {share ? <View className="page-layout__share">{share}</View> : null}
+      {resolvedShareLayers.map((layer) => (
+        layer.node !== undefined && layer.node !== null ? (
+          <View className={classNames('page-layout__share', layer.className)} key={layer.key}>
+            {layer.node}
+          </View>
+        ) : null
+      ))}
       {tabBar ? <View className="page-layout__tabbar">{tabBar}</View> : null}
       {measureCoverVisible ? (
         <View

@@ -487,7 +487,7 @@ function normalizeTicketProduct(
     return undefined;
   }
   const publishStatusTag = resolvePublishStatusText(item.publishStatus);
-  const stockText = saleable ? `余票 ${availableStock}` : unavailableStockText;
+  const stockText = saleable ? '' : unavailableStockText;
   const category = resolveProductCategory(item);
   const fulfillmentType = sku.fulfillmentType || item.fulfillmentType;
   const requiredFields = sku.requiredFields || item.requiredFields;
@@ -540,7 +540,7 @@ function normalizeTicketProduct(
 function resolveDateAvailabilityText(products: TicketProduct[]) {
   const saleableCount = products.filter((product) => product.saleable).length;
   if (saleableCount > 0) return `${saleableCount} 个票种可订`;
-  if (products.length > 0) return '当前日期暂无余票';
+  if (products.length > 0) return '当前日期暂无可订票种';
   return '暂无可售门票';
 }
 
