@@ -76,8 +76,8 @@ function normalizeHomeBannerItem(item: unknown): MallBannerItem | undefined {
     record.jumpPath,
     record.jumpTarget,
     record.jumpUrl,
-  ) ?? '');
-  if (!id || !imageSrc || !path) return undefined;
+  ) ?? '') || MINI_PACKAGE_ROUTES.mallProducts;
+  if (!id || !imageSrc) return undefined;
   return {
     id,
     title: sanitizeMallRuntimeText(typeof record.title === 'string' ? record.title : ''),
