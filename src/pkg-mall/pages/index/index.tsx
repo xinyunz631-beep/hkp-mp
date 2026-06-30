@@ -245,26 +245,13 @@ const MallIndexPage = observer(function MallIndexPage() {
                   setActiveBannerIndex(event.detail.current);
                 }}
               >
-                {banners.map((banner) => {
-                  const hasCopy = Boolean(banner.title || banner.subtitle);
-
-                  return (
-                    <SwiperItem key={banner.id}>
-                      <View className="_pg-hero_item" onClick={() => openPackagePage(banner.path as MiniPackageRoute)}>
-                        <AppImage className="_pg-hero_image" src={banner.imageSrc} mode="aspectFill" emptyState="error" />
-                        {hasCopy ? (
-                          <>
-                            <View className="_pg-hero_mask" />
-                            <View className="_pg-hero_copy">
-                              {banner.title ? <Text className="_pg-hero_title">{banner.title}</Text> : null}
-                              {banner.subtitle ? <Text className="_pg-hero_subtitle">{banner.subtitle}</Text> : null}
-                            </View>
-                          </>
-                        ) : null}
-                      </View>
-                    </SwiperItem>
-                  );
-                })}
+                {banners.map((banner) => (
+                  <SwiperItem key={banner.id}>
+                    <View className="_pg-hero_item" onClick={() => openPackagePage(banner.path as MiniPackageRoute)}>
+                      <AppImage className="_pg-hero_image" src={banner.imageSrc} mode="aspectFill" emptyState="error" />
+                    </View>
+                  </SwiperItem>
+                ))}
               </Swiper>
               {banners.length > 1 ? (
                 <View className="_pg-hero_dots">

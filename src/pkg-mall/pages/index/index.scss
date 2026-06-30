@@ -55,39 +55,9 @@
     border-radius: 28px;
   }
 
-  &_image,
-  &_mask {
+  &_image {
     position: absolute;
     inset: 0;
-  }
-
-  &_mask {
-    background: linear-gradient(180deg, rgba(13, 18, 31, 0.02), rgba(13, 18, 31, 0.42));
-  }
-
-  &_copy {
-    position: absolute;
-    right: 28px;
-    bottom: 26px;
-    left: 28px;
-    z-index: 1;
-  }
-
-  &_title,
-  &_subtitle {
-    display: block;
-    color: #ffffff;
-  }
-
-  &_title {
-    font-size: 34px;
-    font-weight: 500;
-  }
-
-  &_subtitle {
-    margin-top: 12px;
-    font-size: 22px;
-    line-height: 1.45;
   }
 
   &_dots {
