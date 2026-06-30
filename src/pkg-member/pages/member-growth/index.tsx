@@ -1,5 +1,5 @@
 import { CSSProperties, useMemo, useState } from 'react';
-import { Image, ScrollView, Swiper, SwiperItem, Text, View } from '@tarojs/components';
+import { ScrollView, Swiper, SwiperItem, Text, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
 import { AppIcon } from '@/core/components/AppIcon';
 import { AppImage } from '@/core/components/AppImage';
@@ -12,10 +12,14 @@ import { resolveMemberLevel, type MemberLevelDisplay } from '@/core/utils/member
 import { navigateToMiniRoute } from '@/core/utils/navigation';
 import {
   fetchMemberGrowthData,
+  type MemberGrowthBenefit,
   type MemberGrowthData,
   type MemberGrowthLevel,
 } from '@/pkg-member/services/member-growth';
 import './index.scss';
+
+const BENEFIT_TONES = ['shopping', 'food', 'birthday', 'activity'] as const;
+type BenefitTone = typeof BENEFIT_TONES[number];
 
 function sortLevels(levels: MemberGrowthLevel[]) {
   return [...levels].sort((firstLevel, secondLevel) => (
@@ -59,14 +63,6 @@ function resolveProgressPercent(levels: MemberGrowthLevel[], growthValue: number
   return 100;
 }
 
-function resolveGrowthHint(levels: MemberGrowthLevel[], growthValue: number) {
-  const nextLevel = levels.find((level) => growthValue < level.growthThreshold);
-
-  if (!nextLevel) return '已达到最高等级';
-
-  return `距${nextLevel.name}还差 ${nextLevel.growthThreshold - growthValue} 成长值`;
-}
-
 function renderLevelBadge(level: MemberGrowthLevel, active: boolean) {
   return (
     <View
@@ -79,8 +75,22 @@ function renderLevelBadge(level: MemberGrowthLevel, active: boolean) {
   );
 }
 
-function resolveLevelBenefitImageSrc(level: MemberGrowthLevel) {
-  return level.benefits.find((benefit) => benefit.imageSrc)?.imageSrc || level.imageSrc;
+function resolveBenefitTone(benefit: MemberGrowthBenefit, index: number): BenefitTone {
+  const content = `${benefit.title}${benefit.summary}${benefit.highlightText}`;
+  if (/生日|礼遇|礼品|birthday/i.test(content)) return 'birthday';
+  if (/餐|美食|小吃|甜品|料理|食/i.test(content)) return 'food';
+  if (/活动|游戏|好礼|参与/i.test(content)) return 'activity';
+  if (/购物|商城|商店|商品|消费/i.test(content)) return 'shopping';
+
+  return BENEFIT_TONES[index % BENEFIT_TONES.length];
+}
+
+function resolveBenefitFallbackText(benefit: MemberGrowthBenefit) {
+  return benefit.title.trim().slice(0, 1) || '惠';
+}
+
+function mergeClassNames(...classNames: Array<string | false | undefined>) {
+  return classNames.filter(Boolean).join(' ');
 }
 
 // 渲染会员权益页面，按 CRM BFF 返回的等级、成长值和权益内容展示。
@@ -116,10 +126,6 @@ const MemberGrowthPage = observer(function MemberGrowthPage() {
   );
   const progressPercent = useMemo(
     () => resolveProgressPercent(sortedLevels, memberLevel.growthValue),
-    [memberLevel.growthValue, sortedLevels],
-  );
-  const growthHint = useMemo(
-    () => resolveGrowthHint(sortedLevels, memberLevel.growthValue),
     [memberLevel.growthValue, sortedLevels],
   );
   const selectedLevelIndex = Math.max(0, sortedLevels.findIndex((level) => level.id === selectedLevel?.id));
@@ -173,34 +179,46 @@ const MemberGrowthPage = observer(function MemberGrowthPage() {
   }
 
   function renderBenefitContent(level: MemberGrowthLevel) {
-    const benefitImageSrc = resolveLevelBenefitImageSrc(level);
+    const displayBenefits = level.benefits;
 
-    if (benefitImageSrc) {
-      return (
-        <View className="_pg-benefit-image-frame">
-          <Image
-            className="_pg-benefit-image"
-            src={benefitImageSrc}
-            mode="widthFix"
-          />
-        </View>
-      );
-    }
-
-    if (level.benefits.length > 0) {
+    if (displayBenefits.length > 0) {
       return (
         <View className="_pg-benefit-list">
-          {level.benefits.map((benefit) => (
-            <View className="_pg-benefit-card" key={benefit.id}>
-              {benefit.highlightText ? (
-                <Text className="_pg-benefit-card_badge">{benefit.highlightText}</Text>
-              ) : null}
-              <Text className="_pg-benefit-card_title">{benefit.title}</Text>
-              {benefit.summary ? (
-                <Text className="_pg-benefit-card_summary">{benefit.summary}</Text>
-              ) : null}
-            </View>
-          ))}
+          {displayBenefits.map((benefit, index) => {
+            const tone = resolveBenefitTone(benefit, index);
+            const highlightIncluded = Boolean(
+              benefit.highlightText
+              && benefit.summary
+              && benefit.summary.includes(benefit.highlightText),
+            );
+
+            return (
+              <View
+                className={mergeClassNames('_pg-benefit-row', `_pg-benefit-row--${tone}`)}
+                key={benefit.id}
+              >
+                <View className="_pg-benefit-row_icon-frame">
+                  <Text className="_pg-benefit-row_icon-text">
+                    {resolveBenefitFallbackText(benefit)}
+                  </Text>
+                </View>
+                <View className="_pg-benefit-row_body">
+                  <Text className="_pg-benefit-row_title">{benefit.title}</Text>
+                  {benefit.summary || benefit.highlightText ? (
+                    <View className="_pg-benefit-row_summary">
+                      <Text className="_pg-benefit-row_dot" />
+                      {benefit.summary ? (
+                        <Text className="_pg-benefit-row_summary-text">{benefit.summary}</Text>
+                      ) : null}
+                      {benefit.highlightText && !highlightIncluded ? (
+                        <Text className="_pg-benefit-row_highlight">{benefit.highlightText}</Text>
+                      ) : null}
+                    </View>
+                  ) : null}
+                </View>
+              </View>
+            );
+          })}
         </View>
       );
     }
@@ -247,16 +265,6 @@ const MemberGrowthPage = observer(function MemberGrowthPage() {
           );
         })}
       </Swiper>
-    );
-  }
-
-  function renderGrowthSummary() {
-    return (
-      <View className="_pg-growth-summary">
-        <Text className="_pg-growth-summary_label">当前成长值</Text>
-        <Text className="_pg-growth-summary_value">{memberLevel.growthValue}</Text>
-        <Text className="_pg-growth-summary_hint">{growthHint}</Text>
-      </View>
     );
   }
 
@@ -309,7 +317,7 @@ const MemberGrowthPage = observer(function MemberGrowthPage() {
       return (
         <View className="_pg">
           <PageShell
-            title="会员权益"
+            title="Hello Kitty Park"
             className="_pg-shell"
             scrollViewProps={{}}
           >
@@ -331,7 +339,7 @@ const MemberGrowthPage = observer(function MemberGrowthPage() {
     return (
       <View className="_pg">
         <PageShell
-          title="会员权益"
+          title="Hello Kitty Park"
           className="_pg-shell"
           scrollView={false}
           footer={renderProgressFooter(sortedLevels)}
@@ -376,7 +384,6 @@ const MemberGrowthPage = observer(function MemberGrowthPage() {
             </View>
 
             <View className="_pg-body">
-              {renderGrowthSummary()}
               {renderBenefitSwiper(sortedLevels)}
             </View>
           </View>

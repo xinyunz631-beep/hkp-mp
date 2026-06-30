@@ -54,7 +54,7 @@ export interface MemberProfileData {
 
 export type MemberProfileUpdatePayload = Partial<Pick<
   MemberProfileData,
-  'nickname' | 'avatarUrl' | 'idCardNo' | 'birthday' | 'gender' | 'regionText' | 'plateNo'
+  'avatarUrl' | 'idCardNo' | 'gender' | 'regionText' | 'plateNo'
 >>;
 
 export interface MemberAvatarUploadResult {
@@ -89,7 +89,7 @@ function normalizeBffCrmProfile(
 
   return {
     id: mobile,
-    nickname: profile.nickName || '乐园会员',
+    nickname: profile.nickName || '微信用户',
     avatarUrl: profile.avatarUrl || DEFAULT_MEMBER_AVATAR_URL,
     mobile,
     idCardNo: profile.idCardNo || '',
@@ -109,10 +109,8 @@ function normalizeBffCrmProfile(
 
 function toBffProfileUpdatePayload(payload: MemberProfileUpdatePayload): BffCrmProfileUpdateRequest {
   return {
-    ...(payload.nickname !== undefined ? { nickName: payload.nickname } : {}),
     ...(payload.avatarUrl !== undefined ? { avatarUrl: payload.avatarUrl } : {}),
     ...(payload.idCardNo !== undefined ? { idCardNo: payload.idCardNo } : {}),
-    ...(payload.birthday !== undefined ? { birthday: payload.birthday } : {}),
     ...(payload.gender !== undefined ? { gender: toBffGender(payload.gender) } : {}),
     ...(payload.regionText !== undefined ? { regionName: payload.regionText } : {}),
     ...(payload.plateNo !== undefined ? { carPlateNo: payload.plateNo } : {}),
@@ -142,6 +140,17 @@ export async function uploadMemberAvatarImage(filePath: string) {
 // 更新会员资料，成功后同步全局会员信息，并用当前 session 刷新 member/status。
 export async function updateMemberProfile(payload: MemberProfileUpdatePayload) {
   const profile = normalizeBffCrmProfile(await updateBffCrmProfile(toBffProfileUpdatePayload(payload)));
+  syncGlobalMemberProfile(profile);
+  await syncMemberStatus({ silent: true });
+  return profile;
+}
+
+// 使用微信授权得到的昵称更新会员资料，不开放普通手动编辑入口。
+export async function updateMemberWechatNickname(nickname: string) {
+  const nextNickname = nickname.trim();
+  if (!nextNickname) throw new Error('微信昵称为空');
+
+  const profile = normalizeBffCrmProfile(await updateBffCrmProfile({ nickName: nextNickname }));
   syncGlobalMemberProfile(profile);
   await syncMemberStatus({ silent: true });
   return profile;

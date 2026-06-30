@@ -378,7 +378,6 @@ const MemberPage = observer(function MemberPage() {
               <View className="_pg-hero_info">
                 <Text className="_pg-hero_name">{displayName}</Text>
                 <View className="_pg-hero_level" onClick={handleLevelTap}>
-                  <Text className="_pg-hero_level-no">{memberLevel.levelNo}</Text>
                   <Text className="_pg-hero_level-name">{memberLevel.levelName}</Text>
                 </View>
               </View>
