@@ -15,6 +15,7 @@ import { centToYuan, parseNumberLike } from '@/core/utils/money';
 import { syncBffPaymentStatusSilently } from '@/core/services/bff-api';
 import { markTicketBookingRefreshNeeded } from '@/core/services/ticket-booking-refresh-signal';
 import {
+  cancelBffOrder,
   confirmReceiveBffOrder,
   payBffOrder,
   refundBffOrder,
@@ -540,6 +541,19 @@ const DetailPage = observer(function DetailPage() {
       });
 
       if (paymentStatus !== 'success') {
+        if (paymentStatus === 'canceled') {
+          try {
+            await cancelBffOrder(detailData.id, { reason: 'USER_PAYMENT_CANCEL' }, { showErrorToast: false });
+          } catch (error) {
+            await showWechatToast(resolveErrorMessage(error, '支付已取消，订单自动取消失败，请稍后重试'));
+            return;
+          }
+          try {
+            await loadDetailData({ showErrorToast: false, orderId: detailData.id });
+          } catch {
+            // 订单已取消时刷新失败不再打断页面，用户重新进入订单详情可看到最新状态。
+          }
+        }
         return;
       }
 

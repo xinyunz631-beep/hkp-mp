@@ -263,3 +263,10 @@ export function persistHotelCheckoutPendingOrder(
     updateHotelOrderDraft(draftId, { pendingOrder });
   }
 }
+
+// 微信支付取消后原订单会被后端取消，清除本地待支付快照，下一次提交重新建单。
+export function clearHotelCheckoutPendingOrder(draftId: string) {
+  if (!draftId) return;
+
+  updateHotelOrderDraft(draftId, { pendingOrder: undefined });
+}

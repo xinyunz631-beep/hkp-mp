@@ -52,7 +52,7 @@ interface ScanCodeResult {
   scanType?: string;
 }
 
-type AppPaymentStatus = 'success' | 'pending' | 'failed';
+type AppPaymentStatus = 'success' | 'pending' | 'failed' | 'canceled';
 type WechatPaymentParams = Parameters<typeof Taro.requestPayment>[0];
 type WechatPaymentSignType = NonNullable<WechatPaymentParams['signType']>;
 
@@ -193,7 +193,10 @@ export async function requestWechatPayment({
         error,
         paymentParams: buildWechatPaymentDebugParams(normalizedPaymentParams),
       });
-      if (allowPending && /cancel/i.test(errMsg)) return 'pending';
+      if (/cancel/i.test(errMsg)) {
+        await showWechatToast('支付已取消');
+        return allowPending ? 'pending' : 'canceled';
+      }
 
       await showWechatToast(resolveWechatPaymentFailMessage(error));
       return 'failed';

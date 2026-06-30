@@ -604,3 +604,10 @@ export function persistTicketCheckoutPendingOrder(
     updateTicketOrderDraft(draftId, { pendingOrder });
   }
 }
+
+// 微信支付取消后原订单会被后端取消，清除本地待支付快照，下一次提交重新建单。
+export function clearTicketCheckoutPendingOrder(draftId: string) {
+  if (!draftId) return;
+
+  updateTicketOrderDraft(draftId, { pendingOrder: undefined });
+}

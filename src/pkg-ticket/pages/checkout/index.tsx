@@ -21,6 +21,7 @@ import { TicketSubmitFooter } from '@/pkg-ticket/components/TicketSubmitFooter';
 import { fetchCheckoutData, type TicketCheckoutPageData } from '@/pkg-ticket/services/checkout';
 import { fetchTicketBookingData, type TicketProduct } from '@/pkg-ticket/services/ticket-booking';
 import {
+  clearTicketCheckoutPendingOrder,
   persistTicketCheckoutPendingOrder,
   isTicketOrderIdentityRequired,
   submitTicketOrderDraft,
@@ -341,6 +342,7 @@ const CheckoutPage = observer(function CheckoutPage() {
     },
     submit: (data, payload) => submitTicketOrderDraft(data.draft?.id || draftId, payload),
     onPaymentPrepared: (data, payload, result) => persistTicketCheckoutPendingOrder(data.draft?.id || draftId, payload, result),
+    onPaymentCanceled: (data) => clearTicketCheckoutPendingOrder(data.draft?.id || draftId),
     buildSuccessRoute: (result) => `${MINI_PACKAGE_ROUTES.orderDetail}?orderId=${encodeURIComponent(result.orderNo)}&paymentSettling=1`,
     isOrderComplete: (result) => isBffTicketOrderIssued(result.orderStatus, result.order?.ticketVouchers, result.order?.annualCards),
     submitErrorText: '门票订单提交暂不可用，请稍后再试',

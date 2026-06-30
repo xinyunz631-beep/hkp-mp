@@ -901,12 +901,17 @@ export function fetchBffOrderStatusSnapshot(orderNo: string, options: { showErro
 }
 
 // 取消未支付统一订单，库存锁和优惠锁由后端释放。
-export function cancelBffOrder(orderNo: string, data: BffOrderCancelRequest = {}) {
+export function cancelBffOrder(
+  orderNo: string,
+  data: BffOrderCancelRequest = {},
+  options: { showErrorToast?: boolean } = {},
+) {
   return request<BffOrderOperationResponse, BffOrderCancelRequest>({
     url: `/api/bff/orders/${encodeURIComponent(orderNo)}/cancel`,
     method: 'POST',
     data,
     sign: true,
+    showErrorToast: options.showErrorToast,
   });
 }
 

@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
 import Taro from '@tarojs/taro';
 import { syncBffPaymentStatusSilently } from '@/core/services/bff-api';
-import { payBffOrder } from '@/core/services/bff-order-api';
+import { cancelBffOrder, payBffOrder } from '@/core/services/bff-order-api';
 import type { CheckoutSubmitResult } from '@/core/services/checkout-flow';
 import { resolveErrorMessage } from '@/core/utils/error-message';
 import { centToYuan, parseNumberLike } from '@/core/utils/money';
@@ -35,6 +35,7 @@ export interface CheckoutControllerAdapter<
   revalidateBeforeSubmit?: (data: TData, payload: TSubmitPayload) => Promise<CheckoutRevalidateResult<TData>>;
   submit: (data: TData, payload: TSubmitPayload) => Promise<CheckoutSubmitResult | undefined>;
   onPaymentPrepared?: (data: TData, payload: TSubmitPayload, result: CheckoutSubmitResult) => Promise<void> | void;
+  onPaymentCanceled?: (data: TData, payload: TSubmitPayload, result: CheckoutSubmitResult) => Promise<void> | void;
   onCheckoutCompleted?: (data: TData, result: CheckoutSubmitResult) => Promise<void> | void;
   buildSuccessRoute: (result: CheckoutSubmitResult) => string;
   isOrderComplete?: (result: CheckoutSubmitResult) => boolean;
@@ -64,6 +65,26 @@ async function completeCheckout<TData, TSubmitPayload, TLoadParams extends Check
     await adapter.onCheckoutCompleted?.(data, result);
   } catch {
     // 支付已完成时，清理草稿或购物车失败不能阻断用户查看订单。
+  }
+}
+
+async function cancelCheckoutPayment<TData, TSubmitPayload, TLoadParams extends CheckoutLoadParams>(
+  adapter: CheckoutControllerAdapter<TData, TSubmitPayload, TLoadParams>,
+  data: TData,
+  payload: TSubmitPayload,
+  result: CheckoutSubmitResult,
+) {
+  try {
+    await cancelBffOrder(result.orderNo, { reason: 'USER_PAYMENT_CANCEL' }, { showErrorToast: false });
+  } catch (error) {
+    await showWechatToast(resolveErrorMessage(error, '支付已取消，订单自动取消失败，请稍后在订单详情取消'));
+    return;
+  }
+
+  try {
+    await adapter.onPaymentCanceled?.(data, payload, result);
+  } catch {
+    // 后端订单已取消时，本地待支付快照清理失败不能阻断用户重新提交。
   }
 }
 
@@ -268,6 +289,10 @@ export function useCheckoutController<
       amount: result.payableAmount || adapter.readPayableAmount(submitData),
       paymentParams: paymentParams as unknown as Parameters<typeof Taro.requestPayment>[0],
     });
+    if (paymentStatus === 'canceled') {
+      await cancelCheckoutPayment(adapter, submitData, payload, result);
+      return result;
+    }
     if (paymentStatus !== 'success') {
       return result;
     }

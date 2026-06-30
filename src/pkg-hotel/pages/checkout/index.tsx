@@ -12,6 +12,7 @@ import { useCheckoutController } from '@/core/runtime/use-checkout-controller';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import { showWechatToast } from '@/core/utils/wechat-actions';
 import {
+  clearHotelCheckoutPendingOrder,
   fetchCheckoutData,
   persistHotelCheckoutPendingOrder,
   submitHotelCheckoutOrder,
@@ -75,6 +76,7 @@ const CheckoutPage = observer(function CheckoutPage() {
     },
     submit: (data, payload) => submitHotelCheckoutOrder(data.draftId, payload),
     onPaymentPrepared: (data, payload, result) => persistHotelCheckoutPendingOrder(data.draftId, payload, result),
+    onPaymentCanceled: (data) => clearHotelCheckoutPendingOrder(data.draftId),
     buildSuccessRoute: (result) => `${MINI_PACKAGE_ROUTES.orderDetail}?orderId=${encodeURIComponent(result.orderNo)}&paymentSettling=1`,
     submitErrorText: '酒店订单提交暂不可用，请稍后再试',
     emptySubmitText: '订单信息已失效，请重新选择',
