@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Text, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
 import { BaseEmpty } from '@/core/components/BaseEmpty';
@@ -49,11 +49,11 @@ function resolveCouponSideTextColumns(sideText: string) {
 const CouponsPage = observer(function CouponsPage() {
   const [pageData, setPageData] = useState<MemberCouponsData>();
   const [activeTabKey, setActiveTabKey] = useState<MemberCouponStatus>('claimed');
+  const tabRequestSeed = useRef(0);
   const pageRuntime = usePageRuntime({
     initPage: async () => {
-      const nextData = await fetchCouponsData();
+      const nextData = await fetchCouponsData(activeTabKey);
       setPageData(nextData);
-      setActiveTabKey(nextData.tabs[0]?.key ?? 'claimed');
     },
     refreshOnShow: true,
     loginRequired: true,
@@ -66,6 +66,18 @@ const CouponsPage = observer(function CouponsPage() {
 
   function handleMoreCouponPress() {
     navigateToMiniRoute(MINI_PACKAGE_ROUTES.memberCouponCenter);
+  }
+
+  async function handleTabPress(tabKey: MemberCouponStatus) {
+    if (tabKey === activeTabKey) return;
+
+    tabRequestSeed.current += 1;
+    const requestId = tabRequestSeed.current;
+    setActiveTabKey(tabKey);
+    const nextData = await pageRuntime.withLoading(() => fetchCouponsData(tabKey));
+    if (tabRequestSeed.current === requestId) {
+      setPageData(nextData);
+    }
   }
 
   function renderCoupon(coupon: MemberCouponItem) {
@@ -114,7 +126,9 @@ const CouponsPage = observer(function CouponsPage() {
                 <View
                   className={`_pg-tab ${tab.key === activeTabKey ? '_pg-tab--active' : ''}`}
                   key={tab.key}
-                  onClick={() => setActiveTabKey(tab.key)}
+                  onClick={() => {
+                    void handleTabPress(tab.key);
+                  }}
                 >
                   <Text>{tab.text}</Text>
                   <View className="_pg-tab_line" />

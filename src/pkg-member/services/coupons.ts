@@ -67,7 +67,19 @@ export interface MemberCouponsData {
   moreButtonText: string;
 }
 
-let memberCouponsRequest: Promise<MemberCouponItem[]> | null = null;
+interface MemberCouponPageSnapshot {
+  coupons: MemberCouponItem[];
+  statusCounts: Partial<Record<BffCouponStatus, number>>;
+  total: number;
+}
+
+const MEMBER_COUPON_STATUS_TO_BFF: Record<MemberCouponStatus, BffCouponStatus> = {
+  claimed: 'AVAILABLE',
+  used: 'USED',
+  expired: 'EXPIRED',
+};
+
+let memberCouponsRequests: Partial<Record<MemberCouponStatus, Promise<MemberCouponPageSnapshot>>> = {};
 
 function formatYuan(amountCent: unknown = 0) {
   const amount = centToYuan(amountCent);
@@ -307,19 +319,64 @@ function waitCouponSnapshotRetry(delayMs: number) {
   });
 }
 
-// 单飞读取我的券列表，避免列表页和详情页在同一轮操作里重复打同一份券资产接口。
-async function loadMemberCouponItems() {
-  if (memberCouponsRequest) return memberCouponsRequest;
+function parseStatusCount(value: number | string | undefined) {
+  const numericValue = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(numericValue) ? numericValue : undefined;
+}
 
-  memberCouponsRequest = fetchBffMemberCoupons({ page: 1, size: 100 })
-    .then((response) => getBffMemberCouponList(response)
-      .map(toMemberCouponItem)
-      .filter((coupon): coupon is MemberCouponItem => Boolean(coupon)))
+function readStatusCount(statusCounts: Partial<Record<BffCouponStatus, number>>, keys: string[]) {
+  const statusCountMap = statusCounts as Record<string, number | string | undefined>;
+  for (const key of keys) {
+    const numericValue = parseStatusCount(statusCountMap[key]);
+    if (typeof numericValue === 'number') return numericValue;
+  }
+
+  return undefined;
+}
+
+// 单飞读取我的券列表，按 tab 状态请求后端，避免已使用/已过期复用可用券结果。
+async function loadMemberCouponSnapshot(status: MemberCouponStatus) {
+  const currentRequest = memberCouponsRequests[status];
+  if (currentRequest) return currentRequest;
+
+  const nextRequest = fetchBffMemberCoupons({
+    status: MEMBER_COUPON_STATUS_TO_BFF[status],
+    page: 1,
+    size: 100,
+  })
+    .then((response) => {
+      const coupons = getBffMemberCouponList(response)
+        .map(toMemberCouponItem)
+        .filter((coupon): coupon is MemberCouponItem => Boolean(coupon));
+      return {
+        coupons,
+        statusCounts: response.statusCounts || {},
+        total: response.total ?? coupons.length,
+      };
+    })
     .finally(() => {
-      memberCouponsRequest = null;
+      if (memberCouponsRequests[status] === nextRequest) {
+        delete memberCouponsRequests[status];
+      }
     });
 
-  return memberCouponsRequest;
+  memberCouponsRequests[status] = nextRequest;
+  return nextRequest;
+}
+
+async function loadMemberCouponItems(status: MemberCouponStatus) {
+  return (await loadMemberCouponSnapshot(status)).coupons;
+}
+
+async function loadMemberCouponItemsForDetail() {
+  const allCoupons = await Promise.all(
+    (['claimed', 'used', 'expired'] as const).map((status) => loadMemberCouponItems(status)),
+  );
+  const couponMap = new Map<string, MemberCouponItem>();
+  allCoupons.flat().forEach((coupon) => {
+    couponMap.set(coupon.id, coupon);
+  });
+  return Array.from(couponMap.values());
 }
 
 function toMemberCouponItem(coupon: BffCouponAssetView): MemberCouponItem | undefined {
@@ -359,20 +416,38 @@ function toMemberCouponItem(coupon: BffCouponAssetView): MemberCouponItem | unde
   };
 }
 
-function buildTabs(coupons: MemberCouponItem[]): MemberCouponTab[] {
+function buildTabs(
+  statusCounts: Partial<Record<BffCouponStatus, number>>,
+  coupons: MemberCouponItem[],
+): MemberCouponTab[] {
   return [
-    { key: 'claimed', text: '已领取', count: coupons.filter((coupon) => coupon.status === 'claimed').length },
-    { key: 'used', text: '已使用', count: coupons.filter((coupon) => coupon.status === 'used').length },
-    { key: 'expired', text: '已过期', count: coupons.filter((coupon) => coupon.status === 'expired').length },
+    {
+      key: 'claimed',
+      text: '已领取',
+      count: readStatusCount(statusCounts, ['AVAILABLE', 'available'])
+        ?? coupons.filter((coupon) => coupon.status === 'claimed').length,
+    },
+    {
+      key: 'used',
+      text: '已使用',
+      count: readStatusCount(statusCounts, ['USED', 'used'])
+        ?? coupons.filter((coupon) => coupon.status === 'used').length,
+    },
+    {
+      key: 'expired',
+      text: '已过期',
+      count: readStatusCount(statusCounts, ['EXPIRED', 'expired'])
+        ?? coupons.filter((coupon) => coupon.status === 'expired').length,
+    },
   ];
 }
 
 // 获取我的优惠券页面数据，只读取真实 BFF 券资产。
-export async function fetchCouponsData(): Promise<MemberCouponsData> {
-  const coupons = await loadMemberCouponItems();
+export async function fetchCouponsData(status: MemberCouponStatus = 'claimed'): Promise<MemberCouponsData> {
+  const snapshot = await loadMemberCouponSnapshot(status);
   return {
-    tabs: buildTabs(coupons),
-    coupons,
+    tabs: buildTabs(snapshot.statusCounts, snapshot.coupons),
+    coupons: snapshot.coupons,
     moreButtonText: '获取更多好券',
   };
 }
@@ -391,7 +466,7 @@ export async function fetchCouponDetailData(
   const retryDelayMs = Math.max(options.retryDelayMs ?? 250, 0);
 
   for (let attempt = 0; attempt <= retryTimes; attempt += 1) {
-    const coupons = await loadMemberCouponItems();
+    const coupons = await loadMemberCouponItemsForDetail();
     const matchedCoupon = coupons.find((coupon) => coupon.id === couponId);
     if (matchedCoupon) return matchedCoupon;
 
