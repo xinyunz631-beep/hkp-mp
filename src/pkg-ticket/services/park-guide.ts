@@ -41,13 +41,23 @@ function normalizeText(value?: string) {
   return typeof value === 'string' ? value.trim() : '';
 }
 
+function normalizeRouteValue(value?: string) {
+  const route = normalizeText(value);
+  return route.startsWith('/') ? route : `/${route}`;
+}
+
 function isSelfParkGuideRoute(value?: string) {
-  return normalizeText(value) === PARK_GUIDE_ROUTE;
+  return normalizeRouteValue(value) === PARK_GUIDE_ROUTE;
 }
 
 function isPageMapSection(section: TicketParkGuideSection) {
-  const targetType = section.targetType.toLowerCase();
+  const targetType = section.targetType.replace(/[\s_-]+/g, '').toLowerCase();
   return targetType === 'miniprogramroute' && (!section.targetValue || isSelfParkGuideRoute(section.targetValue));
+}
+
+function isDuplicateGuideSection(section: TicketParkGuideSection, guideTitle: string, guideImageSrc: string) {
+  if (section.imageSrc && guideImageSrc && section.imageSrc === guideImageSrc) return true;
+  return Boolean(guideTitle && section.title === guideTitle && !section.targetValue);
 }
 
 // 将导览分区转换为页面稳定消费结构，并按 sortOrder 兜底排序。
@@ -69,11 +79,15 @@ function normalizeParkGuideSections(sections?: ParkGuideApiSection[]) {
 
 // 将 BFF 园区导览响应转换为当前页面模型，页面无数据时继续展示业务空态。
 function normalizeParkGuideData(data?: ParkGuideApiData | null): TicketParkGuideData {
-  const sections = normalizeParkGuideSections(data?.sections);
+  const title = normalizeText(data?.title) || '乐园导览';
+  const rawSections = normalizeParkGuideSections(data?.sections);
+  const imageSrc = normalizeText(data?.imageSrc) || rawSections.find((section) => section.imageSrc)?.imageSrc || '';
+  const sections = rawSections.filter((section) => !isDuplicateGuideSection(section, title, imageSrc));
+
   return {
-    title: normalizeText(data?.title) || '乐园导览',
+    title,
     description: normalizeText(data?.description),
-    imageSrc: normalizeText(data?.imageSrc) || sections.find((section) => section.imageSrc)?.imageSrc || '',
+    imageSrc,
     sections,
   };
 }

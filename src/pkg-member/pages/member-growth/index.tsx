@@ -1,5 +1,5 @@
 import { CSSProperties, useMemo, useState } from 'react';
-import { ScrollView, Swiper, SwiperItem, Text, View } from '@tarojs/components';
+import { Image, ScrollView, Swiper, SwiperItem, Text, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
 import { AppIcon } from '@/core/components/AppIcon';
 import { AppImage } from '@/core/components/AppImage';
@@ -177,15 +177,13 @@ const MemberGrowthPage = observer(function MemberGrowthPage() {
 
     if (benefitImageSrc) {
       return (
-        <AppImage
-          className="_pg-benefit-image"
-          src={benefitImageSrc}
-          mode="aspectFill"
-          width="100%"
-          height={920}
-          placeholderColor="#d9e0e8"
-          showErrorIcon={false}
-        />
+        <View className="_pg-benefit-image-frame">
+          <Image
+            className="_pg-benefit-image"
+            src={benefitImageSrc}
+            mode="widthFix"
+          />
+        </View>
       );
     }
 
@@ -224,8 +222,8 @@ const MemberGrowthPage = observer(function MemberGrowthPage() {
         className="_pg-benefit-swiper"
         current={selectedLevelIndex}
         circular={levels.length > 1}
-        previousMargin="34px"
-        nextMargin="34px"
+        previousMargin="0px"
+        nextMargin="0px"
         onChange={(event) => handleBenefitSwiperChange(event.detail.current)}
       >
         {levels.map((level) => {

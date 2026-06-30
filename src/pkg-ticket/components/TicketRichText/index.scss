@@ -3,9 +3,12 @@
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
+  overflow: hidden;
   color: #111111;
   font-size: 30px;
   line-height: 1.65;
+  white-space: normal;
+  overflow-wrap: break-word;
   word-break: break-word;
 
   &_content {
@@ -13,14 +16,22 @@
     width: 100%;
     max-width: 100%;
     box-sizing: border-box;
+    overflow: hidden;
     color: inherit;
     font-size: inherit;
     line-height: inherit;
+    white-space: normal;
+    overflow-wrap: break-word;
     word-break: inherit;
   }
 
   div,
   p,
+  section,
+  article,
+  ul,
+  ol,
+  li,
   text,
   span {
     max-width: 100%;
@@ -28,6 +39,8 @@
     color: inherit;
     font-size: 30px;
     line-height: 1.65;
+    white-space: normal;
+    overflow-wrap: break-word;
     word-break: break-word;
   }
 

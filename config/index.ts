@@ -6,7 +6,7 @@ import prodConfig from './prod';
 
 const styleTokensPath = path.resolve(__dirname, '..', 'src/styles/tokens.scss').replace(/\\/g, '/');
 const outputRoot = process.env.HKITTY_MP_OUTPUT_ROOT || 'dist';
-const appDesignWidth = 750;
+const isWatchMode = process.argv.includes('--watch') || process.argv.includes('-w');
 
 function resolveDesignWidth(input?: string | number | Input) {
   const file = typeof input === 'object' ? input.file?.replace(/\\/g, '/') : undefined;
@@ -14,7 +14,7 @@ function resolveDesignWidth(input?: string | number | Input) {
     return 375;
   }
 
-  return appDesignWidth;
+  return 750;
 }
 
 const baseConfig: UserConfigExport<'webpack5'> = {
@@ -78,9 +78,16 @@ const baseConfig: UserConfigExport<'webpack5'> = {
 };
 
 export default defineConfig<'webpack5'>((merge, { command }) => {
-  if (command === 'build') {
-    return merge({}, baseConfig, prodConfig);
+  const config =
+    command === 'build' ? merge({}, baseConfig, prodConfig) : merge({}, baseConfig, devConfig);
+
+  if (!isWatchMode) {
+    return merge({}, config, {
+      output: {
+        clean: true,
+      },
+    });
   }
 
-  return merge({}, baseConfig, devConfig);
+  return config;
 });

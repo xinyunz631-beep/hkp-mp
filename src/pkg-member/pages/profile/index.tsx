@@ -343,7 +343,7 @@ const MemberProfilePage = observer(function MemberProfilePage() {
                 placeholder: '添加车牌号',
                 onClick: () => openEditPopup('plateNo', profileData.plateNo),
               })}
-              {renderRow('onlineStore', profileData.onlineStoreText, {
+              {renderRow('官方商城', profileData.onlineStoreText, {
                 placeholder: '',
                 showArrow: true,
                 onClick: () => navigateToMiniRoute(MINI_PACKAGE_ROUTES.mallHome),

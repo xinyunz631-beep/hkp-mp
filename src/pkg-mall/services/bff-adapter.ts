@@ -32,7 +32,6 @@ import type {
   MallBannerItem,
   MallCategoryItem,
   MallProductDetailData,
-  MallPromoCard,
   MallReviewItem,
   MallSkuVariant,
 } from './types';
@@ -159,46 +158,6 @@ export function toMallBannerItem(category: BffMallCategory): MallBannerItem | un
     subtitle: (category.linkedProductCount ?? 0) > 0 ? `${category.linkedProductCount} 件好物可选` : '',
     imageSrc: bannerUrl,
     path: `${MINI_PACKAGE_ROUTES.mallProducts}?categoryId=${encodeURIComponent(id)}`,
-  };
-}
-
-function buildMallRecommendationPath(recommendation: BffMallRecommendation) {
-  const basePath = MINI_PACKAGE_ROUTES.mallProducts;
-  const keyword = firstText(recommendation.keyword);
-  const sourceRefType = firstText(recommendation.sourceRefType, recommendation.sourceType);
-  const sourceRefId = firstText(recommendation.sourceRefId, recommendation.keyword);
-
-  if (sourceRefType === 'manual') {
-    const recommendationId = firstText(recommendation.poolId);
-    return recommendationId ? `${basePath}?recommendationId=${encodeURIComponent(recommendationId)}` : basePath;
-  }
-
-  if (sourceRefType === 'search' && keyword) {
-    return `${basePath}?keyword=${encodeURIComponent(keyword)}`;
-  }
-
-  if (sourceRefType === 'category' && sourceRefId) {
-    return `${basePath}?sourceRefType=category&sourceRefId=${encodeURIComponent(sourceRefId)}`;
-  }
-
-  if (sourceRefType === 'coupon' && sourceRefId) {
-    return `${basePath}?sourceRefType=coupon&sourceRefId=${encodeURIComponent(sourceRefId)}`;
-  }
-
-  return basePath;
-}
-
-export function toMallPromoCard(recommendation: BffMallRecommendation, index: number): MallPromoCard {
-  const title = firstMallText(recommendation.title);
-  const subtitle = firstMallText(recommendation.sourceRefLabel, recommendation.keyword);
-  const id = firstText(recommendation.poolId, title, `recommend-${index}`);
-  return {
-    id,
-    title: title || id,
-    subtitle,
-    imageSrc: '',
-    accent: index % 3 === 0 ? 'purple' : index % 3 === 1 ? 'orange' : 'pink',
-    path: buildMallRecommendationPath(recommendation),
   };
 }
 

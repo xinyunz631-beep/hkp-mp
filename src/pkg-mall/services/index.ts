@@ -1,95 +1,82 @@
+import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
+import { fetchBffMallHome, type BffMallProduct } from '@/core/services/bff-mall-api';
 import {
-  fetchBffMallHome,
-  fetchAllBffMallRecommendations,
-  type BffMallRecommendation,
-} from '@/core/services/bff-mall-api';
+  fetchMiniProgramPageAds,
+  findMiniProgramSlotAds,
+  MINI_PROGRAM_AD_PAGE_CODES,
+  resolveMiniProgramAdDescription,
+  resolveMiniProgramAdImage,
+  resolveMiniProgramAdTitle,
+} from '@/core/services/mini-program-ad';
+import type { MiniProgramAdView } from '@/core/types/mini-program-ad';
 import { sanitizeMallRuntimeText, sanitizeMallRuntimeUrl } from '@/core/utils/mall-runtime';
 import {
   isRenderableMallCategory,
   isRenderableMallProduct,
-  isRenderableMallRecommendation,
   toMallBannerItem,
   toMallCategoryItem,
   toMallProductSummary,
-  toMallPromoCard,
 } from './bff-adapter';
 import type { MallBannerItem } from './types';
 
-const MALL_HOME_PROMO_PLACEMENTS = ['mallHomeHot', 'mallHomeNew'] as const;
-const MALL_HOME_PROMO_PAGE_SIZE = 20;
-const MALL_HOME_PROMO_MAX_PAGES = 5;
+const MALL_HOME_SECONDARY_AD_SLOT_CODES = ['legacy_shop_home_secondary_ad'];
+const MALL_HOME_RECOMMENDATION_LIMIT = 6;
+const MALL_HOME_EXCLUDED_RECOMMENDATION_PATTERN = /(?:KUMAMON|熊本熊)/i;
 
-// 仅把首页真实推荐位 placement 作为首页活动卡候选，避免把购物车等其他位置推荐串到首页。
-function isMallHomePromoPlacement(placement?: string) {
-  return MALL_HOME_PROMO_PLACEMENTS.includes((placement || '').trim() as typeof MALL_HOME_PROMO_PLACEMENTS[number]);
+function firstString(...values: unknown[]) {
+  return values.find((value) => typeof value === 'string' && value.trim()) as string | undefined;
 }
 
-// 将首页推荐位按 placement 优先级和后台排序值统一排序，保证首页活动卡顺序稳定。
-function sortMallHomePromotions(recommendations: BffMallRecommendation[]) {
-  const placementRankMap = new Map<string, number>([
-    ['mallHomeHot', 0],
-    ['mallHomeNew', 1],
-  ]);
-
-  return recommendations.slice().sort((prev, next) => {
-    const placementDiff = (placementRankMap.get((prev.placement || '').trim()) ?? 99)
-      - (placementRankMap.get((next.placement || '').trim()) ?? 99);
-    if (placementDiff !== 0) return placementDiff;
-    const sortDiff = (prev.sortOrder ?? 0) - (next.sortOrder ?? 0);
-    if (sortDiff !== 0) return sortDiff;
-    return (prev.title || '').localeCompare(next.title || '', 'zh-Hans-CN');
-  });
+function legacyQueryValue(path: string, key: string) {
+  const queryText = path.split('?')[1] ?? '';
+  const target = queryText
+    .split('&')
+    .map((item) => item.split('='))
+    .find(([name]) => name === key);
+  return target?.[1] ? decodeURIComponent(target[1]) : '';
 }
 
-// 首页活动卡优先读 placement 精确接口；若后端暂未补齐，再退回 /home 聚合结果里的同 placement 真实数据。
-async function fetchMallHomePromotions(fallbackRecommendations: BffMallRecommendation[]) {
-  const settledResponses = await Promise.allSettled(
-    MALL_HOME_PROMO_PLACEMENTS.map((placement) => fetchAllBffMallRecommendations({
-      placement,
-    }, {
-      pageSize: MALL_HOME_PROMO_PAGE_SIZE,
-      maxPages: MALL_HOME_PROMO_MAX_PAGES,
-    })),
-  );
-  const promotionMap = new Map<string, BffMallRecommendation>();
-
-  settledResponses.forEach((result) => {
-    if (result.status !== 'fulfilled') return;
-    (result.value.list ?? []).filter(isRenderableMallRecommendation).forEach((recommendation) => {
-      const key = `${recommendation.poolId || recommendation.title || 'promotion'}-${recommendation.placement || ''}`;
-      if (!promotionMap.has(key)) {
-        promotionMap.set(key, recommendation);
-      }
-    });
-  });
-
-  const candidates = promotionMap.size > 0
-    ? Array.from(promotionMap.values())
-    : fallbackRecommendations.filter((recommendation) => (
-      isRenderableMallRecommendation(recommendation) && isMallHomePromoPlacement(recommendation.placement)
-    ));
-
-  return sortMallHomePromotions(candidates).slice(0, 3).map(toMallPromoCard);
+function normalizeMallBannerPath(path: string) {
+  const normalized = path.trim();
+  if (!normalized) return '';
+  if (normalized.startsWith('#/productList')) {
+    const legacyCategoryId = legacyQueryValue(normalized, 'productCategoryId');
+    return legacyCategoryId
+      ? `${MINI_PACKAGE_ROUTES.mallProducts}?categoryId=${encodeURIComponent(`H5MALL_CAT_${legacyCategoryId}`)}`
+      : MINI_PACKAGE_ROUTES.mallProducts;
+  }
+  if (normalized.startsWith('#/productDetail')) {
+    const legacyProductId = legacyQueryValue(normalized, 'productId');
+    return legacyProductId
+      ? `${MINI_PACKAGE_ROUTES.mallProductDetail}?productId=${encodeURIComponent(`H5MALL_PRODUCT_${legacyProductId}`)}`
+      : MINI_PACKAGE_ROUTES.mallProducts;
+  }
+  if (normalized.startsWith('/')) return normalized;
+  return MINI_PACKAGE_ROUTES.mallProducts;
 }
 
 function normalizeHomeBannerItem(item: unknown): MallBannerItem | undefined {
   if (!item || typeof item !== 'object') return undefined;
   const record = item as Record<string, unknown>;
-  const id = typeof record.id === 'string' ? record.id : typeof record.bannerId === 'string' ? record.bannerId : '';
+  const id = firstString(record.id, record.bannerId, record.adNo, record.adCode) ?? '';
   const imageSrc = sanitizeMallRuntimeUrl(
-    typeof record.imageSrc === 'string'
-      ? record.imageSrc
-      : typeof record.imageUrl === 'string'
-        ? record.imageUrl
-        : typeof record.coverImageUrl === 'string'
-          ? record.coverImageUrl
-          : '',
+    firstString(
+      record.imageSrc,
+      record.imageUrl,
+      record.coverImageUrl,
+      record.backgroundImage,
+      record.materialImage,
+      record.mobileImageUrl,
+      record.iconImage,
+    ) ?? '',
   );
-  const path = typeof record.path === 'string'
-    ? record.path
-    : typeof record.targetPath === 'string'
-      ? record.targetPath
-      : '';
+  const path = normalizeMallBannerPath(firstString(
+    record.path,
+    record.targetPath,
+    record.jumpPath,
+    record.jumpTarget,
+    record.jumpUrl,
+  ) ?? '');
   if (!id || !imageSrc || !path) return undefined;
   return {
     id,
@@ -100,6 +87,67 @@ function normalizeHomeBannerItem(item: unknown): MallBannerItem | undefined {
   };
 }
 
+function normalizeCategoryBannerFallback(banners: MallBannerItem[]) {
+  const firstBanner = banners[0];
+  if (!firstBanner?.imageSrc) return [];
+
+  return [{
+    id: 'banner-mall-home',
+    title: '',
+    subtitle: '',
+    imageSrc: firstBanner.imageSrc,
+    path: MINI_PACKAGE_ROUTES.mallProducts,
+  }];
+}
+
+// 将首页广告资源位转换为商城中间三宫格 banner。
+function normalizeSecondaryAdBanner(ad: MiniProgramAdView): MallBannerItem | undefined {
+  const imageSrc = sanitizeMallRuntimeUrl(resolveMiniProgramAdImage(ad, 'background') ?? '');
+  const id = firstString(ad.id, ad.adNo, ad.adCode) ?? '';
+  if (!id || !imageSrc) return undefined;
+
+  return {
+    id,
+    title: sanitizeMallRuntimeText(resolveMiniProgramAdTitle(ad)),
+    subtitle: sanitizeMallRuntimeText(resolveMiniProgramAdDescription(ad)),
+    imageSrc,
+    path: MINI_PACKAGE_ROUTES.mallProducts,
+    ad,
+  };
+}
+
+// 商城中间三宫格沿用首页广告配置，承接 H5 参考图里的左大右二布局。
+async function fetchSecondaryAdBannersFallback() {
+  try {
+    const pageAds = await fetchMiniProgramPageAds(MINI_PROGRAM_AD_PAGE_CODES.home);
+    return findMiniProgramSlotAds(pageAds, MALL_HOME_SECONDARY_AD_SLOT_CODES)
+      .map(normalizeSecondaryAdBanner)
+      .filter((item): item is MallBannerItem => Boolean(item))
+      .slice(0, 3);
+  } catch {
+    return [];
+  }
+}
+
+// 首页好物推荐只保留协调的乐园商品，过滤当前黑色熊本熊类素材并限制首屏数量。
+function selectMallHomeRecommendProducts(products: BffMallProduct[]) {
+  return products
+    .filter(isRenderableMallProduct)
+    .filter((product) => {
+      const searchText = [
+        product.title,
+        product.subtitle,
+        product.brandName,
+        product.mainImageUrl,
+        product.shareImageUrl,
+        ...(product.tags ?? []),
+      ].filter(Boolean).join(' ');
+
+      return !MALL_HOME_EXCLUDED_RECOMMENDATION_PATTERN.test(searchText);
+    })
+    .slice(0, MALL_HOME_RECOMMENDATION_LIMIT);
+}
+
 // 获取商城首页真实数据，接口失败时由页面异常态承接，不回退本地商品。
 export async function fetchMallHomeData() {
   const response = await fetchBffMallHome();
@@ -107,13 +155,18 @@ export async function fetchMallHomeData() {
   const banners = (response.banners ?? [])
     .map(normalizeHomeBannerItem)
     .filter((item): item is MallBannerItem => Boolean(item));
+  const secondaryBanners = (response.secondaryBanners ?? [])
+    .map(normalizeHomeBannerItem)
+    .filter((item): item is MallBannerItem => Boolean(item));
   const categoryBanners = categories.map(toMallBannerItem).filter((item): item is MallBannerItem => Boolean(item));
-  const promos = await fetchMallHomePromotions(response.recommendations ?? []);
+  const resolvedSecondaryBanners = secondaryBanners.length
+    ? secondaryBanners
+    : await fetchSecondaryAdBannersFallback();
 
   return {
-    banners: banners.length ? banners : categoryBanners,
+    banners: banners.length ? banners : normalizeCategoryBannerFallback(categoryBanners),
+    secondaryBanners: resolvedSecondaryBanners,
     categories: categories.map(toMallCategoryItem),
-    promos,
-    products: (response.products ?? []).filter(isRenderableMallProduct).map(toMallProductSummary),
+    products: selectMallHomeRecommendProducts(response.products ?? []).map(toMallProductSummary),
   };
 }

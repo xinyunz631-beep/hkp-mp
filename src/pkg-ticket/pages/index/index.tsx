@@ -3,7 +3,7 @@ import { Text, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
 import { AppIcon } from '@/core/components/AppIcon';
 import { PageShell } from '@/core/components/PageShell';
-import { MINI_PACKAGE_ROUTES, type MiniPackageRoute } from '@/core/constants/routes';
+import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import './index.scss';
 
@@ -11,13 +11,13 @@ const ticketActions: Array<{
   title: string;
   desc: string;
   tag: string;
-  route: MiniPackageRoute;
+  route: string;
 }> = [
   {
     title: '乐园详情',
     desc: '查看开放时间、优惠政策和园区信息',
     tag: '出行前必看',
-    route: MINI_PACKAGE_ROUTES.ticketParkDetail,
+    route: `${MINI_PACKAGE_ROUTES.ticketSchedule}?id=MP_LEGACY_PROGRAM_10130`,
   },
   {
     title: '门票预定',
@@ -37,7 +37,7 @@ const ticketActions: Array<{
 const TicketIndexPage = observer(function TicketIndexPage() {
   const pageRuntime = usePageRuntime();
 
-  function navigateTo(route: MiniPackageRoute) {
+  function navigateTo(route: string) {
     Taro.navigateTo({ url: route });
   }
 

@@ -10,6 +10,7 @@ import { MINI_PACKAGE_ROUTES, type MiniPackageRoute } from '@/core/constants/rou
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import type { HkpSkuGroup } from '@/core/types/hkp';
 import { formatCurrency } from '@/core/utils/money';
+import { adClick } from '@/core/utils/ad-click';
 import { navigateToMiniRoute } from '@/core/utils/navigation';
 import {
   clampSkuQuantity,
@@ -26,10 +27,10 @@ import { fetchMallHomeData } from '@/pkg-mall/services';
 import { addMallCartItem } from '@/pkg-mall/services/cart';
 import { fetchProductDetailData } from '@/pkg-mall/services/product-detail';
 import type {
+  MallBannerItem,
   MallCategoryItem,
   MallHomeData,
   MallProductDetailData,
-  MallPromoCard,
   MallSkuVariant,
 } from '@/pkg-mall/services/types';
 import './index.scss';
@@ -47,13 +48,7 @@ const mallFooterItems: MallFooterItem[] = [
   { key: 'order', title: '我的订单', icon: 'order', path: MINI_PACKAGE_ROUTES.orderHome },
 ];
 
-const promoAccentClassMap = {
-  purple: '_pg-promo_card--purple',
-  orange: '_pg-promo_card--orange',
-  pink: '_pg-promo_card--pink',
-} as const;
-
-// 商城首页首版按截图还原搜索、轮播、分类、活动卡和推荐商品，并串起核心购买入口。
+// 商城首页承接搜索、轮播、分类和推荐商品，并串起核心购买入口。
 const MallIndexPage = observer(function MallIndexPage() {
   const [homeData, setHomeData] = useState<MallHomeData>();
   const [activeBannerIndex, setActiveBannerIndex] = useState(0);
@@ -70,8 +65,14 @@ const MallIndexPage = observer(function MallIndexPage() {
   });
 
   const banners = homeData?.banners ?? [];
+  const secondaryBanners = homeData?.secondaryBanners ?? [];
+  const secondaryBannerCount = Math.min(secondaryBanners.length, 3);
+  const secondaryBannerClassName = secondaryBannerCount === 1
+    ? '_pg-secondary-banner _pg-secondary-banner--count-1'
+    : secondaryBannerCount === 2
+      ? '_pg-secondary-banner _pg-secondary-banner--count-2'
+      : '_pg-secondary-banner _pg-secondary-banner--count-3';
   const categories = homeData?.categories ?? [];
-  const promos = homeData?.promos ?? [];
   const products = homeData?.products ?? [];
   const skuVariants = skuDetailData?.skuVariants ?? [];
   const skuState = useMemo(
@@ -101,8 +102,13 @@ const MallIndexPage = observer(function MallIndexPage() {
     openPackagePage(item.path as MiniPackageRoute);
   }
 
-  function handlePromoPress(card: MallPromoCard) {
-    openPackagePage(card.path as MiniPackageRoute);
+  async function handleBannerPress(item: MallBannerItem) {
+    if (item.ad) {
+      await adClick(item.ad);
+      return;
+    }
+
+    openPackagePage(item.path as MiniPackageRoute);
   }
 
   function handleProductPress(productId: string) {
@@ -239,27 +245,37 @@ const MallIndexPage = observer(function MallIndexPage() {
                   setActiveBannerIndex(event.detail.current);
                 }}
               >
-                {banners.map((banner) => (
-                  <SwiperItem key={banner.id}>
-                    <View className="_pg-hero_item" onClick={() => openPackagePage(banner.path as MiniPackageRoute)}>
-                      <AppImage className="_pg-hero_image" src={banner.imageSrc} mode="aspectFill" emptyState="error" />
-                      <View className="_pg-hero_mask" />
-                      <View className="_pg-hero_copy">
-                        <Text className="_pg-hero_title">{banner.title}</Text>
-                        <Text className="_pg-hero_subtitle">{banner.subtitle}</Text>
+                {banners.map((banner) => {
+                  const hasCopy = Boolean(banner.title || banner.subtitle);
+
+                  return (
+                    <SwiperItem key={banner.id}>
+                      <View className="_pg-hero_item" onClick={() => openPackagePage(banner.path as MiniPackageRoute)}>
+                        <AppImage className="_pg-hero_image" src={banner.imageSrc} mode="aspectFill" emptyState="error" />
+                        {hasCopy ? (
+                          <>
+                            <View className="_pg-hero_mask" />
+                            <View className="_pg-hero_copy">
+                              {banner.title ? <Text className="_pg-hero_title">{banner.title}</Text> : null}
+                              {banner.subtitle ? <Text className="_pg-hero_subtitle">{banner.subtitle}</Text> : null}
+                            </View>
+                          </>
+                        ) : null}
                       </View>
-                    </View>
-                  </SwiperItem>
-                ))}
+                    </SwiperItem>
+                  );
+                })}
               </Swiper>
-              <View className="_pg-hero_dots">
-                {banners.map((banner, index) => (
-                  <View
-                    className={`_pg-hero_dot ${index === activeBannerIndex ? '_pg-hero_dot--active' : ''}`}
-                    key={banner.id}
-                  />
-                ))}
-              </View>
+              {banners.length > 1 ? (
+                <View className="_pg-hero_dots">
+                  {banners.map((banner, index) => (
+                    <View
+                      className={`_pg-hero_dot ${index === activeBannerIndex ? '_pg-hero_dot--active' : ''}`}
+                      key={banner.id}
+                    />
+                  ))}
+                </View>
+              ) : null}
             </View>
           ) : null}
 
@@ -279,22 +295,20 @@ const MallIndexPage = observer(function MallIndexPage() {
             ))}
           </View>
 
-          {promos.length > 0 ? (
-            <View className="_pg-promo">
-              {promos.map((card, index) => (
+          {secondaryBanners.length > 0 ? (
+            <View className={secondaryBannerClassName}>
+              {secondaryBanners.slice(0, 3).map((banner, index) => (
                 <View
-                  className={`_pg-promo_card ${promoAccentClassMap[card.accent]} ${index === 0 ? '_pg-promo_card--large' : '_pg-promo_card--small'}`}
-                  key={card.id}
-                  onClick={() => handlePromoPress(card)}
+                  className={`_pg-secondary-banner_item ${index === 0 ? '_pg-secondary-banner_item--main' : '_pg-secondary-banner_item--side'}`}
+                  key={banner.id}
+                  onClick={() => void handleBannerPress(banner)}
                 >
-                  <View className="_pg-promo_content">
-                    <Text className="_pg-promo_title">{card.title}</Text>
-                    <Text className="_pg-promo_subtitle">{card.subtitle}</Text>
-                    <View className="_pg-promo_arrow">
-                      <AppIcon name="arrowRight" size={14} color="#ffffff" />
-                    </View>
-                  </View>
-                  {card.imageSrc ? <AppImage className="_pg-promo_image" src={card.imageSrc} mode="aspectFit" emptyState="error" /> : null}
+                  <AppImage
+                    className="_pg-secondary-banner_image"
+                    src={banner.imageSrc}
+                    mode="aspectFill"
+                    emptyState="error"
+                  />
                 </View>
               ))}
             </View>
@@ -311,6 +325,7 @@ const MallIndexPage = observer(function MallIndexPage() {
                   <AppImage className="_pg-product-card_image" src={product.image.src} mode="aspectFit" emptyState="error" />
                   <View className="_pg-product-card_body">
                     <Text className="_pg-product-card_title">{product.title}</Text>
+                    {product.salesText ? <Text className="_pg-product-card_sales">{product.salesText}</Text> : null}
                     <View className="_pg-product-card_footer">
                       <Text className="_pg-product-card_price">{formatCurrency(product.price)}</Text>
                       <View

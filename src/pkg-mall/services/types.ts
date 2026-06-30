@@ -1,4 +1,5 @@
 import type { MallShippingRule } from '@/core/services/mall-checkout-draft';
+import type { MiniProgramAdView } from '@/core/types/mini-program-ad';
 import type {
   HkpCouponSummary,
   HkpFilterTab,
@@ -20,21 +21,13 @@ export interface MallBannerItem {
   subtitle: string;
   imageSrc: string;
   path: string;
-}
-
-export interface MallPromoCard {
-  id: string;
-  title: string;
-  subtitle: string;
-  imageSrc: string;
-  accent: 'purple' | 'orange' | 'pink';
-  path: string;
+  ad?: MiniProgramAdView;
 }
 
 export interface MallHomeData {
   banners: MallBannerItem[];
+  secondaryBanners: MallBannerItem[];
   categories: MallCategoryItem[];
-  promos: MallPromoCard[];
   products: HkpProductSummary[];
 }
 

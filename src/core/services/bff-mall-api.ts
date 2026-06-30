@@ -162,6 +162,7 @@ export interface BffMallHomeResponse {
   products?: BffMallProduct[];
   gifts?: BffMallGiftRule[];
   banners?: unknown[];
+  secondaryBanners?: unknown[];
   quickEntries?: unknown[];
 }
 

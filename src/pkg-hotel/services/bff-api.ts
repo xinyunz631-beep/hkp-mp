@@ -128,6 +128,10 @@ const FILTER_LABELS: Record<string, string> = {
   standard: '基础价',
 };
 
+const TECHNICAL_FILTER_KEY_PATTERN = /^(?:[0-9]+|room_.+|rate_.+|[A-Za-z][A-Za-z0-9_]*)$/;
+const FLOOR_DETAIL_FILTER_KEY_PATTERN = /^[0-9,\-]+层\s*/;
+const MAX_VISIBLE_FILTER_KEY_LENGTH = 12;
+
 function appendQuery(url: string, params: Record<string, string | number | undefined>) {
   const query = Object.entries(params)
     .filter(([, value]) => typeof value !== 'undefined' && value !== '')
@@ -162,6 +166,24 @@ function toRecordArray(value: unknown): Array<Record<string, unknown>> {
 
 function toStringArray(value: unknown): string[] {
   return Array.isArray(value) ? value.map(String).filter(Boolean) : [];
+}
+
+// 只保留小程序可展示的酒店筛选标签，过滤 H5/三方数据里的内部编码。
+function isVisibleHotelFilterKey(value: string) {
+  const key = value.trim();
+  if (!key) return false;
+  if (FILTER_LABELS[key]) return true;
+  if (FLOOR_DETAIL_FILTER_KEY_PATTERN.test(key)) return false;
+  if (key.length > MAX_VISIBLE_FILTER_KEY_LENGTH) return false;
+  if (TECHNICAL_FILTER_KEY_PATTERN.test(key)) return false;
+  return /[\u4e00-\u9fa5]/.test(key);
+}
+
+// 统一清洗酒店筛选标签，避免房型和价规合并后把内部字段展示成 chip。
+function toVisibleHotelFilterKeys(value: unknown) {
+  return toStringArray(value)
+    .map((key) => key.trim())
+    .filter(isVisibleHotelFilterKey);
 }
 
 function readImageSrc(item: Record<string, unknown>) {
@@ -278,7 +300,7 @@ function mapRatePlan(room: BffHotelRoomView, plan: Record<string, unknown>, look
     bedText: text(plan.bedText) || text(room.bedText),
     cancelRule: text(plan.cancelRule),
     policyText: text(plan.policyText),
-    filterKeys: toStringArray(plan.filterKeys),
+    filterKeys: toVisibleHotelFilterKeys(plan.filterKeys),
     price: inventory.price ?? resolveBackendDisplayPrice(plan) ?? resolveBackendDisplayPrice(room as unknown as Record<string, unknown>),
     stock: inventory.stock,
   };
@@ -291,7 +313,7 @@ function mapRoom(room: BffHotelRoomView, stayRange: HotelStayRange, lookup: Inve
   const ratePlans = toRecordArray(room.ratePlans).map((plan) => mapRatePlan(room, plan, lookup));
   const displayRatePlan = ratePlans.find((plan) => plan.stock > 0) || ratePlans[0];
   const facilityTags = toStringArray(room.facilityTags);
-  const filterKeys = toStringArray(room.filterKeys);
+  const filterKeys = toVisibleHotelFilterKeys(room.filterKeys);
   const ratePlanFilterKeys = ratePlans.flatMap((plan) => plan.filterKeys);
   const tagsText = [
     text(room.floorText),
@@ -323,7 +345,9 @@ function mapRoom(room: BffHotelRoomView, stayRange: HotelStayRange, lookup: Inve
 }
 
 function mapFilterOptions(products: HotelProductCardData[]): HotelFilterOption[] {
-  const options = (Array.isArray(products) ? products : []).flatMap((product) => product.filterKeys || []);
+  const options = (Array.isArray(products) ? products : []).flatMap((product) => (
+    toVisibleHotelFilterKeys(product.filterKeys)
+  ));
   return Array.from(new Set(options)).map((key) => ({
     key,
     label: FILTER_LABELS[key] || key,
