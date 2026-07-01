@@ -1,8 +1,13 @@
 import { Button, Image, Text, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AppPopup } from '@/core/components/AppPopup';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
+import {
+  fetchBffMemberCoupons,
+  getBffCouponTitle,
+  getBffMemberCouponList,
+} from '@/core/services/bff-coupon-api';
 import { confirmBffNewUserGift } from '@/core/services/bff-new-user-gift-api';
 import { rootStore } from '@/core/store';
 import { navigateToMiniRoute } from '@/core/utils/navigation';
@@ -15,18 +20,30 @@ function firstText(value?: string) {
   return trimmed || '';
 }
 
+function toCouponNoSet(items: Array<{ couponNo?: string }>) {
+  return items
+    .map((item) => item.couponNo?.trim())
+    .filter((value): value is string => Boolean(value));
+}
+
 function resolveNewUserGiftName(item: {
   couponName?: string;
   displayName?: string;
   templateName?: string;
+  title?: string;
   giftObjectName?: string;
   giftName?: string;
   couponTemplateId?: string;
+  giftTemplateName?: string;
+  memberCouponName?: string;
 }, index: number) {
   return (
     firstText(item.couponName)
     || firstText(item.displayName)
     || firstText(item.templateName)
+    || firstText(item.giftTemplateName)
+    || firstText(item.title)
+    || firstText(item.memberCouponName)
     || firstText(item.giftObjectName)
     || firstText(item.giftName)
     || firstText(item.couponTemplateId)
@@ -38,6 +55,8 @@ export const NewUserGiftPopup = observer(function NewUserGiftPopup() {
   const gift = rootStore.app.newUserGift;
   const visible = rootStore.app.newUserGiftVisible && Boolean(gift);
   const couponItems = gift?.giftItems ?? [];
+  const couponSignature = `${gift?.activityId || ''}|${gift?.recordId || ''}|${toCouponNoSet(couponItems).join(',')}`;
+  const [memberCouponTitleMap, setMemberCouponTitleMap] = useState<Record<string, string>>({});
   const shownRecordRef = useRef('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -54,6 +73,40 @@ export const NewUserGiftPopup = observer(function NewUserGiftPopup() {
     shownRecordRef.current = gift.recordId;
     await markPopup('shown').catch(() => undefined);
   }
+
+  useEffect(() => {
+    let cancelled = false;
+    const couponNos = toCouponNoSet(couponItems);
+    if (!visible || !gift || couponNos.length === 0) {
+      setMemberCouponTitleMap({});
+      return;
+    }
+
+    (async () => {
+      try {
+        const response = await fetchBffMemberCoupons({
+          size: Math.max(100, couponItems.length * 20),
+        });
+        if (cancelled) return;
+
+        const memberCoupons = getBffMemberCouponList(response)
+          .filter((coupon) => couponNos.includes(coupon.couponNo));
+        const titlesByNo = memberCoupons.reduce<Record<string, string>>((result, coupon) => {
+          const title = getBffCouponTitle(coupon);
+          if (coupon.couponNo) result[coupon.couponNo] = title;
+          return result;
+        }, {});
+
+        if (!cancelled) setMemberCouponTitleMap(titlesByNo);
+      } catch {
+        if (!cancelled) setMemberCouponTitleMap({});
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [couponSignature, couponItems.length, visible]);
 
   async function handleClose() {
     await markPopup('closed').catch(() => undefined);
@@ -100,7 +153,10 @@ export const NewUserGiftPopup = observer(function NewUserGiftPopup() {
                 {item.imageUrl ? <Image className="new-user-gift-popup__coupon-image" src={item.imageUrl} mode="aspectFill" /> : null}
                 <View className="new-user-gift-popup__coupon-main">
                   <Text className="new-user-gift-popup__coupon-name">
-                    {resolveNewUserGiftName(item, index)}
+                    {resolveNewUserGiftName({
+                      ...item,
+                      memberCouponName: memberCouponTitleMap[item.couponNo || ''],
+                    }, index)}
                   </Text>
                   <Text className="new-user-gift-popup__coupon-rule">{item.thresholdText || '门槛以券详情为准'}</Text>
                   <Text className="new-user-gift-popup__coupon-time">{item.validityText || '有效期以券详情为准'}</Text>
