@@ -10,11 +10,12 @@ import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { fetchBffMemberCoupons, type BffMemberCouponsResponse } from '@/core/services/bff-coupon-api';
 import { fetchBffCrmProfile } from '@/core/services/bff-crm-api';
 import { fetchOrderStatusBadgeCounts, type OrderStatusBadgeCounts } from '@/core/services/order-status-badges';
+import { openCustomerService } from '@/core/services/customer-service';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import { rootStore } from '@/core/store';
 import { resolveMemberAvatar, resolveMemberLevel } from '@/core/utils/member-profile';
 import { navigateToMiniRoute } from '@/core/utils/navigation';
-import { callWechatPhone, showAppModal, showWechatConfirm } from '@/core/utils/wechat-actions';
+import { showAppModal, showWechatConfirm } from '@/core/utils/wechat-actions';
 import './index.scss';
 
 interface ProfileMetricItem {
@@ -49,7 +50,6 @@ interface MemberMetricState {
   orderBadgeCounts?: OrderStatusBadgeCounts;
 }
 
-const PARK_PHONE = '4009778899';
 const orderActions: ProfileOrderItem[] = [
   {
     key: 'pendingPay',
@@ -202,7 +202,7 @@ function handleServiceAction(item: ProfileServiceItem) {
   }
 
   if (item.action === 'phone') {
-    void callWechatPhone(PARK_PHONE);
+    void openCustomerService({ source: 'member' });
   }
 }
 

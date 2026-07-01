@@ -6,9 +6,10 @@ import { observer } from 'mobx-react';
 import { AppIcon } from '@/core/components/AppIcon';
 import { AppImage } from '@/core/components/AppImage';
 import { PageRoot, PageShell } from '@/core/components/PageShell';
-import { HKP_PARK_HOTLINE, HKP_PARK_LOCATION } from '@/core/constants/park-location';
+import { HKP_PARK_LOCATION } from '@/core/constants/park-location';
 import { MINI_MAIN_ROUTES, MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
+import { openCustomerService } from '@/core/services/customer-service';
 import {
   fetchMiniProgramPageAds,
   findMiniProgramSlotAds,
@@ -23,7 +24,6 @@ import { resolveMemberLevel } from '@/core/utils/member-profile';
 import { navigateToMiniRoute } from '@/core/utils/navigation';
 import { resolvePageChromeMetrics } from '@/core/utils/style';
 import {
-  callWechatPhone,
   copyWechatText,
   openWechatLocation,
   scanWechatCode,
@@ -84,6 +84,15 @@ const HOME_SECTION_MORE_CONFIG = {
   recommend: { path: MINI_PACKAGE_ROUTES.ticketActivityList, slotCode: HOME_RECOMMEND_SLOT_CODES[0], title: '精彩推荐' },
   play: { path: MINI_PACKAGE_ROUTES.ticketActivityList, slotCode: HOME_PLAY_LIFE_SLOT_CODES[0], title: '玩转乐园' },
 } as const;
+const HOME_NAV_BACKGROUND_SCROLL_START = 10;
+const HOME_NAV_BACKGROUND_SCROLL_END = 180;
+
+function resolveHomeNavOpacity(scrollTop: number) {
+  if (scrollTop < HOME_NAV_BACKGROUND_SCROLL_START) return 0;
+
+  const scrollDistance = HOME_NAV_BACKGROUND_SCROLL_END - HOME_NAV_BACKGROUND_SCROLL_START;
+  return Math.min(1, Math.max(0, (scrollTop - HOME_NAV_BACKGROUND_SCROLL_START) / scrollDistance));
+}
 
 function renderHomeImage(className: string, src: string) {
   return <AppImage className={className} src={src} mode="aspectFill" emptyState="error" />;
@@ -197,8 +206,8 @@ function hasExecutableAdTarget(target: MiniProgramAdClickTarget) {
 const HomePage = observer(function HomePage() {
   const [homeAds, setHomeAds] = useState<MiniProgramAdPageAdsResponse>();
   const [chromeMetrics] = useState(resolvePageChromeMetrics);
-  const [navSearchSolid, setNavSearchSolid] = useState(false);
-  const navSearchSolidRef = useRef(false);
+  const [navBackgroundOpacity, setNavBackgroundOpacity] = useState(0);
+  const navBackgroundOpacityRef = useRef(0);
   const pageRuntime = usePageRuntime({
     initPage: async () => {
       const nextHomeAds = await fetchMiniProgramPageAds();
@@ -227,7 +236,12 @@ const HomePage = observer(function HomePage() {
   const resolvedRecommendCards = recommendAds.slice(0, 3).map((ad, index) => mapAdToSectionCard(ad, index, 'recommend'));
   const resolvedPlayCategories = playLifeAds.slice(0, 9).map(mapAdToPlayCategory);
   const fixedNavStyle: CSSProperties = {
-    paddingTop: `${chromeMetrics.statusBarHeight + chromeMetrics.headerContentTopGap}px`,
+    height: `${chromeMetrics.statusBarHeight + chromeMetrics.headerHeight}px`,
+    paddingTop: `${chromeMetrics.statusBarHeight}px`,
+  };
+  const fixedNavContentStyle: CSSProperties = {
+    height: `${chromeMetrics.headerContentHeight}px`,
+    marginTop: `${chromeMetrics.headerContentTopGap}px`,
     paddingRight: `${chromeMetrics.menuRightReserve + 18}px`,
   };
 
@@ -248,7 +262,7 @@ const HomePage = observer(function HomePage() {
   // 点击快捷入口时根据配置选择分包跳转、登录守卫或业务提示。
   async function handleHomeAction(action?: HomeShortcutEntry['action'] | HomeSectionCard['action'] | HomePlayCategory['action']) {
     if (action === 'phone') {
-      await callWechatPhone(HKP_PARK_HOTLINE);
+      await openCustomerService({ source: 'home' });
       return;
     }
 
@@ -396,11 +410,11 @@ const HomePage = observer(function HomePage() {
   }
 
   const handleHomeScroll: HomeScrollHandler = (event) => {
-    const nextNavSearchSolid = event.detail.scrollTop > 140;
-    if (navSearchSolidRef.current === nextNavSearchSolid) return;
+    const nextNavBackgroundOpacity = Number(resolveHomeNavOpacity(event.detail.scrollTop).toFixed(2));
+    if (Math.abs(navBackgroundOpacityRef.current - nextNavBackgroundOpacity) < 0.03) return;
 
-    navSearchSolidRef.current = nextNavSearchSolid;
-    setNavSearchSolid(nextNavSearchSolid);
+    navBackgroundOpacityRef.current = nextNavBackgroundOpacity;
+    setNavBackgroundOpacity(nextNavBackgroundOpacity);
   };
 
   return pageRuntime.renderPage(() => (
@@ -414,13 +428,16 @@ const HomePage = observer(function HomePage() {
       >
         <PageRoot>
           <View className="_pg-nav" style={fixedNavStyle}>
-            <View className="_pg-nav_scan" onClick={handleScan}>
-              <AppIcon name="scan" size={14} color="#ffffff" />
-            </View>
-            <View className={`_pg-nav_search ${navSearchSolid ? '_pg-nav_search--solid' : ''}`} onClick={handleSearch}>
-              <AppIcon name="search" size={14} color="#e85f9d" />
-              {/* <Text className="_pg-nav_search-placeholder">搜索项目 / 演出 / 餐饮</Text> */}
-              <Text className="_pg-nav_search-placeholder">搜一搜~</Text>
+            <View className="_pg-nav_bg" style={{ opacity: navBackgroundOpacity }} />
+            <View className="_pg-nav_content" style={fixedNavContentStyle}>
+              <View className="_pg-nav_scan" onClick={handleScan}>
+                <AppIcon name="scan" size={14} color="#ffffff" />
+              </View>
+              <View className="_pg-nav_search" onClick={handleSearch}>
+                <AppIcon name="search" size={14} color="#e85f9d" />
+                {/* <Text className="_pg-nav_search-placeholder">搜索项目 / 演出 / 餐饮</Text> */}
+                <Text className="_pg-nav_search-placeholder">搜一搜~</Text>
+              </View>
             </View>
           </View>
         </PageRoot>

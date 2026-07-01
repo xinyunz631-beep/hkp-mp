@@ -23,15 +23,35 @@
   right: 0;
   left: 0;
   z-index: 30;
-  display: flex;
-  align-items: center;
-  gap: 20px;
   box-sizing: border-box;
   pointer-events: none;
 
+  &_content {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
   &_scan,
   &_search {
+    position: relative;
     pointer-events: auto;
+  }
+
+  &_bg {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 0;
+    background: #ffffff;
+    pointer-events: none;
+    transition: opacity .24s ease;
   }
 
   &_scan {
@@ -56,12 +76,9 @@
     padding: 0 24px;
     border-radius: 31px;
     background: rgba(255, 255, 255, 0.4);
+    box-shadow: 0 0 18px rgba(148, 163, 184, 0.2);
     box-sizing: border-box;
-    transition: background-color .3s ease;
-
-    &--solid {
-      background: rgba(255, 255, 255, 1);
-    }
+    transition: background-color .24s ease, box-shadow .24s ease;
   }
 
   &_search-placeholder {

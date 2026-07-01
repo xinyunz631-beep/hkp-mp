@@ -3,7 +3,7 @@ import {
   type CustomerServiceRuntimeConfig,
 } from '@/core/config/customer-service';
 import { resolveErrorMessage } from '@/core/utils/error-message';
-import { callWechatPhone, showWechatToast } from '@/core/utils/wechat-actions';
+import { showWechatToast } from '@/core/utils/wechat-actions';
 
 export type CustomerServiceSource =
   | 'home'
@@ -15,7 +15,7 @@ export type CustomerServiceSource =
   | 'ad'
   | 'other';
 
-export type CustomerServiceOpenResult = 'plugin' | 'phone' | 'unavailable';
+export type CustomerServiceOpenResult = 'plugin' | 'unavailable';
 
 export interface CustomerServicePluginInitOptions {
   appKey: string;
@@ -35,7 +35,6 @@ export interface CustomerServicePluginAdapter {
 
 export interface OpenCustomerServiceOptions {
   source: CustomerServiceSource;
-  fallbackPhone?: string;
   payload?: Record<string, unknown>;
   unavailableText?: string;
 }
@@ -43,11 +42,6 @@ export interface OpenCustomerServiceOptions {
 let registeredAdapter: CustomerServicePluginAdapter | undefined;
 let initPromise: Promise<boolean> | undefined;
 let initialized = false;
-
-// 规范化电话兜底号码，避免空格或空值传给微信拨号。
-function normalizePhoneNumber(phoneNumber?: string) {
-  return phoneNumber?.trim() || '';
-}
 
 // 给第三方客服初始化和打开动作加超时保护，避免入口点击后长时间无反馈。
 function withTimeout<T>(task: Promise<T>, timeoutMs: number, timeoutMessage: string): Promise<T> {
@@ -80,7 +74,7 @@ export function registerCustomerServiceAdapter(adapter?: CustomerServicePluginAd
   initialized = false;
 }
 
-// 初始化客服插件；任何失败都返回 false，调用方统一走电话兜底。
+// 初始化客服插件；任何失败都返回 false，调用方统一展示不可用反馈。
 export async function initCustomerService(config = CUSTOMER_SERVICE_CONFIG) {
   const appKey = config.appKey.trim();
   const adapter = registeredAdapter;
@@ -108,10 +102,15 @@ export async function initCustomerService(config = CUSTOMER_SERVICE_CONFIG) {
   return initPromise;
 }
 
-// 打开客服会话；插件不可用、初始化失败或打开失败时，统一兜底为原有电话能力。
+// 打开客服会话；未完成网易七鱼配置时先给出明确配置提示。
 export async function openCustomerService(options: OpenCustomerServiceOptions): Promise<CustomerServiceOpenResult> {
-  const fallbackPhone = normalizePhoneNumber(options.fallbackPhone);
   const appKey = CUSTOMER_SERVICE_CONFIG.appKey.trim();
+
+  if (!appKey) {
+    await showWechatToast('请先完成网易七鱼配置');
+    return 'unavailable';
+  }
+
   const ready = await initCustomerService(CUSTOMER_SERVICE_CONFIG);
   const adapter = registeredAdapter;
 
@@ -130,11 +129,6 @@ export async function openCustomerService(options: OpenCustomerServiceOptions): 
     } catch (error) {
       console.warn('[customer-service] open failed:', resolveErrorMessage(error, '客服插件打开失败'));
     }
-  }
-
-  if (fallbackPhone) {
-    await callWechatPhone(fallbackPhone);
-    return 'phone';
   }
 
   await showWechatToast(options.unavailableText || '当前客服暂不可用，请稍后再试');

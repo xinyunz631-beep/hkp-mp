@@ -10,6 +10,7 @@ import { AppShareButton } from '@/core/components/AppShareButton';
 import { BaseEmpty } from '@/core/components/BaseEmpty';
 import { DateSelectionPopup, QuantityStepper } from '@/core/components/commerce';
 import { PageShare, PageShell } from '@/core/components/PageShell';
+import { HKP_HOTEL_SERVICE_PHONE } from '@/core/constants/park-location';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import { navigateToMiniRoute } from '@/core/utils/navigation';
@@ -349,7 +350,7 @@ const HotelIndexPage = observer(function HotelIndexPage() {
       hotelId: activeHotel?.id ?? '',
       hotelName: activeHotel?.heroTitle ?? '',
       hotelAddress: activeHotel?.address ?? '',
-      hotelPhone: activeHotel?.phoneNumber ?? '',
+      hotelPhone: HKP_HOTEL_SERVICE_PHONE,
       productId: product.id,
       product,
       ratePlanId: selectedRatePlan.id,
@@ -543,10 +544,10 @@ const HotelIndexPage = observer(function HotelIndexPage() {
                 <Text>退房时间</Text>
                 <Text>{activeHotel.checkOutTimeText}</Text>
               </View>
-              <View className="_pg-intro-popup_line" onClick={() => void callWechatPhone(activeHotel.phoneNumber)}>
+              <View className="_pg-intro-popup_line" onClick={() => void callWechatPhone(HKP_HOTEL_SERVICE_PHONE)}>
                 <Text>联系电话</Text>
                 <View className="_pg-intro-popup_phone">
-                  <Text>{activeHotel.phoneNumber}</Text>
+                  <Text>{HKP_HOTEL_SERVICE_PHONE}</Text>
                   <AppIcon name="phone" size={16} color="#d94a88" />
                 </View>
               </View>

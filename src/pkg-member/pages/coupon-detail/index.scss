@@ -1,6 +1,6 @@
 ._pg {
   min-height: 100vh;
-  background: #f4f4f4;
+  background: #f6f7f9;
 
   .page-shell__body {
     min-height: 100%;
@@ -10,7 +10,7 @@
 ._pg-shell {
   min-height: 100vh;
   box-sizing: border-box;
-  background: #f4f4f4;
+  background: #f6f7f9;
 }
 
 ._pg-content {
@@ -20,14 +20,31 @@
 }
 
 ._pg-card {
-  padding: 28px 28px 34px;
+  padding: 28px 28px 32px;
+  border: 1px solid #f7d8e6;
+  border-left: 8px solid #db2777;
   border-radius: 24px;
-  background: linear-gradient(135deg, #f6b5d2 0%, #ea7daf 100%);
-  color: #ffffff;
+  background: linear-gradient(135deg, #ffffff 0%, #fff7fb 100%);
+  box-shadow: 0 12px 28px rgba(219, 39, 119, 0.08);
+  color: #1f2937;
 
   &--used,
   &--expired {
-    opacity: 0.72;
+    border-color: #e2e8f0;
+    border-left-color: #cbd5e1;
+    background: #ffffff;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+
+    ._pg-card_status {
+      border-color: #e2e8f0;
+      background: #f8fafc;
+      color: #64748b;
+    }
+
+    ._pg-card_amount,
+    ._pg-card_type {
+      color: #64748b;
+    }
   }
 
   &_header {
@@ -43,15 +60,17 @@
     min-width: 124px;
     height: 48px;
     padding: 0 18px;
+    border: 1px solid #f8c9dc;
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.22);
+    background: #fff1f7;
+    color: #be185d;
     font-size: 24px;
     line-height: 48px;
   }
 
   &_scene {
     margin-left: 24px;
-    color: rgba(255, 255, 255, 0.92);
+    color: #64748b;
     font-size: 24px;
     line-height: 1.35;
     text-align: right;
@@ -65,7 +84,9 @@
 
   &_amount {
     display: block;
+    color: #db2777;
     font-size: 76px;
+    font-weight: 500;
     line-height: 1;
   }
 
@@ -73,6 +94,7 @@
     display: flex;
     flex-direction: column;
     margin-left: 20px;
+    color: #9d174d;
     font-size: 28px;
     line-height: 1.45;
   }
@@ -84,13 +106,15 @@
 
   &_title {
     margin-top: 24px;
+    color: #111827;
     font-size: 30px;
+    font-weight: 500;
     line-height: 1.45;
   }
 
   &_validity {
     margin-top: 10px;
-    color: rgba(255, 255, 255, 0.92);
+    color: #64748b;
     font-size: 24px;
     line-height: 1.35;
   }

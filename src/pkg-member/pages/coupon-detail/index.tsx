@@ -4,7 +4,7 @@ import { Text, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
 import { BaseEmpty } from '@/core/components/BaseEmpty';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
-import { PageFooter, PageShell } from '@/core/components/PageShell';
+import { PageShell } from '@/core/components/PageShell';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import { navigateToMiniRoute } from '@/core/utils/navigation';
 import { fetchCouponDetailData, type MemberCouponItem } from '@/pkg-member/services/coupons';
@@ -140,77 +140,78 @@ const CouponDetailPage = observer(function CouponDetailPage() {
 
   return pageRuntime.renderPage(() => (
     <View className="_pg">
-      <PageShell title="优惠券详情" className="_pg-shell" reserveTabBarSpace={false}>
+      <PageShell
+        title="优惠券详情"
+        className="_pg-shell"
+        reserveTabBarSpace={false}
+        footer={coupon ? (
+          <View className="_pg-footer">
+            {coupon.orderNoText ? (
+              <View
+                className={resolveCouponOrderButtonClassName()}
+                onClick={handleViewOrder}
+              >
+                <Text>查看订单</Text>
+              </View>
+            ) : null}
+            {coupon.orderNoText && coupon.refundReturnStatusText ? (
+              <View
+                className={resolveCouponAftersaleButtonClassName()}
+                onClick={handleViewAftersale}
+              >
+                <Text>查看售后</Text>
+              </View>
+            ) : null}
+            <View
+              className={resolveCouponFooterButtonClassName(coupon)}
+              onClick={handleUseCoupon}
+            >
+              <Text>{coupon.useEnabled ? coupon.actionText : coupon.statusText}</Text>
+            </View>
+          </View>
+        ) : undefined}
+      >
         {typeof coupon === 'undefined' ? null : coupon ? (
-          <>
-            <View className="_pg-content">
-              <View className={resolveCouponCardClassName(coupon)}>
-                <View className="_pg-card_header">
-                  <View className="_pg-card_status">
-                    <Text>{coupon.statusText}</Text>
-                  </View>
-                  <Text className="_pg-card_scene">{coupon.sceneText}</Text>
+          <View className="_pg-content">
+            <View className={resolveCouponCardClassName(coupon)}>
+              <View className="_pg-card_header">
+                <View className="_pg-card_status">
+                  <Text>{coupon.statusText}</Text>
                 </View>
-                <View className="_pg-card_amount-row">
-                  <Text className="_pg-card_amount">{coupon.amountText}</Text>
-                  <View className="_pg-card_type">
-                    <Text>{coupon.couponTypeText}</Text>
-                    <Text>{coupon.currencyText}</Text>
-                  </View>
-                </View>
-                <Text className="_pg-card_title">{coupon.title}</Text>
-                <Text className="_pg-card_validity">{coupon.validityText}</Text>
+                <Text className="_pg-card_scene">{coupon.sceneText}</Text>
               </View>
-
-              <View className="_pg-section">
-                <Text className="_pg-section_title">优惠信息</Text>
-                <View className="_pg-section_body">
-                  {buildCouponInfoRows(coupon).map(renderCouponDetailRow)}
+              <View className="_pg-card_amount-row">
+                <Text className="_pg-card_amount">{coupon.amountText}</Text>
+                <View className="_pg-card_type">
+                  <Text>{coupon.couponTypeText}</Text>
+                  <Text>{coupon.currencyText}</Text>
                 </View>
               </View>
+              <Text className="_pg-card_title">{coupon.title}</Text>
+              <Text className="_pg-card_validity">{coupon.validityText}</Text>
+            </View>
 
-              <View className="_pg-section">
-                <Text className="_pg-section_title">使用记录</Text>
-                <View className="_pg-section_body">
-                  {buildCouponRecordRows(coupon).map(renderCouponDetailRow)}
-                </View>
-              </View>
-
-              <View className="_pg-section">
-                <Text className="_pg-section_title">使用提醒</Text>
-                <View className="_pg-tip">
-                  <Text className="_pg-tip_text">{coupon.reasonText}</Text>
-                </View>
+            <View className="_pg-section">
+              <Text className="_pg-section_title">优惠信息</Text>
+              <View className="_pg-section_body">
+                {buildCouponInfoRows(coupon).map(renderCouponDetailRow)}
               </View>
             </View>
 
-            <PageFooter>
-              <View className="_pg-footer">
-                {coupon.orderNoText ? (
-                  <View
-                    className={resolveCouponOrderButtonClassName()}
-                    onClick={handleViewOrder}
-                  >
-                    <Text>查看订单</Text>
-                  </View>
-                ) : null}
-                {coupon.orderNoText && coupon.refundReturnStatusText ? (
-                  <View
-                    className={resolveCouponAftersaleButtonClassName()}
-                    onClick={handleViewAftersale}
-                  >
-                    <Text>查看售后</Text>
-                  </View>
-                ) : null}
-                <View
-                  className={resolveCouponFooterButtonClassName(coupon)}
-                  onClick={handleUseCoupon}
-                >
-                  <Text>{coupon.useEnabled ? coupon.actionText : coupon.statusText}</Text>
-                </View>
+            <View className="_pg-section">
+              <Text className="_pg-section_title">使用记录</Text>
+              <View className="_pg-section_body">
+                {buildCouponRecordRows(coupon).map(renderCouponDetailRow)}
               </View>
-            </PageFooter>
-          </>
+            </View>
+
+            <View className="_pg-section">
+              <Text className="_pg-section_title">使用提醒</Text>
+              <View className="_pg-tip">
+                <Text className="_pg-tip_text">{coupon.reasonText}</Text>
+              </View>
+            </View>
+          </View>
         ) : (
           <View className="_pg-empty">
             <BaseEmpty

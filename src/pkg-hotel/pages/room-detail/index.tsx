@@ -6,6 +6,7 @@ import { AppIcon } from '@/core/components/AppIcon';
 import { AppImage } from '@/core/components/AppImage';
 import { FixedSubmitBar } from '@/core/components/commerce';
 import { PageShell } from '@/core/components/PageShell';
+import { HKP_HOTEL_SERVICE_PHONE } from '@/core/constants/park-location';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import { navigateToMiniRoute } from '@/core/utils/navigation';
@@ -76,7 +77,7 @@ const RoomDetailPage = observer(function RoomDetailPage() {
       hotelId: roomDetailData.hotelId,
       hotelName: roomDetailData.hotelName,
       hotelAddress: roomDetailData.hotelAddress,
-      hotelPhone: roomDetailData.phoneNumber,
+      hotelPhone: HKP_HOTEL_SERVICE_PHONE,
       productId: roomDetailData.product.id,
       product: roomDetailData.product,
       ratePlanId: ratePlan.id,

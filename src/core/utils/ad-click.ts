@@ -1,6 +1,7 @@
 import Taro from '@tarojs/taro';
-import { HKP_PARK_HOTLINE, HKP_PARK_LOCATION } from '@/core/constants/park-location';
+import { HKP_PARK_LOCATION } from '@/core/constants/park-location';
 import { MINI_MAIN_ROUTES, MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
+import { openCustomerService } from '@/core/services/customer-service';
 import type { MiniProgramAdJumpType, MiniProgramAdView } from '@/core/types/mini-program-ad';
 import { navigateToMiniRoute } from '@/core/utils/navigation';
 import { callWechatPhone, copyWechatText, openWechatLocation, showWechatToast } from '@/core/utils/wechat-actions';
@@ -89,6 +90,10 @@ function isAdDetailCustomValue(value: string) {
   return ['action:addetail', 'content:addetail', 'ad:detail', 'richtext', 'rich:text'].includes(lowerValue);
 }
 
+function normalizeCustomActionValue(value: string) {
+  return value.trim().replace(/：/g, ':').replace(/\s*:\s*/g, ':');
+}
+
 // 从广告对象里提取点击需要的字段，页面不再散写后端字段兼容。
 export function resolveMiniProgramAdClickTarget(ad: MiniProgramAdView): MiniProgramAdClickTarget {
   return {
@@ -148,7 +153,8 @@ function resolveAdDetailPath(target: MiniProgramAdClickTarget, preferredPath?: s
 
 // 执行自定义广告值，优先识别业务动作，再降级为路径、H5 或复制。
 async function executeCustomAdValue(target: MiniProgramAdClickTarget, customValue?: string) {
-  const value = customValue?.trim();
+  const rawValue = customValue?.trim();
+  const value = rawValue ? normalizeCustomActionValue(rawValue) : '';
   if (!value) return false;
 
   if (isLocationCustomValue(value)) {
@@ -158,7 +164,18 @@ async function executeCustomAdValue(target: MiniProgramAdClickTarget, customValu
 
   if (value.toLowerCase().startsWith('tel:') || value.toLowerCase().startsWith('action:phone')) {
     const phoneNumber = value.replace(/^tel:/i, '').replace(/^action:phone:?/i, '').trim();
-    await callWechatPhone(phoneNumber || HKP_PARK_HOTLINE);
+    if (phoneNumber) {
+      await callWechatPhone(phoneNumber);
+    } else {
+      await openCustomerService({
+        source: 'ad',
+        payload: {
+          id: target.id,
+          adNo: target.adNo,
+          detailAdNo: target.detailAdNo,
+        },
+      });
+    }
     return true;
   }
 
@@ -174,7 +191,7 @@ async function executeCustomAdValue(target: MiniProgramAdClickTarget, customValu
     return true;
   }
 
-  await copyWechatText(value, '内容已复制');
+  await copyWechatText(rawValue || value, '内容已复制');
   return true;
 }
 
@@ -214,7 +231,10 @@ export async function adClick(target: MiniProgramAdClickTarget | MiniProgramAdVi
   }
 
   if (jumpType === 'CUSTOM') {
-    const handled = await executeCustomAdValue(clickTarget, clickTarget.jumpCustomValue);
+    const handled = await executeCustomAdValue(
+      clickTarget,
+      clickTarget.jumpCustomValue || clickTarget.jumpTarget || clickTarget.jumpUrl,
+    );
     if (handled) return true;
   }
 

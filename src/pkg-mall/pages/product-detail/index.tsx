@@ -89,7 +89,6 @@ const ProductDetailPage = observer(function ProductDetailPage() {
       }
     : product;
   const displayPrice = selectedVariant?.price ?? product?.price;
-  const servicePhone = detailData?.servicePhone?.trim();
   const merchantName = detailData?.merchantName?.trim() || '';
   const attributeLines = detailData?.attributeLines ?? [];
   const hasSkuConfig = skuVariants.length > 0;
@@ -283,11 +282,10 @@ const ProductDetailPage = observer(function ProductDetailPage() {
     }
   }
 
-  // 商品详情客服入口先走统一客服配置，未配置时回退到商品客服电话。
+  // 商品详情客服入口统一走第三方客服配置，未配置时展示配置提示。
   async function handleCustomerServicePress() {
     await openCustomerService({
       source: 'mall-product',
-      fallbackPhone: servicePhone,
       payload: {
         productId: product?.id,
         productTitle: product?.title,

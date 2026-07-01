@@ -311,7 +311,12 @@ export async function chooseWechatLocation(): Promise<WechatLocationResult | und
   }
 }
 
-// 调起微信拨号；失败时复制号码，保证用户仍能继续。
+function isWechatPhoneCancel(error: unknown) {
+  const errMsg = resolveErrorMessage(error, '');
+  return /cancel|取消/i.test(errMsg);
+}
+
+// 调起微信拨号；用户主动取消时保持静默，其它失败时复制号码兜底。
 export async function callWechatPhone(phoneNumber: string) {
   if (!phoneNumber) {
     await showWechatToast('暂无联系电话');
@@ -321,7 +326,8 @@ export async function callWechatPhone(phoneNumber: string) {
   try {
     await Taro.makePhoneCall({ phoneNumber });
   } catch (error) {
-    if (/cancel/i.test(resolveErrorMessage(error, ''))) return;
+    if (isWechatPhoneCancel(error)) return;
+
     await copyWechatText(phoneNumber, resolveErrorMessage(error, '电话已复制'));
   }
 }
