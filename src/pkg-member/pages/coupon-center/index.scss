@@ -231,23 +231,6 @@
     font-size: 23px;
     line-height: 1.3;
   }
-
-  &_action {
-    flex: none;
-    min-width: 104px;
-    padding: 10px 16px;
-    border: 1Px solid #eb6fa6;
-    border-radius: 999px;
-    color: #eb6fa6;
-    font-size: 24px;
-    line-height: 1.3;
-    text-align: center;
-
-    &--disabled {
-      border-color: #d1d5db;
-      color: #9ca3af;
-    }
-  }
 }
 
 ._pg-exchange {

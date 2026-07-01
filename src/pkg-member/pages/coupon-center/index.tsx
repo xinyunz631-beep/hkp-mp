@@ -203,12 +203,6 @@ const MemberCouponCenterPage = observer(function MemberCouponCenterPage() {
                                   <Text className="_pg-gift-row_reason">{gift.disabledReason}</Text>
                                 ) : null}
                               </View>
-                              <Text
-                                className={`_pg-gift-row_action ${gift.claimable || gift.claimed ? '' : '_pg-gift-row_action--disabled'}`}
-                                onClick={() => void handleCouponPress(coupon, gift)}
-                              >
-                                {gift.actionText}
-                              </Text>
                             </View>
                           ))}
                         </View>
