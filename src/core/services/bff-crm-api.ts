@@ -133,6 +133,10 @@ export interface BffCrmLegacyBindResult {
   updatedAt?: string;
 }
 
+export interface BffCrmLegacyBindRequest {
+  code: string;
+}
+
 export interface BffCrmP1ConfigItem {
   itemNo: string;
   itemType: BffCrmP1ItemType;
@@ -283,11 +287,11 @@ export function fetchBffCrmMemberCode(params?: FetchBffCrmMemberCodeParams) {
   });
 }
 
-export function bindBffCrmLegacyMember(phone: string) {
-  return request<BffCrmLegacyBindResult, { phone: string }>({
+export function bindBffCrmLegacyMember(code: string) {
+  return request<BffCrmLegacyBindResult, BffCrmLegacyBindRequest>({
     url: '/api/bff/crm/legacy-bind',
     method: 'POST',
-    data: { phone },
+    data: { code },
     sign: true,
   });
 }

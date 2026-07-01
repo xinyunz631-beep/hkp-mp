@@ -6,7 +6,7 @@ import {
   type BffCrmProfile,
   type BffCrmProfileUpdateRequest,
 } from '@/core/services/bff-crm-api';
-import { authorizeBffMiniProgramPhone, uploadBffImage } from '@/core/services/bff-api';
+import { uploadBffImage } from '@/core/services/bff-api';
 import { syncMemberStatus } from '@/core/services/auth';
 import { rootStore } from '@/core/store';
 import type { LoginUserProfile } from '@/core/types/auth';
@@ -18,7 +18,6 @@ import {
   DEFAULT_MEMBER_LEVEL_NAME,
   DEFAULT_MEMBER_LEVEL_NO,
 } from '@/core/utils/member-profile';
-import { resolveLegacyBindAuthorizedPhone } from './legacy-bind-phone';
 
 export const MEMBER_PROFILE_GENDER_UNKNOWN = 0;
 export const MEMBER_PROFILE_GENDER_MALE = 1;
@@ -65,7 +64,7 @@ export interface MemberAvatarUploadResult {
 }
 
 export interface LegacyMemberBindPayload {
-  mobile: string;
+  code: string;
 }
 
 function normalizeBffGender(gender?: BffCrmGender): MemberProfileGender {
@@ -160,7 +159,7 @@ export async function updateMemberWechatNickname(nickname: string) {
 
 // 绑定老会员手机号，接口成功后重新拉取会员资料并同步全局会员态。
 export async function bindLegacyMember(payload: LegacyMemberBindPayload) {
-  const result = await bindBffCrmLegacyMember(payload.mobile);
+  const result = await bindBffCrmLegacyMember(payload.code);
   const legacyStatus = result.bound === false ? MEMBER_PROFILE_LEGACY_UNBOUND : MEMBER_PROFILE_LEGACY_BOUND;
   const profile = normalizeBffCrmProfile(await fetchBffCrmProfile(), legacyStatus);
   syncGlobalMemberProfile(profile);
@@ -172,11 +171,7 @@ export async function bindLegacyMember(payload: LegacyMemberBindPayload) {
 export async function bindLegacyMemberWithWechatPhone(credential: WechatPhoneCredential) {
   if (!credential.code) throw new Error('请使用微信手机号授权绑定');
 
-  const phoneAuthorization = await authorizeBffMiniProgramPhone({ code: credential.code });
-  const authorizedPhone = resolveLegacyBindAuthorizedPhone(phoneAuthorization);
-  if (!authorizedPhone) throw new Error('未获取到微信授权手机号');
-
-  return bindLegacyMember({ mobile: authorizedPhone });
+  return bindLegacyMember({ code: credential.code });
 }
 
 // 将会员资料接口结果转换为全局登录态可承载的字段，避免页面各自拼 profile。
