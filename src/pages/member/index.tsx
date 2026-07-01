@@ -102,6 +102,12 @@ const serviceActions: ProfileServiceItem[] = [
     reason: '登录后可查看我的卡包',
   },
   {
+    key: 'exchangeCode',
+    title: '兑换码',
+    route: `${MINI_PACKAGE_ROUTES.memberCouponCenter}?tab=exchangeCode`,
+    reason: '登录后可使用兑换码',
+  },
+  {
     key: 'address',
     title: '我的地址',
     route: MINI_PACKAGE_ROUTES.orderAddress,

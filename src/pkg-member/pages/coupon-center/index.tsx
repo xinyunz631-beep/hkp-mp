@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useRouter } from '@tarojs/taro';
 import { Input, Text, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
 import { PageShell } from '@/core/components/PageShell';
@@ -21,6 +22,10 @@ import './index.scss';
 
 const DEFAULT_TAB_KEY: MemberCouponCenterTabKey = 'recommend';
 
+function resolveInitialTab(tab?: string): MemberCouponCenterTabKey {
+  return tab === 'exchangeCode' ? 'exchangeCode' : DEFAULT_TAB_KEY;
+}
+
 // 根据当前 tab 从接口券列表中筛出可展示数据。
 function resolveVisibleCoupons(coupons: MemberCouponCenterCoupon[], activeTabKey: MemberCouponCenterTabKey) {
   return coupons.filter((coupon) => coupon.tabKey === activeTabKey);
@@ -33,8 +38,9 @@ function resolveCouponDetailRoute(couponNo: string) {
 
 // 渲染领券中心，承接首页第二个导航入口和后端券列表配置。
 const MemberCouponCenterPage = observer(function MemberCouponCenterPage() {
+  const router = useRouter();
   const [pageData, setPageData] = useState<MemberCouponCenterData>();
-  const [activeTabKey, setActiveTabKey] = useState<MemberCouponCenterTabKey>(DEFAULT_TAB_KEY);
+  const [activeTabKey, setActiveTabKey] = useState<MemberCouponCenterTabKey>(() => resolveInitialTab(router.params.tab));
   const [exchangeCode, setExchangeCode] = useState('');
 
   // 读取领券中心真实数据，初始化时对齐后端返回的第一个 tab。
@@ -42,7 +48,8 @@ const MemberCouponCenterPage = observer(function MemberCouponCenterPage() {
     const nextData = await fetchMemberCouponCenterData();
     setPageData(nextData);
     if (options.resetTab) {
-      setActiveTabKey(nextData.tabs[0]?.key ?? DEFAULT_TAB_KEY);
+      const initialTab = resolveInitialTab(router.params.tab);
+      setActiveTabKey(nextData.tabs.some((tab) => tab.key === initialTab) ? initialTab : nextData.tabs[0]?.key ?? DEFAULT_TAB_KEY);
     }
   }
 
