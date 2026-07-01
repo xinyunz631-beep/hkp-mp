@@ -62,7 +62,7 @@ function resolveNewUserGiftName(item: {
 }
 
 function resolveNewUserGiftAmountText(amountText?: string) {
-  return visibleAmountText(amountText) || '专享';
+  return visibleAmountText(amountText);
 }
 
 function resolvePopupSubtitle(subtitle: string | undefined, couponCount: number) {
@@ -175,22 +175,25 @@ export const NewUserGiftPopup = observer(function NewUserGiftPopup() {
             enhanced
             showScrollbar={false}
           >
-            {couponItems.map((item, index) => (
-              <View className="new-user-gift-popup__coupon" key={item.couponNo || item.couponTemplateId || String(index)}>
-                {item.imageUrl ? <Image className="new-user-gift-popup__coupon-image" src={item.imageUrl} mode="aspectFill" /> : null}
-                <View className="new-user-gift-popup__coupon-main">
-                  <Text className="new-user-gift-popup__coupon-name">
-                    {resolveNewUserGiftName({
-                      ...item,
-                      memberCouponName: memberCouponTitleMap[item.couponNo || ''],
-                    }, index)}
-                  </Text>
-                  <Text className="new-user-gift-popup__coupon-rule">{item.thresholdText || '门槛以券详情为准'}</Text>
-                  <Text className="new-user-gift-popup__coupon-time">{item.validityText || '有效期以券详情为准'}</Text>
+            {couponItems.map((item, index) => {
+              const amountText = resolveNewUserGiftAmountText(item.amountText);
+              return (
+                <View className="new-user-gift-popup__coupon" key={item.couponNo || item.couponTemplateId || String(index)}>
+                  {item.imageUrl ? <Image className="new-user-gift-popup__coupon-image" src={item.imageUrl} mode="aspectFill" /> : null}
+                  <View className="new-user-gift-popup__coupon-main">
+                    <Text className="new-user-gift-popup__coupon-name">
+                      {resolveNewUserGiftName({
+                        ...item,
+                        memberCouponName: memberCouponTitleMap[item.couponNo || ''],
+                      }, index)}
+                    </Text>
+                    <Text className="new-user-gift-popup__coupon-rule">{item.thresholdText || '门槛以券详情为准'}</Text>
+                    <Text className="new-user-gift-popup__coupon-time">{item.validityText || '有效期以券详情为准'}</Text>
+                  </View>
+                  {amountText ? <Text className="new-user-gift-popup__coupon-amount">{amountText}</Text> : null}
                 </View>
-                <Text className="new-user-gift-popup__coupon-amount">{resolveNewUserGiftAmountText(item.amountText)}</Text>
-              </View>
-            ))}
+              );
+            })}
           </ScrollView>
           <Button className="new-user-gift-popup__primary" loading={submitting} onClick={handleViewCoupons}>
             {gift.popupButtonText || '去查看优惠券'}
