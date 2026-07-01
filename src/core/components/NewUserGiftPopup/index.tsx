@@ -20,6 +20,11 @@ function firstText(value?: string) {
   return trimmed || '';
 }
 
+function visibleGiftText(value?: string) {
+  const text = firstText(value);
+  return text === '新人礼-小礼物' ? '' : text;
+}
+
 function toCouponNoSet(items: Array<{ couponNo?: string }>) {
   return items
     .map((item) => item.couponNo?.trim())
@@ -38,17 +43,27 @@ function resolveNewUserGiftName(item: {
   memberCouponName?: string;
 }, index: number) {
   return (
-    firstText(item.couponName)
-    || firstText(item.displayName)
-    || firstText(item.templateName)
-    || firstText(item.giftTemplateName)
-    || firstText(item.title)
-    || firstText(item.memberCouponName)
-    || firstText(item.giftObjectName)
-    || firstText(item.giftName)
-    || firstText(item.couponTemplateId)
-    || `新人券 ${index + 1}`
+    visibleGiftText(item.memberCouponName)
+    || visibleGiftText(item.displayName)
+    || visibleGiftText(item.couponName)
+    || visibleGiftText(item.templateName)
+    || visibleGiftText(item.giftTemplateName)
+    || visibleGiftText(item.title)
+    || visibleGiftText(item.couponTemplateId)
+    || `新人专享券 ${index + 1}`
   );
+}
+
+function resolveNewUserGiftAmountText(amountText?: string) {
+  return visibleGiftText(amountText) || '专享';
+}
+
+function resolvePopupSubtitle(subtitle: string | undefined, couponCount: number) {
+  const text = firstText(subtitle);
+  const fallback = `${couponCount}张新人专享券已放入你的账户。`;
+  if (!text) return fallback;
+  return text
+    .replace(/[一二三四五六七八九十0-9]+张/g, `${couponCount}张`);
 }
 
 export const NewUserGiftPopup = observer(function NewUserGiftPopup() {
@@ -145,7 +160,7 @@ export const NewUserGiftPopup = observer(function NewUserGiftPopup() {
           ) : null}
           <Text className="new-user-gift-popup__title">{gift.popupTitle || '新人礼已到账'}</Text>
           <Text className="new-user-gift-popup__desc">
-            {gift.popupSubtitle || `${couponItems.length}张新人专享券已放入你的账户。`}
+            {resolvePopupSubtitle(gift.popupSubtitle, couponItems.length)}
           </Text>
           <ScrollView
             className="new-user-gift-popup__coupons"
@@ -166,7 +181,7 @@ export const NewUserGiftPopup = observer(function NewUserGiftPopup() {
                   <Text className="new-user-gift-popup__coupon-rule">{item.thresholdText || '门槛以券详情为准'}</Text>
                   <Text className="new-user-gift-popup__coupon-time">{item.validityText || '有效期以券详情为准'}</Text>
                 </View>
-                <Text className="new-user-gift-popup__coupon-amount">{item.amountText || '专享'}</Text>
+                <Text className="new-user-gift-popup__coupon-amount">{resolveNewUserGiftAmountText(item.amountText)}</Text>
               </View>
             ))}
           </ScrollView>
