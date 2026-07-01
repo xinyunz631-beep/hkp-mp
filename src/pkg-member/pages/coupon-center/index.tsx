@@ -179,7 +179,6 @@ const MemberCouponCenterPage = observer(function MemberCouponCenterPage() {
                       <View className="_pg-activity-card" key={coupon.id}>
                         <View className="_pg-activity-card_header">
                           <View className="_pg-activity-card_main">
-                            <Text className="_pg-activity-card_amount">{coupon.amountText}</Text>
                             <Text className="_pg-activity-card_title">{coupon.title}</Text>
                             <Text className="_pg-activity-card_date">{coupon.validityText}</Text>
                             {!coupon.claimed && !coupon.claimable && coupon.disabledReason ? (

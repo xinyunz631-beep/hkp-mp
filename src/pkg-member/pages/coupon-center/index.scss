@@ -132,20 +132,12 @@
     padding-right: 22px;
   }
 
-  &_amount,
   &_title,
   &_date {
     display: block;
   }
 
-  &_amount {
-    color: #ee1338;
-    font-size: 34px;
-    line-height: 1.25;
-  }
-
   &_title {
-    margin-top: 8px;
     overflow: hidden;
     color: #111111;
     font-size: 28px;
