@@ -6,10 +6,11 @@ import {
   type BffCrmProfile,
   type BffCrmProfileUpdateRequest,
 } from '@/core/services/bff-crm-api';
-import { uploadBffImage } from '@/core/services/bff-api';
+import { authorizeBffMiniProgramPhone, uploadBffImage } from '@/core/services/bff-api';
 import { syncMemberStatus } from '@/core/services/auth';
 import { rootStore } from '@/core/store';
 import type { LoginUserProfile } from '@/core/types/auth';
+import type { WechatPhoneCredential } from '@/core/wechat/auth';
 import {
   DEFAULT_MEMBER_AVATAR_URL,
   DEFAULT_MEMBER_GROWTH_VALUE,
@@ -17,6 +18,7 @@ import {
   DEFAULT_MEMBER_LEVEL_NAME,
   DEFAULT_MEMBER_LEVEL_NO,
 } from '@/core/utils/member-profile';
+import { resolveLegacyBindAuthorizedPhone } from './legacy-bind-phone';
 
 export const MEMBER_PROFILE_GENDER_UNKNOWN = 0;
 export const MEMBER_PROFILE_GENDER_MALE = 1;
@@ -164,6 +166,17 @@ export async function bindLegacyMember(payload: LegacyMemberBindPayload) {
   syncGlobalMemberProfile(profile);
   await syncMemberStatus({ silent: true });
   return profile;
+}
+
+// 老会员绑定先走微信手机号授权，绑定手机号只取后端授权结果，不接受页面手输值。
+export async function bindLegacyMemberWithWechatPhone(credential: WechatPhoneCredential) {
+  if (!credential.code) throw new Error('请使用微信手机号授权绑定');
+
+  const phoneAuthorization = await authorizeBffMiniProgramPhone({ code: credential.code });
+  const authorizedPhone = resolveLegacyBindAuthorizedPhone(phoneAuthorization);
+  if (!authorizedPhone) throw new Error('未获取到微信授权手机号');
+
+  return bindLegacyMember({ mobile: authorizedPhone });
 }
 
 // 将会员资料接口结果转换为全局登录态可承载的字段，避免页面各自拼 profile。

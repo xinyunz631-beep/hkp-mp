@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Input, Text, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
-import { PageHeader, PageShell } from '@/core/components/PageShell';
+import { PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import { resolveErrorMessage } from '@/core/utils/error-message';
@@ -60,11 +60,6 @@ const MemberCouponCenterPage = observer(function MemberCouponCenterPage() {
     [activeTabKey, pageData?.coupons],
   );
 
-  // 切换领券中心顶部 tab，顶部切换固定在 PageHeader 内。
-  function handleTabPress(tabKey: MemberCouponCenterTabKey) {
-    setActiveTabKey(tabKey);
-  }
-
   // 读取领取/兑换返回的第一张券号，成功后跳到券详情核对真实资产。
   function resolveFirstCouponNo(response: Awaited<ReturnType<typeof claimMemberCoupon>>) {
     return response.coupons?.[0]?.couponNo
@@ -87,11 +82,6 @@ const MemberCouponCenterPage = observer(function MemberCouponCenterPage() {
   }
 
   async function handleCouponPress(coupon: MemberCouponCenterCoupon, gift?: MemberCouponCenterActivityGift) {
-    if (coupon.source === 'kcoin' && coupon.targetRoute) {
-      navigateToMiniRoute(coupon.targetRoute);
-      return;
-    }
-
     const claimable = gift ? gift.claimable : coupon.claimable;
     const disabledReason = gift?.disabledReason || coupon.disabledReason;
     if (gift?.claimed || coupon.claimed) {
@@ -162,25 +152,6 @@ const MemberCouponCenterPage = observer(function MemberCouponCenterPage() {
     return (
       <View className="_pg">
         <PageShell title="领券中心" className="_pg-shell">
-          <PageHeader>
-            <View className="_pg-tabs">
-              {pageData.tabs.map((tab) => {
-                const active = tab.key === activeTabKey;
-
-                return (
-                  <View
-                    className={`_pg-tabs_item ${active ? '_pg-tabs_item--active' : ''}`}
-                    key={tab.key}
-                    onClick={() => handleTabPress(tab.key)}
-                  >
-                    <Text>{tab.title}</Text>
-                    {active ? <View className="_pg-tabs_underline" /> : null}
-                  </View>
-                );
-              })}
-            </View>
-          </PageHeader>
-
           <View className="_pg-content">
             {activeTabKey === 'exchangeCode' ? (
               <View className="_pg-exchange">
