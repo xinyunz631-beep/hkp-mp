@@ -112,6 +112,9 @@ export interface BffNewUserGiftItem {
   couponNo?: string;
   couponTemplateId: string;
   couponName: string;
+  giftName?: string;
+  templateName?: string;
+  displayName?: string;
   amountText: string;
   thresholdText: string;
   validityText: string;

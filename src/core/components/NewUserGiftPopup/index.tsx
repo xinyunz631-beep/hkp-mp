@@ -8,11 +8,36 @@ import { rootStore } from '@/core/store';
 import { navigateToMiniRoute } from '@/core/utils/navigation';
 import './index.scss';
 
-// 常驻渲染新人注册礼到账弹窗，登录链路发现新用户礼包后展示三张券。
+// 常驻渲染新人注册礼到账弹窗，登录链路发现新用户礼包后展示全部券项。
+// 按优先级拼装新人礼券名，避免后端缺漏导致全部落到同一默认文案。
+function firstText(value?: string) {
+  const trimmed = typeof value === 'string' ? value.trim() : '';
+  return trimmed || '';
+}
+
+function resolveNewUserGiftName(item: {
+  couponName?: string;
+  displayName?: string;
+  templateName?: string;
+  giftObjectName?: string;
+  giftName?: string;
+  couponTemplateId?: string;
+}, index: number) {
+  return (
+    firstText(item.couponName)
+    || firstText(item.displayName)
+    || firstText(item.templateName)
+    || firstText(item.giftObjectName)
+    || firstText(item.giftName)
+    || firstText(item.couponTemplateId)
+    || `新人券 ${index + 1}`
+  );
+}
+
 export const NewUserGiftPopup = observer(function NewUserGiftPopup() {
   const gift = rootStore.app.newUserGift;
   const visible = rootStore.app.newUserGiftVisible && Boolean(gift);
-  const couponItems = gift?.giftItems.slice(0, 3) ?? [];
+  const couponItems = gift?.giftItems ?? [];
   const shownRecordRef = useRef('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -66,13 +91,17 @@ export const NewUserGiftPopup = observer(function NewUserGiftPopup() {
             <Image className="new-user-gift-popup__hero" src={gift.popupImageUrl} mode="aspectFill" />
           ) : null}
           <Text className="new-user-gift-popup__title">{gift.popupTitle || '新人礼已到账'}</Text>
-          <Text className="new-user-gift-popup__desc">{gift.popupSubtitle || '三张新人专享券已放入你的账户。'}</Text>
+          <Text className="new-user-gift-popup__desc">
+            {gift.popupSubtitle || `${couponItems.length}张新人专享券已放入你的账户。`}
+          </Text>
           <View className="new-user-gift-popup__coupons">
             {couponItems.map((item, index) => (
               <View className="new-user-gift-popup__coupon" key={item.couponNo || item.couponTemplateId || String(index)}>
                 {item.imageUrl ? <Image className="new-user-gift-popup__coupon-image" src={item.imageUrl} mode="aspectFill" /> : null}
                 <View className="new-user-gift-popup__coupon-main">
-                  <Text className="new-user-gift-popup__coupon-name">{item.couponName || `新人券 ${index + 1}`}</Text>
+                  <Text className="new-user-gift-popup__coupon-name">
+                    {resolveNewUserGiftName(item, index)}
+                  </Text>
                   <Text className="new-user-gift-popup__coupon-rule">{item.thresholdText || '门槛以券详情为准'}</Text>
                   <Text className="new-user-gift-popup__coupon-time">{item.validityText || '有效期以券详情为准'}</Text>
                 </View>
