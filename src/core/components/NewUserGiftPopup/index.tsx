@@ -25,6 +25,13 @@ function visibleGiftText(value?: string) {
   return text === '新人礼-小礼物' ? '' : text;
 }
 
+function visibleAmountText(value?: string) {
+  const text = visibleGiftText(value);
+  if (!text) return '';
+  const normalized = text.replace(/[￥¥\s,]/g, '');
+  return /^0(?:\.0+)?$/.test(normalized) ? '' : text;
+}
+
 function toCouponNoSet(items: Array<{ couponNo?: string }>) {
   return items
     .map((item) => item.couponNo?.trim())
@@ -55,7 +62,7 @@ function resolveNewUserGiftName(item: {
 }
 
 function resolveNewUserGiftAmountText(amountText?: string) {
-  return visibleGiftText(amountText) || '专享';
+  return visibleAmountText(amountText) || '专享';
 }
 
 function resolvePopupSubtitle(subtitle: string | undefined, couponCount: number) {
