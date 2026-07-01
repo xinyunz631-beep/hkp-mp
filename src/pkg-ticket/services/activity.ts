@@ -6,15 +6,15 @@ import {
   resolveMiniProgramAdTitle,
 } from '@/core/services/mini-program-ad';
 import type { MiniProgramAdView } from '@/core/types/mini-program-ad';
-import activityBannerBusiness from '@/assets/activity-banners/business.jpg';
-import activityBannerEat from '@/assets/activity-banners/eat.jpg';
-import activityBannerEntertainment from '@/assets/activity-banners/entertainment.jpg';
-import activityBannerLove from '@/assets/activity-banners/love.jpg';
-import activityBannerPlay from '@/assets/activity-banners/play.jpg';
-import activityBannerShopping from '@/assets/activity-banners/shopping.jpg';
-import activityBannerStay from '@/assets/activity-banners/stay.jpg';
-import activityBannerStudy from '@/assets/activity-banners/study.jpg';
-import activityBannerTransport from '@/assets/activity-banners/transport.jpg';
+import activityBannerBusiness from '@/pkg-ticket/assets/activity-banners/business.jpg';
+import activityBannerEat from '@/pkg-ticket/assets/activity-banners/eat.jpg';
+import activityBannerEntertainment from '@/pkg-ticket/assets/activity-banners/entertainment.jpg';
+import activityBannerLove from '@/pkg-ticket/assets/activity-banners/love.jpg';
+import activityBannerPlay from '@/pkg-ticket/assets/activity-banners/play.jpg';
+import activityBannerShopping from '@/pkg-ticket/assets/activity-banners/shopping.jpg';
+import activityBannerStay from '@/pkg-ticket/assets/activity-banners/stay.jpg';
+import activityBannerStudy from '@/pkg-ticket/assets/activity-banners/study.jpg';
+import activityBannerTransport from '@/pkg-ticket/assets/activity-banners/transport.jpg';
 import { resolveFirstRichTextImage } from './rich-text-image';
 
 export interface TicketActivityListItem {
