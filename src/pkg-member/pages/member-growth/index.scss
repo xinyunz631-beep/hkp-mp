@@ -56,28 +56,30 @@
   position: relative;
   z-index: 1;
   min-height: 254px;
-  padding: 26px 40px 0;
+  padding: 26px clamp(24px, 4.5vw, 40px) 0;
   box-sizing: border-box;
 }
 
 ._pg-rule-entry {
   position: absolute;
-  top: 32px;
-  right: 38px;
+  top: clamp(18px, 3.5vw, 32px);
+  right: clamp(16px, 4vw, 38px);
   color: #444444;
   font-size: 26px;
   line-height: 1.35;
+  white-space: nowrap;
 }
 
 ._pg-profile {
   display: flex;
   align-items: center;
-  padding-top: 72px;
+  gap: clamp(10px, 3vw, 20px);
+  padding-top: clamp(56px, 12vw, 72px);
 
   &_avatar {
     flex: none;
-    width: 96px;
-    height: 96px;
+    width: clamp(78px, 16vw, 96px);
+    height: clamp(78px, 16vw, 96px);
     border-radius: 999px;
     background: #ffffff;
     box-shadow: 0 8px 24px rgba(236, 109, 156, 0.12);
@@ -86,15 +88,15 @@
   &_main {
     flex: 1;
     min-width: 0;
-    margin-left: 24px;
+    margin-left: clamp(12px, 2.8vw, 24px);
   }
 
   &_name {
     display: block;
-    max-width: 360px;
+    max-width: 100%;
     overflow: hidden;
     color: #111111;
-    font-size: 32px;
+    font-size: clamp(26px, 4vw, 32px);
     line-height: 1.35;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -103,6 +105,8 @@
   &_actions {
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
+    gap: 10px 12px;
     margin-top: 10px;
   }
 
@@ -114,15 +118,14 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    min-width: 146px;
-    height: 42px;
-    margin-left: 18px;
-    padding: 0 20px;
+    min-width: clamp(118px, 28vw, 146px);
+    height: clamp(36px, 8vw, 42px);
+    padding: 0 clamp(12px, 3vw, 20px);
     border-radius: 8px;
     background: #c2f3df;
     color: #444444;
-    font-size: 26px;
-    line-height: 42px;
+    font-size: clamp(22px, 4vw, 26px);
+    line-height: 1;
 
     &--active {
       background: #aef3df;
@@ -135,10 +138,12 @@
   align-items: center;
   min-width: 138px;
   height: 42px;
-  overflow: hidden;
+  padding-right: 0;
   border-radius: 8px;
-  background: #ffe5a7;
   color: #444444;
+  gap: 0;
+  flex-wrap: nowrap;
+  overflow: hidden;
 
   &_no {
     display: flex;
@@ -146,19 +151,51 @@
     justify-content: center;
     width: 42px;
     height: 42px;
-    border-radius: 999px;
+    flex: 0 0 42px;
+    border-radius: 0;
+    border-top-left-radius: 999px;
+    border-bottom-left-radius: 999px;
+    margin-left: 0;
+    box-sizing: border-box;
     background: var(--_pg-level-color);
     color: #ffffff;
     font-size: 26px;
-    line-height: 42px;
+    line-height: 1;
+    min-width: 42px;
+  }
+
+  &_no Text {
+    line-height: 1;
+    color: inherit;
   }
 
   &_name {
-    display: block;
+    display: inline-flex;
+    align-items: center;
+    flex: 1;
+    min-width: 0;
+    max-width: none;
+    height: 42px;
     padding: 0 12px;
+    border-radius: 0;
+    border-top-right-radius: 8px;
+    border-bottom-right-radius: 8px;
+    background: #ffe5a7;
     font-size: 24px;
-    line-height: 42px;
+    line-height: 1;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &_name Text {
+    line-height: 1;
+    color: inherit;
+  }
+
+  &_name,
+  &_no {
+    box-sizing: border-box;
   }
 }
 
@@ -170,7 +207,7 @@
   position: relative;
   z-index: 2;
   margin-top: -12px;
-  padding: 0 46px 20px;
+  padding: 0 clamp(18px, 4vw, 46px) 20px;
   box-sizing: border-box;
 }
 
@@ -207,7 +244,7 @@
 
 ._pg-benefit-list {
   min-height: 100%;
-  padding: 34px 42px;
+  padding: clamp(20px, 4.6vw, 34px) clamp(16px, 4vw, 42px);
   box-sizing: border-box;
 }
 
@@ -248,22 +285,22 @@
     flex: none;
     align-items: center;
     justify-content: center;
-    width: 94px;
-    min-height: 88px;
-    margin-right: 24px;
+    width: clamp(72px, 16vw, 94px);
+    min-height: clamp(72px, 14.5vw, 88px);
+    margin-right: clamp(10px, 2.8vw, 24px);
   }
 
   &_icon-text {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 72px;
-    height: 72px;
+    width: clamp(58px, 14vw, 72px);
+    height: clamp(58px, 14vw, 72px);
     border-radius: 999px;
     background: rgba(236, 109, 156, 0.12);
     color: #ec6d9c;
-    font-size: 32px;
-    line-height: 72px;
+    font-size: clamp(22px, 4.2vw, 32px);
+    line-height: 1;
   }
 
   &_body {
@@ -302,11 +339,6 @@
     min-width: 0;
   }
 
-  &_highlight {
-    flex: none;
-    margin-left: 4px;
-    color: #ec6d9c;
-  }
 }
 
 ._pg-benefit-empty {
@@ -316,7 +348,7 @@
 }
 
 ._pg-progress-footer {
-  padding: 30px 86px 34px;
+  padding: clamp(20px, 4vw, 30px) clamp(18px, 4.5vw, 86px) clamp(16px, 4vw, 34px);
   background: #fff8fb;
   box-sizing: border-box;
 }

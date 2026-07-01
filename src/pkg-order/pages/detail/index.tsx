@@ -545,7 +545,7 @@ const DetailPage = observer(function DetailPage() {
           try {
             await cancelBffOrder(detailData.id, { reason: 'USER_PAYMENT_CANCEL' }, { showErrorToast: false });
           } catch (error) {
-            await showWechatToast(resolveErrorMessage(error, '支付已取消，订单自动取消失败，请稍后重试'));
+            await showWechatToast('支付取消');
             return;
           }
           try {

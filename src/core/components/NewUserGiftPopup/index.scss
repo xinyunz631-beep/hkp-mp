@@ -3,8 +3,9 @@
 }
 
 .new-user-gift-popup__content {
-  width: 100vw;
-  padding: 0 28px;
+  width: calc(100vw - 56px);
+  max-width: 690px;
+  padding: 0;
 }
 
 .new-user-gift-popup__panel {
@@ -45,8 +46,11 @@
   margin-top: 18px;
   color: #43270a;
   font-size: 40px;
+  font-size: clamp(30px, 8vw, 40px);
   font-weight: 500;
   line-height: 1.25;
+  word-wrap: break-word;
+  white-space: normal;
 }
 
 .new-user-gift-popup__desc {
@@ -54,7 +58,10 @@
   margin-top: 10px;
   color: #70512f;
   font-size: 26px;
+  font-size: clamp(22px, 5vw, 26px);
   line-height: 1.45;
+  word-wrap: break-word;
+  white-space: normal;
 }
 
 .new-user-gift-popup__coupons {
@@ -62,13 +69,14 @@
   flex-direction: column;
   gap: 14px;
   margin: 26px 0 24px;
+  max-height: min(42vh, 430px);
 }
 
 .new-user-gift-popup__coupon {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 16px;
-  min-height: 132px;
+  min-height: 122px;
   padding: 16px;
   border: 1px solid #f0d3a4;
   border-radius: 20px;
@@ -88,6 +96,7 @@
   min-width: 0;
   flex: 1;
   flex-direction: column;
+  align-items: flex-start;
   gap: 6px;
 }
 
@@ -98,7 +107,11 @@
   font-weight: 500;
   line-height: 1.25;
   text-overflow: ellipsis;
-  white-space: nowrap;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow-wrap: break-word;
+  white-space: normal;
 }
 
 .new-user-gift-popup__coupon-rule,
@@ -106,9 +119,11 @@
   overflow: hidden;
   color: #8a6b49;
   font-size: 22px;
+  font-size: clamp(18px, 4vw, 22px);
   line-height: 1.35;
   text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: break-word;
 }
 
 .new-user-gift-popup__coupon-amount {
@@ -116,27 +131,44 @@
   max-width: 148px;
   color: #b85f00;
   font-size: 32px;
+  font-size: clamp(24px, 6vw, 32px);
   font-weight: 500;
   line-height: 1.2;
   text-align: right;
+  white-space: nowrap;
+  margin-left: auto;
 }
 
 .new-user-gift-popup__primary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  padding: 0 16px;
   height: 88px;
+  height: clamp(74px, 16vw, 88px);
   border-radius: 18px;
   background: $color-primary;
   color: #ffffff;
   font-size: 30px;
+  font-size: clamp(26px, 5vw, 30px);
   font-weight: 500;
-  line-height: 88px;
+  line-height: 1.3;
 }
 
 .new-user-gift-popup__ghost {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  padding: 0 16px;
   height: 74px;
+  height: clamp(62px, 14vw, 74px);
   margin-top: 10px;
   border: 0;
   background: transparent;
   color: #8d7761;
   font-size: 26px;
-  line-height: 74px;
+  font-size: clamp(22px, 4.8vw, 26px);
+  line-height: 1.3;
 }

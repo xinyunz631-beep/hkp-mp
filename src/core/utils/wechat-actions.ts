@@ -71,7 +71,7 @@ function getWechatFailMessage(error: unknown) {
 
 function resolveWechatPaymentFailMessage(error: unknown) {
   const errMsg = getWechatFailMessage(error);
-  if (/cancel/i.test(errMsg)) return '支付已取消';
+  if (/cancel/i.test(errMsg)) return '支付取消';
   if (/has no permission|permission denied|not allowed|no permission|没有权限/i.test(errMsg)) {
     return '当前小程序暂无微信支付权限，请联系工作人员处理';
   }
@@ -194,7 +194,7 @@ export async function requestWechatPayment({
         paymentParams: buildWechatPaymentDebugParams(normalizedPaymentParams),
       });
       if (/cancel/i.test(errMsg)) {
-        await showWechatToast('支付已取消');
+        await showWechatToast('支付取消');
         return allowPending ? 'pending' : 'canceled';
       }
 

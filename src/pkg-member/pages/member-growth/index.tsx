@@ -69,8 +69,12 @@ function renderLevelBadge(level: MemberGrowthLevel, active: boolean) {
       className={`_pg-level-badge ${active ? '_pg-level-badge--active' : ''}`}
       style={{ '--_pg-level-color': level.themeColor } as CSSProperties}
     >
-      <Text className="_pg-level-badge_no">{level.levelNo}</Text>
-      <Text className="_pg-level-badge_name">{level.name}</Text>
+      <View className="_pg-level-badge_no">
+        <Text>{level.levelNo}</Text>
+      </View>
+      <View className="_pg-level-badge_name">
+        <Text>{level.name}</Text>
+      </View>
     </View>
   );
 }
@@ -186,11 +190,6 @@ const MemberGrowthPage = observer(function MemberGrowthPage() {
         <View className="_pg-benefit-list">
           {displayBenefits.map((benefit, index) => {
             const tone = resolveBenefitTone(benefit, index);
-            const highlightIncluded = Boolean(
-              benefit.highlightText
-              && benefit.summary
-              && benefit.summary.includes(benefit.highlightText),
-            );
 
             return (
               <View
@@ -204,15 +203,10 @@ const MemberGrowthPage = observer(function MemberGrowthPage() {
                 </View>
                 <View className="_pg-benefit-row_body">
                   <Text className="_pg-benefit-row_title">{benefit.title}</Text>
-                  {benefit.summary || benefit.highlightText ? (
+                  {benefit.summary ? (
                     <View className="_pg-benefit-row_summary">
                       <Text className="_pg-benefit-row_dot" />
-                      {benefit.summary ? (
-                        <Text className="_pg-benefit-row_summary-text">{benefit.summary}</Text>
-                      ) : null}
-                      {benefit.highlightText && !highlightIncluded ? (
-                        <Text className="_pg-benefit-row_highlight">{benefit.highlightText}</Text>
-                      ) : null}
+                      <Text className="_pg-benefit-row_summary-text">{benefit.summary}</Text>
                     </View>
                   ) : null}
                 </View>

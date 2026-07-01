@@ -1,4 +1,4 @@
-import { Button, Image, Text, View } from '@tarojs/components';
+import { Button, Image, ScrollView, Text, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
 import { useEffect, useRef, useState } from 'react';
 import { AppPopup } from '@/core/components/AppPopup';
@@ -147,7 +147,12 @@ export const NewUserGiftPopup = observer(function NewUserGiftPopup() {
           <Text className="new-user-gift-popup__desc">
             {gift.popupSubtitle || `${couponItems.length}张新人专享券已放入你的账户。`}
           </Text>
-          <View className="new-user-gift-popup__coupons">
+          <ScrollView
+            className="new-user-gift-popup__coupons"
+            scrollY
+            enhanced
+            showScrollbar={false}
+          >
             {couponItems.map((item, index) => (
               <View className="new-user-gift-popup__coupon" key={item.couponNo || item.couponTemplateId || String(index)}>
                 {item.imageUrl ? <Image className="new-user-gift-popup__coupon-image" src={item.imageUrl} mode="aspectFill" /> : null}
@@ -164,7 +169,7 @@ export const NewUserGiftPopup = observer(function NewUserGiftPopup() {
                 <Text className="new-user-gift-popup__coupon-amount">{item.amountText || '专享'}</Text>
               </View>
             ))}
-          </View>
+          </ScrollView>
           <Button className="new-user-gift-popup__primary" loading={submitting} onClick={handleViewCoupons}>
             {gift.popupButtonText || '去查看优惠券'}
           </Button>

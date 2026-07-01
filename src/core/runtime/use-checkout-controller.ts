@@ -77,7 +77,7 @@ async function cancelCheckoutPayment<TData, TSubmitPayload, TLoadParams extends 
   try {
     await cancelBffOrder(result.orderNo, { reason: 'USER_PAYMENT_CANCEL' }, { showErrorToast: false });
   } catch (error) {
-    await showWechatToast(resolveErrorMessage(error, '支付已取消，订单自动取消失败，请稍后在订单详情取消'));
+    await showWechatToast('支付取消');
     return;
   }
 
