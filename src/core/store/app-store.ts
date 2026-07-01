@@ -81,7 +81,7 @@ export class AppStore {
       gift?.couponNos?.filter(Boolean).length || 0,
       giftItems.filter((item) => item.couponNo).length,
     );
-    if (!gift?.activityId || !gift.recordId || giftItems.length !== 3 || issuedCouponCount < 3) return;
+    if (!gift?.activityId || !gift.recordId || !giftItems.length || issuedCouponCount < giftItems.length) return;
     this.newUserGift = gift;
     this.newUserGiftVisible = true;
   }
