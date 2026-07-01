@@ -1,6 +1,17 @@
 # 当前小程序状态
+
+## 2026-07-01 恢复基线
+
+- 更新时间：`2026-07-01 13:12 CST`
+- 当前工作分支：`master`，跟踪 `origin/master@e37a537 fix(member): 领券中心只保留一键领取`。原本停留的 `feature/hkp-mini-mall-commercial-flow` 没有领先 `origin/master` 的唯一提交，后续小程序承接从 `master` 开始。
+- 分支判断：`origin/feature/free-claim-activity-center-20260629` 已完全合入 `origin/master`；`origin/feature/hkp-mini-coupon-chain-20260616` 和 `origin/feature/mp-coupon-closure` 都大幅落后 master，仅保留为历史参考，不整支合并。
+- 已实现只验证：订单支付取消后旧订单复用已由 `8a1fa2f fix(order): 修复支付取消后旧订单复用` 修复，BFF `a3b68f3 fix(order): 修复支付取消后重复拉起失败` 已配合；恢复时先跑 `node scripts/check-payment-cancel-flow.mjs` 和真实链路验证，不重复重写。
+- 已实现只验证：会员绑定、优惠券状态筛选、领券中心入口和会员权益资料授权已由 `d29df8d`、`3392391`、`5b4790e` 覆盖，并对应 BFF `099904d`、`cc2d816`、`06189ed`；后续只按真实账号验证。
+- 已实现只验证：商城收藏回显和券样式已由 `071df79` 覆盖，并对应 BFF `4f42737`；后续验证商品收藏状态回显、收藏切换和券样式，不回滚到旧商城分支。
+- 当前 BFF `origin/uat@47e4ca1` 新增/调整的前端可见点包括新人注册礼五张券校验、商品收藏状态、老会员绑定服务端解手机号、老会员同手机号提示、会员档案/订单工作台显示名、订单风险自动入库、枚举展示/缓存时效、支付取消重复拉起和全等级会员权益；小程序 `c4f96d1/8de29b4/e37a537` 已继续合入老会员授权 code、订单地址缓存时效和领券中心一键领取收口，后续按真实账号和商城/订单运行态验证。
+
 ## 更新时间
-- 更新时间：`2026-06-23 14:20 CST`
+- 更新时间：`2026-07-01 13:12 CST`
 - 当前基础状态：登录、请求、会员状态、页面初始化闸门、页面显式 runtime hook、页面单例 loading、统一 loading 组件入口和白色渐变淡出蒙层、全局登录态弹窗、webpack5 prebundle/cache 关闭、NutUI 按需样式、`@tarojs/plugin-html` 和 `@nutui/icons-react-taro` 显式依赖、BaseSkeleton/BaseEmpty/BaseException、中性页面底色+粉色品牌点缀、自定义 tabbar、独立 PageNavbar 和页面级 header/layout 已完成代码收口并通过本地校验；系统 custom-tab-bar 已压成 0 高度占位，可见 tabbar 已下沉到页面内 fixed 底部容器，`AppTabBar` 已从 `AppIcon` 切为直接 `Image` 小图并在组件顶部集中维护图片链接。
 - 当前会员/酒店/订单状态：会员授权登录已按后端真实接口重接，启动默认 `login -> member/status` 并把头像、昵称、手机号、等级统一维护到 MobX `rootStore.memberInfo`；登录弹窗只保留手机号授权和关闭；会员资料、头像上传、会员码和会员中心首页不再失败回旧会员 mock。酒店首页、房型详情、酒店确认单、酒店下单支付、订单中心列表和订单详情已切后端真实 BFF，酒店分包运行时 mock 数据文件已删除，订单中心核心列表/详情不再读取本地订单。
 - 当前票务状态：门票预定页已切 `/api/bff/tickets/**`，支持快速通、草稿/待审核待上线展示、已发布库存加购、票种规则弹窗、0 元票和按 SKU 实名字段提交、无可订票种空态；小程序创建订单已把首位实名游客证件同步放入 `context.certificateNo`。后端 `origin/uat@26fbc2b/2f57b7b` 已发布批量日历接口，小程序首屏已切 `POST /api/bff/tickets/products/calendar-batch` 并按 20 个商品分批；`mp-run-check` 复用当前微信开发者工具验证 `calendar-batch` 真实请求 2 次、旧 `/calendar?startDate` 0 次。2026-06-21 16:20 显式创建探针订单 `TKT20260621162008C0110611`，`/pay` 返回 `PAYING/prepayPayNo=PAY2026062116200860c2b87e530f/hasPaymentParams=true/paymentParamsAppId=wx72b9e08ce45d3e79`，付款前详情仍无 `ticketVouchers[]` 且探针单已取消；当前待补不再是 `/pay` 预下单或日历扇出，而是真实微信支付成功后出票、订单详情券码/核销码、真实退款、后台票码实例和核销流水同单一致性。

@@ -6,6 +6,16 @@
 
 ## 当前批次
 
+2026-07-01 恢复批次：小程序当前基线为 `origin/master@e37a537`，BFF 当前基线为 `origin/uat@47e4ca1`。从 2026-06-29 18:00 起的近期提交已聚合，结论是先保留 zhangxinyun 已合入 master 的修复，再做验证和增量适配。
+
+- 支付取消后旧订单复用：小程序 `8a1fa2f` 与 BFF `a3b68f3` 已修复，状态为已实现/待真实验证；不要再次按缺口实现。
+- 商品收藏回显和券样式：小程序 `071df79` 与 BFF `4f42737` 已对应，状态为已实现/待验证收藏回显和切换。
+- 老会员绑定、会员权益和领券中心入口：小程序 `d29df8d`、`3392391`、`5b4790e` 与 BFF `099904d`、`cc2d816`、`06189ed` 已对应，状态为已实现/待真实账号验证。
+- 2026-07-01 13:40 后追加修复：小程序 `c4f96d1` 已把老会员绑定改为提交授权 code，对应 BFF `37fb801/4099ab2` 的服务端解手机号和同手机号提示；`8de29b4` 调整订单地址缓存时效；`e37a537` 将领券中心收口为只保留一键领取。状态为已合入/待真实账号和订单地址回归。
+- 枚举展示和缓存时效：BFF `97196b9` 未新增 frontend-api 变更文件，源码影响 admin-config 展示枚举/缓存和少量 BFF mall cart 逻辑；小程序先按商城购物车、商品展示和枚举文案做回归核对，只有发现响应字段或文案口径变化时再改代码。
+- 免费领券活动中心：小程序 `origin/feature/free-claim-activity-center-20260629` 已无领先 master 的提交，状态为已合入/只验证。
+- 新人注册礼五张券校验：BFF `e004e7d` 已调整并新增 release 记录，优先由 admin/后端配置链路核对，只有小程序运行态出现字段或错误口径不兼容时再改小程序代码。
+
 最新商城阶段 3/4 口径：2026-06-23 按当前真实 BFF 链路修正执行顺序。阶段 2 Admin API 文档已提交，后端实现可后置；小程序商城现有首页、分类、列表、推荐、详情、购物车、确认单和订单链路先按已跑通 BFF 做阶段 3 前向兼容与复验。本轮小程序新增 `sourceRefType/sourceRefId` 商品列表透传，推荐位下钻优先使用 `sourceRefType/sourceRefId/sourceRefLabel`，商品详情和列表快捷加购承接 `canBuy/unavailableReasons/skuAvailability`，后端明确不可售时禁用购买入口并展示真实原因。阶段 4 后端 BFF 仍需继续补 `deliveryTemplateSummary`、赠品命中、item 级库存/配送/券阻断、真实物流/售后/评价样本，以及后台新发布商品到小程序可买的端到端验收；缺字段不在小程序端造默认 SKU、默认配送、默认评分或默认客服。
 
 最新订单闭环口径：2026-06-22 已复拉后端到 `origin/uat@d606add docs(api): 补回新人注册礼 UAT 发布证据`，远端仍只有 `main/prod/uat`，没有从最新 `uat` 后派生的新订单接口分支。`160bb77/d3a6856` 已补订单中心 `GET /api/bff/orders/page`、`GET /api/bff/orders/status-counts` 和 `sceneType=ALL` 聚合；`cb62172` 已补订单 P0 剩余核心接口和字段：`POST /api/bff/orders/{orderNo}/confirm-receive`、`GET /api/bff/orders/{orderNo}/status-snapshot`，并在列表/详情补齐 `payNo/paymentStatus/selectedCouponNos/paidAt/payExpireAt`。小程序已适配订单列表优先走 `/orders/page`，Tab/会员页角标读取后端 `tabs/tabCounts`，商城详情和物流页“确认收货”改调真实 `confirm-receive` 后重读页面数据，票务详情 3 秒静默轮询改调 `status-snapshot` 作为无感变更探针，发现版本变化后再走完整详情刷新。当前订单闭环 P0 范围仍先排除餐饮，只收口 `TICKET/MALL/HOTEL`；后续主要验证风险从“接口缺失”转为三业态真实同单样本、票务真实支付后出票/核销/退款、商城确认收货后待评价状态、酒店入住/取消/退款样本的 UAT 运行态一致性。
