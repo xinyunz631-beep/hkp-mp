@@ -48,6 +48,15 @@ const GENDER_OPTIONS: Array<{ value: MemberProfileGender; text: string }> = [
   { value: MEMBER_PROFILE_GENDER_MALE, text: '男' },
   { value: MEMBER_PROFILE_GENDER_FEMALE, text: '女' },
 ];
+const BIRTHDAY_PICKER_START_DATE = '1900-01-01';
+const BIRTHDAY_PICKER_DEFAULT_DATE = '1990-01-01';
+
+// 生成 date Picker 需要的 YYYY-MM-DD 文本，避免传空日期导致微信端渲染异常。
+function formatBirthdayPickerDate(date: Date) {
+  const pad = (value: number) => String(value).padStart(2, '0');
+
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
 
 function resolveTextValue(value: string, fallback = '未知') {
   return value.trim() || fallback;
@@ -306,7 +315,9 @@ const MemberProfilePage = observer(function MemberProfilePage() {
     return (
       <Picker
         mode="date"
-        value=""
+        value={BIRTHDAY_PICKER_DEFAULT_DATE}
+        start={BIRTHDAY_PICKER_START_DATE}
+        end={formatBirthdayPickerDate(new Date())}
         onChange={(event) => handleBirthdayChange(String(event.detail.value || '')).catch(() => undefined)}
       >
         {renderRow('生日', '', {
