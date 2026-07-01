@@ -8,12 +8,19 @@ import {
   type BffCrmAddressSaveRequest,
 } from '@/core/services/bff-crm-api';
 import type { HkpAddressSummary } from '@/core/types/hkp';
-import { getCache, setCache } from '@/core/utils/cache';
+import { getCache, removeCache, setCache } from '@/core/utils/cache';
 import type { OrderAddressData } from './model';
 
 export type { OrderAddressData } from './model';
 
 export const ORDER_ADDRESS_MAX_COUNT = 10;
+
+export const ORDER_ADDRESS_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+
+interface OrderAddressCacheEnvelope {
+  savedAt: string;
+  addresses: HkpAddressSummary[];
+}
 
 export interface SaveOrderAddressPayload {
   id?: string;
@@ -57,6 +64,29 @@ function normalizeAddressList(addresses: HkpAddressSummary[]) {
   }));
 }
 
+function createAddressCacheEnvelope(addresses: HkpAddressSummary[]): OrderAddressCacheEnvelope {
+  return {
+    savedAt: new Date().toISOString(),
+    addresses,
+  };
+}
+
+function isAddressCacheEnvelope(data: unknown): data is OrderAddressCacheEnvelope {
+  return Boolean(
+    data
+    && typeof data === 'object'
+    && 'savedAt' in data
+    && 'addresses' in data
+    && Array.isArray((data as OrderAddressCacheEnvelope).addresses),
+  );
+}
+
+function isAddressCacheExpired(savedAt?: string) {
+  if (!savedAt) return true;
+  const timestamp = Date.parse(savedAt);
+  return !Number.isFinite(timestamp) || Date.now() - timestamp > ORDER_ADDRESS_CACHE_TTL_MS;
+}
+
 function joinRegion(address: BffCrmAddress) {
   return [address.provinceName, address.cityName, address.districtName]
     .filter(Boolean)
@@ -87,14 +117,23 @@ function toBffAddressPayload(payload: SaveOrderAddressPayload): BffCrmAddressSav
 }
 
 function readStoredAddresses() {
-  const storedAddresses = getCache<HkpAddressSummary[]>(MINI_STORAGE_KEYS.orderAddresses);
-  if (!Array.isArray(storedAddresses)) return undefined;
-  return normalizeAddressList(storedAddresses);
+  const storedAddresses = getCache<unknown>(MINI_STORAGE_KEYS.orderAddresses);
+  if (Array.isArray(storedAddresses)) {
+    const normalizedAddresses = normalizeAddressList(storedAddresses);
+    setCache(MINI_STORAGE_KEYS.orderAddresses, createAddressCacheEnvelope(normalizedAddresses));
+    return normalizedAddresses;
+  }
+  if (!isAddressCacheEnvelope(storedAddresses)) return undefined;
+  if (isAddressCacheExpired(storedAddresses.savedAt)) {
+    removeCache(MINI_STORAGE_KEYS.orderAddresses);
+    return undefined;
+  }
+  return normalizeAddressList(storedAddresses.addresses);
 }
 
 function writeStoredAddresses(addresses: HkpAddressSummary[]) {
   const normalizedAddresses = normalizeAddressList(addresses);
-  setCache(MINI_STORAGE_KEYS.orderAddresses, normalizedAddresses);
+  setCache(MINI_STORAGE_KEYS.orderAddresses, createAddressCacheEnvelope(normalizedAddresses));
   return normalizedAddresses;
 }
 
