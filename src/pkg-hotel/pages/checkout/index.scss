@@ -182,16 +182,25 @@
 
   &_value {
     flex: 1;
+    min-width: 0;
     color: #23262f;
     font-size: 28px;
     line-height: 1.45;
     text-align: right;
+
+    &--coupon {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 10px;
+    }
   }
 
   &_coupon {
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    max-width: 100%;
     min-width: 190px;
     min-height: 46px;
     padding: 0 18px;
@@ -201,6 +210,9 @@
     color: #d94a88;
     font-size: 26px;
     line-height: 44px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 
     &--disabled {
       border-color: #d6dae2;

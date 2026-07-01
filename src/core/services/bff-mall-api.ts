@@ -119,6 +119,7 @@ export interface BffMallProduct {
   deliveryTemplateSummary?: BffMallDeliveryTemplateSummary;
   publishStatus?: string;
   channels?: string[];
+  favorited?: boolean;
 }
 
 export interface BffMallCategory {

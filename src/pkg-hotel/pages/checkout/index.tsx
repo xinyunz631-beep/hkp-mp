@@ -320,7 +320,7 @@ const CheckoutPage = observer(function CheckoutPage() {
                 onClick={hasCoupons ? checkoutController.openCouponPopup : undefined}
               >
                 <Text className="_pg-line-row_label">优惠券</Text>
-                <View className="_pg-line-row_value">
+                <View className="_pg-line-row_value _pg-line-row_value--coupon">
                   <Text className={`_pg-line-row_coupon ${hasCoupons ? '' : '_pg-line-row_coupon--disabled'}`}>{couponText}</Text>
                   {hasCoupons ? <AppIcon name="arrowRight" size={16} color="#9ca3af" /> : null}
                 </View>

@@ -135,6 +135,7 @@ export function toMallProductSummary(product: BffMallProduct): HkpProductSummary
     marketPrice: productMarketPrice(product),
     tag: tags[0],
     salesText: firstMallText(product.salesText),
+    favorited: product.favorited === true,
   };
 }
 

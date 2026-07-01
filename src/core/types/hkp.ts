@@ -12,6 +12,7 @@ export interface HkpProductSummary {
   marketPrice?: number;
   tag?: string;
   salesText?: string;
+  favorited?: boolean;
 }
 
 export interface HkpOrderProduct {

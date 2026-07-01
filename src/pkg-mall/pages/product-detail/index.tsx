@@ -31,6 +31,7 @@ import { useMallCartCount } from '@/pkg-mall/hooks/use-mall-cart-count';
 import { addMallCartItem } from '@/pkg-mall/services/cart';
 import {
   addMallFavoriteItem,
+  removeMallFavoriteItem,
 } from '@/pkg-mall/services/favorites';
 import { fetchProductDetailData } from '@/pkg-mall/services/product-detail';
 import type { MallProductDetailData, MallSkuVariant } from '@/pkg-mall/services/types';
@@ -65,6 +66,7 @@ const ProductDetailPage = observer(function ProductDetailPage() {
   });
 
   const product = detailData?.product;
+  const productFavorited = product?.favorited === true;
   const coupons = detailData?.coupons ?? [];
   const reviews = detailData?.reviews ?? [];
   const recommendProducts = detailData?.recommendProducts ?? [];
@@ -250,6 +252,20 @@ const ProductDetailPage = observer(function ProductDetailPage() {
     });
   }
 
+  // 收藏写接口成功后立即同步当前详情页状态，避免只弹提示但图标不回显。
+  function updateProductFavoriteState(favorited: boolean) {
+    setDetailData((currentData) => {
+      if (!currentData) return currentData;
+      return {
+        ...currentData,
+        product: {
+          ...currentData.product,
+          favorited,
+        },
+      };
+    });
+  }
+
   async function handleFavoritePress() {
     if (!product) return;
 
@@ -257,10 +273,13 @@ const ProductDetailPage = observer(function ProductDetailPage() {
     if (!authed) return;
 
     try {
-      await addMallFavoriteItem(product);
-      await showWechatToast('已收藏', 'success');
+      const nextFavorited = productFavorited
+        ? await removeMallFavoriteItem(product.id)
+        : await addMallFavoriteItem(product);
+      updateProductFavoriteState(nextFavorited);
+      await showWechatToast(nextFavorited ? '已收藏' : '已取消收藏', 'success');
     } catch (error) {
-      await showWechatToast(error instanceof Error ? error.message : '收藏失败，请稍后再试');
+      await showWechatToast(error instanceof Error ? error.message : '收藏操作失败，请稍后再试');
     }
   }
 
@@ -372,10 +391,10 @@ const ProductDetailPage = observer(function ProductDetailPage() {
               </View>
               <View className="_pg-info_icons">
                 <View
-                  className="_pg-info_icon"
+                  className={`_pg-info_icon ${productFavorited ? '_pg-info_icon--favorited' : ''}`}
                   onClick={() => void handleFavoritePress()}
                 >
-                  <AppIcon name="heart" size={16} color="#a1a1aa" />
+                  <AppIcon name="heart" size={16} color={productFavorited ? '#db2777' : '#a1a1aa'} />
                 </View>
                 <AppShareButton className="_pg-info_icon" iconColor="#a1a1aa" />
               </View>

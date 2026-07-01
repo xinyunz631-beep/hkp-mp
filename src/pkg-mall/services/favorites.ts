@@ -68,9 +68,11 @@ export async function fetchFavoritesData(): Promise<MallFavoritesData> {
 }
 
 export async function addMallFavoriteItem(product: HkpProductSummary) {
-  await addBffMallFavorite({ productId: product.id });
+  const result = await addBffMallFavorite({ productId: product.id });
+  return result.favorited !== false;
 }
 
 export async function removeMallFavoriteItem(productId: string) {
-  await deleteBffMallFavorite(productId);
+  const result = await deleteBffMallFavorite(productId);
+  return result.favorited === true;
 }

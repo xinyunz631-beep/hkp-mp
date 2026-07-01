@@ -65,11 +65,21 @@ const STATUS_TO_BACKEND: Record<Exclude<MemberAnnualCardStatus, 'all'>, string |
 const DEFAULT_PAGE = 1;
 const DEFAULT_PAGE_SIZE = 20;
 const ENTRY_METHOD_TEXT_MAP: Record<string, string> = {
+  IDCARD: '身份证入园',
   ID_CARD: '身份证入园',
+  IDENTITY_CARD: '身份证入园',
+  PHYSICAL: '实体卡入园',
   PHYSICAL_CARD: '实体卡入园',
+  QR: '二维码入园',
+  QRCODE: '二维码入园',
   QR_CODE: '二维码入园',
+  TICKET_CODE: '票码入园',
+  MEMBER_CODE: '会员码入园',
   FACE: '人脸入园',
   FACE_RECOGNITION: '人脸入园',
+  MANUAL: '人工入园',
+  MANUAL_VERIFY: '人工核验入园',
+  MANUAL_VERIFICATION: '人工核验入园',
 };
 
 // 拼接年卡列表查询参数，避免把空筛选传给后端。
@@ -149,10 +159,22 @@ function resolveValidityText(card: BffAnnualCard) {
   return '';
 }
 
-// 生成年卡入园方式文案，完全来自后端 entryMethods 枚举。
+// 归一化年卡入园方式枚举，兼容历史大小写和分隔符差异。
+function normalizeEntryMethodCode(method: string) {
+  return method.trim().replace(/[-\s]/g, '_').toUpperCase();
+}
+
+// 生成年卡入园方式文案，后端枚举统一翻译成用户可见中文。
+function resolveEntryMethodLabel(method: string) {
+  const normalizedMethod = normalizeEntryMethodCode(method);
+  const mappedLabel = ENTRY_METHOD_TEXT_MAP[normalizedMethod];
+  if (mappedLabel) return mappedLabel;
+  return /[A-Za-z]/.test(method) ? '其他入园方式' : method;
+}
+
 function resolveEntryMethodLabels(entryMethods: string[]) {
   return Array.from(new Set(entryMethods
-    .map((method) => ENTRY_METHOD_TEXT_MAP[method.toUpperCase()] || method)
+    .map((method) => resolveEntryMethodLabel(method))
     .filter(Boolean)
   ));
 }
