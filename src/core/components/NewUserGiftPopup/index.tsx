@@ -20,14 +20,17 @@ function firstText(value?: string) {
   return trimmed || '';
 }
 
-function visibleGiftText(value?: string) {
+function visibleNameText(value?: string) {
   const text = firstText(value);
-  return text === '新人礼-小礼物' ? '' : text;
+  return text
+    .replace(/^注册新人礼[-_\s]*/, '')
+    .replace(/^新人注册礼[-_\s]*/, '');
 }
 
 function visibleAmountText(value?: string) {
-  const text = visibleGiftText(value);
+  const text = firstText(value);
   if (!text) return '';
+  if (text === '新人礼-小礼物') return '';
   const normalized = text.replace(/[￥¥\s,]/g, '');
   return /^0(?:\.0+)?$/.test(normalized) ? '' : text;
 }
@@ -39,6 +42,7 @@ function toCouponNoSet(items: Array<{ couponNo?: string }>) {
 }
 
 function resolveNewUserGiftName(item: {
+  amountText?: string;
   couponName?: string;
   displayName?: string;
   templateName?: string;
@@ -50,13 +54,16 @@ function resolveNewUserGiftName(item: {
   memberCouponName?: string;
 }, index: number) {
   return (
-    visibleGiftText(item.memberCouponName)
-    || visibleGiftText(item.displayName)
-    || visibleGiftText(item.couponName)
-    || visibleGiftText(item.templateName)
-    || visibleGiftText(item.giftTemplateName)
-    || visibleGiftText(item.title)
-    || visibleGiftText(item.couponTemplateId)
+    visibleNameText(item.amountText)
+    || visibleNameText(item.giftObjectName)
+    || visibleNameText(item.giftName)
+    || visibleNameText(item.displayName)
+    || visibleNameText(item.couponName)
+    || visibleNameText(item.templateName)
+    || visibleNameText(item.giftTemplateName)
+    || visibleNameText(item.title)
+    || visibleNameText(item.memberCouponName)
+    || visibleNameText(item.couponTemplateId)
     || `新人专享券 ${index + 1}`
   );
 }
