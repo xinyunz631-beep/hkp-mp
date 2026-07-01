@@ -321,6 +321,7 @@ export async function callWechatPhone(phoneNumber: string) {
   try {
     await Taro.makePhoneCall({ phoneNumber });
   } catch (error) {
+    if (/cancel/i.test(resolveErrorMessage(error, ''))) return;
     await copyWechatText(phoneNumber, resolveErrorMessage(error, '电话已复制'));
   }
 }

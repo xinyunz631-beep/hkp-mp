@@ -6,14 +6,6 @@ import { observer } from 'mobx-react';
 import { AppIcon } from '@/core/components/AppIcon';
 import { AppImage } from '@/core/components/AppImage';
 import { PageRoot, PageShell } from '@/core/components/PageShell';
-import shortcutContactIcon from '@/assets/home-shortcut-icons/contact.png';
-import shortcutCouponCenterIcon from '@/assets/home-shortcut-icons/coupon-center.png';
-import shortcutExchangeIcon from '@/assets/home-shortcut-icons/exchange.png';
-import shortcutMallIcon from '@/assets/home-shortcut-icons/mall.png';
-import shortcutNavigationIcon from '@/assets/home-shortcut-icons/navigation.png';
-import shortcutParkMapIcon from '@/assets/home-shortcut-icons/park-map.png';
-import shortcutServiceIcon from '@/assets/home-shortcut-icons/service.png';
-import shortcutShareIncomeIcon from '@/assets/home-shortcut-icons/share-income.png';
 import { HKP_PARK_HOTLINE, HKP_PARK_LOCATION } from '@/core/constants/park-location';
 import { MINI_MAIN_ROUTES, MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
@@ -86,21 +78,6 @@ const HOME_HOT_SLOT_CODES = ['index_hot_project', 'index_hot_projects'];
 const HOME_ACTIVITY_SLOT_CODES = ['index_activity', 'index_feature_activity'];
 const HOME_RECOMMEND_SLOT_CODES = ['index_recommend', 'index_recommendation'];
 const HOME_PLAY_LIFE_SLOT_CODES = ['index_play_life', 'index_life'];
-const HOME_SHORTCUT_ICON_MAP: Record<string, string> = {
-  兑换专区: shortcutExchangeIcon,
-  领券中心: shortcutCouponCenterIcon,
-  服务专区: shortcutServiceIcon,
-  服务中心: shortcutServiceIcon,
-  官方商城: shortcutMallIcon,
-  商城: shortcutMallIcon,
-  联系客服: shortcutContactIcon,
-  分享收益: shortcutShareIncomeIcon,
-  导航至乐园: shortcutNavigationIcon,
-  导航到乐园: shortcutNavigationIcon,
-  乐园导航: shortcutNavigationIcon,
-  园内地图: shortcutParkMapIcon,
-  地图: shortcutParkMapIcon,
-};
 const HOME_SECTION_MORE_CONFIG = {
   rank: { path: MINI_PACKAGE_ROUTES.ticketParkList, slotCode: HOME_HOT_SLOT_CODES[0], title: '热玩榜单' },
   activity: { path: MINI_PACKAGE_ROUTES.ticketActivityList, slotCode: HOME_ACTIVITY_SLOT_CODES[0], title: '精选活动' },
@@ -151,11 +128,6 @@ function resolveHomeShortcutTitle(ad: MiniProgramAdView, index: number) {
   return title || `入口${index + 1}`;
 }
 
-// 首页快捷入口 icon 使用当前小程序设计素材，后台广告继续控制文案、排序和跳转。
-function resolveHomeShortcutIcon(title: string, fallbackIcon?: string) {
-  return HOME_SHORTCUT_ICON_MAP[title.trim()] || fallbackIcon;
-}
-
 // 把广告映射成快捷入口项。
 function mapAdToShortcutEntry(ad: MiniProgramAdView, index: number): HomeShortcutEntry {
   const title = resolveHomeShortcutTitle(ad, index);
@@ -164,7 +136,7 @@ function mapAdToShortcutEntry(ad: MiniProgramAdView, index: number): HomeShortcu
     ...resolveMiniProgramAdClickTarget(ad),
     key: ad.id || ad.adNo || `shortcut-${index}`,
     title,
-    imageSrc: resolveHomeShortcutIcon(title, resolveMiniProgramAdImage(ad, 'icon')),
+    imageSrc: resolveMiniProgramAdImage(ad, 'icon'),
     action: title === '分享收益' ? 'shareIncome' : undefined,
   };
 }
