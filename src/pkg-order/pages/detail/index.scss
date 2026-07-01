@@ -299,10 +299,14 @@
 
   &_label {
     flex: none;
+    width: 140px;
+    margin-right: 16px;
   }
 
   &_value {
     flex: 1;
+    min-width: 0;
+    word-break: break-all;
   }
 
   &_value-wrap {

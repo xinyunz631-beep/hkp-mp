@@ -48,6 +48,85 @@ function normalizeString(value?: string) {
   return typeof value === 'string' ? value.trim() : '';
 }
 
+function resolveOrderText(order: BffOrder, keyCandidates: string[]) {
+  const firstItem = order.items?.[0];
+  const itemRecord = firstItem as Record<string, unknown> | undefined;
+
+  for (const key of keyCandidates) {
+    const contextValue = normalizeString(order.context?.[key]);
+    if (contextValue) return contextValue;
+
+    const attributeValue = normalizeString(firstItem?.attributes?.[key]);
+    if (attributeValue) return attributeValue;
+
+    const itemValue = itemRecord?.[key];
+    if (typeof itemValue === 'string') {
+      const normalizedItemValue = normalizeString(itemValue);
+      if (normalizedItemValue) return normalizedItemValue;
+    }
+  }
+
+  return '';
+}
+
+function removeRepeatedTrailingChunk(source: string) {
+  const parts = source.split(' ').filter(Boolean);
+  if (parts.length < 2) return source;
+
+  for (let index = 1; index < parts.length; index += 1) {
+    const suffix = parts.slice(index).join(' ');
+    const prefix = source.slice(0, source.length - suffix.length).trim();
+    if (prefix.endsWith(suffix)) {
+      return prefix;
+    }
+  }
+
+  return source;
+}
+
+function removeDuplicateTextSegment(text: string, segment: string) {
+  const source = normalizeString(text).replace(/\s+/g, ' ');
+  const duplicate = normalizeString(segment).replace(/\s+/g, ' ');
+  if (!source) return source;
+
+  if (duplicate) {
+    const repeatedSuffix = `${duplicate} ${duplicate}`;
+    if (source.endsWith(repeatedSuffix)) {
+      return source.slice(0, source.length - duplicate.length).trim();
+    }
+
+    if (source === repeatedSuffix) {
+      return duplicate;
+    }
+  }
+
+  return removeRepeatedTrailingChunk(source);
+}
+
+function resolveHotelRoomText(order: BffOrder) {
+  return resolveOrderText(order, [
+    'roomTitle',
+    'roomName',
+    'roomTypeName',
+    'ratePlanTitle',
+    'ratePlanName',
+    'skuName',
+    'specName',
+  ]);
+}
+
+function resolveHotelItemTitle(order: BffOrder) {
+  const firstItem = order.items?.[0];
+  const rawTitle = normalizeString(firstItem?.itemName || '');
+  const roomText = resolveHotelRoomText(order);
+  const cleanedTitle = removeDuplicateTextSegment(rawTitle, roomText);
+
+  return cleanedTitle
+    || roomText
+    || resolveOrderText(order, ['hotelName', 'merchantName', 'shopName'])
+    || normalizeString(firstItem?.itemId || firstItem?.lineNo || order.orderNo);
+}
+
 function normalizeCount(value: unknown) {
   const numberValue = typeof value === 'number' ? value : Number(value);
   return Number.isFinite(numberValue) ? Math.max(0, Math.floor(numberValue)) : undefined;
@@ -58,14 +137,16 @@ function normalizeStatus(value?: string) {
 }
 
 function hasMallLogisticsContext(order: BffOrder) {
-  if (order.sceneType !== 'MALL') return false;
+  if (String(order.sceneType || '').toUpperCase() !== 'MALL') return false;
   return Boolean(normalizeString(
     order.context?.trackingNumber
       || order.context?.waybillNo
       || order.context?.logisticsNo
       || order.context?.deliveryNo
+      || order.context?.expressNo
       || order.items?.[0]?.attributes?.trackingNumber
-      || order.items?.[0]?.attributes?.waybillNo,
+      || order.items?.[0]?.attributes?.waybillNo
+      || order.items?.[0]?.attributes?.expressNo,
   ));
 }
 
@@ -91,10 +172,11 @@ function isRefundStatus(status?: string) {
 
 function resolveStatusText(order: BffOrder) {
   const normalizedStatus = normalizeStatus(order.orderStatus);
+  const normalizedSceneType = String(order.sceneType || '').toUpperCase();
   if (isPendingPaymentStatus(normalizedStatus)) return '待付款';
   if (['PAID', 'WAIT_USE', 'FULFILLING'].includes(normalizedStatus)) {
-    if (order.sceneType === 'HOTEL') return '待入住';
-    if (order.sceneType === 'MALL') {
+    if (normalizedSceneType === 'HOTEL') return '待入住';
+    if (normalizedSceneType === 'MALL') {
       return normalizedStatus === 'FULFILLING' || hasMallLogisticsContext(order) ? '待收货' : '待发货';
     }
     return '待使用';
@@ -119,7 +201,7 @@ function buildReviewedMallItemSet(data?: BffMallMemberReviewsData) {
 }
 
 function hasReviewedMallOrder(order: BffOrder, reviewedMallItems: Set<string>) {
-  if (order.sceneType !== 'MALL') return true;
+  if (String(order.sceneType || '').toUpperCase() !== 'MALL') return true;
   const reviewableItemIds = (order.items || [])
     .map((item) => item.itemId || item.lineNo)
     .filter((itemId): itemId is string => Boolean(itemId));
@@ -132,7 +214,7 @@ function resolveTabKey(order: BffOrder, reviewedMallItems: Set<string>, reviewLo
   if (isPendingPaymentStatus(normalizedStatus)) return 'pendingPay';
   if (isRefundStatus(normalizedStatus)) return 'aftersale';
   if (isCompletedStatus(normalizedStatus)) {
-    if (order.sceneType === 'MALL' && reviewLookupReady) {
+    if (String(order.sceneType || '').toUpperCase() === 'MALL' && reviewLookupReady) {
       return hasReviewedMallOrder(order, reviewedMallItems) ? 'all' : 'pendingReview';
     }
     return 'all';
@@ -144,9 +226,13 @@ function resolveTabKey(order: BffOrder, reviewedMallItems: Set<string>, reviewLo
 
 function resolveItemTitle(order: BffOrder) {
   const firstItem = order.items?.[0];
-  if (order.sceneType === 'MALL') {
+  const normalizedSceneType = String(order.sceneType || '').toUpperCase();
+  if (normalizedSceneType === 'MALL') {
     return sanitizeMallRuntimeText(firstItem?.itemName)
       || normalizeString(firstItem?.itemId || firstItem?.lineNo || order.orderNo);
+  }
+  if (normalizedSceneType === 'HOTEL') {
+    return resolveHotelItemTitle(order);
   }
   return firstItem?.itemName
     || firstItem?.attributes?.roomTitle
@@ -175,10 +261,11 @@ function resolveItemImage(order: BffOrder) {
 
 function resolveItemSubtitle(order: BffOrder) {
   const firstItem = order.items?.[0];
-  if (order.sceneType === 'HOTEL') {
+  const normalizedSceneType = String(order.sceneType || '').toUpperCase();
+  if (normalizedSceneType === 'HOTEL') {
     return `${order.context?.checkInDate || ''} - ${order.context?.checkOutDate || ''}`;
   }
-  if (order.sceneType === 'MALL') {
+  if (normalizedSceneType === 'MALL') {
     return sanitizeMallRuntimeText(
       firstItem?.attributes?.specName
         || firstItem?.attributes?.skuName
@@ -201,7 +288,7 @@ function resolveOrderActions(order: BffOrder, reviewedMallItems: Set<string>, re
       { text: '继续支付', tone: 'primary' },
     ];
   }
-  if (order.sceneType === 'MALL' && isCompletedStatus(normalizedStatus) && reviewLookupReady && !hasReviewedMallOrder(order, reviewedMallItems)) {
+  if (String(order.sceneType || '').toUpperCase() === 'MALL' && isCompletedStatus(normalizedStatus) && reviewLookupReady && !hasReviewedMallOrder(order, reviewedMallItems)) {
     if (hasMallLogisticsContext(order)) {
       return [
         { text: '查看物流', tone: 'default' },
@@ -225,7 +312,7 @@ function resolveOrderActions(order: BffOrder, reviewedMallItems: Set<string>, re
 // 待评价页签只展示真实可评价的商城订单，门票、酒店和已评价商城订单不进入该列表。
 function shouldShowOrderInTab(order: BffOrder, tabKey: string, reviewedMallItems: Set<string>, reviewLookupReady: boolean) {
   if (tabKey !== 'pendingReview') return true;
-  return order.sceneType === 'MALL'
+  return String(order.sceneType || '').toUpperCase() === 'MALL'
     && isCompletedStatus(order.orderStatus)
     && reviewLookupReady
     && !hasReviewedMallOrder(order, reviewedMallItems);
@@ -240,7 +327,7 @@ function mapOrderItem(order: BffOrder, reviewedMallItems: Set<string>, reviewLoo
     itemId: firstItem?.itemId || firstItem?.lineNo,
     title: resolveItemTitle(order),
     subtitle: resolveItemSubtitle(order),
-    extraText: order.sceneType === 'MALL' && merchantName ? merchantName : undefined,
+    extraText: String(order.sceneType || '').toUpperCase() === 'MALL' && merchantName ? merchantName : undefined,
     imageSrc: resolveItemImage(order),
     quantity: resolveItemQuantity(order),
     priceText: formatCent(order.payableAmountCent),

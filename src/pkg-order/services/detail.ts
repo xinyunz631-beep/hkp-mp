@@ -1,7 +1,9 @@
 import {
   fetchBffOrderDetail,
+  fetchBffOrderLogistics,
   getBffTicketVoucherText,
   type BffOrder,
+  type BffOrderLogisticsData,
   type BffOrderItem,
   type BffAnnualCard,
   type BffTicketVoucher,
@@ -48,19 +50,31 @@ function normalizeUnknownText(value: unknown) {
   return '';
 }
 
+function normalizeLogisticsText(value?: string) {
+  const text = normalizeString(value);
+  return text && text !== '-' ? text : '';
+}
+
+function putLogisticsText(target: Record<string, string>, key: string, value?: string) {
+  const text = normalizeLogisticsText(value);
+  if (text) target[key] = text;
+}
+
 function formatDateTime(value?: string) {
   return formatOrderDateTime(value, '-');
 }
 
 function hasMallLogisticsContext(order: BffOrder) {
-  if (order.sceneType !== 'MALL') return false;
+  if (String(order.sceneType || '').toUpperCase() !== 'MALL') return false;
   return Boolean(normalizeString(
     order.context?.trackingNumber
       || order.context?.waybillNo
       || order.context?.logisticsNo
       || order.context?.deliveryNo
+      || order.context?.expressNo
       || order.items?.[0]?.attributes?.trackingNumber
-      || order.items?.[0]?.attributes?.waybillNo,
+      || order.items?.[0]?.attributes?.waybillNo
+      || order.items?.[0]?.attributes?.expressNo,
   ));
 }
 
@@ -89,7 +103,7 @@ function hasAnnualCardOrderSignal(order: BffOrder) {
 
 // 判断商城订单是否允许展示会员确认收货入口，最终可确认性以后端接口校验为准。
 function canConfirmMallReceive(order: BffOrder) {
-  if (order.sceneType !== 'MALL') return false;
+  if (String(order.sceneType || '').toUpperCase() !== 'MALL') return false;
   if (!hasMallLogisticsContext(order)) return false;
   return ['PAID', 'FULFILLING', 'WAIT_USE', 'WAIT_RECEIVE', 'PENDING_RECEIVE', 'SHIPPED', 'DELIVERING', 'DELIVERED']
     .includes(String(order.orderStatus || '').toUpperCase());
@@ -104,14 +118,15 @@ function resolveStatusVersion(order: BffOrder) {
 // 归一订单主状态，避免后端履约中间态直接暴露为内部状态码。
 function resolveStatusText(order: BffOrder) {
   const normalizedStatus = String(order.orderStatus || '').toUpperCase();
+  const normalizedSceneType = String(order.sceneType || '').toUpperCase();
   const annualCardStatusText = resolveAnnualCardOrderStatusText(order);
 
   if (annualCardStatusText) return annualCardStatusText;
 
   if (isPendingPaymentStatus(normalizedStatus)) return '待付款';
   if (['PAID', 'WAIT_USE', 'FULFILLING'].includes(normalizedStatus)) {
-    if (order.sceneType === 'HOTEL') return '待入住';
-    if (order.sceneType === 'MALL') {
+    if (normalizedSceneType === 'HOTEL') return '待入住';
+    if (normalizedSceneType === 'MALL') {
       return normalizedStatus === 'FULFILLING' || hasMallLogisticsContext(order) ? '待收货' : '待发货';
     }
     return '待使用';
@@ -127,10 +142,11 @@ function resolveStatusText(order: BffOrder) {
 
 function resolvePrimaryAction(order: BffOrder): OrderDetailData['primaryActionType'] {
   const normalizedStatus = String(order.orderStatus || '').toUpperCase();
+  const normalizedSceneType = String(order.sceneType || '').toUpperCase();
   if (isPendingPaymentStatus(normalizedStatus)) return 'pay';
   if (hasAnnualCardOrderSignal(order)) return 'none';
   if (['PAID', 'WAIT_USE', 'FULFILLING'].includes(normalizedStatus)) {
-    return order.sceneType === 'MALL' ? 'aftersale' : 'refund';
+    return normalizedSceneType === 'MALL' ? 'aftersale' : 'refund';
   }
   return 'none';
 }
@@ -218,9 +234,13 @@ function resolveAnnualCardOrderStatusText(order: BffOrder) {
 
 function resolveTitle(order: BffOrder) {
   const firstItem = order.items?.[0];
-  if (order.sceneType === 'MALL') {
+  const normalizedSceneType = String(order.sceneType || '').toUpperCase();
+  if (normalizedSceneType === 'MALL') {
     return sanitizeMallRuntimeText(firstItem?.itemName)
       || normalizeString(firstItem?.itemId || firstItem?.lineNo || order.orderNo);
+  }
+  if (normalizedSceneType === 'HOTEL') {
+    return resolveHotelTitle(order, firstItem);
   }
   return firstItem?.itemName
     || firstItem?.attributes?.roomTitle
@@ -251,6 +271,63 @@ function resolveMallSpecText(order: BffOrder) {
   );
 }
 
+function removeRepeatedTrailingChunk(source: string) {
+  const parts = source.split(' ').filter(Boolean);
+  if (parts.length < 2) return source;
+
+  for (let index = 1; index < parts.length; index += 1) {
+    const suffix = parts.slice(index).join(' ');
+    const prefix = source.slice(0, source.length - suffix.length).trim();
+    if (prefix.endsWith(suffix)) {
+      return prefix;
+    }
+  }
+
+  return source;
+}
+
+function removeDuplicateTextSegment(text: string, segment: string) {
+  const source = normalizeString(text).replace(/\s+/g, ' ');
+  const duplicate = normalizeString(segment).replace(/\s+/g, ' ');
+  if (!source) return source;
+
+  if (duplicate) {
+    const repeatedSuffix = `${duplicate} ${duplicate}`;
+    if (source.endsWith(repeatedSuffix)) {
+      return source.slice(0, source.length - duplicate.length).trim();
+    }
+
+    if (source === repeatedSuffix) {
+      return duplicate;
+    }
+  }
+
+  return removeRepeatedTrailingChunk(source);
+}
+
+function resolveHotelRoomText(order: BffOrder) {
+  return resolveOrderText(order, [
+    'roomTitle',
+    'roomName',
+    'roomTypeName',
+    'ratePlanTitle',
+    'ratePlanName',
+    'skuName',
+    'specName',
+  ]);
+}
+
+function resolveHotelTitle(order: BffOrder, firstItem?: BffOrderItem) {
+  const rawTitle = normalizeString(firstItem?.itemName || '');
+  const roomText = resolveHotelRoomText(order);
+  const cleanedTitle = removeDuplicateTextSegment(rawTitle, roomText);
+
+  return cleanedTitle
+    || roomText
+    || resolveOrderText(order, ['hotelName', 'merchantName', 'shopName'])
+    || normalizeString(firstItem?.lineNo || order.orderNo);
+}
+
 function resolveAddressText(context: Record<string, string>) {
   return normalizeString(
     context.addressText
@@ -261,10 +338,38 @@ function resolveAddressText(context: Record<string, string>) {
 
 function resolveLogisticsField(context: Record<string, string>, keyCandidates: string[]) {
   for (const key of keyCandidates) {
-    const value = normalizeString(context[key]);
+    const value = normalizeLogisticsText(context[key]);
     if (value) return value;
   }
   return '';
+}
+
+function mergeMallLogisticsIntoOrder(order: BffOrder, logistics?: BffOrderLogisticsData) {
+  const normalizedSceneType = String(order.sceneType || '').toUpperCase();
+  if (normalizedSceneType !== 'MALL' || !logistics) {
+    return order;
+  }
+
+  const context = { ...(order.context || {}) };
+  const companyText = normalizeLogisticsText(logistics.companyText);
+  const trackingNumberText = normalizeLogisticsText(logistics.trackingNumberText);
+  const statusText = normalizeLogisticsText(logistics.statusText);
+
+  putLogisticsText(context, 'deliveryCompany', companyText);
+  putLogisticsText(context, 'logisticsCompany', companyText);
+  putLogisticsText(context, 'expressCompany', companyText);
+  putLogisticsText(context, 'courierCompany', companyText);
+  putLogisticsText(context, 'trackingNumber', trackingNumberText);
+  putLogisticsText(context, 'waybillNo', trackingNumberText);
+  putLogisticsText(context, 'logisticsNo', trackingNumberText);
+  putLogisticsText(context, 'deliveryNo', trackingNumberText);
+  putLogisticsText(context, 'expressNo', trackingNumberText);
+  putLogisticsText(context, 'logisticsStatusText', statusText);
+  putLogisticsText(context, 'deliveryStatusText', statusText);
+  putLogisticsText(context, 'shipmentStatusText', statusText);
+  putLogisticsText(context, 'trackingStatusText', statusText);
+
+  return { ...order, context };
 }
 
 // 从订单上下文、商品扩展和商品基础字段里按候选 key 提取业务展示值。
@@ -499,7 +604,7 @@ function buildReviewedMallItemSet(data?: BffMallMemberReviewsData) {
 
 // 判断商城订单是否已经评价，避免详情页重复暴露评价入口。
 function hasReviewedMallOrder(order: BffOrder, reviewedMallItems: Set<string>) {
-  if (order.sceneType !== 'MALL') return true;
+  if (String(order.sceneType || '').toUpperCase() !== 'MALL') return true;
   const reviewableItemIds = (order.items || [])
     .map((item) => item.itemId || item.lineNo)
     .filter((itemId): itemId is string => Boolean(itemId));
@@ -509,7 +614,6 @@ function hasReviewedMallOrder(order: BffOrder, reviewedMallItems: Set<string>) {
 
 // 按订单业态输出商品摘要字段，避免所有业态共用商城式字段。
 function resolveSceneProductFields(order: BffOrder, title: string, merchantName: string, mallSpecText: string): OrderDetailFieldData[] {
-  const firstItem = order.items?.[0];
   const normalizedSceneType = String(order.sceneType || '').toUpperCase();
 
   if (normalizedSceneType === 'MALL') {
@@ -517,18 +621,16 @@ function resolveSceneProductFields(order: BffOrder, title: string, merchantName:
       { label: '商户名称', value: merchantName },
       { label: '商品名称', value: title },
       { label: '规格信息', value: mallSpecText },
-      { label: '商品编码', value: firstItem?.itemId || '-' },
-      { label: '规格编码', value: firstItem?.skuId || '-' },
     ]);
   }
 
   if (normalizedSceneType === 'HOTEL') {
+    const hotelRoomText = resolveHotelRoomText(order);
+
     return compactFields([
       { label: '酒店名称', value: resolveOrderText(order, ['hotelName', 'merchantName', 'shopName']) || merchantName },
-      { label: '房型', value: resolveOrderText(order, ['roomTitle', 'roomName', 'itemName']) || title },
+      { label: '房型', value: hotelRoomText || title },
       { label: '价格计划', value: resolveOrderText(order, ['ratePlanTitle', 'ratePlanName', 'skuName']) },
-      { label: '房型编码', value: firstItem?.itemId || '-' },
-      { label: '价格计划编码', value: firstItem?.skuId || firstItem?.attributes?.ratePlanId || '-' },
     ]);
   }
 
@@ -542,8 +644,6 @@ function resolveSceneProductFields(order: BffOrder, title: string, merchantName:
   return compactFields([
     { label: '订单业态', value: order.sceneType || '-' },
     { label: '商品信息', value: title },
-    { label: '商品编码', value: firstItem?.itemId || '-' },
-    { label: '规格编码', value: firstItem?.skuId || firstItem?.attributes?.ratePlanId || '-' },
   ]);
 }
 
@@ -1133,9 +1233,9 @@ function mapOrderToDetail(order: BffOrder, reviewedMallItems?: Set<string>): Ord
   const merchantName = resolveMerchantName(order);
   const mallSpecText = resolveMallSpecText(order);
   const addressText = resolveAddressText(context);
-  const deliveryCompany = resolveLogisticsField(context, ['deliveryCompany', 'logisticsCompany', 'expressCompany']);
-  const trackingNumber = resolveLogisticsField(context, ['trackingNumber', 'waybillNo', 'logisticsNo', 'deliveryNo']);
-  const logisticsStatusText = resolveLogisticsField(context, ['logisticsStatusText', 'deliveryStatusText', 'shipmentStatusText']);
+  const deliveryCompany = resolveLogisticsField(context, ['deliveryCompany', 'logisticsCompany', 'expressCompany', 'courierCompany']);
+  const trackingNumber = resolveLogisticsField(context, ['trackingNumber', 'waybillNo', 'logisticsNo', 'deliveryNo', 'expressNo']);
+  const logisticsStatusText = resolveLogisticsField(context, ['logisticsStatusText', 'deliveryStatusText', 'shipmentStatusText', 'trackingStatusText']);
   const aftersaleEntryRoute = resolveAftersaleEntryRoute(order);
   const ticketInstances = mapTicketInstances(order);
   const matchedAnnualCards = resolveMatchedAnnualCardSet(order);
@@ -1192,7 +1292,7 @@ function mapOrderToDetail(order: BffOrder, reviewedMallItems?: Set<string>): Ord
 
 // 只有商城完成态需要查询评价记录，避免其它业态详情页多一次无意义请求。
 function shouldLoadMallReviewLookup(order: BffOrder) {
-  return order.sceneType === 'MALL' && isCompletedStatus(order.orderStatus);
+  return String(order.sceneType || '').toUpperCase() === 'MALL' && isCompletedStatus(order.orderStatus);
 }
 
 // 获取真实订单详情，接口失败时由页面异常态承接，不回退本地订单。
@@ -1201,8 +1301,15 @@ export async function fetchDetailData(orderId?: string, options: FetchDetailData
   const order = await fetchBffOrderDetail(orderId, {
     showErrorToast: options.showErrorToast,
   });
-  const mallReviews = shouldLoadMallReviewLookup(order)
-    ? await fetchBffMallMyReviews().catch(() => undefined)
-    : undefined;
-  return mapOrderToDetail(order, mallReviews ? buildReviewedMallItemSet(mallReviews) : undefined);
+  const normalizedSceneType = String(order.sceneType || '').toUpperCase();
+  const [mallLogistics, mallReviews] = await Promise.all([
+    normalizedSceneType === 'MALL'
+      ? fetchBffOrderLogistics(order.orderNo, false).catch(() => undefined)
+      : Promise.resolve(undefined),
+    shouldLoadMallReviewLookup(order)
+      ? fetchBffMallMyReviews().catch(() => undefined)
+      : Promise.resolve(undefined),
+  ]);
+  const detailOrder = mergeMallLogisticsIntoOrder(order, mallLogistics);
+  return mapOrderToDetail(detailOrder, mallReviews ? buildReviewedMallItemSet(mallReviews) : undefined);
 }
