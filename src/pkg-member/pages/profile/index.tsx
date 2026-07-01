@@ -248,6 +248,13 @@ const MemberProfilePage = observer(function MemberProfilePage() {
     await commitProfileUpdate({ regionText: nextRegion }, '地区已更新');
   }
 
+  // 生日只允许首次补填；已有生日时页面不会再触发更新入口。
+  async function handleBirthdayChange(value: string) {
+    const nextBirthday = value.trim();
+    if (!nextBirthday || profileData?.birthday) return;
+    await commitProfileUpdate({ birthday: nextBirthday }, '生日已更新');
+  }
+
   async function handleLogoutTap() {
     const confirmed = await showWechatConfirm({
       title: '退出登录',
@@ -287,6 +294,26 @@ const MemberProfilePage = observer(function MemberProfilePage() {
           {renderArrow(showArrow)}
         </View>
       </View>
+    );
+  }
+
+  function renderBirthdayRow() {
+    const birthday = profileData?.birthday || '';
+    if (birthday) {
+      return renderRow('生日', birthday, { showArrow: false });
+    }
+
+    return (
+      <Picker
+        mode="date"
+        value=""
+        onChange={(event) => handleBirthdayChange(String(event.detail.value || '')).catch(() => undefined)}
+      >
+        {renderRow('生日', '', {
+          placeholder: '未知',
+          showArrow: true,
+        })}
+      </Picker>
     );
   }
 
@@ -452,9 +479,7 @@ const MemberProfilePage = observer(function MemberProfilePage() {
                 placeholder: '添加身份证号',
                 onClick: () => openEditPopup('idCardNo', profileData.idCardNo),
               })}
-              {renderRow('生日', resolveTextValue(profileData.birthday), {
-                showArrow: false,
-              })}
+              {renderBirthdayRow()}
               <Picker
                 mode="selector"
                 range={GENDER_OPTIONS.map((option) => option.text)}

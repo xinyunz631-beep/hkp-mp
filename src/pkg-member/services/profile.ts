@@ -55,7 +55,7 @@ export interface MemberProfileData {
 
 export type MemberProfileUpdatePayload = Partial<Pick<
   MemberProfileData,
-  'avatarUrl' | 'idCardNo' | 'gender' | 'regionText' | 'plateNo'
+  'avatarUrl' | 'idCardNo' | 'birthday' | 'gender' | 'regionText' | 'plateNo'
 >>;
 
 export interface MemberAvatarUploadResult {
@@ -112,6 +112,7 @@ function toBffProfileUpdatePayload(payload: MemberProfileUpdatePayload): BffCrmP
   return {
     ...(payload.avatarUrl !== undefined ? { avatarUrl: payload.avatarUrl } : {}),
     ...(payload.idCardNo !== undefined ? { idCardNo: payload.idCardNo } : {}),
+    ...(payload.birthday !== undefined ? { birthday: payload.birthday } : {}),
     ...(payload.gender !== undefined ? { gender: toBffGender(payload.gender) } : {}),
     ...(payload.regionText !== undefined ? { regionName: payload.regionText } : {}),
     ...(payload.plateNo !== undefined ? { carPlateNo: payload.plateNo } : {}),
