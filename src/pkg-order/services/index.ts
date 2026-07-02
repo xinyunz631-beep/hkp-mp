@@ -2,6 +2,7 @@ import {
   fetchMergedBffOrderPage,
   sortBffOrdersByCreatedAt,
   type BffOrder,
+  type BffOrderItem,
   type BffOrderSceneType,
   type BffOrderTabCount,
 } from '@/core/services/bff-order-api';
@@ -209,6 +210,18 @@ function hasReviewedMallOrder(order: BffOrder, reviewedMallItems: Set<string>) {
   return reviewableItemIds.every((itemId) => reviewedMallItems.has(reviewLookupKey(order.orderNo, itemId)));
 }
 
+function resolveReviewTargetItem(order: BffOrder, reviewedMallItems: Set<string>, reviewLookupReady: boolean): BffOrderItem | undefined {
+  const items = order.items || [];
+  if (String(order.sceneType || '').toUpperCase() !== 'MALL' || !isCompletedStatus(order.orderStatus) || !reviewLookupReady) {
+    return items[0];
+  }
+
+  return items.find((item) => {
+    const itemId = item.itemId || item.lineNo;
+    return Boolean(itemId && !reviewedMallItems.has(reviewLookupKey(order.orderNo, itemId)));
+  }) || items[0];
+}
+
 function resolveTabKey(order: BffOrder, reviewedMallItems: Set<string>, reviewLookupReady: boolean) {
   const normalizedStatus = normalizeStatus(order.orderStatus);
   if (isPendingPaymentStatus(normalizedStatus)) return 'pendingPay';
@@ -224,59 +237,56 @@ function resolveTabKey(order: BffOrder, reviewedMallItems: Set<string>, reviewLo
   return 'pendingReceive';
 }
 
-function resolveItemTitle(order: BffOrder) {
-  const firstItem = order.items?.[0];
+function resolveItemTitle(order: BffOrder, item = order.items?.[0]) {
   const normalizedSceneType = String(order.sceneType || '').toUpperCase();
   if (normalizedSceneType === 'MALL') {
-    return sanitizeMallRuntimeText(firstItem?.itemName)
-      || normalizeString(firstItem?.itemId || firstItem?.lineNo || order.orderNo);
+    return sanitizeMallRuntimeText(item?.itemName)
+      || normalizeString(item?.itemId || item?.lineNo || order.orderNo);
   }
   if (normalizedSceneType === 'HOTEL') {
     return resolveHotelItemTitle(order);
   }
-  return firstItem?.itemName
-    || firstItem?.attributes?.roomTitle
-    || firstItem?.attributes?.ratePlanTitle
+  return item?.itemName
+    || item?.attributes?.roomTitle
+    || item?.attributes?.ratePlanTitle
     || order.context?.roomTitle
-    || normalizeString(firstItem?.itemId || firstItem?.lineNo || order.orderNo);
+    || normalizeString(item?.itemId || item?.lineNo || order.orderNo);
 }
 
-function resolveMerchantName(order: BffOrder) {
+function resolveMerchantName(order: BffOrder, item = order.items?.[0]) {
   return sanitizeMallRuntimeText(
     order.context?.merchantName
-      || order.items?.[0]?.attributes?.merchantName
-      || order.items?.[0]?.attributes?.shopName,
+      || item?.attributes?.merchantName
+      || item?.attributes?.shopName,
   );
 }
 
-function resolveItemImage(order: BffOrder) {
-  const firstItem = order.items?.[0];
+function resolveItemImage(order: BffOrder, item = order.items?.[0]) {
   return sanitizeMallRuntimeUrl(
-    firstItem?.attributes?.imageUrl
-      || firstItem?.attributes?.imageSrc
-      || firstItem?.attributes?.mainImageUrl,
+    item?.attributes?.imageUrl
+      || item?.attributes?.imageSrc
+      || item?.attributes?.mainImageUrl,
     { allowMockImage: true },
   );
 }
 
-function resolveItemSubtitle(order: BffOrder) {
-  const firstItem = order.items?.[0];
+function resolveItemSubtitle(order: BffOrder, item = order.items?.[0]) {
   const normalizedSceneType = String(order.sceneType || '').toUpperCase();
   if (normalizedSceneType === 'HOTEL') {
     return `${order.context?.checkInDate || ''} - ${order.context?.checkOutDate || ''}`;
   }
   if (normalizedSceneType === 'MALL') {
     return sanitizeMallRuntimeText(
-      firstItem?.attributes?.specName
-        || firstItem?.attributes?.skuName
-        || firstItem?.skuId,
+      item?.attributes?.specName
+        || item?.attributes?.skuName
+        || item?.skuId,
     );
   }
-  return normalizeString(firstItem?.attributes?.visitDate || order.context?.visitDate);
+  return normalizeString(item?.attributes?.visitDate || order.context?.visitDate);
 }
 
-function resolveItemQuantity(order: BffOrder) {
-  const quantity = Number(order.items?.[0]?.quantity);
+function resolveItemQuantity(order: BffOrder, item = order.items?.[0]) {
+  const quantity = Number(item?.quantity);
   return Number.isFinite(quantity) && quantity > 0 ? quantity : 0;
 }
 
@@ -319,17 +329,17 @@ function shouldShowOrderInTab(order: BffOrder, tabKey: string, reviewedMallItems
 }
 
 function mapOrderItem(order: BffOrder, reviewedMallItems: Set<string>, reviewLookupReady: boolean): OrderHomeItemData {
-  const merchantName = resolveMerchantName(order);
-  const firstItem = order.items?.[0];
+  const targetItem = resolveReviewTargetItem(order, reviewedMallItems, reviewLookupReady);
+  const merchantName = resolveMerchantName(order, targetItem);
   return {
     id: order.orderNo,
     orderId: order.orderNo,
-    itemId: firstItem?.itemId || firstItem?.lineNo,
-    title: resolveItemTitle(order),
-    subtitle: resolveItemSubtitle(order),
+    itemId: targetItem?.itemId || targetItem?.lineNo,
+    title: resolveItemTitle(order, targetItem),
+    subtitle: resolveItemSubtitle(order, targetItem),
     extraText: String(order.sceneType || '').toUpperCase() === 'MALL' && merchantName ? merchantName : undefined,
-    imageSrc: resolveItemImage(order),
-    quantity: resolveItemQuantity(order),
+    imageSrc: resolveItemImage(order, targetItem),
+    quantity: resolveItemQuantity(order, targetItem),
     priceText: formatCent(order.payableAmountCent),
     actionText: '查看详情',
     actions: resolveOrderActions(order, reviewedMallItems, reviewLookupReady),

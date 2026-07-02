@@ -612,6 +612,18 @@ function hasReviewedMallOrder(order: BffOrder, reviewedMallItems: Set<string>) {
   return reviewableItemIds.every((itemId) => reviewedMallItems.has(reviewLookupKey(order.orderNo, itemId)));
 }
 
+function resolveReviewTargetItem(order: BffOrder, reviewedMallItems: Set<string>): BffOrderItem | undefined {
+  const items = order.items || [];
+  if (String(order.sceneType || '').toUpperCase() !== 'MALL' || !isCompletedStatus(order.orderStatus)) {
+    return items[0];
+  }
+
+  return items.find((item) => {
+    const itemId = item.itemId || item.lineNo;
+    return Boolean(itemId && !reviewedMallItems.has(reviewLookupKey(order.orderNo, itemId)));
+  }) || items[0];
+}
+
 // 按订单业态输出商品摘要字段，避免所有业态共用商城式字段。
 function resolveSceneProductFields(order: BffOrder, title: string, merchantName: string, mallSpecText: string): OrderDetailFieldData[] {
   const normalizedSceneType = String(order.sceneType || '').toUpperCase();
@@ -719,8 +731,9 @@ function resolveSceneActions(order: BffOrder, reviewedMallItems?: Set<string>): 
     && reviewedMallItems
     && !hasReviewedMallOrder(order, reviewedMallItems)
   ) {
-    const firstItemId = normalizeString(order.items?.[0]?.itemId || order.items?.[0]?.lineNo);
-    const itemQuery = firstItemId ? `&itemId=${encodeURIComponent(firstItemId)}` : '';
+    const reviewTargetItem = resolveReviewTargetItem(order, reviewedMallItems);
+    const reviewTargetItemId = normalizeString(reviewTargetItem?.itemId || reviewTargetItem?.lineNo);
+    const itemQuery = reviewTargetItemId ? `&itemId=${encodeURIComponent(reviewTargetItemId)}` : '';
     actions.push({
       text: '评价晒单',
       route: `${MINI_PACKAGE_ROUTES.orderReviewCreate}?orderId=${encodeURIComponent(order.orderNo)}${itemQuery}`,

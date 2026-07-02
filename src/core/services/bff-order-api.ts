@@ -976,6 +976,7 @@ export function submitBffOrderReview(data: BffCreateOrderReviewRequest) {
     url: '/api/bff/orders/reviews',
     method: 'POST',
     data,
+    auth: { mode: 'required', forceRefresh: true },
     sign: true,
   });
 }
