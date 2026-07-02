@@ -65,6 +65,14 @@ function productMarketPrice(product: BffMallProduct) {
   return typeof marketCent === 'number' && marketCent > 0 ? centToYuan(marketCent) : undefined;
 }
 
+function productSalesText(product: BffMallProduct) {
+  const salesCount = parseNumberLike(product.salesCount);
+  if (typeof salesCount === 'number' && salesCount > 0) {
+    return `已售${Math.floor(salesCount)}`;
+  }
+  return firstMallText(product.salesText);
+}
+
 function formatYuan(amountCent: unknown = 0) {
   const amount = centToYuan(amountCent);
   if (Number.isInteger(amount)) return String(amount);
@@ -134,7 +142,7 @@ export function toMallProductSummary(product: BffMallProduct): HkpProductSummary
     price: centToYuan(product.minPrice),
     marketPrice: productMarketPrice(product),
     tag: tags[0],
-    salesText: firstMallText(product.salesText),
+    salesText: productSalesText(product),
     favorited: product.favorited === true,
   };
 }

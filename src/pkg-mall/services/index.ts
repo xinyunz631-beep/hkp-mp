@@ -1,5 +1,5 @@
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
-import { fetchBffMallHome, type BffMallProduct } from '@/core/services/bff-mall-api';
+import { fetchBffMallHome } from '@/core/services/bff-mall-api';
 import {
   fetchMiniProgramPageAds,
   findMiniProgramSlotAds,
@@ -12,7 +12,6 @@ import type { MiniProgramAdView } from '@/core/types/mini-program-ad';
 import { sanitizeMallRuntimeText, sanitizeMallRuntimeUrl } from '@/core/utils/mall-runtime';
 import {
   isRenderableMallCategory,
-  isRenderableMallProduct,
   toMallBannerItem,
   toMallCategoryItem,
   toMallProductSummary,
@@ -20,8 +19,6 @@ import {
 import type { MallBannerItem } from './types';
 
 const MALL_HOME_SECONDARY_AD_SLOT_CODES = ['legacy_shop_home_secondary_ad'];
-const MALL_HOME_RECOMMENDATION_LIMIT = 6;
-const MALL_HOME_EXCLUDED_RECOMMENDATION_PATTERN = /(?:KUMAMON|熊本熊)/i;
 
 function firstString(...values: unknown[]) {
   return values.find((value) => typeof value === 'string' && value.trim()) as string | undefined;
@@ -129,25 +126,6 @@ async function fetchSecondaryAdBannersFallback() {
   }
 }
 
-// 首页好物推荐只保留协调的乐园商品，过滤当前黑色熊本熊类素材并限制首屏数量。
-function selectMallHomeRecommendProducts(products: BffMallProduct[]) {
-  return products
-    .filter(isRenderableMallProduct)
-    .filter((product) => {
-      const searchText = [
-        product.title,
-        product.subtitle,
-        product.brandName,
-        product.mainImageUrl,
-        product.shareImageUrl,
-        ...(product.tags ?? []),
-      ].filter(Boolean).join(' ');
-
-      return !MALL_HOME_EXCLUDED_RECOMMENDATION_PATTERN.test(searchText);
-    })
-    .slice(0, MALL_HOME_RECOMMENDATION_LIMIT);
-}
-
 // 获取商城首页真实数据，接口失败时由页面异常态承接，不回退本地商品。
 export async function fetchMallHomeData() {
   const response = await fetchBffMallHome();
@@ -167,6 +145,6 @@ export async function fetchMallHomeData() {
     banners: banners.length ? banners : normalizeCategoryBannerFallback(categoryBanners),
     secondaryBanners: resolvedSecondaryBanners,
     categories: categories.map(toMallCategoryItem),
-    products: selectMallHomeRecommendProducts(response.products ?? []).map(toMallProductSummary),
+    products: (response.products ?? []).map(toMallProductSummary),
   };
 }

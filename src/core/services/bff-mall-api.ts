@@ -91,6 +91,7 @@ export interface BffMallProduct {
   productType?: string;
   tags?: string[];
   salesText?: string;
+  salesCount?: number;
   minPrice?: number;
   maxPrice?: number;
   marketMinPrice?: number;
