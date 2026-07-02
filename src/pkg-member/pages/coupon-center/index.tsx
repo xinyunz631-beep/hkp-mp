@@ -76,6 +76,16 @@ const MemberCouponCenterPage = observer(function MemberCouponCenterPage() {
       || response.claimedGiftItems?.flatMap((item) => item.couponInstances ?? []).find((item) => item.couponNo)?.couponNo;
   }
 
+  function resolveGiftCouponNo(response: Awaited<ReturnType<typeof claimMemberCoupon>>, gift: MemberCouponCenterActivityGift) {
+    const matchedGift = response.claimedGiftItems?.find((item) => (
+      (gift.giftId && item.giftId === gift.giftId)
+      || (gift.templateNo && [item.templateNo, item.couponTemplateId].includes(gift.templateNo))
+    ));
+    return matchedGift?.couponNo
+      || matchedGift?.couponInstances?.find((item) => item.couponNo)?.couponNo
+      || resolveFirstCouponNo(response);
+  }
+
   // 后端活动一键领取允许 200 返回部分或全部失败，这里把零发券结果转成可见失败提示。
   function resolveClaimFailureMessage(response: Awaited<ReturnType<typeof claimMemberCoupon>>) {
     const issuedCount = Number(response.issuedCount ?? response.couponNos?.length ?? response.couponInstances?.length ?? response.coupons?.length ?? (response.coupon ? 1 : 0));
@@ -88,10 +98,19 @@ const MemberCouponCenterPage = observer(function MemberCouponCenterPage() {
       || '';
   }
 
+  function resolveClaimSuccessMessage(response: Awaited<ReturnType<typeof claimMemberCoupon>>) {
+    const failCount = Number(response.failCount ?? response.failedGiftItems?.length ?? 0);
+    return failCount > 0 ? '部分领取成功' : '领取成功';
+  }
+
   async function handleCouponPress(coupon: MemberCouponCenterCoupon, gift?: MemberCouponCenterActivityGift) {
     const claimable = gift ? gift.claimable : coupon.claimable;
     const disabledReason = gift?.disabledReason || coupon.disabledReason;
     if (gift?.claimed || coupon.claimed) {
+      if (!gift) {
+        navigateToMiniRoute(MINI_PACKAGE_ROUTES.memberCoupons);
+        return;
+      }
       const couponNo = await pageRuntime.withLoading(() => resolveClaimedMemberCouponNo(coupon, gift));
       if (couponNo) {
         navigateToMiniRoute(resolveCouponDetailRoute(couponNo));
@@ -118,14 +137,45 @@ const MemberCouponCenterPage = observer(function MemberCouponCenterPage() {
         await showWechatToast(failureMessage);
         return;
       }
-      await showWechatToast('领取成功', 'success');
-      const firstCouponNo = resolveFirstCouponNo(response);
-      if (firstCouponNo) {
-        navigateToMiniRoute(resolveCouponDetailRoute(firstCouponNo));
+      await showWechatToast(resolveClaimSuccessMessage(response), 'success');
+      if (gift) {
+        const couponNo = resolveGiftCouponNo(response, gift);
+        if (couponNo) {
+          navigateToMiniRoute(resolveCouponDetailRoute(couponNo));
+        } else {
+          navigateToMiniRoute(MINI_PACKAGE_ROUTES.memberCoupons);
+        }
       }
     } catch (error) {
       await showWechatToast(resolveErrorMessage(error, '领取失败，请稍后再试'));
     }
+  }
+
+  async function handleGiftPress(coupon: MemberCouponCenterCoupon, gift: MemberCouponCenterActivityGift) {
+    if (gift.claimed) {
+      const couponNo = await pageRuntime.withLoading(() => resolveClaimedMemberCouponNo(coupon, gift));
+      if (couponNo) {
+        navigateToMiniRoute(resolveCouponDetailRoute(couponNo));
+      } else {
+        navigateToMiniRoute(MINI_PACKAGE_ROUTES.memberCoupons);
+      }
+      return;
+    }
+    if (!gift.claimable) {
+      await showWechatToast(gift.disabledReason || '当前优惠券暂不可领取');
+      return;
+    }
+    await showWechatToast('当前券随活动统一领取');
+  }
+
+  function resolveGiftActionText(gift: MemberCouponCenterActivityGift) {
+    if (gift.claimed) return '查看详情';
+    if (!gift.claimable) return '暂不可领';
+    return '未领取';
+  }
+
+  function resolveActivityCountText(coupon: MemberCouponCenterCoupon) {
+    return coupon.amountText === '领券' ? '' : `共 ${coupon.amountText.replace(/(\d+)\s*张/g, '$1 张')}`;
   }
 
   // 提交优惠券兑换码，兑换结果以后端写入的会员券资产为准。
@@ -203,7 +253,10 @@ const MemberCouponCenterPage = observer(function MemberCouponCenterPage() {
                         <View className="_pg-activity-card_header">
                           <View className="_pg-activity-card_main">
                             <Text className="_pg-activity-card_title">{coupon.title}</Text>
-                            <Text className="_pg-activity-card_date">{coupon.validityText}</Text>
+                            <View className="_pg-activity-card_meta">
+                              {resolveActivityCountText(coupon) ? <Text>{resolveActivityCountText(coupon)}</Text> : null}
+                              <Text>{coupon.validityText}</Text>
+                            </View>
                             {!coupon.claimed && !coupon.claimable && coupon.disabledReason ? (
                               <Text className="_pg-activity-card_reason">{coupon.disabledReason}</Text>
                             ) : null}
@@ -217,14 +270,17 @@ const MemberCouponCenterPage = observer(function MemberCouponCenterPage() {
                         </View>
                         <View className="_pg-activity-card_gifts">
                           {coupon.giftItems?.map((gift) => (
-                            <View className="_pg-gift-row" key={gift.id}>
+                            <View
+                              className={`_pg-gift-row ${gift.claimed ? '_pg-gift-row--claimed' : ''} ${!gift.claimable && !gift.claimed ? '_pg-gift-row--disabled' : ''}`}
+                              key={gift.id}
+                              onClick={() => void handleGiftPress(coupon, gift)}
+                            >
                               <View className="_pg-gift-row_main">
                                 <Text className="_pg-gift-row_title">{gift.title}</Text>
                                 <Text className="_pg-gift-row_desc">{gift.amountText}</Text>
-                                {!gift.claimed && !gift.claimable && gift.disabledReason ? (
-                                  <Text className="_pg-gift-row_reason">{gift.disabledReason}</Text>
-                                ) : null}
+                                <Text className="_pg-gift-row_reason">{gift.claimed ? '已领取' : !gift.claimable && gift.disabledReason ? gift.disabledReason : '待领取'}</Text>
                               </View>
+                              <Text className="_pg-gift-row_action">{resolveGiftActionText(gift)}</Text>
                             </View>
                           ))}
                         </View>

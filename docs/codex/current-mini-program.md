@@ -13,6 +13,7 @@
 - 2026-07-01 活动详情图收口：`pkg-ticket` 活动详情页只按接口字段取图，顺序为 `materialImage`（后台详情图语义）-> `backgroundImage` -> `detailImageUrl`；已移除 `src/assets/activity-banners` 本地分类图和分类识别兜底，避免活动页静态 JPG 进入主包。
 - 2026-07-01 首页八宫格 icon 收口：首页快捷入口只消费 `index_nav_grid` 广告位图片字段，不再按标题匹配 `src/assets/home-shortcut-icons` 本地 PNG 兜底；运营需在广告位配置对应 icon 图。
 - 2026-07-01 优惠券详情页布局收口：`pkg-member/pages/coupon-detail` 底部操作条改走 `PageShell.footer`，由 `PageLayout` 统一测量固定底部和内容占位；券面改为白底轻粉边框，品牌粉只保留在金额、状态和左侧点缀。
+- 2026-07-02 领券中心好券推荐交互收口：免费领券活动卡保留活动级“一键领取”，领取成功后停留当前页刷新，活动按钮已领取态跳“我的优惠券”；活动下方单券改为更大的券条展示，已领取单券点击进入对应券详情，未领取单券不单独发券。小程序继续使用现有 `/api/bff/activity-center/free-claim-activities/**`，不新增接口。
 
 ## 更新时间
 - 更新时间：`2026-07-01 13:12 CST`
