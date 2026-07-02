@@ -23,15 +23,12 @@
 ._pg-tabs {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
-  height: 82px;
+  gap: 12px;
+  height: 78px;
   margin-top: 20px;
-  padding: 6px;
+  padding: 0 8px;
   box-sizing: border-box;
-  border: 1px solid #f2e4ea;
-  border-radius: 999px;
   background: #ffffff;
-  box-shadow: 0 8px 18px rgba(31, 41, 55, 0.06);
 }
 
 ._pg-tab {
@@ -40,8 +37,7 @@
   align-items: center;
   justify-content: center;
   min-width: 0;
-  height: 68px;
-  border-radius: 999px;
+  height: 78px;
   color: #6b7280;
   font-size: 28px;
   font-weight: 500;
@@ -49,9 +45,19 @@
   text-align: center;
 
   &--active {
-    background: #eb6fa6;
-    color: #ffffff;
-    box-shadow: 0 8px 16px rgba(235, 111, 166, 0.28);
+    color: #111111;
+
+    &::after {
+      position: absolute;
+      bottom: 8px;
+      left: 50%;
+      width: 44px;
+      height: 6px;
+      border-radius: 999px;
+      background: #eb6fa6;
+      content: '';
+      transform: translateX(-50%);
+    }
   }
 }
 
