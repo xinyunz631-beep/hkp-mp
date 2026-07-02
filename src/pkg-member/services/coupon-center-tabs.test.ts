@@ -7,7 +7,12 @@ const tabTitles = MEMBER_COUPON_CENTER_TABS.map((tab) => tab.title);
 
 assert.deepEqual(
   tabKeys,
-  ['recommend'],
+  ['recommend', 'exchangeCode'],
+);
+
+assert.deepEqual(
+  tabTitles,
+  ['好券推荐', '兑换券码'],
 );
 
 assert.equal(

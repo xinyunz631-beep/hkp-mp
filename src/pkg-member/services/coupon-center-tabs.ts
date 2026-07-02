@@ -7,5 +7,5 @@ export interface MemberCouponCenterTab {
 
 export const MEMBER_COUPON_CENTER_TABS: MemberCouponCenterTab[] = [
   { key: 'recommend', title: '好券推荐' },
-  { key: 'exchangeCode', title: '兑换码' },
+  { key: 'exchangeCode', title: '兑换券码' },
 ];

@@ -12,7 +12,6 @@ import {
   claimMemberCoupon,
   exchangeMemberCouponCode,
   fetchMemberCouponCenterData,
-  resolveClaimedMemberCouponNo,
   type MemberCouponCenterActivityGift,
   type MemberCouponCenterCoupon,
   type MemberCouponCenterData,
@@ -111,12 +110,10 @@ const MemberCouponCenterPage = observer(function MemberCouponCenterPage() {
         navigateToMiniRoute(MINI_PACKAGE_ROUTES.memberCoupons);
         return;
       }
-      const couponNo = await pageRuntime.withLoading(() => resolveClaimedMemberCouponNo(coupon, gift));
-      if (couponNo) {
-        navigateToMiniRoute(resolveCouponDetailRoute(couponNo));
+      if (gift.couponNo) {
+        navigateToMiniRoute(resolveCouponDetailRoute(gift.couponNo));
         return;
       }
-      await showWechatToast('已领取，可在我的优惠券查看');
       navigateToMiniRoute(MINI_PACKAGE_ROUTES.memberCoupons);
       return;
     }
@@ -151,11 +148,10 @@ const MemberCouponCenterPage = observer(function MemberCouponCenterPage() {
     }
   }
 
-  async function handleGiftPress(coupon: MemberCouponCenterCoupon, gift: MemberCouponCenterActivityGift) {
+  async function handleGiftPress(gift: MemberCouponCenterActivityGift) {
     if (gift.claimed) {
-      const couponNo = await pageRuntime.withLoading(() => resolveClaimedMemberCouponNo(coupon, gift));
-      if (couponNo) {
-        navigateToMiniRoute(resolveCouponDetailRoute(couponNo));
+      if (gift.couponNo) {
+        navigateToMiniRoute(resolveCouponDetailRoute(gift.couponNo));
       } else {
         navigateToMiniRoute(MINI_PACKAGE_ROUTES.memberCoupons);
       }
@@ -178,11 +174,11 @@ const MemberCouponCenterPage = observer(function MemberCouponCenterPage() {
     return coupon.amountText === '领券' ? '' : `共 ${coupon.amountText.replace(/(\d+)\s*张/g, '$1 张')}`;
   }
 
-  // 提交优惠券兑换码，兑换结果以后端写入的会员券资产为准。
+  // 提交优惠券兑换券码，兑换结果以后端写入的会员券资产为准。
   async function handleExchangeSubmit() {
     const normalizedCode = exchangeCode.trim();
     if (!normalizedCode) {
-      await showWechatToast('请输入兑换码');
+      await showWechatToast('请输入兑换券码');
       return;
     }
 
@@ -225,12 +221,12 @@ const MemberCouponCenterPage = observer(function MemberCouponCenterPage() {
             ) : null}
             {activeTabKey === 'exchangeCode' ? (
               <View className="_pg-exchange">
-                <Text className="_pg-exchange_title">输入兑换码</Text>
+                <Text className="_pg-exchange_title">输入兑换券码</Text>
                 <View className="_pg-exchange_field">
                   <Input
                     className="_pg-exchange_input"
                     value={exchangeCode}
-                    placeholder="请输入优惠券兑换码"
+                    placeholder="请输入兑换券码"
                     maxlength={64}
                     onInput={(event) => setExchangeCode(event.detail.value)}
                   />
@@ -273,7 +269,7 @@ const MemberCouponCenterPage = observer(function MemberCouponCenterPage() {
                             <View
                               className={`_pg-gift-row ${gift.claimed ? '_pg-gift-row--claimed' : ''} ${!gift.claimable && !gift.claimed ? '_pg-gift-row--disabled' : ''}`}
                               key={gift.id}
-                              onClick={() => void handleGiftPress(coupon, gift)}
+                              onClick={() => void handleGiftPress(gift)}
                             >
                               <View className="_pg-gift-row_main">
                                 <Text className="_pg-gift-row_title">{gift.title}</Text>

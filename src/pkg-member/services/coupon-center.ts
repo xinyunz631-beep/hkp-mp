@@ -2,13 +2,9 @@ import {
   claimBffFreeClaimActivity,
   claimBffCoupon,
   exchangeBffCoupon,
-  fetchBffMemberCoupons,
   fetchBffFreeClaimActivities,
-  getBffCouponTitle,
   getBffFreeClaimActivityList,
-  getBffMemberCouponList,
   type BffClaimCouponResponse,
-  type BffCouponAssetView,
   type BffFreeClaimActivityClaimResponse,
   type BffFreeClaimActivityView,
   type BffFreeClaimGiftItemView,
@@ -270,30 +266,6 @@ function toActivityCoupon(activity: BffFreeClaimActivityView): MemberCouponCente
   };
 }
 
-function matchClaimedCoupon(coupon: BffCouponAssetView, target?: { templateNo?: string; title?: string }) {
-  if (!coupon.couponNo) return false;
-  if (target?.templateNo && [coupon.templateNo, coupon.templateId].includes(target.templateNo)) return true;
-  const title = target?.title?.trim();
-  if (!title) return false;
-  return [coupon.couponName, coupon.displayName, coupon.title, getBffCouponTitle(coupon)]
-    .map((value) => value?.trim())
-    .some((value) => Boolean(value && (value.includes(title) || title.includes(value))));
-}
-
-export async function resolveClaimedMemberCouponNo(coupon: MemberCouponCenterCoupon, gift?: MemberCouponCenterActivityGift) {
-  const directCouponNo = firstText(gift?.couponNo, coupon.couponNo);
-  if (directCouponNo) return directCouponNo;
-  if (!(gift?.claimed || coupon.claimed)) return undefined;
-
-  const response = await fetchBffMemberCoupons({ page: 1, size: 100 });
-  const memberCoupons = getBffMemberCouponList(response);
-  const target = {
-    templateNo: firstText(gift?.templateNo, coupon.templateNo),
-    title: gift?.title || coupon.title,
-  };
-  return memberCoupons.find((item) => matchClaimedCoupon(item, target))?.couponNo;
-}
-
 // 获取领券中心页面数据：好券推荐按活动卡读取，K 币兑换入口由独立兑换专区承接。
 export async function fetchMemberCouponCenterData() {
   const activityResponse = await fetchBffFreeClaimActivities({ placement: 'couponCenter', displayTab: 'recommend', page: 1, pageSize: 50 });
@@ -452,11 +424,11 @@ export async function claimMemberCoupon(
   return claimBffCoupon({ templateNo: coupon.templateNo });
 }
 
-// 提交真实优惠券兑换码，兑换成功后由调用方刷新我的券资产。
+// 提交真实优惠券兑换券码，兑换成功后由调用方刷新我的券资产。
 export async function exchangeMemberCouponCode(exchangeCode: string) {
   const normalizedCode = exchangeCode.trim();
   if (!normalizedCode) {
-    throw new Error('请输入兑换码');
+    throw new Error('请输入兑换券码');
   }
 
   return exchangeBffCoupon(normalizedCode);
