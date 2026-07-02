@@ -18,6 +18,7 @@ const expectedCouponNo = process.env.COUPON_PROBE_EXPECT_COUPON_NO || undefined;
 const orderNo = process.env.COUPON_PROBE_ORDER_NO || undefined;
 const confirmPayloadFile = process.env.COUPON_PROBE_CONFIRM_PAYLOAD_FILE || undefined;
 const claimTemplateNo = process.env.COUPON_PROBE_CLAIM_TEMPLATE_NO || undefined;
+const couponExchangeCode = process.env.COUPON_PROBE_EXCHANGE_CODE || undefined;
 const exchangeItemNo = process.env.COUPON_PROBE_KCOIN_ITEM_NO || undefined;
 const exchangeQuantity = Number(process.env.COUPON_PROBE_KCOIN_QUANTITY || 1);
 const refundOrderNo = process.env.COUPON_PROBE_REFUND_ORDER_NO || undefined;
@@ -29,6 +30,7 @@ const refundAmountCent = process.env.COUPON_PROBE_REFUND_AMOUNT_CENT
 const refundType = process.env.COUPON_PROBE_REFUND_TYPE || undefined;
 const refundReason = process.env.COUPON_PROBE_REFUND_REASON || 'probe-refund-return';
 const shouldClaim = process.env.COUPON_PROBE_CLAIM === '1';
+const shouldExchangeCouponCode = process.env.COUPON_PROBE_COUPON_CODE_EXCHANGE === '1';
 const shouldExchange = process.env.COUPON_PROBE_KCOIN_EXCHANGE === '1';
 const shouldConfirmOrder = process.env.COUPON_PROBE_CONFIRM === '1';
 const shouldRefundReturn = process.env.COUPON_PROBE_REFUND_RETURN === '1';
@@ -103,6 +105,13 @@ function appendQuery(path, params) {
     .join('&');
 
   return query ? `${path}?${query}` : path;
+}
+
+function maskExchangeCode(value) {
+  if (!value) return undefined;
+  const text = String(value);
+  if (text.length <= 8) return text;
+  return `${text.slice(0, 4)}...${text.slice(-4)}`;
 }
 
 function sendJson(method, path, bodyText, headers = {}) {
@@ -414,6 +423,7 @@ function buildClosureSummary(steps, latestState, targetCouponNos, orderState, cu
     || findStep('availableCouponsAfterRefundReturn', 'availableCoupons');
   const orderStep = findStep('orderDetailCouponsAfterRefundReturn', 'orderDetailCoupons');
   const confirmStep = findStep('orderConfirm');
+  const couponCodeExchangeStep = findStep('exchangeCouponCode');
   const refundReturnStep = findStep('refundReturnCoupons');
   const sessionValid = !steps.some(isAuthExpiredStep);
   const sharedCouponNos = intersection(latestState.memberCouponNos, latestState.availableCouponNos);
@@ -451,8 +461,14 @@ function buildClosureSummary(steps, latestState, targetCouponNos, orderState, cu
   if (sessionValid && !stepSucceeded(availableStep)) {
     blockers.push('下单可用券接口未成功：需检查 GET /api/bff/promotion/coupons/available');
   }
-  if (stepSucceeded(memberStep) && stepSucceeded(availableStep) && normalizedTargets.length === 0) {
-    blockers.push('未提供目标 couponNo，也未显式执行领券或 K 币兑换；只能得到候选交集，不能证明后台发券或兑换券闭环');
+  if (couponCodeExchangeStep && sessionValid && !stepSucceeded(couponCodeExchangeStep)) {
+    blockers.push('券码兑换接口未成功：需检查 POST /api/bff/promotion/coupons/exchange、后台券码同步状态或券码是否已兑换');
+  }
+  if (couponCodeExchangeStep && stepSucceeded(couponCodeExchangeStep) && normalizedTargets.length === 0) {
+    blockers.push('券码兑换接口已成功但响应未返回 couponNo：需设置 COUPON_PROBE_EXPECT_COUPON_NO 或让兑换响应回带发放券号后再做同券号闭环判断');
+  }
+  if (!couponCodeExchangeStep && stepSucceeded(memberStep) && stepSucceeded(availableStep) && normalizedTargets.length === 0) {
+    blockers.push('未提供目标 couponNo，也未显式执行领券、券码兑换或 K 币兑换；只能得到候选交集，不能证明后台发券或兑换券闭环');
   }
   if (normalizedTargets.length > 0 && !targetCouponsAligned) {
     blockers.push('目标 couponNo 未同时出现在我的券和下单可用券，CRM/promotion 同源资产仍未闭环');
@@ -487,6 +503,7 @@ function buildClosureSummary(steps, latestState, targetCouponNos, orderState, cu
       sessionValid
       && stepSucceeded(memberStep)
       && stepSucceeded(availableStep)
+      && (couponCodeExchangeStep ? stepSucceeded(couponCodeExchangeStep) : true)
       && targetCouponsAligned
       && (confirmState ? stepSucceeded(confirmStep) && targetCouponsConfirmAligned : true)
       && (currentOrderNo ? stepSucceeded(orderStep) && targetCouponsOrderAligned : true)
@@ -504,6 +521,7 @@ function buildClosureSummary(steps, latestState, targetCouponNos, orderState, cu
       memberCouponsReady: stepSucceeded(memberStep),
       availableCouponsReady: stepSucceeded(availableStep),
       hasReadOnlySharedCoupon: sharedCouponNos.length > 0,
+      couponCodeExchangeReady: couponCodeExchangeStep ? stepSucceeded(couponCodeExchangeStep) : undefined,
       targetCouponsAligned,
       confirmCouponsReady: confirmState ? stepSucceeded(confirmStep) : undefined,
       targetCouponsConfirmAligned,
@@ -566,6 +584,25 @@ async function main() {
     }));
   }
 
+  if (shouldExchangeCouponCode) {
+    if (!couponExchangeCode) {
+      throw new Error('设置 COUPON_PROBE_COUPON_CODE_EXCHANGE=1 时必须同时设置 COUPON_PROBE_EXCHANGE_CODE');
+    }
+    const couponCodeExchangeResponse = await authedRequest(
+      session,
+      'POST',
+      '/api/bff/promotion/coupons/exchange',
+      { exchangeCode: couponExchangeCode },
+      true,
+    );
+    const couponCodeExchangeCouponNos = explicitCouponNosFrom(couponCodeExchangeResponse.payload);
+    targetCouponNos.push(...couponCodeExchangeCouponNos);
+    steps.push(summarizeStep('exchangeCouponCode', couponCodeExchangeResponse, {
+      exchangeCode: maskExchangeCode(couponExchangeCode),
+      couponNos: couponCodeExchangeCouponNos,
+    }));
+  }
+
   if (shouldExchange) {
     if (!exchangeItemNo) {
       throw new Error('设置 COUPON_PROBE_KCOIN_EXCHANGE=1 时必须同时设置 COUPON_PROBE_KCOIN_ITEM_NO');
@@ -593,7 +630,7 @@ async function main() {
     }));
   }
 
-  if (shouldClaim || shouldExchange) {
+  if (shouldClaim || shouldExchangeCouponCode || shouldExchange) {
     latestState = await fetchCouponState(session, 'AfterWrite');
     steps.push(latestState.memberStep, latestState.availableStep);
   }
@@ -677,6 +714,8 @@ async function main() {
     confirmEnabled: shouldConfirmOrder,
     confirmPayloadFile,
     claimEnabled: shouldClaim,
+    couponCodeExchangeEnabled: shouldExchangeCouponCode,
+    couponExchangeCode: maskExchangeCode(couponExchangeCode),
     exchangeEnabled: shouldExchange,
     refundReturnEnabled: shouldRefundReturn,
     refundOrderNo,

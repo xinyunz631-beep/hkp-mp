@@ -15,6 +15,7 @@
 - 2026-07-01 优惠券详情页布局收口：`pkg-member/pages/coupon-detail` 底部操作条改走 `PageShell.footer`，由 `PageLayout` 统一测量固定底部和内容占位；券面改为白底轻粉边框，品牌粉只保留在金额、状态和左侧点缀。
 - 2026-07-02 领券中心好券推荐交互收口：免费领券活动卡保留活动级“一键领取”，领取成功后停留当前页刷新，活动按钮已领取态跳“我的优惠券”；活动下方单券改为更大的券条展示，已领取单券有券号时直接进入对应券详情，不再跳转前请求会员券列表，未领取单券不单独发券。小程序继续使用现有 `/api/bff/activity-center/free-claim-activities/**`，不新增接口。
 - 2026-07-02 会员码页按品牌稿调整视觉：导航标题改为 `Hello Kitty Park`，主视图背景固定使用 `https://image.hellokittypark.cn/10000_kitty_theme_2ab24dff-c907-45bb-a3e3-7902b1227530.png` 并纵向平铺，Logo 固定使用 `https://ty.hellokittypark.cn/admin/static/03_ALL_IP__PNG_GROUP_LOGO__MX_TP_GR_3.62d4b9d1.png`，页面仅调整 Logo 叠放、白卡比例和二维码留白，会员码接口与 30 秒刷新逻辑不变。
+- 2026-07-02 券码兑换主线复核：后端 `origin/uat@f4d99b3 fix(admin-config): 同步券码到小程序兑换表` 已把管理后台生成/导入的 `couponNo` 同步为小程序 `/api/bff/promotion/coupons/exchange` 的 `exchangeCode`，小程序页面无需新增接口；本轮只把会员中心入口文案统一为“兑换券码”，并给 `scripts/probe-coupon-closure.mjs` 增加 `COUPON_PROBE_COUPON_CODE_EXCHANGE=1 + COUPON_PROBE_EXCHANGE_CODE=<后台导出 couponNo>` 的直接券码兑换探针，便于拿 UAT 登录态验证“后台生成/导出 -> 小程序兑换 -> 我的券/可用券同券号出现”。
 
 ## 更新时间
 - 更新时间：`2026-07-02 10:12 CST`

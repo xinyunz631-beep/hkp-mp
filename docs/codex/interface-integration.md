@@ -18,6 +18,7 @@
 - 2026-07-01 客服入口不新增 BFF 契约：小程序通用客服收口到现有网易七鱼插件封装，未配置 `appKey` 时提示先完成七鱼配置；酒店、门票和明确业务电话继续使用微信拨号，用户取消拨号不再弹 toast。
 - 2026-07-01 活动详情图不新增接口：小程序活动详情页使用现有广告详情字段，取图顺序为 `materialImage`（后台详情图语义）-> `backgroundImage` -> `detailImageUrl`；前端不再按分类兜底本地 JPG，后台如需详情图优先配置到 `materialImage`。
 - 2026-07-01 首页八宫格不新增接口：快捷入口继续读取 `index_nav_grid`，icon 只从广告位图片字段解析，不再有端内本地 PNG 兜底；后台广告配置必须维护入口图片。
+- 2026-07-02 券码兑换不新增 BFF 路径：后端 `origin/uat@f4d99b3` 已把管理后台券码 `couponNo` 同步为 `/api/bff/promotion/coupons/exchange` 可兑换的 `exchangeCode`。小程序继续提交 `{ exchangeCode }`，本轮补 `probe:coupon-closure` 的 `COUPON_PROBE_COUPON_CODE_EXCHANGE=1` 写入探针，实际闭环以后台导出码兑换后返回的 `couponNo` 同时出现在我的券和下单可用券为准。
 
 最新商城阶段 3/4 口径：2026-06-23 按当前真实 BFF 链路修正执行顺序。阶段 2 Admin API 文档已提交，后端实现可后置；小程序商城现有首页、分类、列表、推荐、详情、购物车、确认单和订单链路先按已跑通 BFF 做阶段 3 前向兼容与复验。本轮小程序新增 `sourceRefType/sourceRefId` 商品列表透传，推荐位下钻优先使用 `sourceRefType/sourceRefId/sourceRefLabel`，商品详情和列表快捷加购承接 `canBuy/unavailableReasons/skuAvailability`，后端明确不可售时禁用购买入口并展示真实原因。阶段 4 后端 BFF 仍需继续补 `deliveryTemplateSummary`、赠品命中、item 级库存/配送/券阻断、真实物流/售后/评价样本，以及后台新发布商品到小程序可买的端到端验收；缺字段不在小程序端造默认 SKU、默认配送、默认评分或默认客服。
 

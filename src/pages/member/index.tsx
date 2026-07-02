@@ -103,9 +103,9 @@ const serviceActions: ProfileServiceItem[] = [
   },
   {
     key: 'exchangeCode',
-    title: '兑换码',
+    title: '兑换券码',
     route: `${MINI_PACKAGE_ROUTES.memberCouponCenter}?tab=exchangeCode`,
-    reason: '登录后可使用兑换码',
+    reason: '登录后可使用兑换券码',
   },
   {
     key: 'address',
