@@ -160,6 +160,19 @@ const MemberCouponCenterPage = observer(function MemberCouponCenterPage() {
       <View className="_pg">
         <PageShell title="领券中心" className="_pg-shell">
           <View className="_pg-content">
+            {pageData.tabs.length > 1 ? (
+              <View className="_pg-tabs">
+                {pageData.tabs.map((tab) => (
+                  <View
+                    className={`_pg-tab ${activeTabKey === tab.key ? '_pg-tab--active' : ''}`}
+                    key={tab.key}
+                    onClick={() => setActiveTabKey(tab.key)}
+                  >
+                    <Text>{tab.title}</Text>
+                  </View>
+                ))}
+              </View>
+            ) : null}
             {activeTabKey === 'exchangeCode' ? (
               <View className="_pg-exchange">
                 <Text className="_pg-exchange_title">输入兑换码</Text>
@@ -168,11 +181,14 @@ const MemberCouponCenterPage = observer(function MemberCouponCenterPage() {
                     className="_pg-exchange_input"
                     value={exchangeCode}
                     placeholder="请输入优惠券兑换码"
-                    maxlength={32}
+                    maxlength={64}
                     onInput={(event) => setExchangeCode(event.detail.value)}
                   />
                 </View>
-                <View className="_pg-exchange_button" onClick={() => void handleExchangeSubmit()}>
+                <View
+                  className={`_pg-exchange_button ${exchangeCode.trim() ? '' : '_pg-exchange_button--disabled'}`}
+                  onClick={() => void handleExchangeSubmit()}
+                >
                   <Text>立即兑换</Text>
                 </View>
               </View>
