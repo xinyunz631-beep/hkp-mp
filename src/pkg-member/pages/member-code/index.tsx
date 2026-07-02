@@ -10,13 +10,14 @@ import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import { navigateToMiniRoute } from '@/core/utils/navigation';
 import { fetchMemberCode } from '@/pkg-member/services/member-code';
-import { fetchMemberCodeThemeConfig, type MemberCodeThemeConfig } from '@/pkg-member/services/member-code-theme';
 import './index.scss';
 
 const MEMBER_CODE_CANVAS_ID = 'member-code-canvas';
 const MEMBER_CODE_REFRESH_INTERVAL = 30_000;
 const MEMBER_CODE_CANVAS_SIZE_PX = 300;
 const MEMBER_CODE_DISPLAY_SIZE_RPX = 300;
+const MEMBER_CODE_BACKGROUND_IMAGE_URL = 'https://image.hellokittypark.cn/10000_kitty_theme_2ab24dff-c907-45bb-a3e3-7902b1227530.png';
+const MEMBER_CODE_LOGO_IMAGE_URL = 'https://ty.hellokittypark.cn/admin/static/03_ALL_IP__PNG_GROUP_LOGO__MX_TP_GR_3.62d4b9d1.png';
 const WEAPP_DESIGN_WIDTH = 750;
 
 function resolveCanvasSizeRpx() {
@@ -51,21 +52,19 @@ const MemberCodePage = observer(function MemberCodePage() {
   const [canvasSizeRpx] = useState(resolveCanvasSizeRpx);
   const [memberCode, setMemberCode] = useState('');
   const [memberCodeImageSrc, setMemberCodeImageSrc] = useState('');
-  const [memberCodeTheme, setMemberCodeTheme] = useState<MemberCodeThemeConfig>({});
   const [memberCodeRefreshId, setMemberCodeRefreshId] = useState(0);
   const [pageVisible, setPageVisible] = useState(false);
   const hiddenCanvasStyle: CSSProperties = {
     width: `${canvasSizeRpx}rpx`,
     height: `${canvasSizeRpx}rpx`,
   };
+  const backgroundStyle: CSSProperties = {
+    backgroundImage: `url(${MEMBER_CODE_BACKGROUND_IMAGE_URL})`,
+  };
 
   // 拉取会员码内容，页面初始化和定时刷新都复用这一条链路。
   const refreshMemberCode = useCallback(async () => {
-    const [nextMemberCode, nextTheme] = await Promise.all([
-      fetchMemberCode(),
-      fetchMemberCodeThemeConfig().catch(() => undefined),
-    ]);
-    if (nextTheme) setMemberCodeTheme(nextTheme);
+    const nextMemberCode = await fetchMemberCode();
     setMemberCode(nextMemberCode);
     setMemberCodeRefreshId((id) => id + 1);
   }, []);
@@ -129,19 +128,12 @@ const MemberCodePage = observer(function MemberCodePage() {
   });
 
   return pageRuntime.renderPage(() => (
-    <View className="_pg">
-      <PageShell title="会员码" reserveTabBarSpace={false} className="_pg-shell">
-        <AppImage
-          className="_pg-bg"
-          src={memberCodeTheme.backgroundImageUrl || ''}
-          mode="aspectFill"
-          placeholderColor="#f5f7fa"
-          showErrorIcon={false}
-        />
+    <View className="_pg" style={backgroundStyle}>
+      <PageShell title="Hello Kitty Park" reserveTabBarSpace={false} className="_pg-shell">
         <View className="_pg-scene">
           <AppImage
             className="_pg-logo"
-            src={memberCodeTheme.logoImageUrl || ''}
+            src={MEMBER_CODE_LOGO_IMAGE_URL}
             mode="aspectFit"
             placeholderColor="#d9e0e8"
             showErrorIcon={false}

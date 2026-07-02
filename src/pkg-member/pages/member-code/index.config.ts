@@ -1,4 +1,4 @@
 export default definePageConfig({
-  navigationBarTitleText: '会员码',
+  navigationBarTitleText: 'Hello Kitty Park',
   navigationStyle: 'custom',
 });
