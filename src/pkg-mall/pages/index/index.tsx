@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import Taro from '@tarojs/taro';
+import Taro, { useShareAppMessage } from '@tarojs/taro';
 import { Swiper, SwiperItem, Text, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
 import { AppIcon } from '@/core/components/AppIcon';
@@ -47,6 +47,7 @@ const mallFooterItems: MallFooterItem[] = [
   { key: 'cart', title: '购物车', icon: 'cart', path: MINI_PACKAGE_ROUTES.mallCart },
   { key: 'order', title: '我的订单', icon: 'order', path: MINI_PACKAGE_ROUTES.orderHome },
 ];
+const MALL_SHARE_TITLE = '畅“购”HelloKittyPark';
 
 // 商城首页承接搜索、轮播、分类和推荐商品，并串起核心购买入口。
 const MallIndexPage = observer(function MallIndexPage() {
@@ -63,6 +64,10 @@ const MallIndexPage = observer(function MallIndexPage() {
       setHomeData(nextData);
     },
   });
+
+  useShareAppMessage(() => ({
+    title: MALL_SHARE_TITLE,
+  }));
 
   const banners = homeData?.banners ?? [];
   const secondaryBanners = homeData?.secondaryBanners ?? [];
@@ -213,7 +218,7 @@ const MallIndexPage = observer(function MallIndexPage() {
                       name={item.icon}
                       className="_pg-footer_icon"
                       size={16}
-                      color={active ? '#db2777' : '#222222'}
+                      color={active ? '#ec6d9c' : '#222222'}
                     />
                     {item.key === 'cart' ? <MallCartBadge count={cartCount} /> : null}
                   </View>

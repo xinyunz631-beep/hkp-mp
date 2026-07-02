@@ -133,7 +133,7 @@ const AddressPage = observer(function AddressPage() {
                       <Text className="_pg-card_mobile">{address.mobile}</Text>
                       {address.isDefault ? <Text className="_pg-card_tag">默认</Text> : null}
                       {address.tag ? <Text className="_pg-card_tag _pg-card_tag--soft">{address.tag}</Text> : null}
-                      {selected ? <AppIcon name="check" className="_pg-card_selected-icon" size={16} color="#db2777" /> : null}
+                      {selected ? <AppIcon name="check" className="_pg-card_selected-icon" size={16} color="#ec6d9c" /> : null}
                     </View>
                     {address.locationName ? <Text className="_pg-card_location">{address.locationName}</Text> : null}
                     <Text className="_pg-card_detail">{formatOrderAddress(address)}</Text>

@@ -2,7 +2,7 @@ export const HKP_PARK_HOTLINE = '4009778899';
 export const HKP_PARK_OPEN_TIME = '10:00~17:00';
 export const HKP_HOTEL_SERVICE_PHONE = '4009778899';
 export const HKP_TICKET_SERVICE_PHONE = '400-668-2026';
-export const HKP_PARK_ADDRESS = '乐园东门夜场入口';
+export const HKP_PARK_ADDRESS = '浙江安吉县昌硕街道天使大道1号';
 
 export const HKP_PARK_LOCATION = {
   latitude: 30.621754,

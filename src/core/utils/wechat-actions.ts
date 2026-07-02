@@ -1,7 +1,7 @@
 import Taro from '@tarojs/taro';
 import { resolveErrorMessage } from '@/core/utils/error-message';
 
-const APP_MODAL_CONFIRM_COLOR = '#db2777';
+const APP_MODAL_CONFIRM_COLOR = '#ec6d9c';
 const APP_MODAL_CANCEL_COLOR = '#666666';
 
 interface AppModalOptions {

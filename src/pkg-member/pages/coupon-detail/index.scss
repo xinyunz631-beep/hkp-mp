@@ -22,7 +22,7 @@
 ._pg-card {
   padding: 28px 28px 32px;
   border: 1px solid #f7d8e6;
-  border-left: 8px solid #db2777;
+  border-left: 8px solid #ec6d9c;
   border-radius: 24px;
   background: linear-gradient(135deg, #ffffff 0%, #fff7fb 100%);
   box-shadow: 0 12px 28px rgba(219, 39, 119, 0.08);
@@ -84,7 +84,7 @@
 
   &_amount {
     display: block;
-    color: #db2777;
+    color: #ec6d9c;
     font-size: 76px;
     font-weight: 500;
     line-height: 1;
@@ -191,7 +191,7 @@
 
   &_action-text {
     display: block;
-    color: #db2777;
+    color: #ec6d9c;
     font-size: 24px;
     line-height: 1;
   }
@@ -239,7 +239,7 @@
     }
 
     &--ghost {
-      color: #db2777;
+      color: #ec6d9c;
       border: 2px solid #f7b7d2;
       background: #fff5fa;
     }

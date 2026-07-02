@@ -1,9 +1,11 @@
-import { CSSProperties, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Text, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
 import { BaseEmpty } from '@/core/components/BaseEmpty';
 import { AppImage } from '@/core/components/AppImage';
 import { AppPopup } from '@/core/components/AppPopup';
+import { MemberAvatar } from '@/core/components/MemberAvatar';
+import { MemberLevelBadge } from '@/core/components/MemberLevelBadge';
 import { PageShare, PageShell } from '@/core/components/PageShell';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import { resolveMemberLevel, type MemberLevelDisplay } from '@/core/utils/member-profile';
@@ -20,18 +22,6 @@ function resolveCurrentLevel(data: MemberGrowthData, memberLevel: MemberLevelDis
     || level.levelNo === memberLevel.levelNo
     || level.name === memberLevel.levelName
   )) ?? data.levels[0];
-}
-
-function renderLevelBadge(level: MemberGrowthLevel) {
-  return (
-    <View
-      className="_pg-level-badge"
-      style={{ '--_pg-level-color': level.themeColor } as CSSProperties}
-    >
-      <Text className="_pg-level-badge_no">{level.levelNo}</Text>
-      <Text className="_pg-level-badge_name">{level.name}</Text>
-    </View>
-  );
 }
 
 function formatGrowthValue(value: number) {
@@ -160,22 +150,22 @@ const MemberGrowthDetailPage = observer(function MemberGrowthDetailPage() {
                 <Text>成长值规则</Text>
               </View>
               <View className="_pg-profile">
-                <AppImage
+                <MemberAvatar
                   className="_pg-profile_avatar"
                   src={pageData.avatarImageSrc}
-                  width={104}
-                  height={104}
-                  placeholderColor="#ffffff"
-                  showErrorIcon={false}
                 />
                 <View className="_pg-profile_main">
                   <Text className="_pg-profile_name">{displayName}</Text>
                   <View className="_pg-profile_actions">
                     <View className="_pg-profile_level">
-                      {renderLevelBadge(currentLevel)}
+                      <MemberLevelBadge
+                        levelNo={currentLevel.levelNo}
+                        levelName={currentLevel.name}
+                        themeColor={currentLevel.themeColor}
+                      />
                     </View>
                     <View className="_pg-profile_growth _pg-profile_growth--active">
-                      <Text>成长值</Text>
+                      <Text>{`成长值(${memberLevel.growthValue})`}</Text>
                     </View>
                   </View>
                 </View>

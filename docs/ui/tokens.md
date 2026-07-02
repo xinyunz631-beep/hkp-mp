@@ -11,7 +11,7 @@
 
 ## 当前代码 token
 
-- 品牌主色：`$color-primary: #db2777`
+- 品牌主色：`$color-primary: #ec6d9c`
 - 品牌浅色：`$color-primary-light: #fce7f3`
 - 品牌按压：`$color-primary-pressed: #be185d`
 - 页面背景：`$color-page-bg: #f6f8fb`

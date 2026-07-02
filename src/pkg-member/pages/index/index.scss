@@ -48,11 +48,8 @@
   }
 
   &_avatar {
-    flex: 0 0 88px;
-    width: 88px;
-    height: 88px;
+    flex: none;
     border: 4px solid rgba(255, 255, 255, 0.88);
-    border-radius: 999px;
   }
 
   &_profile-main {
@@ -80,6 +77,10 @@
     margin-top: 8px;
     color: rgba(22, 32, 29, 0.72);
     font-size: 22px;
+  }
+
+  &_level-badge {
+    margin-top: 8px;
   }
 
   &_status {

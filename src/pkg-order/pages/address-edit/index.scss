@@ -200,9 +200,9 @@
     line-height: 1;
 
     &--active {
-      border-color: #db2777;
+      border-color: #ec6d9c;
       background: rgba(219, 39, 119, 0.08);
-      color: #db2777;
+      color: #ec6d9c;
       font-weight: 500;
     }
   }
@@ -219,12 +219,12 @@
     flex: none;
     width: 36px;
     height: 36px;
-    border: 2px solid #db2777;
+    border: 2px solid #ec6d9c;
     border-radius: 50%;
     box-sizing: border-box;
 
     &--active {
-      background: #db2777;
+      background: #ec6d9c;
     }
   }
 
@@ -265,7 +265,7 @@
     justify-content: center;
     height: 84px;
     border-radius: 999px;
-    background: #db2777;
+    background: #ec6d9c;
     color: #ffffff;
     font-size: 30px;
     font-weight: 500;

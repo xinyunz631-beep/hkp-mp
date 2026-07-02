@@ -3,8 +3,9 @@ import { useDidShow } from '@tarojs/taro';
 import { Text, View, type ITouchEvent } from '@tarojs/components';
 import { observer } from 'mobx-react';
 import { AppIcon, type AppIconName } from '@/core/components/AppIcon';
-import { AppImage } from '@/core/components/AppImage';
 import { AuthAction } from '@/core/components/AuthAction';
+import { MemberAvatar } from '@/core/components/MemberAvatar';
+import { MemberLevelBadge } from '@/core/components/MemberLevelBadge';
 import { PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { fetchBffMemberCoupons, type BffMemberCouponsResponse } from '@/core/services/bff-coupon-api';
@@ -15,7 +16,7 @@ import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import { rootStore } from '@/core/store';
 import { resolveMemberAvatar, resolveMemberLevel } from '@/core/utils/member-profile';
 import { navigateToMiniRoute } from '@/core/utils/navigation';
-import { showAppModal, showWechatConfirm } from '@/core/utils/wechat-actions';
+import { callWechatPhone, showAppModal } from '@/core/utils/wechat-actions';
 import './index.scss';
 
 interface ProfileMetricItem {
@@ -49,6 +50,9 @@ interface MemberMetricState {
   couponCount?: number;
   orderBadgeCounts?: OrderStatusBadgeCounts;
 }
+
+const PROFILE_INVOICE_PHONE = '4009778899';
+const PROFILE_INVOICE_PHONE_TEXT = '4009-778899';
 
 const orderActions: ProfileOrderItem[] = [
   {
@@ -170,15 +174,15 @@ function handleLegacyBind() {
 }
 
 async function handleInvoice() {
-  const confirmed = await showWechatConfirm({
-    title: '开发票',
-    content: '发票申请需从已完成订单发起，是否前往订单中心查看可申请订单？',
-    confirmText: '查看订单',
-    cancelText: '知道了',
+  const result = await showAppModal({
+    content: `乐园开发票请致电:${PROFILE_INVOICE_PHONE_TEXT}`,
+    confirmText: '确定',
+    cancelText: '取消',
+    confirmColor: '#07c160',
   });
 
-  if (confirmed) {
-    openMiniRoute(MINI_PACKAGE_ROUTES.orderHome);
+  if (result.confirm) {
+    await callWechatPhone(PROFILE_INVOICE_PHONE);
   }
 }
 
@@ -375,16 +379,14 @@ const MemberPage = observer(function MemberPage() {
               reason="登录后可查看个人信息"
               onAuthed={() => openMiniRoute(MINI_PACKAGE_ROUTES.memberProfile)}
             >
-              <AppImage
+              <MemberAvatar
                 className="_pg-hero_avatar"
                 src={memberAvatar}
-                width={96}
-                height={96}
               />
               <View className="_pg-hero_info">
                 <Text className="_pg-hero_name">{displayName}</Text>
                 <View className="_pg-hero_level" onClick={handleLevelTap}>
-                  <Text className="_pg-hero_level-name">{memberLevel.levelName}</Text>
+                  <MemberLevelBadge levelNo={memberLevel.levelNo} levelName={memberLevel.levelName} />
                 </View>
               </View>
             </AuthAction>

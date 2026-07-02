@@ -60,7 +60,7 @@ const TicketIndexPage = observer(function TicketIndexPage() {
                   <Text className="_pg-action_desc">{item.desc}</Text>
                 </View>
                 <View className="_pg-action_icon">
-                  <AppIcon name="arrowRight" size={16} color="#db2777" />
+                  <AppIcon name="arrowRight" size={16} color="#ec6d9c" />
                 </View>
               </View>
             ))}

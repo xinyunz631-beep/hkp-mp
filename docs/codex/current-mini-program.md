@@ -17,7 +17,7 @@
 - 2026-07-02 免费领券已领子券券号回传适配：后端 `origin/uat@47a04f4 fix(promotion): 回传免费领券子券券号` 已在活动列表/详情 `giftItems[]` 已领子项返回 `couponNo/couponNos[]/couponInstances[]`；小程序现有 `resolveGiftCouponNo()` 已兼容这些字段，已领取子券点击直接跳 `/pkg-member/pages/coupon-detail/index?id=<couponNo>`，无需新增跳转前请求或券详情接口。
 - 2026-07-02 会员码页按品牌稿调整视觉：导航标题改为 `Hello Kitty Park`，主视图背景固定使用 `https://image.hellokittypark.cn/10000_kitty_theme_2ab24dff-c907-45bb-a3e3-7902b1227530.png` 并纵向平铺，Logo 固定使用 `https://ty.hellokittypark.cn/admin/static/03_ALL_IP__PNG_GROUP_LOGO__MX_TP_GR_3.62d4b9d1.png`，页面仅调整 Logo 叠放、白卡比例和二维码留白，会员码接口与 30 秒刷新逻辑不变。
 - 2026-07-02 券码兑换主线复核：后端 `origin/uat@f4d99b3 fix(admin-config): 同步券码到小程序兑换表` 已把管理后台生成/导入的 `couponNo` 同步为小程序 `/api/bff/promotion/coupons/exchange` 的 `exchangeCode`，小程序页面无需新增接口；本轮只把会员中心入口文案统一为“兑换券码”，并给 `scripts/probe-coupon-closure.mjs` 增加 `COUPON_PROBE_COUPON_CODE_EXCHANGE=1 + COUPON_PROBE_EXCHANGE_CODE=<后台导出 couponNo>` 的直接券码兑换探针，便于拿 UAT 登录态验证“后台生成/导出 -> 小程序兑换 -> 我的券/可用券同券号出现”。
-- 2026-07-02 会员权益页视觉微调：等级权益 swiper item 保持透明，权益卡片增加顶部和左右留白，避免卡片贴边或贴顶；页面接口、等级切换和成长值进度逻辑不变。
+- 2026-07-02 会员权益页视觉微调：会员等级胶囊抽到 `MemberLevelBadge` 并复用于首页、我的页、会员中心、会员权益和成长值明细；会员头像抽到 `MemberAvatar` 并统一头部/资料头像默认 80px；权益页和成长值明细页头像区在成长值入口用 `成长值(当前值)` 展示真实成长值，成长值明细页浅粉底色撑满页面，权益 swiper 降低高度且保持 item 100% 宽，左右和更大的底部阴影留白放到每个 swiper item 内，权益明细 `highlightText` 红色高亮展示，等级进度轴从 layout footer 移到 swiper 下方并增加两侧留白；个人信息页昵称输入已对 `confirm/blur` 双触发加防重；我的页开发票改为微信系统弹窗确认后拨打 `4009-778899`；页面接口、等级切换和成长值进度逻辑不变。
 
 ## 更新时间
 - 更新时间：`2026-07-02 20:04 CST`
@@ -42,7 +42,7 @@
 - 恢复时先看：根目录 `codex/current/current-task-list.md`、`codex/current/current-mini-program.md`、本文件，以及 `mini-program/AGENTS.md`、`mini-program/CONSTRAINTS.md`。
 ## 技术与端约束
 - 基础依赖：Taro `4.2.0`、React `18.3.1`、MobX `6.15.0`、mobx-react `9.2.1`。
-- 全局 UI 主题：Taro `mini.sassLoaderOption.additionalData` + `src/styles/tokens.scss`，主题色粉色 `#db2777` 只用于品牌按钮、选中态和重点氛围；页面、layout、骨架屏和基础状态组件默认使用中性浅灰/白色底；NutUI 样式通过 `babel-plugin-import` 按需引入，并依赖 `@tarojs/plugin-html@4.2.0`；图标优先使用 `@nutui/icons-react-taro@1.0.5`。
+- 全局 UI 主题：Taro `mini.sassLoaderOption.additionalData` + `src/styles/tokens.scss`，主题色粉色 `#ec6d9c` 只用于品牌按钮、选中态和重点氛围；页面、layout、骨架屏和基础状态组件默认使用中性浅灰/白色底；NutUI 样式通过 `babel-plugin-import` 按需引入，并依赖 `@tarojs/plugin-html@4.2.0`；图标优先使用 `@nutui/icons-react-taro@1.0.5`。
 - Codex 主包体积检测命令：`yarn check:main-package:build`，输出目录 `.dist-check/main-package`，不覆盖微信开发工具使用的 `dist/`。
 - 当前只按微信小程序 `weapp` 目标实现和验收，暂不考虑 H5 和其他端。
 - 主包页面和 `tabBar` 页面固定放在 `src/pages`。

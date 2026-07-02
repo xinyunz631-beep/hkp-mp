@@ -91,7 +91,7 @@
 - 已继续补齐商城搜索页交互：新增项目组件 `AppSearchBar`，底层使用 NutUI `SearchBar`；搜索页输入、清除、键盘搜索和空关键词 toast 已形成闭环，修复原清除按钮误触发搜索的问题；页面文档和 NutUI 组件选型清单已同步。
 - 已继续清理业务页面功能性伪类状态指示：商城分类、分类商品、酒店首页和订单首页的 active 指示条已从 `::before/::after` 改为真实 `View` 节点；剩余伪类仅保留在骨架装饰、会员码背景氛围和全局 button reset。
 - 已二次修复会员码页：隐藏 canvas 的生成尺寸和展示尺寸已拆开，JS 绘制 / 导出使用微信真实像素，页面展示使用 750 设计稿 `rpx`，避免二维码只显示左上角 1/4；同时移除会员码主区域自身 `100vh / calc(100vh - header)` 硬编码高度，避免和 `PageLayout` 的 header spacer 叠加产生无意义滚动条。
-- 已按腾讯地图 POI 搜索结果修正乐园默认地图坐标：`安吉Hello Kitty乐园`、`浙江省湖州市安吉县天使大道1号`、`lng=119.740987`、`lat=30.621754`；源码中的历史偏移坐标已清空，首页导航、门票预定页地址和乐园详情地址统一引用 `src/core/constants/park-location.ts`。
+- 已按腾讯地图 POI 搜索结果修正乐园默认地图坐标：`安吉Hello Kitty乐园`、`浙江安吉县昌硕街道天使大道1号`、`lng=119.740987`、`lat=30.621754`；源码中的历史偏移坐标已清空，首页导航、门票预定页地址和乐园详情地址统一引用 `src/core/constants/park-location.ts`。
 - 已清理源码中用文本符号冒充图标的问题：首页 `♡/✦/▱` 分区图标、页面 `›` 右箭头、弹层 `×` 关闭按钮均已改为 `AppIcon` / NutUI icon；`$mpcode-page` skill、`docs/codex/page-foundation.md` 和 `yarn check:page-convention` 已新增文本图标禁止规则。
 - 已从干净工作区切入 `feature/hkp-mini-phase-9-ticket-checkout` 分支，基点为 `8c32509 feat: 完善商城搜索与分享链路`。
 - 门票确认订单进入商用闭环复核：补草稿缺失态、加购数量持久化、联系人持久化、动态金额明细、18 位身份证校验、支付后受保护路由跳订单详情。

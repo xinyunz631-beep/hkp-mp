@@ -1,16 +1,16 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button, Input, Picker, Text, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
 import { AppIcon } from '@/core/components/AppIcon';
-import { AppImage } from '@/core/components/AppImage';
 import { AppPopup } from '@/core/components/AppPopup';
+import { MemberAvatar } from '@/core/components/MemberAvatar';
 import { PageShare, PageShell } from '@/core/components/PageShell';
 import { MINI_MAIN_ROUTES, MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
 import { logout } from '@/core/services/auth';
 import { resolveErrorMessage } from '@/core/utils/error-message';
 import { navigateToMiniRoute } from '@/core/utils/navigation';
-import { chooseWechatImages, showWechatConfirm, showWechatToast } from '@/core/utils/wechat-actions';
+import { showWechatConfirm, showWechatToast } from '@/core/utils/wechat-actions';
 import {
   MEMBER_PROFILE_GENDER_FEMALE,
   MEMBER_PROFILE_GENDER_MALE,
@@ -18,7 +18,6 @@ import {
   fetchMemberProfileData,
   updateMemberProfile,
   updateMemberWechatNickname,
-  uploadMemberAvatarImage,
   type MemberProfileData,
   type MemberProfileGender,
   type MemberProfileUpdatePayload,
@@ -26,7 +25,6 @@ import {
 import './index.scss';
 
 type EditableField = 'idCardNo' | 'plateNo';
-type AvatarSourceType = 'album' | 'camera';
 
 interface ChooseAvatarEvent {
   detail?: {
@@ -109,9 +107,9 @@ const MemberProfilePage = observer(function MemberProfilePage() {
   const [profileData, setProfileData] = useState<MemberProfileData>();
   const [editingField, setEditingField] = useState<EditableField>();
   const [editingValue, setEditingValue] = useState('');
-  const [avatarSheetVisible, setAvatarSheetVisible] = useState(false);
-  const [nicknameSheetVisible, setNicknameSheetVisible] = useState(false);
-  const [nicknameValue, setNicknameValue] = useState('');
+  const [nicknameDraft, setNicknameDraft] = useState('');
+  const nicknameSubmittingRef = useRef('');
+  const nicknameCommittedRef = useRef('');
   const pageRuntime = usePageRuntime({
     initPage: async () => {
       const nextProfile = await fetchMemberProfileData();
@@ -121,6 +119,12 @@ const MemberProfilePage = observer(function MemberProfilePage() {
     loginRequired: true,
     loginReason: '登录后可查看个人信息',
   });
+
+  useEffect(() => {
+    if (!profileData) return;
+
+    setNicknameDraft(profileData.nickname === '微信用户' ? '' : profileData.nickname || '');
+  }, [profileData?.nickname]);
 
   function syncProfile(nextProfile: MemberProfileData) {
     setProfileData(nextProfile);
@@ -132,17 +136,6 @@ const MemberProfilePage = observer(function MemberProfilePage() {
     await showWechatToast(successText, 'success');
   }
 
-  async function updateAvatarFromFile(filePath: string) {
-    if (!filePath) return;
-
-    await pageRuntime.withLoading(async () => {
-      const uploadResult = await uploadMemberAvatarImage(filePath);
-      const nextProfile = await updateMemberProfile({ avatarUrl: uploadResult.fileUrl });
-      syncProfile(nextProfile);
-    });
-    await showWechatToast('头像已更新', 'success');
-  }
-
   async function updateAvatarFromWechat(avatarUrl: string) {
     if (!avatarUrl) return;
 
@@ -151,17 +144,8 @@ const MemberProfilePage = observer(function MemberProfilePage() {
     await showWechatToast('头像已更新', 'success');
   }
 
-  function handleAvatarTap() {
-    setAvatarSheetVisible(true);
-  }
-
-  function closeAvatarSheet() {
-    setAvatarSheetVisible(false);
-  }
-
   async function handleWechatAvatarChoose(event: ChooseAvatarEvent) {
     const avatarUrl = event.detail?.avatarUrl?.trim();
-    closeAvatarSheet();
 
     if (!avatarUrl) {
       await showWechatToast('未获取到微信头像');
@@ -175,42 +159,34 @@ const MemberProfilePage = observer(function MemberProfilePage() {
     }
   }
 
-  async function handleLocalAvatarChoose(sourceType: AvatarSourceType) {
-    closeAvatarSheet();
-    const [filePath] = await chooseWechatImages({ count: 1, sourceType: [sourceType] });
-    if (!filePath) return;
+  async function handleNicknameCommit(value: string) {
+    const nextNickname = value.trim();
+    const currentNickname = profileData?.nickname === '微信用户' ? '' : profileData?.nickname?.trim() || '';
 
-    try {
-      await updateAvatarFromFile(filePath);
-    } catch (error) {
-      await showWechatToast(resolveErrorMessage(error, '头像更新失败'));
-    }
-  }
-
-  function handleNicknameTap() {
-    const currentNickname = profileData?.nickname === '微信用户' ? '' : profileData?.nickname || '';
-    setNicknameValue(currentNickname);
-    setNicknameSheetVisible(true);
-  }
-
-  function closeNicknameSheet() {
-    setNicknameSheetVisible(false);
-  }
-
-  async function handleNicknameSave() {
-    const nextNickname = nicknameValue.trim();
-    if (!nextNickname) {
-      await showWechatToast('请选择微信昵称');
+    if (!nextNickname || nextNickname === currentNickname) {
+      setNicknameDraft(currentNickname);
       return;
     }
+    if (nextNickname === nicknameCommittedRef.current) {
+      setNicknameDraft(nextNickname);
+      return;
+    }
+    if (nicknameSubmittingRef.current === nextNickname) return;
+
+    nicknameSubmittingRef.current = nextNickname;
 
     try {
       const nextProfile = await pageRuntime.withLoading(() => updateMemberWechatNickname(nextNickname));
+      nicknameCommittedRef.current = nextNickname;
       syncProfile(nextProfile);
-      closeNicknameSheet();
       await showWechatToast('昵称已更新', 'success');
     } catch (error) {
+      setNicknameDraft(currentNickname);
       await showWechatToast(resolveErrorMessage(error, '昵称更新失败'));
+    } finally {
+      if (nicknameSubmittingRef.current === nextNickname) {
+        nicknameSubmittingRef.current = '';
+      }
     }
   }
 
@@ -306,6 +282,35 @@ const MemberProfilePage = observer(function MemberProfilePage() {
     );
   }
 
+  function renderNicknameRow() {
+    return (
+      <View className="_pg-row _pg-row--nickname">
+        <Text className="_pg-row_label">姓名</Text>
+        <View className="_pg-row_value-wrap">
+          <Input
+            className="_pg-row_nickname-input"
+            type="nickname"
+            value={nicknameDraft}
+            maxlength={30}
+            placeholder="微信用户"
+            placeholderClass="_pg-row_nickname-placeholder"
+            confirmType="done"
+            onInput={(event) => {
+              setNicknameDraft(event.detail.value || '');
+            }}
+            onBlur={(event) => {
+              void handleNicknameCommit(event.detail.value || '');
+            }}
+            onConfirm={(event) => {
+              void handleNicknameCommit(event.detail.value || nicknameDraft);
+            }}
+          />
+          {renderArrow(true)}
+        </View>
+      </View>
+    );
+  }
+
   function renderBirthdayRow() {
     const birthday = profileData?.birthday || '';
     if (birthday) {
@@ -371,93 +376,10 @@ const MemberProfilePage = observer(function MemberProfilePage() {
     );
   }
 
-  function renderAvatarSheet(displayAvatar: string) {
-    return (
-      <AppPopup
-        visible={avatarSheetVisible}
-        className="_pg-avatar-sheet-shell"
-        contentClassName="_pg-avatar-sheet-wrap"
-        position="bottom"
-        onClose={closeAvatarSheet}
-      >
-        <View className="_pg-avatar-sheet">
-          <Button
-            className="_pg-avatar-sheet_button"
-            openType="chooseAvatar"
-            onChooseAvatar={(event) => {
-              void handleWechatAvatarChoose(event as ChooseAvatarEvent);
-            }}
-          >
-            <Text className="_pg-avatar-sheet_label">用微信头像</Text>
-            {displayAvatar ? (
-              <AppImage
-                className="_pg-avatar-sheet_preview"
-                src={displayAvatar}
-                width={34}
-                height={34}
-                showErrorIcon={false}
-              />
-            ) : null}
-          </Button>
-          <View className="_pg-avatar-sheet_item" onClick={() => handleLocalAvatarChoose('album').catch(() => undefined)}>
-            <Text>从相册选择</Text>
-          </View>
-          <View className="_pg-avatar-sheet_item" onClick={() => handleLocalAvatarChoose('camera').catch(() => undefined)}>
-            <Text>拍照</Text>
-          </View>
-          <View className="_pg-avatar-sheet_gap" />
-          <View className="_pg-avatar-sheet_item _pg-avatar-sheet_item--cancel" onClick={closeAvatarSheet}>
-            <Text>取消</Text>
-          </View>
-        </View>
-      </AppPopup>
-    );
-  }
-
-  function renderNicknameSheet() {
-    return (
-      <AppPopup
-        visible={nicknameSheetVisible}
-        className="_pg-nickname-sheet-shell"
-        contentClassName="_pg-nickname-sheet-wrap"
-        position="bottom"
-        destroyOnClose
-        onClose={closeNicknameSheet}
-      >
-        <View className="_pg-nickname-sheet">
-          <Text className="_pg-nickname-sheet_title">微信昵称</Text>
-          <Input
-            className="_pg-nickname-sheet_input"
-            type="nickname"
-            focus={nicknameSheetVisible}
-            value={nicknameValue}
-            maxlength={30}
-            placeholder="请选择微信昵称"
-            placeholderClass="_pg-nickname-sheet_placeholder"
-            confirmType="done"
-            onInput={(event) => {
-              setNicknameValue(event.detail.value || '');
-            }}
-            onConfirm={() => handleNicknameSave().catch(() => undefined)}
-          />
-          <View className="_pg-nickname-sheet_actions">
-            <View className="_pg-nickname-sheet_button _pg-nickname-sheet_button--cancel" onClick={closeNicknameSheet}>
-              <Text>取消</Text>
-            </View>
-            <View className="_pg-nickname-sheet_button _pg-nickname-sheet_button--confirm" onClick={() => handleNicknameSave().catch(() => undefined)}>
-              <Text>保存</Text>
-            </View>
-          </View>
-        </View>
-      </AppPopup>
-    );
-  }
-
   return pageRuntime.renderPage(() => {
     if (!profileData) return null;
 
     const displayAvatar = profileData.avatarUrl;
-    const displayName = profileData.nickname;
     const displayMobile = profileData.mobile;
 
     return (
@@ -465,23 +387,26 @@ const MemberProfilePage = observer(function MemberProfilePage() {
         <PageShell title="个人信息" className="_pg-shell" reserveTabBarSpace={false}>
           <View className="_pg-content">
             <View className="_pg-card">
-              <View className="_pg-row _pg-row--avatar _pg-row--clickable" onClick={handleAvatarTap}>
+              <View className="_pg-row _pg-row--avatar">
                 <Text className="_pg-row_label">头像</Text>
                 <View className="_pg-row_value-wrap">
-                  <AppImage
-                    className="_pg-avatar"
-                    src={displayAvatar}
-                    width={54}
-                    height={54}
-                    showErrorIcon={false}
-                  />
+                  <Button
+                    className="_pg-avatar-button"
+                    openType="chooseAvatar"
+                    onChooseAvatar={(event) => {
+                      void handleWechatAvatarChoose(event as ChooseAvatarEvent);
+                    }}
+                  >
+                    <MemberAvatar
+                      className="_pg-avatar"
+                      src={displayAvatar}
+                      size="64rpx"
+                    />
+                  </Button>
                 </View>
               </View>
 
-              {renderRow('姓名', displayName, {
-                placeholder: '微信用户',
-                onClick: handleNicknameTap,
-              })}
+              {renderNicknameRow()}
               {renderRow('手机', displayMobile, {
                 placeholder: '手机号待同步',
                 showArrow: false,
@@ -521,8 +446,6 @@ const MemberProfilePage = observer(function MemberProfilePage() {
           </View>
 
           <PageShare>
-            {renderAvatarSheet(displayAvatar)}
-            {renderNicknameSheet()}
             {renderEditPopup()}
           </PageShare>
         </PageShell>
