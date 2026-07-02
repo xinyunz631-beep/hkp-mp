@@ -67,10 +67,17 @@ function productMarketPrice(product: BffMallProduct) {
 
 function productSalesText(product: BffMallProduct) {
   const salesCount = parseNumberLike(product.salesCount);
-  if (typeof salesCount === 'number' && salesCount > 0) {
+  if (typeof salesCount === 'number' && salesCount >= 0) {
     return `已售${Math.floor(salesCount)}`;
   }
-  return firstMallText(product.salesText);
+
+  const salesText = firstMallText(product.salesText);
+  if (!salesText) return '';
+
+  const nonSalesTextPattern = /发货|配送|物流|快递|包邮|运费|自提/;
+  if (nonSalesTextPattern.test(salesText)) return '';
+
+  return /售|销量|月销|sold|sales/i.test(salesText) ? salesText : '';
 }
 
 function formatYuan(amountCent: unknown = 0) {

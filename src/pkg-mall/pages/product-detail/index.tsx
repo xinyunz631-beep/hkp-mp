@@ -89,6 +89,7 @@ const ProductDetailPage = observer(function ProductDetailPage() {
       }
     : product;
   const displayPrice = selectedVariant?.price ?? product?.price;
+  const salesText = product?.salesText?.trim() || '';
   const merchantName = detailData?.merchantName?.trim() || '';
   const attributeLines = detailData?.attributeLines ?? [];
   const hasSkuConfig = skuVariants.length > 0;
@@ -398,6 +399,7 @@ const ProductDetailPage = observer(function ProductDetailPage() {
               </View>
             </View>
             <Text className="_pg-info_title">{product?.title}</Text>
+            {salesText ? <Text className="_pg-info_sales">{salesText}</Text> : null}
           </View>
 
           <View className="_pg-benefit">
