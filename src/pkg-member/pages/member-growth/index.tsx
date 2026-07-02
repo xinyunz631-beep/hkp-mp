@@ -247,14 +247,16 @@ const MemberGrowthPage = observer(function MemberGrowthPage() {
 
           return (
             <SwiperItem className={slideClassName} key={level.id}>
-              <ScrollView
-                className="_pg-benefit-scroll"
-                scrollY
-                enhanced
-                showScrollbar={false}
-              >
-                {renderBenefitContent(level)}
-              </ScrollView>
+              <View className="_pg-benefit-slide_inner">
+                <ScrollView
+                  className="_pg-benefit-scroll"
+                  scrollY
+                  enhanced
+                  showScrollbar={false}
+                >
+                  {renderBenefitContent(level)}
+                </ScrollView>
+              </View>
             </SwiperItem>
           );
         })}

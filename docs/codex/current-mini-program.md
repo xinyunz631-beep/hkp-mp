@@ -2,7 +2,7 @@
 
 ## 2026-07-01 恢复基线
 
-- 更新时间：`2026-07-02 10:12 CST`
+- 更新时间：`2026-07-02 20:04 CST`
 - 当前工作分支：`master`，跟踪 `origin/master@e37a537 fix(member): 领券中心只保留一键领取`。原本停留的 `feature/hkp-mini-mall-commercial-flow` 没有领先 `origin/master` 的唯一提交，后续小程序承接从 `master` 开始。
 - 分支判断：`origin/feature/free-claim-activity-center-20260629` 已完全合入 `origin/master`；`origin/feature/hkp-mini-coupon-chain-20260616` 和 `origin/feature/mp-coupon-closure` 都大幅落后 master，仅保留为历史参考，不整支合并。
 - 已实现只验证：订单支付取消后旧订单复用已由 `8a1fa2f fix(order): 修复支付取消后旧订单复用` 修复，BFF `a3b68f3 fix(order): 修复支付取消后重复拉起失败` 已配合；恢复时先跑 `node scripts/check-payment-cancel-flow.mjs` 和真实链路验证，不重复重写。
@@ -14,11 +14,13 @@
 - 2026-07-01 首页八宫格 icon 收口：首页快捷入口只消费 `index_nav_grid` 广告位图片字段，不再按标题匹配 `src/assets/home-shortcut-icons` 本地 PNG 兜底；运营需在广告位配置对应 icon 图。
 - 2026-07-01 优惠券详情页布局收口：`pkg-member/pages/coupon-detail` 底部操作条改走 `PageShell.footer`，由 `PageLayout` 统一测量固定底部和内容占位；券面改为白底轻粉边框，品牌粉只保留在金额、状态和左侧点缀。
 - 2026-07-02 领券中心好券推荐交互收口：免费领券活动卡保留活动级“一键领取”，领取成功后停留当前页刷新，活动按钮已领取态跳“我的优惠券”；活动下方单券改为更大的券条展示，已领取单券有券号时直接进入对应券详情，不再跳转前请求会员券列表，未领取单券不单独发券。小程序继续使用现有 `/api/bff/activity-center/free-claim-activities/**`，不新增接口。
+- 2026-07-02 免费领券已领子券券号回传适配：后端 `origin/uat@47a04f4 fix(promotion): 回传免费领券子券券号` 已在活动列表/详情 `giftItems[]` 已领子项返回 `couponNo/couponNos[]/couponInstances[]`；小程序现有 `resolveGiftCouponNo()` 已兼容这些字段，已领取子券点击直接跳 `/pkg-member/pages/coupon-detail/index?id=<couponNo>`，无需新增跳转前请求或券详情接口。
 - 2026-07-02 会员码页按品牌稿调整视觉：导航标题改为 `Hello Kitty Park`，主视图背景固定使用 `https://image.hellokittypark.cn/10000_kitty_theme_2ab24dff-c907-45bb-a3e3-7902b1227530.png` 并纵向平铺，Logo 固定使用 `https://ty.hellokittypark.cn/admin/static/03_ALL_IP__PNG_GROUP_LOGO__MX_TP_GR_3.62d4b9d1.png`，页面仅调整 Logo 叠放、白卡比例和二维码留白，会员码接口与 30 秒刷新逻辑不变。
 - 2026-07-02 券码兑换主线复核：后端 `origin/uat@f4d99b3 fix(admin-config): 同步券码到小程序兑换表` 已把管理后台生成/导入的 `couponNo` 同步为小程序 `/api/bff/promotion/coupons/exchange` 的 `exchangeCode`，小程序页面无需新增接口；本轮只把会员中心入口文案统一为“兑换券码”，并给 `scripts/probe-coupon-closure.mjs` 增加 `COUPON_PROBE_COUPON_CODE_EXCHANGE=1 + COUPON_PROBE_EXCHANGE_CODE=<后台导出 couponNo>` 的直接券码兑换探针，便于拿 UAT 登录态验证“后台生成/导出 -> 小程序兑换 -> 我的券/可用券同券号出现”。
+- 2026-07-02 会员权益页视觉微调：等级权益 swiper item 保持透明，权益卡片增加顶部和左右留白，避免卡片贴边或贴顶；页面接口、等级切换和成长值进度逻辑不变。
 
 ## 更新时间
-- 更新时间：`2026-07-02 10:12 CST`
+- 更新时间：`2026-07-02 20:04 CST`
 - 当前基础状态：登录、请求、会员状态、页面初始化闸门、页面显式 runtime hook、页面单例 loading、统一 loading 组件入口和白色渐变淡出蒙层、全局登录态弹窗、webpack5 prebundle/cache 关闭、NutUI 按需样式、`@tarojs/plugin-html` 和 `@nutui/icons-react-taro` 显式依赖、BaseSkeleton/BaseEmpty/BaseException、中性页面底色+粉色品牌点缀、自定义 tabbar、独立 PageNavbar 和页面级 header/layout 已完成代码收口并通过本地校验；系统 custom-tab-bar 已压成 0 高度占位，可见 tabbar 已下沉到页面内 fixed 底部容器，`AppTabBar` 已从 `AppIcon` 切为直接 `Image` 小图并在组件顶部集中维护图片链接。
 - 当前会员/酒店/订单状态：会员授权登录已按后端真实接口重接，启动默认 `login -> member/status` 并把头像、昵称、手机号、等级统一维护到 MobX `rootStore.memberInfo`；登录弹窗只保留手机号授权和关闭；会员资料、头像上传、会员码和会员中心首页不再失败回旧会员 mock。酒店首页、房型详情、酒店确认单、酒店下单支付、订单中心列表和订单详情已切后端真实 BFF，酒店分包运行时 mock 数据文件已删除，订单中心核心列表/详情不再读取本地订单。
 - 当前票务状态：门票预定页已切 `/api/bff/tickets/**`，支持快速通、草稿/待审核待上线展示、已发布库存加购、票种规则弹窗、0 元票和按 SKU 实名字段提交、无可订票种空态；小程序创建订单已把首位实名游客证件同步放入 `context.certificateNo`。后端 `origin/uat@26fbc2b/2f57b7b` 已发布批量日历接口，小程序首屏已切 `POST /api/bff/tickets/products/calendar-batch` 并按 20 个商品分批；`mp-run-check` 复用当前微信开发者工具验证 `calendar-batch` 真实请求 2 次、旧 `/calendar?startDate` 0 次。2026-06-21 16:20 显式创建探针订单 `TKT20260621162008C0110611`，`/pay` 返回 `PAYING/prepayPayNo=PAY2026062116200860c2b87e530f/hasPaymentParams=true/paymentParamsAppId=wx72b9e08ce45d3e79`，付款前详情仍无 `ticketVouchers[]` 且探针单已取消；当前待补不再是 `/pay` 预下单或日历扇出，而是真实微信支付成功后出票、订单详情券码/核销码、真实退款、后台票码实例和核销流水同单一致性。
