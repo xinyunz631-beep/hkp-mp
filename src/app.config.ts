@@ -1,3 +1,5 @@
+const enableQiyuPlugin = process.env.TARO_APP_DISABLE_QIYU_PLUGIN !== 'true';
+
 export default defineAppConfig({
   pages: [
     'pages/home/index',
@@ -18,6 +20,16 @@ export default defineAppConfig({
   requiredPrivateInfos: [
     'chooseLocation',
   ],
+  ...(enableQiyuPlugin
+    ? {
+        plugins: {
+          qiyuSdk: {
+            version: '1.4.7',
+            provider: 'wxae5e29812005203f',
+          },
+        },
+      }
+    : {}),
   tabBar: {
     custom: true,
     color: '#626a73',

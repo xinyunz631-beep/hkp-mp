@@ -2,6 +2,8 @@ import {
   CUSTOMER_SERVICE_CONFIG,
   type CustomerServiceRuntimeConfig,
 } from '@/core/config/customer-service';
+import { rootStore } from '@/core/store';
+import type { LoginUserProfile } from '@/core/types/auth';
 import { resolveErrorMessage } from '@/core/utils/error-message';
 import { showWechatToast } from '@/core/utils/wechat-actions';
 
@@ -17,6 +19,15 @@ export type CustomerServiceSource =
 
 export type CustomerServiceOpenResult = 'plugin' | 'unavailable';
 
+export interface CustomerServiceVisitorInfo {
+  userId: string;
+  nickname?: string;
+  mobile?: string;
+  avatarUrl?: string;
+  levelName?: string;
+  points?: number;
+}
+
 export interface CustomerServicePluginInitOptions {
   appKey: string;
   config: CustomerServiceRuntimeConfig;
@@ -26,6 +37,7 @@ export interface CustomerServicePluginOpenOptions {
   appKey: string;
   source: CustomerServiceSource;
   payload?: Record<string, unknown>;
+  visitor?: CustomerServiceVisitorInfo;
 }
 
 export interface CustomerServicePluginAdapter {
@@ -65,6 +77,26 @@ function withTimeout<T>(task: Promise<T>, timeoutMs: number, timeoutMessage: str
 // 判断客服 appKey 是否已经配置，未配置时不触发第三方插件链路。
 export function isCustomerServiceConfigured(config = CUSTOMER_SERVICE_CONFIG) {
   return Boolean(config.appKey.trim());
+}
+
+// 每次打开客服前都从当前会员 store 生成访客信息，避免登录/退出后的七鱼身份沿用旧值。
+export function resolveCustomerServiceVisitorInfo(
+  profile: LoginUserProfile | undefined = rootStore.memberInfo,
+): CustomerServiceVisitorInfo | undefined {
+  if (!profile) return undefined;
+
+  const mobile = profile.mobile?.trim();
+  const userId = profile.id?.trim() || mobile;
+  if (!userId) return undefined;
+
+  return {
+    userId,
+    nickname: profile.nickname?.trim() || undefined,
+    mobile: mobile || undefined,
+    avatarUrl: profile.avatarUrl?.trim() || undefined,
+    levelName: profile.levelName?.trim() || undefined,
+    points: profile.points,
+  };
 }
 
 // 注册真实客服插件适配器，后续接入网易七鱼小程序插件时只需要在启动侧注入一次。
@@ -121,6 +153,7 @@ export async function openCustomerService(options: OpenCustomerServiceOptions): 
           appKey,
           source: options.source,
           payload: options.payload,
+          visitor: resolveCustomerServiceVisitorInfo(),
         })),
         CUSTOMER_SERVICE_CONFIG.openTimeoutMs,
         '客服插件打开超时',

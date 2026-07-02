@@ -10,6 +10,8 @@
   },
   "scripts": {
     "dev:weapp": "taro build --type weapp --watch",
+    "dev:weapp:local": "TARO_APP_DISABLE_QIYU_PLUGIN=true taro build --type weapp --watch",
+    "build:weapp:local": "TARO_APP_DISABLE_QIYU_PLUGIN=true taro build --type weapp",
     "build:weapp": "taro build --type weapp",
     "inspect:weapp": "taro build --type weapp --preview",
     "typecheck": "tsc --noEmit",

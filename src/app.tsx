@@ -1,12 +1,15 @@
 import { PropsWithChildren, useEffect } from 'react';
 import { configure } from 'mobx';
 import { silentLogin } from '@/core/services/auth';
+import { registerQiyuCustomerServiceAdapter } from '@/core/services/register-qiyu-customer-service';
 import '@nutui/nutui-react-taro/dist/styles/theme-default.css';
 import './app.scss';
 
 configure({
   enforceActions: 'observed',
 });
+
+registerQiyuCustomerServiceAdapter();
 
 // 渲染小程序应用壳，保持主包启动逻辑极轻量。
 function App({ children }: PropsWithChildren) {
