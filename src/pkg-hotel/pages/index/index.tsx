@@ -37,6 +37,7 @@ import { createHotelOrderDraft } from '@/pkg-hotel/services/order-draft';
 import './index.scss';
 
 const HOTEL_PAGE_TITLE = '畅‘住’HelloKittyPark';
+const HOTEL_SHARE_TITLE = '畅“住”杭州 HelloKitty乐园 加入会员更有积分相送';
 const LOGIN_REASON = '登录后可提交酒店订单';
 
 function formatDateLabel(dateText: string) {
@@ -191,7 +192,7 @@ const HotelIndexPage = observer(function HotelIndexPage() {
   }
 
   useShareAppMessage(() => ({
-    title: `${activeHotel?.heroTitle || 'Hello Kitty Park 酒店'}亲子度假`,
+    title: HOTEL_SHARE_TITLE,
     path: MINI_PACKAGE_ROUTES.hotelHome,
     imageUrl: validBannerImages[0]?.src || undefined,
   }));

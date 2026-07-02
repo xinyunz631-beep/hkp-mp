@@ -5,6 +5,8 @@ import { AppIcon } from '@/core/components/AppIcon';
 import { AppImage } from '@/core/components/AppImage';
 import { AppPopup } from '@/core/components/AppPopup';
 import { BaseEmpty } from '@/core/components/BaseEmpty';
+import { MemberAvatar } from '@/core/components/MemberAvatar';
+import { MemberLevelBadge } from '@/core/components/MemberLevelBadge';
 import { PageShare, PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
@@ -63,22 +65,6 @@ function resolveProgressPercent(levels: MemberGrowthLevel[], growthValue: number
   return 100;
 }
 
-function renderLevelBadge(level: MemberGrowthLevel, active: boolean) {
-  return (
-    <View
-      className={`_pg-level-badge ${active ? '_pg-level-badge--active' : ''}`}
-      style={{ '--_pg-level-color': level.themeColor } as CSSProperties}
-    >
-      <View className="_pg-level-badge_no">
-        <Text>{level.levelNo}</Text>
-      </View>
-      <View className="_pg-level-badge_name">
-        <Text>{level.name}</Text>
-      </View>
-    </View>
-  );
-}
-
 function resolveBenefitTone(benefit: MemberGrowthBenefit, index: number): BenefitTone {
   const content = `${benefit.title}${benefit.summary}${benefit.highlightText}`;
   if (/生日|礼遇|礼品|birthday/i.test(content)) return 'birthday';
@@ -95,6 +81,79 @@ function resolveBenefitFallbackText(benefit: MemberGrowthBenefit) {
 
 function mergeClassNames(...classNames: Array<string | false | undefined>) {
   return classNames.filter(Boolean).join(' ');
+}
+
+function isSummaryWhitespace(value: string) {
+  return /\s/.test(value);
+}
+
+function resolveBenefitHighlightRanges(summary: string, highlightText: string) {
+  const normalizedHighlightText = highlightText.replace(/\s+/g, '').toLowerCase();
+  const ranges: Array<{ startIndex: number; endIndex: number }> = [];
+  if (!summary || !normalizedHighlightText) return ranges;
+
+  for (let startIndex = 0; startIndex < summary.length; startIndex += 1) {
+    if (isSummaryWhitespace(summary[startIndex])) continue;
+
+    let highlightIndex = 0;
+    let endIndex = startIndex;
+
+    for (; endIndex < summary.length && highlightIndex < normalizedHighlightText.length; endIndex += 1) {
+      const summaryChar = summary[endIndex];
+      if (isSummaryWhitespace(summaryChar)) continue;
+      if (summaryChar.toLowerCase() !== normalizedHighlightText[highlightIndex]) break;
+
+      highlightIndex += 1;
+    }
+
+    if (highlightIndex === normalizedHighlightText.length) {
+      ranges.push({ startIndex, endIndex });
+      startIndex = endIndex - 1;
+    }
+  }
+
+  return ranges;
+}
+
+function renderBenefitSummaryText(benefit: MemberGrowthBenefit) {
+  const summary = benefit.summary.trim();
+  const highlightText = benefit.highlightText.trim();
+  const summaryNodes = [];
+
+  if (!highlightText) return <Text className="_pg-benefit-row_summary-text">{summary}</Text>;
+
+  const highlightRanges = resolveBenefitHighlightRanges(summary, highlightText);
+
+  if (highlightRanges.length > 0) {
+    let cursor = 0;
+
+    highlightRanges.forEach((range, index) => {
+      const beforeText = summary.slice(cursor, range.startIndex);
+      const matchedText = summary.slice(range.startIndex, range.endIndex);
+
+      if (beforeText) {
+        summaryNodes.push(<Text className="_pg-benefit-row_summary-copy" key={`copy-${index}`}>{beforeText}</Text>);
+      }
+      summaryNodes.push(
+        <Text className="_pg-benefit-row_summary-highlight" key={`highlight-${index}`}>{matchedText}</Text>,
+      );
+      cursor = range.endIndex;
+    });
+
+    const afterText = summary.slice(cursor);
+    if (afterText) summaryNodes.push(<Text className="_pg-benefit-row_summary-copy" key="after">{afterText}</Text>);
+  } else {
+    if (summary) {
+      summaryNodes.push(<Text className="_pg-benefit-row_summary-copy" key="summary">{summary}</Text>);
+    }
+    summaryNodes.push(
+      <Text className="_pg-benefit-row_summary-highlight" key="highlight">
+        {summary ? ` ${highlightText}` : highlightText}
+      </Text>,
+    );
+  }
+
+  return <View className="_pg-benefit-row_summary-text">{summaryNodes}</View>;
 }
 
 // 渲染会员权益页面，按 CRM BFF 返回的等级、成长值和权益内容展示。
@@ -203,10 +262,10 @@ const MemberGrowthPage = observer(function MemberGrowthPage() {
                 </View>
                 <View className="_pg-benefit-row_body">
                   <Text className="_pg-benefit-row_title">{benefit.title}</Text>
-                  {benefit.summary ? (
+                  {benefit.summary || benefit.highlightText ? (
                     <View className="_pg-benefit-row_summary">
                       <Text className="_pg-benefit-row_dot" />
-                      <Text className="_pg-benefit-row_summary-text">{benefit.summary}</Text>
+                      {renderBenefitSummaryText(benefit)}
                     </View>
                   ) : null}
                 </View>
@@ -247,14 +306,16 @@ const MemberGrowthPage = observer(function MemberGrowthPage() {
 
           return (
             <SwiperItem className={slideClassName} key={level.id}>
-              <ScrollView
-                className="_pg-benefit-scroll"
-                scrollY
-                enhanced
-                showScrollbar={false}
-              >
-                {renderBenefitContent(level)}
-              </ScrollView>
+              <View className="_pg-benefit-slide_inner">
+                <ScrollView
+                  className="_pg-benefit-scroll"
+                  scrollY
+                  enhanced
+                  showScrollbar={false}
+                >
+                  {renderBenefitContent(level)}
+                </ScrollView>
+              </View>
             </SwiperItem>
           );
         })}
@@ -290,7 +351,11 @@ const MemberGrowthPage = observer(function MemberGrowthPage() {
           </View>
           {sortLevels(data.levels).map((level) => (
             <View className="_pg-level-table_row" key={level.id}>
-              {renderLevelBadge(level, level.id === memberLevel.levelId || level.levelNo === memberLevel.levelNo)}
+              <MemberLevelBadge
+                levelNo={level.levelNo}
+                levelName={level.name}
+                themeColor={level.themeColor}
+              />
               <Text className="_pg-level-table_value" style={{ color: level.themeColor }}>
                 {level.growthThreshold}
               </Text>
@@ -336,7 +401,6 @@ const MemberGrowthPage = observer(function MemberGrowthPage() {
           title="Hello Kitty Park"
           className="_pg-shell"
           scrollView={false}
-          footer={renderProgressFooter(sortedLevels)}
         >
           <View className="_pg-page">
             <AppImage
@@ -351,25 +415,25 @@ const MemberGrowthPage = observer(function MemberGrowthPage() {
                 <Text>等级规则</Text>
               </View>
               <View className="_pg-profile">
-                <AppImage
+                <MemberAvatar
                   className="_pg-profile_avatar"
                   src={pageData.avatarImageSrc}
-                  width={96}
-                  height={96}
-                  placeholderColor="#ffffff"
-                  showErrorIcon={false}
                 />
                 <View className="_pg-profile_main">
                   <Text className="_pg-profile_name">{displayName}</Text>
                   <View className="_pg-profile_actions">
                     <View className="_pg-profile_level">
-                      {renderLevelBadge(currentLevel, true)}
+                      <MemberLevelBadge
+                        levelNo={currentLevel.levelNo}
+                        levelName={currentLevel.name}
+                        themeColor={currentLevel.themeColor}
+                      />
                     </View>
                     <View
                       className="_pg-profile_growth"
                       onClick={openGrowthDetail}
                     >
-                      <Text>成长值</Text>
+                      <Text>{`成长值(${memberLevel.growthValue})`}</Text>
                       <AppIcon name="arrowRight" size={14} color="#444444" />
                     </View>
                   </View>
@@ -380,6 +444,7 @@ const MemberGrowthPage = observer(function MemberGrowthPage() {
             <View className="_pg-body">
               {renderBenefitSwiper(sortedLevels)}
             </View>
+            {renderProgressFooter(sortedLevels)}
           </View>
 
           <PageShare>

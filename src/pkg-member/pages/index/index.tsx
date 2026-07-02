@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Text, View } from '@tarojs/components';
 import { observer } from 'mobx-react';
 import { AppIcon } from '@/core/components/AppIcon';
-import { AppImage } from '@/core/components/AppImage';
+import { MemberAvatar } from '@/core/components/MemberAvatar';
+import { MemberLevelBadge } from '@/core/components/MemberLevelBadge';
 import { PageShell } from '@/core/components/PageShell';
 import { MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
 import { usePageRuntime } from '@/core/runtime/use-page-runtime';
@@ -127,15 +128,17 @@ const MemberIndexPage = observer(function MemberIndexPage() {
             <View className="_pg-hero">
               <Text className="_pg-hero_badge">Hello Kitty Park Member</Text>
               <View className="_pg-hero_profile" onClick={handleProfileTap}>
-                <AppImage
+                <MemberAvatar
                   className="_pg-hero_avatar"
                   src={displayAvatar}
-                  width={88}
-                  height={88}
                 />
                 <View className="_pg-hero_profile-main">
                   <Text className="_pg-hero_name">{displayName}</Text>
-                  <Text className="_pg-hero_meta">{pageData.levelNo} {pageData.levelName}</Text>
+                  <MemberLevelBadge
+                    className="_pg-hero_level-badge"
+                    levelNo={pageData.levelNo}
+                    levelName={pageData.levelName}
+                  />
                   <Text className="_pg-hero_mobile">{displayMobile}</Text>
                 </View>
                 <View className="_pg-hero_status">
@@ -168,7 +171,7 @@ const MemberIndexPage = observer(function MemberIndexPage() {
                   onClick={() => navigateToMiniRoute(MINI_PACKAGE_ROUTES.memberCoupons)}
                 >
                   <Text>查看卡券</Text>
-                  <AppIcon name="arrowRight" size={14} color="#db2777" />
+                  <AppIcon name="arrowRight" size={14} color="#ec6d9c" />
                 </View>
               </View>
               <View className="_pg-summary_card">
@@ -186,7 +189,7 @@ const MemberIndexPage = observer(function MemberIndexPage() {
                   onClick={() => handleShortcutTap(shortcut)}
                 >
                   <View className="_pg-shortcuts_icon">
-                    <AppIcon name={resolveShortcutIcon(shortcut.action)} size={16} color="#db2777" />
+                    <AppIcon name={resolveShortcutIcon(shortcut.action)} size={16} color="#ec6d9c" />
                   </View>
                   <Text className="_pg-shortcuts_title">{shortcut.title}</Text>
                   <Text className="_pg-shortcuts_value">{shortcut.value}</Text>
@@ -210,7 +213,7 @@ const MemberIndexPage = observer(function MemberIndexPage() {
                       </View>
                       <View className="_pg-section_item-action">
                         <Text className="_pg-section_item-tag">{item.disabled ? '敬请期待' : '查看'}</Text>
-                        <AppIcon name="arrowRight" size={14} color={item.disabled ? '#98a2b3' : '#db2777'} />
+                        <AppIcon name="arrowRight" size={14} color={item.disabled ? '#98a2b3' : '#ec6d9c'} />
                       </View>
                     </View>
                   ))}

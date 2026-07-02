@@ -73,6 +73,7 @@ const TICKET_BOOKING_TOP_ANCHOR_ID = 'ticket-booking-top-anchor';
 const TICKET_SECTION_ANCHOR_GAP = 8;
 const TICKET_SECTION_ACTIVE_MARKER_GAP = 18;
 const TICKET_SECTION_SCROLL_LOCK_MS = 460;
+const TICKET_SHARE_TITLE = '畅“玩”HelloKittyPark';
 
 function getTicketSectionId(key: TicketBookingSectionKey) {
   return `ticket-booking-section-${key.replace(/[^a-zA-Z0-9_-]/g, '-')}`;
@@ -524,7 +525,6 @@ const TicketBookingPage = observer(function TicketBookingPage() {
       await loadBookingData(selectedDate || undefined);
     },
   });
-  const shareTitle = `${bookingData?.parkInfo.name || '杭州 Hello Kitty 乐园'}门票预定`;
   const shareImageUrl = bookingData?.parkInfo.heroImages.find(Boolean) || undefined;
   const products = useMemo(() => bookingData?.products ?? [], [bookingData]);
   const packages = useMemo(() => bookingData?.packages ?? [], [bookingData]);
@@ -551,7 +551,7 @@ const TicketBookingPage = observer(function TicketBookingPage() {
   const warmTipRichTexts = bookingData?.parkInfo.warmTipRichTexts ?? [];
   const sectionAnchorOffset = stickyPanelHeight + TICKET_SECTION_ANCHOR_GAP;
   useShareAppMessage(() => ({
-    title: shareTitle,
+    title: TICKET_SHARE_TITLE,
     path: MINI_PACKAGE_ROUTES.ticketBooking,
     imageUrl: shareImageUrl,
   }));

@@ -28,7 +28,7 @@ const SENSITIVE_LOG_FIELD_NAMES = new Set([
   'sign_secret',
   'csession',
 ]);
-const URL_LOG_STYLE = 'color:#db2777;font-weight:400;';
+const URL_LOG_STYLE = 'color:#ec6d9c;font-weight:400;';
 const SUCCESS_DURATION_LOG_STYLE = 'color:#16a34a;font-weight:600;';
 const ERROR_DURATION_LOG_STYLE = 'color:#dc2626;font-weight:600;';
 const BASE_LOG_STYLE = 'color:#6b7280;';

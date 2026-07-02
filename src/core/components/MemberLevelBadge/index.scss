@@ -1,0 +1,59 @@
+.member-level-badge {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  min-width: 138px;
+  height: 42px;
+  overflow: hidden;
+  border-radius: 8px;
+  color: #444444;
+  flex-wrap: nowrap;
+  vertical-align: middle;
+  box-sizing: border-box;
+}
+
+.member-level-badge__no {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  min-width: 42px;
+  flex: 0 0 42px;
+  border-radius: 0;
+  border-top-left-radius: 999px;
+  border-bottom-left-radius: 999px;
+  background: var(--member-level-badge-color);
+  color: #ffffff;
+  font-size: 26px;
+  line-height: 1;
+  box-sizing: border-box;
+}
+
+.member-level-badge__no Text {
+  color: inherit;
+  line-height: 1;
+}
+
+.member-level-badge__name {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  height: 42px;
+  flex: 1;
+  padding: 0 12px;
+  overflow: hidden;
+  border-top-right-radius: 8px;
+  border-bottom-right-radius: 8px;
+  background: #ffe5a7;
+  font-size: 24px;
+  line-height: 1;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  box-sizing: border-box;
+}
+
+.member-level-badge__name Text {
+  color: inherit;
+  line-height: 1;
+}

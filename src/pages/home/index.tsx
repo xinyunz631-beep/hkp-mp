@@ -1,10 +1,11 @@
 import { CSSProperties, useRef, useState } from 'react';
-import Taro from '@tarojs/taro';
+import Taro, { useShareAppMessage } from '@tarojs/taro';
 import { ScrollView, Swiper, SwiperItem, Text, View } from '@tarojs/components';
 import type { ScrollViewProps } from '@tarojs/components';
 import { observer } from 'mobx-react';
 import { AppIcon } from '@/core/components/AppIcon';
 import { AppImage } from '@/core/components/AppImage';
+import { MemberLevelBadge } from '@/core/components/MemberLevelBadge';
 import { PageRoot, PageShell } from '@/core/components/PageShell';
 import { HKP_PARK_LOCATION } from '@/core/constants/park-location';
 import { MINI_MAIN_ROUTES, MINI_PACKAGE_ROUTES } from '@/core/constants/routes';
@@ -78,17 +79,18 @@ const HOME_HOT_SLOT_CODES = ['index_hot_project', 'index_hot_projects'];
 const HOME_ACTIVITY_SLOT_CODES = ['index_activity', 'index_feature_activity'];
 const HOME_RECOMMEND_SLOT_CODES = ['index_recommend', 'index_recommendation'];
 const HOME_PLAY_LIFE_SLOT_CODES = ['index_play_life', 'index_life'];
+const HOME_SHARE_TITLE = '畅“玩”Hello Kitty Park';
 const HOME_SECTION_MORE_CONFIG = {
   rank: { path: MINI_PACKAGE_ROUTES.ticketParkList, slotCode: HOME_HOT_SLOT_CODES[0], title: '热玩榜单' },
   activity: { path: MINI_PACKAGE_ROUTES.ticketActivityList, slotCode: HOME_ACTIVITY_SLOT_CODES[0], title: '精选活动' },
   recommend: { path: MINI_PACKAGE_ROUTES.ticketActivityList, slotCode: HOME_RECOMMEND_SLOT_CODES[0], title: '精彩推荐' },
   play: { path: MINI_PACKAGE_ROUTES.ticketActivityList, slotCode: HOME_PLAY_LIFE_SLOT_CODES[0], title: '玩转乐园' },
 } as const;
-const HOME_NAV_BACKGROUND_SCROLL_START = 10;
+const HOME_NAV_BACKGROUND_SCROLL_START = 30;
 const HOME_NAV_BACKGROUND_SCROLL_END = 180;
 
 function resolveHomeNavOpacity(scrollTop: number) {
-  if (scrollTop < HOME_NAV_BACKGROUND_SCROLL_START) return 0;
+  if (scrollTop <= HOME_NAV_BACKGROUND_SCROLL_START) return 0;
 
   const scrollDistance = HOME_NAV_BACKGROUND_SCROLL_END - HOME_NAV_BACKGROUND_SCROLL_START;
   return Math.min(1, Math.max(0, (scrollTop - HOME_NAV_BACKGROUND_SCROLL_START) / scrollDistance));
@@ -218,6 +220,11 @@ const HomePage = observer(function HomePage() {
   const memberProfile = rootStore.memberInfo;
   const memberLevel = resolveMemberLevel(memberProfile);
   const memberName = memberProfile?.nickname || '微信用户';
+
+  useShareAppMessage(() => ({
+    title: HOME_SHARE_TITLE,
+  }));
+
   const couponBadgeText = '我的优惠券';
   const topBannerAds = findMiniProgramSlotAds(homeAds, HOME_TOP_BANNER_SLOT_CODES);
   const legacyBannerAds = findMiniProgramSlotAds(homeAds, HOME_LEGACY_BANNER_SLOT_CODES);
@@ -461,14 +468,14 @@ const HomePage = observer(function HomePage() {
               <View className="_pg-member-card_header">
                 <View>
                   <Text className="_pg-member-card_hello">{memberName}，您好！</Text>
-                  <Text className="_pg-member-card_level" onClick={handleMemberLevelPress}>
-                    {memberLevel.levelName}
-                  </Text>
+                  <View className="_pg-member-card_level" onClick={handleMemberLevelPress}>
+                    <MemberLevelBadge levelNo={memberLevel.levelNo} levelName={memberLevel.levelName} />
+                  </View>
                 </View>
                 <View className="_pg-member-card_right">
                   <View className="_pg-member-card_coupon" onClick={handleCouponPress}>
                     <Text className="_pg-member-card_coupon-text">{couponBadgeText}</Text>
-                    <AppIcon name="arrowRight" className="_pg-member-card_coupon-arrow" size={16} color="#db2777" />
+                    <AppIcon name="arrowRight" className="_pg-member-card_coupon-arrow" size={16} color="#ec6d9c" />
                   </View>
                 </View>
               </View>

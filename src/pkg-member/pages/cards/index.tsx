@@ -101,7 +101,7 @@ function CardsPage() {
       >
         <View className="_pg-card-item_header">
           <View className="_pg-card-item_title-wrap">
-            <AppIcon name="ticket" size={16} color="#db2777" />
+            <AppIcon name="ticket" size={16} color="#ec6d9c" />
             <Text className="_pg-card-item_title">{card.title}</Text>
           </View>
           <Text className="_pg-card-item_status">{card.statusText}</Text>

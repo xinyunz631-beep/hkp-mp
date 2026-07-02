@@ -55,8 +55,8 @@
   flex: none;
   position: relative;
   z-index: 1;
-  min-height: 254px;
-  padding: 26px clamp(24px, 4.5vw, 40px) 0;
+  min-height: 282px;
+  padding: 34px clamp(24px, 4.5vw, 40px) 0;
   box-sizing: border-box;
 }
 
@@ -74,13 +74,10 @@
   display: flex;
   align-items: center;
   gap: clamp(10px, 3vw, 20px);
-  padding-top: clamp(56px, 12vw, 72px);
+  padding-top: clamp(60px, 12vw, 76px);
 
   &_avatar {
     flex: none;
-    width: clamp(78px, 16vw, 96px);
-    height: clamp(78px, 16vw, 96px);
-    border-radius: 999px;
     background: #ffffff;
     box-shadow: 0 8px 24px rgba(236, 109, 156, 0.12);
   }
@@ -118,7 +115,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    min-width: clamp(118px, 28vw, 146px);
+    min-width: clamp(148px, 34vw, 188px);
     height: clamp(36px, 8vw, 42px);
     padding: 0 clamp(12px, 3vw, 20px);
     border-radius: 8px;
@@ -126,88 +123,25 @@
     color: #444444;
     font-size: clamp(22px, 4vw, 26px);
     line-height: 1;
+    gap: 6px;
 
     &--active {
       background: #aef3df;
     }
   }
-}
 
-._pg-level-badge {
-  display: flex;
-  align-items: center;
-  min-width: 138px;
-  height: 42px;
-  padding-right: 0;
-  border-radius: 8px;
-  color: #444444;
-  gap: 0;
-  flex-wrap: nowrap;
-  overflow: hidden;
-
-  &_no {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 42px;
-    height: 42px;
-    flex: 0 0 42px;
-    border-radius: 0;
-    border-top-left-radius: 999px;
-    border-bottom-left-radius: 999px;
-    margin-left: 0;
-    box-sizing: border-box;
-    background: var(--_pg-level-color);
-    color: #ffffff;
-    font-size: 26px;
-    line-height: 1;
-    min-width: 42px;
-  }
-
-  &_no Text {
-    line-height: 1;
-    color: inherit;
-  }
-
-  &_name {
-    display: inline-flex;
-    align-items: center;
-    flex: 1;
-    min-width: 0;
-    max-width: none;
-    height: 42px;
-    padding: 0 12px;
-    border-radius: 0;
-    border-top-right-radius: 8px;
-    border-bottom-right-radius: 8px;
-    background: #ffe5a7;
-    font-size: 24px;
-    line-height: 1;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  &_name Text {
-    line-height: 1;
-    color: inherit;
-  }
-
-  &_name,
-  &_no {
-    box-sizing: border-box;
-  }
 }
 
 ._pg-body {
   display: flex;
-  flex: 1;
+  flex: none;
   flex-direction: column;
-  min-height: 0;
+  height: clamp(640px, 60vh, 880px);
+  min-height: 640px;
   position: relative;
   z-index: 2;
-  margin-top: -12px;
-  padding: 0 clamp(18px, 4vw, 46px) 20px;
+  margin-top: -4px;
+  padding: 0;
   box-sizing: border-box;
 }
 
@@ -221,15 +155,24 @@
   flex: 1;
   height: 100%;
   min-height: 0;
+  width: 100%;
+  margin: 0;
 }
 
 ._pg-benefit-slide {
   height: 100%;
   box-sizing: border-box;
-  padding: 0;
+  padding: clamp(14px, 3.2vw, 24px) clamp(24px, 4.5vw, 46px) clamp(50px, 8vw, 74px);
+  background: transparent;
 
   &--selected ._pg-benefit-scroll {
     box-shadow: 0 16px 36px rgba(20, 28, 36, 0.12);
+  }
+
+  &_inner {
+    height: 100%;
+    padding: 0;
+    box-sizing: border-box;
   }
 }
 
@@ -339,6 +282,15 @@
     min-width: 0;
   }
 
+  &_summary-copy,
+  &_summary-highlight {
+    line-height: inherit;
+  }
+
+  &_summary-highlight {
+    color: #e5486d;
+  }
+
 }
 
 ._pg-benefit-empty {
@@ -362,7 +314,7 @@
 ._pg-progress_track {
   position: relative;
   height: 108px;
-  margin: 0 16px;
+  margin: 0 56px;
 }
 
 ._pg-progress_line,

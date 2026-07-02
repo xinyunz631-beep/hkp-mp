@@ -393,7 +393,7 @@ const ProductDetailPage = observer(function ProductDetailPage() {
                   className={`_pg-info_icon ${productFavorited ? '_pg-info_icon--favorited' : ''}`}
                   onClick={() => void handleFavoritePress()}
                 >
-                  <AppIcon name="heart" size={16} color={productFavorited ? '#db2777' : '#a1a1aa'} />
+                  <AppIcon name="heart" size={16} color={productFavorited ? '#ec6d9c' : '#a1a1aa'} />
                 </View>
                 <AppShareButton className="_pg-info_icon" iconColor="#a1a1aa" />
               </View>

@@ -559,7 +559,7 @@ const ProductsPage = observer(function ProductsPage() {
                         onClick={() => setFilterDraft((currentValue) => ({ ...currentValue, priceRange: option.key }))}
                       >
                         <Text>{option.label}</Text>
-                        {active ? <AppIcon name="check" size={10} color="#db2777" /> : null}
+                        {active ? <AppIcon name="check" size={10} color="#ec6d9c" /> : null}
                       </View>
                     );
                   })}
@@ -579,7 +579,7 @@ const ProductsPage = observer(function ProductsPage() {
                         onClick={() => setFilterDraft((currentValue) => ({ ...currentValue, tag: option.key }))}
                       >
                         <Text>{option.label}</Text>
-                        {active ? <AppIcon name="check" size={10} color="#db2777" /> : null}
+                        {active ? <AppIcon name="check" size={10} color="#ec6d9c" /> : null}
                       </View>
                     );
                   })}

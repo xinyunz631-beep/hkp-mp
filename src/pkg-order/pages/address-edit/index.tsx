@@ -272,7 +272,7 @@ const AddressEditPage = observer(function AddressEditPage() {
               <View className="_pg-field-wrap">
                 <View className="_pg-location" onClick={() => void handleChooseLocation()}>
                   <View className="_pg-location_icon">
-                    <AppIcon name="location" size={16} color="#db2777" />
+                    <AppIcon name="location" size={16} color="#ec6d9c" />
                   </View>
                   <View className="_pg-location_main">
                     <Text className={`_pg-location_title ${form.locationName || form.region ? '' : '_pg-location_title--placeholder'}`}>

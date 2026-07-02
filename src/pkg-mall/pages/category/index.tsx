@@ -242,7 +242,7 @@ const CategoryPage = observer(function CategoryPage() {
                     name={item.icon}
                     className="_pg-footer_icon"
                     size={16}
-                    color={item.key === 'home' ? '#db2777' : '#222222'}
+                    color={item.key === 'home' ? '#ec6d9c' : '#222222'}
                   />
                   {item.key === 'cart' ? <MallCartBadge count={cartCount} /> : null}
                 </View>
